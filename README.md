@@ -1,0 +1,1 @@
+havenask-federation, 旨在兼容ES生态，提升havenask易用性和迁移效率，加速havenask社区推广进程
