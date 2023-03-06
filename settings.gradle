@@ -1,0 +1,137 @@
+/* 
+*Copyright (c) 2021, Alibaba Group;
+*Licensed under the Apache License, Version 2.0 (the "License");
+*you may not use this file except in compliance with the License.
+*You may obtain a copy of the License at
+
+*   http://www.apache.org/licenses/LICENSE-2.0
+
+*Unless required by applicable law or agreed to in writing, software
+*distributed under the License is distributed on an "AS IS" BASIS,
+*WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+*See the License for the specific language governing permissions and
+*limitations under the License.
+*
+* Modifications Copyright Havenask Contributors. See
+* GitHub history for details.
+*/
+
+plugins {
+  id "com.gradle.enterprise" version "3.5"
+}
+
+rootProject.name = "Havenask"
+
+List projects = [
+  'build-tools',
+  'build-tools:reaper',
+  'rest-api-spec',
+  'docs',
+  'client:rest',
+  'client:rest-high-level',
+  'client:sniffer',
+  'client:transport',
+  'client:test',
+  'client:client-benchmark-noop-api-plugin',
+  'client:benchmark',
+  'benchmarks',
+  'distribution:archives:integ-test-zip',
+  'distribution:archives:windows-zip',
+  'distribution:archives:no-jdk-windows-zip',
+  'distribution:archives:darwin-tar',
+  'distribution:archives:no-jdk-darwin-tar',
+  'distribution:archives:linux-arm64-tar',
+  'distribution:archives:linux-tar',
+  'distribution:archives:no-jdk-linux-tar',
+  'distribution:docker',
+  'distribution:docker:docker-arm64-build-context',
+  'distribution:docker:docker-arm64-export',
+  'distribution:docker:docker-build-context',
+  'distribution:docker:docker-export',
+  'distribution:packages:arm64-deb',
+  'distribution:packages:deb',
+  'distribution:packages:no-jdk-deb',
+  'distribution:packages:arm64-rpm',
+  'distribution:packages:rpm',
+  'distribution:packages:no-jdk-rpm',
+  'distribution:bwc:bugfix',
+  'distribution:bwc:maintenance',
+  'distribution:bwc:minor',
+  'distribution:bwc:staged',
+  'distribution:tools:java-version-checker',
+  'distribution:tools:launchers',
+  'distribution:tools:plugin-cli',
+  'distribution:tools:keystore-cli',
+  'server',
+  'server:cli',
+  'test:framework',
+  'test:fixtures:azure-fixture',
+  'test:fixtures:gcs-fixture',
+  'test:fixtures:hdfs-fixture',
+  'test:fixtures:krb5kdc-fixture',
+  'test:fixtures:minio-fixture',
+  'test:fixtures:old-elasticsearch',
+  'test:fixtures:s3-fixture',
+  'test:logger-usage'
+]
+
+/**
+ * Iterates over sub directories, looking for build.gradle, and adds a project if found
+ * for that dir with the given path prefix. Note that this requires each level
+ * of the dir hierarchy to have a build.gradle. Otherwise we would have to iterate
+ * all files/directories in the source tree to find all projects.
+ */
+void addSubProjects(String path, File dir) {
+  if (dir.isDirectory() == false) return;
+  if (dir.name == 'buildSrc') return;
+  if (new File(dir, 'build.gradle').exists() == false) return;
+  if (findProject(dir) != null) return;
+
+  final String projectName = "${path}:${dir.name}"
+  include projectName
+  if (path.isEmpty() || path.startsWith(':example-plugins')) {
+    project(projectName).projectDir = dir
+  }
+  for (File subdir : dir.listFiles()) {
+    addSubProjects(projectName, subdir)
+  }
+}
+
+
+// include example plugins first, so adding plugin dirs below won't muck with :example-plugins
+File examplePluginsDir = new File(rootProject.projectDir, 'plugins/examples')
+for (File example : examplePluginsDir.listFiles()) {
+  if (example.isDirectory() == false) continue;
+  if (example.name.startsWith('build') || example.name.startsWith('.')) continue;
+  addSubProjects(':example-plugins', example)
+}
+project(':example-plugins').projectDir = new File(rootProject.projectDir, 'plugins/examples')
+
+addSubProjects('', new File(rootProject.projectDir, 'libs'))
+addSubProjects('', new File(rootProject.projectDir, 'modules'))
+addSubProjects('', new File(rootProject.projectDir, 'plugins'))
+addSubProjects('', new File(rootProject.projectDir, 'qa'))
+addSubProjects('test', new File(rootProject.projectDir, 'test/external-modules'))
+
+List startTasks = gradle.startParameter.taskNames
+
+include projects.toArray(new String[0])
+
+project(':build-tools').projectDir = new File(rootProject.projectDir, 'buildSrc')
+project(':build-tools:reaper').projectDir = new File(rootProject.projectDir, 'buildSrc/reaper')
+
+project(":libs").children.each { libsProject ->
+  libsProject.name = "havenask-${libsProject.name}"
+}
+
+project(":test:external-modules").children.each { testProject ->
+  testProject.name = "test-${testProject.name}"
+}
+
+// look for extra plugins for havenask
+File extraProjects = new File(rootProject.projectDir.parentFile, "${rootProject.projectDir.name}-extra")
+if (extraProjects.exists()) {
+  for (File extraProjectDir : extraProjects.listFiles()) {
+    addSubProjects('', extraProjectDir)
+  }
+}

@@ -1,0 +1,115 @@
+/* 
+*Copyright (c) 2021, Alibaba Group;
+*Licensed under the Apache License, Version 2.0 (the "License");
+*you may not use this file except in compliance with the License.
+*You may obtain a copy of the License at
+
+*   http://www.apache.org/licenses/LICENSE-2.0
+
+*Unless required by applicable law or agreed to in writing, software
+*distributed under the License is distributed on an "AS IS" BASIS,
+*WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+*See the License for the specific language governing permissions and
+*limitations under the License.
+*
+* Modifications Copyright Havenask Contributors. See
+* GitHub history for details.
+*/
+
+/*
+ * Licensed to Elasticsearch under one or more contributor
+ * license agreements. See the NOTICE file distributed with
+ * this work for additional information regarding copyright
+ * ownership. Elasticsearch licenses this file to you under
+ * the Apache License, Version 2.0 (the "License"); you may
+ * not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+import org.havenask.gradle.Architecture
+import org.havenask.gradle.VersionProperties
+
+apply plugin: 'war'
+apply plugin: 'havenask.build'
+apply plugin: 'havenask.test.fixtures'
+apply plugin: 'havenask.internal-distribution-download'
+
+testFixtures.useFixture()
+
+dependencies {
+  providedCompile 'javax.enterprise:cdi-api:1.2'
+  providedCompile 'org.jboss.spec.javax.annotation:jboss-annotations-api_1.2_spec:1.0.0.Final'
+  providedCompile 'org.jboss.spec.javax.ws.rs:jboss-jaxrs-api_2.0_spec:1.0.0.Final'
+  api('org.jboss.resteasy:resteasy-jackson2-provider:3.0.19.Final') {
+    exclude module: 'jackson-annotations'
+    exclude module: 'jackson-core'
+    exclude module: 'jackson-databind'
+    exclude module: 'jackson-jaxrs-json-provider'
+  }
+  api "com.fasterxml.jackson.core:jackson-annotations:${versions.jackson}"
+  api "com.fasterxml.jackson.core:jackson-core:${versions.jackson}"
+  api "com.fasterxml.jackson.core:jackson-databind:${versions.jackson}"
+  api "com.fasterxml.jackson.jaxrs:jackson-jaxrs-json-provider:${versions.jackson}"
+  api "com.fasterxml.jackson.jaxrs:jackson-jaxrs-base:${versions.jackson}"
+  api "com.fasterxml.jackson.module:jackson-module-jaxb-annotations:${versions.jackson}"
+  api "org.apache.logging.log4j:log4j-api:${versions.log4j}"
+  api "org.apache.logging.log4j:log4j-core:${versions.log4j}"
+  api project(path: ':client:rest-high-level')
+  testImplementation project(':test:framework')
+}
+
+war {
+  archiveFileName = 'example-app.war'
+}
+
+havenask_distributions {
+  docker {
+    type = 'docker'
+    architecture = Architecture.current()
+    version = VersionProperties.getHavenask()
+    failIfUnavailable = false // This ensures we skip this testing if Docker is unavailable
+  }
+}
+
+preProcessFixture {
+  dependsOn war, havenask_distributions.docker
+}
+
+dockerCompose {
+  useComposeFiles = ['docker-compose.yml']
+}
+
+tasks.register("integTest", Test) {
+  outputs.doNotCacheIf('Build cache is disabled for Docker tests') { true }
+  maxParallelForks = '1'
+  include '**/*IT.class'
+}
+
+check.dependsOn integTest
+
+test.enabled = false
+
+tasks.named("dependencyLicenses").configure { it.enabled = false }
+dependenciesInfo.enabled = false
+
+thirdPartyAudit.enabled = false
+
+
+testingConventions {
+  naming.clear()
+  // We only have one "special" integration test here to connect to wildfly
+  naming {
+    IT {
+      baseClass 'org.apache.lucene.util.LuceneTestCase'
+    }
+  }
+}

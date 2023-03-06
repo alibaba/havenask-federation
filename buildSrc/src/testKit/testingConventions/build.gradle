@@ -1,0 +1,100 @@
+/*
+*Copyright (c) 2021, Alibaba Group;
+*Licensed under the Apache License, Version 2.0 (the "License");
+*you may not use this file except in compliance with the License.
+*You may obtain a copy of the License at
+
+*   http://www.apache.org/licenses/LICENSE-2.0
+
+*Unless required by applicable law or agreed to in writing, software
+*distributed under the License is distributed on an "AS IS" BASIS,
+*WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+*See the License for the specific language governing permissions and
+*limitations under the License.
+*
+* Modifications Copyright Havenask Contributors. See
+* GitHub history for details.
+*/
+
+plugins {
+  id 'havenask.build' apply false
+}
+
+allprojects {
+  apply plugin: 'java'
+  apply plugin: 'havenask.build'
+
+  repositories {
+    jcenter()
+  }
+  dependencies {
+    testImplementation "junit:junit:4.13.2"
+  }
+
+  ext.licenseFile = file("$buildDir/dummy/license")
+  ext.noticeFile = file("$buildDir/dummy/notice")
+
+  testingConventions.naming {
+    // Reset default to no baseClass checks
+    Tests {
+      baseClasses = []
+    }
+    IT {
+      baseClasses = []
+    }
+  }
+}
+
+project(':empty_test_task') {
+  tasks.register("emptyTest", Test)
+}
+
+project(':all_classes_in_tasks') {
+  test {
+    include "**/Convention*"
+  }
+}
+
+project(':not_implementing_base') {
+  testingConventions.naming {
+    Tests {
+      baseClass 'org.havenask.gradle.testkit.Unit'
+    }
+    IT {
+      baseClass 'org.havenask.gradle.testkit.Integration'
+    }
+  }
+  test {
+    include "**/*IT.class"
+    include "**/*Tests.class"
+  }
+}
+
+project(':valid_setup_no_base') {
+  test {
+    include "**/*IT.class"
+    include "**/*Tests.class"
+  }
+}
+
+project(':tests_in_main') {
+
+}
+
+project(':valid_setup_with_base') {
+  test {
+    include "**/*IT.class"
+    include "**/*Tests.class"
+  }
+  testingConventions.naming {
+    Tests {
+      baseClass 'org.havenask.gradle.testkit.Unit'
+    }
+    IT {
+      baseClass 'org.havenask.gradle.testkit.Integration'
+    }
+  }
+}
+
+
+

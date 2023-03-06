@@ -1,0 +1,66 @@
+/*
+*Copyright (c) 2021, Alibaba Group;
+*Licensed under the Apache License, Version 2.0 (the "License");
+*you may not use this file except in compliance with the License.
+*You may obtain a copy of the License at
+
+*   http://www.apache.org/licenses/LICENSE-2.0
+
+*Unless required by applicable law or agreed to in writing, software
+*distributed under the License is distributed on an "AS IS" BASIS,
+*WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+*See the License for the specific language governing permissions and
+*limitations under the License.
+*
+* Modifications Copyright Havenask Contributors. See
+* GitHub history for details.
+*/
+
+import java.nio.file.Files
+
+String buildNumber = System.getenv('BUILD_NUMBER')
+
+if (buildNumber) {
+  File uploadFile = file("build/${buildNumber}.tar.bz2")
+  project.gradle.buildFinished { result ->
+    println "build complete, generating: $uploadFile"
+    if (uploadFile.exists()) {
+      project.delete(uploadFile)
+    }
+
+    try {
+      ant.tar(destfile: uploadFile, compression: "bzip2", longfile: "gnu") {
+        fileset(dir: projectDir) {
+          Set<File> fileSet = fileTree(projectDir) {
+            include("**/*.hprof")
+            include("**/reaper.log")
+            include("**/build/testclusters/**")
+            exclude("**/build/testclusters/**/data/**")
+            exclude("**/build/testclusters/**/distro/**")
+            exclude("**/build/testclusters/**/repo/**")
+            exclude("**/build/testclusters/**/extract/**")
+          }
+            .files
+            .findAll { Files.isRegularFile(it.toPath()) }
+
+          if (fileSet.empty) {
+            // In cases where we don't match any workspace files, exclude everything
+            ant.exclude(name: "**/*")
+          } else {
+            fileSet.each {
+              ant.include(name: projectDir.toPath().relativize(it.toPath()))
+            }
+          }
+        }
+
+        fileset(dir: "${gradle.gradleUserHomeDir}/daemon/${gradle.gradleVersion}", followsymlinks: false) {
+          include(name: "**/daemon-${ProcessHandle.current().pid()}*.log")
+        }
+
+        fileset(dir: "${gradle.gradleUserHomeDir}/workers", followsymlinks: false)
+      }
+    } catch (Exception e) {
+      logger.lifecycle("Failed to archive additional logs", e)
+    }
+  }
+}
