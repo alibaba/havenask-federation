@@ -42,7 +42,7 @@ package org.havenask.gradle;
 public enum Architecture {
 
     X64,
-    ARM64;
+    AARCH64;
 
     public static Architecture current() {
         final String architecture = System.getProperty("os.arch", "");
@@ -51,7 +51,7 @@ public enum Architecture {
             case "x86_64":
                 return X64;
             case "aarch64":
-                return ARM64;
+                return AARCH64;
             default:
                 throw new IllegalArgumentException("can not determine architecture from [" + architecture + "]");
         }

@@ -74,14 +74,8 @@ class DistributionDownloadFixture {
     private static String urlPath(String version, HavenaskDistribution.Platform platform) {
         String fileType = ((platform == HavenaskDistribution.Platform.LINUX ||
                 platform == HavenaskDistribution.Platform.DARWIN)) ? "tar.gz" : "zip"
-        if (Version.fromString(version).onOrAfter(Version.fromString("1.0.0"))) {
-            if (version.contains("SNAPSHOT")) {
-                return "/snapshots/core/havenask/${version}/havenask-min-${version}-${platform}-x64-latest.$fileType"
-            }
-            return "/releases/core/havenask/${version}/havenask-min-${version}-${platform}-x64.$fileType"
-        } else {
-            return "/downloads/elasticsearch/elasticsearch-oss-${version}-${platform}-x86_64.$fileType"
-        }
+        "/releases/core/havenask/${version}/havenask-${version}-${platform}-x86_64.$fileType"
+
     }
 
     private static byte[] filebytes(String urlPath) throws IOException {

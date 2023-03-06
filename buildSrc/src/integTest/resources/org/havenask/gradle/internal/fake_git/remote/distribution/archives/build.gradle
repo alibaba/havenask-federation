@@ -43,7 +43,7 @@ subprojects {
         destinationDirectory.set(file('build/distributions'))
         archiveBaseName.set("havenask")
         archiveVersion.set("8.0.1-SNAPSHOT")
-        archiveClassifier.set("darwin-x64")
+        archiveClassifier.set("darwin-x86_64")
         archiveExtension.set('tar.gz')
     }
 

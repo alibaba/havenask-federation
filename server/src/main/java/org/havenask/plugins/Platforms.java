@@ -76,13 +76,13 @@ public class Platforms {
 
     /**
      * Return the platform name based on the OS name and architecture, for example:
-     * - darwin-x64
-     * - linux-x64
-     * - windows-x64
+     * - darwin-x86_64
+     * - linux-x86-64
+     * - windows-x86_64
      * For *nix platforms this is more-or-less `uname -s`-`uname -m` converted to lower case.
      * However, for consistency between different operating systems on the same architecture
-     * "amd64" is replaced with "x64" and "i386" with "x86".
-     * For Windows it's "windows-" followed by either "x86" or "x64".
+     * "amd64" is replaced with "x86_64" and "i386" with "x86".
+     * For Windows it's "windows-" followed by either "x86" or "x86_64".
      */
     public static String platformName(final String osName, final String osArch) {
         final String lowerCaseOs = osName.toLowerCase(Locale.ROOT);
@@ -98,7 +98,7 @@ public class Platforms {
         final String lowerCaseArch = osArch.toLowerCase(Locale.ROOT);
         final String normalizedArch;
         if (lowerCaseArch.equals("amd64")) {
-            normalizedArch = "x64";
+            normalizedArch = "x86_64";
         } else if (lowerCaseArch.equals("i386")) {
             normalizedArch = "x86";
         } else {

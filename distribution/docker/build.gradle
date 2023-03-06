@@ -31,22 +31,22 @@ apply plugin: 'havenask.rest-resources'
 testFixtures.useFixture()
 
 configurations {
-  arm64DockerSource
+  aarch64DockerSource
   dockerSource
 }
 
 dependencies {
-  arm64DockerSource project(path: ":distribution:archives:linux-arm64-tar", configuration:"default")
+  aarch64DockerSource project(path: ":distribution:archives:linux-aarch64-tar", configuration:"default")
   dockerSource project(path: ":distribution:archives:linux-tar", configuration:"default")
 }
 
 ext.expansions = { Architecture architecture, DockerBase base, boolean local ->
   String classifier
   if (local) {
-    if (architecture == Architecture.ARM64) {
-      classifier = "linux-arm64"
+    if (architecture == Architecture.AARCH64) {
+      classifier = "linux-aarch64"
     } else if (architecture == Architecture.X64) {
-      classifier = "linux-x64"
+      classifier = "linux-x86_64"
     } else {
       throw new IllegalArgumentException("Unsupported architecture [" + architecture + "]")
     }
@@ -89,13 +89,13 @@ RUN curl --retry 8 -S -L \\
 
 private static String buildPath(Architecture architecture, DockerBase base) {
   return 'build/' +
-          (architecture == Architecture.ARM64 ? 'arm64-' : '') +
+    (architecture == Architecture.AARCH64 ? 'aarch64-' : '') +
           'docker'
 }
 
 private static String taskName(String prefix, Architecture architecture, DockerBase base, String suffix) {
   return prefix +
-          (architecture == Architecture.ARM64 ? 'Arm64' : '') +
+    (architecture == Architecture.AARCH64 ? 'Aarch64' : '') +
           suffix
 }
 
@@ -130,8 +130,8 @@ void addCopyDockerContextTask(Architecture architecture, DockerBase base) {
 
     with dockerBuildContext(architecture, base, true)
 
-    if (architecture == Architecture.ARM64) {
-      from configurations.arm64DockerSource
+    if (architecture == Architecture.AARCH64) {
+      from configurations.aarch64DockerSource
     } else {
       from configurations.dockerSource
     }
@@ -149,7 +149,7 @@ def createAndSetWritable(Object... locations) {
 
 havenask_distributions {
   Architecture.values().each { eachArchitecture ->
-    "docker${ eachArchitecture == Architecture.ARM64 ? '_arm64' : '' }" {
+    "docker${ eachArchitecture == Architecture.AARCH64 ? '_aarch64' : '' }" {
       architecture = eachArchitecture
       type = 'docker'
       version = VersionProperties.getHavenask()
@@ -232,10 +232,10 @@ subprojects { Project subProject ->
   if (subProject.name.endsWith('-export')) {
     apply plugin: 'distribution'
 
-    final Architecture architecture = subProject.name.contains('arm64-') ? Architecture.ARM64 : Architecture.X64
+    final Architecture architecture = subProject.name.contains('aarch64-') ? Architecture.AARCH64 : Architecture.X64
     final DockerBase base = DockerBase.HAVENASK
 
-    final String arch = architecture == Architecture.ARM64 ? '-arm64' : ''
+    final String arch = architecture == Architecture.AARCH64 ? '-aarch64' : ''
     final String extension = 'docker.tar'
     final String artifactName = "havenask${arch}_test"
 
