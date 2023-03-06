@@ -40,6 +40,8 @@ List projects = [
   'distribution:archives:no-jdk-windows-zip',
   'distribution:archives:darwin-tar',
   'distribution:archives:no-jdk-darwin-tar',
+  'distribution:archives:darwin-aarch64-tar',
+  'distribution:archives:no-jdk-darwin-aarch64-tar',
   'distribution:archives:linux-aarch64-tar',
   'distribution:archives:linux-tar',
   'distribution:archives:no-jdk-linux-tar',
