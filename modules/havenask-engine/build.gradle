@@ -1,0 +1,26 @@
+/*
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * The Havenask Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
+ *
+ */
+
+apply plugin: 'havenask.internal-cluster-test'
+
+havenaskplugin {
+  description 'Havenask engine module'
+  classname 'org.havenask.engine.HavenaskEnginePlugin'
+}
+
+dependencies {
+
+}
+
+internalClusterTest {
+  systemProperty 'tests.security.manager', 'false'
+}
+
+sourceCompatibility = JavaVersion.VERSION_11
+targetCompatibility = JavaVersion.VERSION_11
