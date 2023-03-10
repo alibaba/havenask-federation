@@ -12,46 +12,55 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
+import java.util.Locale;
 import java.util.Objects;
-import java.util.Set;
 
-import com.sun.jna.Platform;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.havenask.cluster.node.DiscoveryNodeRole;
+import org.havenask.cluster.node.DiscoveryNode;
 import org.havenask.cluster.service.ClusterService;
 import org.havenask.common.component.AbstractLifecycleComponent;
 import org.havenask.common.component.Lifecycle.State;
+import org.havenask.common.settings.Settings;
 import org.havenask.common.unit.TimeValue;
 import org.havenask.common.util.concurrent.AbstractAsyncTask;
 import org.havenask.env.Environment;
 import org.havenask.env.NodeEnvironment;
 import org.havenask.threadpool.ThreadPool;
 
-import static org.havenask.cluster.node.DiscoveryNodeRole.INGEST_ROLE;
-
 public class NativeProcessControlService extends AbstractLifecycleComponent {
     private static final Logger LOGGER = LogManager.getLogger(NativeProcessControlService.class);
 
     private final ClusterService clusterService;
     private final ThreadPool threadPool;
-    private boolean isDataNode;
-    private boolean isIngestNode;
+    private final boolean isDataNode;
+    private final boolean isIngestNode;
     private final Environment environment;
     private final NodeEnvironment nodeEnvironment;
-    private final String SEARCHER_COMMAND = "/bin/ls";
-    private final String QRS_COMMAND = "/bin/pwd";
-    private Process searcherProcess;
-    private Process qrsProcess;
+    private final HavenaskEngineEnvironment havenaskEngineEnvironment;
+    final String SEARCHER_ROLE = "searcher";
+    final String QRS_ROLE = "qrs";
+    private final String START_SEARCHER_COMMAND = "python /ha3_install/usr/local/lib/python/site-packages/ha_tools/local_search_starter.py -i %s/runtimedata/ -c %s/config -p 30468,30480 -b /ha3_install --qrsHttpArpcBindPort 45800";
+    private final String STOP_HAVENASK_COMMAND = "python /ha3_install/usr/local/lib/python/site-packages/ha_tools/local_search_stop.py -c %s/config";
+    private final String CHECK_HAVENASK_ALIVE_COMMAND = "ps aux | grep sap_server_d | grep 'roleType=%s' | grep -v grep | awk '{print $2}'";
+    protected String startSearcherCommand;
+    protected String stopHavenaskCommand;
     private ProcessControlTask processControlTask;
     private boolean running;
 
     public NativeProcessControlService(ClusterService clusterService, ThreadPool threadPool, Environment environment,
-        NodeEnvironment nodeEnvironment) {
+        NodeEnvironment nodeEnvironment, HavenaskEngineEnvironment havenaskEngineEnvironment) {
         this.clusterService = clusterService;
+        Settings settings = clusterService.getSettings();
+        isDataNode = DiscoveryNode.isDataNode(settings);
+        isIngestNode = DiscoveryNode.isIngestNode(settings);
         this.threadPool = threadPool;
         this.environment = environment;
         this.nodeEnvironment = nodeEnvironment;
+        this.havenaskEngineEnvironment = havenaskEngineEnvironment;
+        this.startSearcherCommand = String.format(Locale.ROOT,
+            START_SEARCHER_COMMAND, havenaskEngineEnvironment.getDataPath().toAbsolutePath(), havenaskEngineEnvironment.getDataPath().toAbsolutePath());
+        this.stopHavenaskCommand = String.format(Locale.ROOT, STOP_HAVENASK_COMMAND, havenaskEngineEnvironment.getDataPath().toAbsolutePath());
     }
 
     @Override
@@ -71,13 +80,15 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
             processControlTask.close();
         }
 
-        if (searcherProcess != null) {
-            searcherProcess.destroy();
-            searcherProcess = null;
-        }
-        if (qrsProcess != null) {
-            qrsProcess.destroy();
-            qrsProcess = null;
+        if (isDataNode || isIngestNode) {
+            AccessController.doPrivileged((PrivilegedAction<Process>) () -> {
+                try {
+                    return Runtime.getRuntime().exec(new String[]{"sh", "-c", stopHavenaskCommand});
+                } catch (IOException e) {
+                    // TODO logger error
+                    return null;
+                }
+            });
         }
     }
 
@@ -108,41 +119,15 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
                 return;
             }
 
-            Set<DiscoveryNodeRole> nodeRoles = clusterService.localNode().getRoles();
-            nodeRoles.forEach(discoveryNodeRole -> {
-                if (discoveryNodeRole.canContainData()) {
-                    isDataNode = true;
-                } else if (discoveryNodeRole == INGEST_ROLE) {
-                    isIngestNode = true;
-                }
-            });
-
             if (isDataNode) {
-                if (searcherProcess == null || false == checkPid(searcherProcess.pid())) {
-                    LOGGER.info("current searcher process[{}] is not started, start searcher process", searcherProcess);
+                if (checkProcessAlive(SEARCHER_ROLE)) {
+                    LOGGER.info("current searcher process is not started, start searcher process");
                     // 启动searcher
-                    final ProcessBuilder pb = new ProcessBuilder(SEARCHER_COMMAND);
-                    searcherProcess = AccessController.doPrivileged((PrivilegedAction<Process>) () -> {
+                    AccessController.doPrivileged((PrivilegedAction<Process>) () -> {
                         try {
-                            return pb.start();
+                            return Runtime.getRuntime().exec(new String[]{"sh", "-c", startSearcherCommand});
                         } catch (IOException e) {
-                            e.printStackTrace();
-                            return null;
-                        }
-                    });
-                }
-            }
-
-            if (isIngestNode) {
-                if (qrsProcess == null || false == checkPid(qrsProcess.pid())) {
-                    LOGGER.info("current qrs process[{}] is not started, start qrs process", qrsProcess);
-                    // 启动qrs
-                    final ProcessBuilder pb = new ProcessBuilder(QRS_COMMAND);
-                    qrsProcess = AccessController.doPrivileged((PrivilegedAction<Process>) () -> {
-                        try {
-                            return pb.start();
-                        } catch (IOException e) {
-                            e.printStackTrace();
+                            // TODO log
                             return null;
                         }
                     });
@@ -161,20 +146,14 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
         }
     }
 
-    static boolean checkPid(long processId) {
+    boolean checkProcessAlive(String role) {
         boolean flag = true;
         Process process = null;
-        String command;
+        String command = String.format(Locale.ROOT, CHECK_HAVENASK_ALIVE_COMMAND, role);
         try {
-            if (Platform.isWindows()) {
-                command ="cmd /c tasklist  /FI \"PID eq " + processId + "\"";
-            } else {
-                command = "ps aux | awk '{print $2}'| grep -w " + processId;
-            }
-            String finalCommand = command;
             process = AccessController.doPrivileged((PrivilegedAction<Process>) () -> {
                 try {
-                    return Runtime.getRuntime().exec(new String[]{"sh", "-c", finalCommand});
+                    return Runtime.getRuntime().exec(new String[]{"sh", "-c", command});
                 } catch (IOException e) {
                     return null;
                 }
@@ -187,9 +166,24 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
             try (InputStream inputStream = process.getInputStream()) {
                 byte[] bytes = inputStream.readAllBytes();
                 String result = new String(bytes);
-                return result.contains(String.valueOf(processId));
+                if (result.trim().equals("")) {
+                    return false;
+                }
+
+                try {
+                    if (Integer.valueOf(result.trim()) > 0) {
+                        return true;
+                    } else {
+                        // TODO log
+                        return false;
+                    }
+                } catch (NumberFormatException e) {
+                    // TODO log
+                    return false;
+                }
             }
         } catch (IOException e) {
+            // TODO log
             // pass
         } finally {
             if (process != null) {

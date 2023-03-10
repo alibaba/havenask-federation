@@ -37,6 +37,7 @@ import org.havenask.watcher.ResourceWatcherService;
 
 public class HavenaskEnginePlugin extends Plugin implements EnginePlugin, AnalysisPlugin, ActionPlugin, SearchPlugin {
     private static Logger logger = LogManager.getLogger(HavenaskEnginePlugin.class);
+    private final SetOnce<HavenaskEngineEnvironment> havenaskEngineEnvironmentSetOnce = new SetOnce<>();
     private final SetOnce<NativeProcessControlService> nativeProcessControlServiceSetOnce = new SetOnce<>();
 
     @Override
@@ -52,8 +53,11 @@ public class HavenaskEnginePlugin extends Plugin implements EnginePlugin, Analys
         NodeEnvironment nodeEnvironment, NamedWriteableRegistry namedWriteableRegistry,
         IndexNameExpressionResolver indexNameExpressionResolver,
         Supplier<RepositoriesService> repositoriesServiceSupplier) {
-        NativeProcessControlService nativeProcessControlService = new NativeProcessControlService(clusterService, threadPool, environment, nodeEnvironment);
+        HavenaskEngineEnvironment havenaskEngineEnvironment = new HavenaskEngineEnvironment(clusterService.getSettings());
+        havenaskEngineEnvironmentSetOnce.set(havenaskEngineEnvironment);
+
+        NativeProcessControlService nativeProcessControlService = new NativeProcessControlService(clusterService, threadPool, environment, nodeEnvironment, havenaskEngineEnvironment);
         nativeProcessControlServiceSetOnce.set(nativeProcessControlService);
-        return Arrays.asList(nativeProcessControlServiceSetOnce.get());
+        return Arrays.asList(nativeProcessControlServiceSetOnce.get(), havenaskEngineEnvironmentSetOnce.get());
     }
 }

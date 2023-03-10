@@ -24,6 +24,11 @@ public class NativeProcessControlServiceIT extends HavenaskSingleNodeTestCase {
 
     public void testStartProcess() {
         NativeProcessControlService nativeProcessControlService = getInstanceFromNode(NativeProcessControlService.class);
+        try {
+            Thread.sleep(10000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
         nativeProcessControlService.doStop();
     }
 }
