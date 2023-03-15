@@ -20,6 +20,7 @@ import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedList;
+import java.util.Map;
 import java.util.Set;
 
 import com.alibaba.fastjson.JSON;
@@ -34,12 +35,10 @@ import org.havenask.index.mapper.IdFieldMapper;
 import org.havenask.index.mapper.MappedFieldType;
 import org.havenask.index.mapper.MapperService;
 import org.havenask.index.mapper.TextSearchInfo;
-import wiremock.com.google.common.collect.ImmutableMap;
-import wiremock.com.google.common.collect.ImmutableSet;
 
 public class SchemaGenerate {
     // have deprecated fields or not support now.
-    public static final ImmutableSet<String> ExcludeFields = ImmutableSet.of(
+    public static final Set<String> ExcludeFields = Set.of(
         "_field_names", "index", "_type", "_uid", "_parent"
     );
 
@@ -47,44 +46,44 @@ public class SchemaGenerate {
         return "v3.7";
     }
 
-    Set<String>[] Analyzers = new Set[]{null};
+    Set<String> analyzers = null;
 
     private Set<String> getAnalyzers() {
-        if (Analyzers[0] != null) {
-            return Analyzers[0];
+        if (analyzers != null) {
+            return analyzers;
         }
         Path analyzerPath = Paths.get(Utils.getJarDir(), version(), "config", "analyzer.json");
         try {
             Utils.doPrivileged(() -> {
                 String analyzerText = Files.readString(analyzerPath);
                 Analyzers analyzers = JSON.parseObject(analyzerText, Analyzers.class);
-                Analyzers[0] = Collections.unmodifiableSet(analyzers.analyzers.keySet());
+                this.analyzers = Collections.unmodifiableSet(analyzers.analyzers.keySet());
                 return null;
             });
         } catch (Exception e) {
             throw new RuntimeException("get analyzers error!", e);
         }
-        return Analyzers[0];
+        return analyzers;
     }
 
-    ImmutableMap<String,String> Ha3FieldType = new ImmutableMap.Builder<String,String>()
-        .put("keyword", "STRING")
-        .put("text", "TEXT")
-        .put("_routing", "STRING")
-        .put("_source", "STRING")
-        .put("_id", "STRING")
-        .put("_seq_no", "INT64")
-        .put("_primary_term", "INT64")
-        .put("_version", "INT64")
-        .put("long", "INT64")
-        .put("float", "FLOAT")
-        .put("double", "DOUBLE")
-        .put("integer", "INTEGER")
-        .put("short", "INT16")
-        .put("byte", "INT8")
-        .put("boolean", "STRING") //bool-> T,F
-        .put("date", "UINT64")
-        .build();
+    Map<String, String> Ha3FieldType = Map.ofEntries(
+        Map.entry("keyword", "STRING"),
+        Map.entry("text", "TEXT"),
+        Map.entry("_routing", "STRING"),
+        Map.entry("_source", "STRING"),
+        Map.entry("_id", "STRING"),
+        Map.entry("_seq_no", "INT64"),
+        Map.entry("_primary_term", "INT64"),
+        Map.entry("_version", "INT64"),
+        Map.entry("long", "INT64"),
+        Map.entry("float", "FLOAT"),
+        Map.entry("double", "DOUBLE"),
+        Map.entry("integer", "INTEGER"),
+        Map.entry("short", "INT16"),
+        Map.entry("byte", "INT8"),
+        Map.entry("boolean", "STRING"),
+        Map.entry("date", "UINT64")
+    );
 
     Logger logger = LogManager.getLogger(SchemaGenerate.class);
 
@@ -114,7 +113,7 @@ public class SchemaGenerate {
             // multi field index
             if (fieldName.contains(".")) {
                 String originField = fieldName.substring(0, fieldName.lastIndexOf('.'));
-                schema.copyToFields.computeIfAbsent(originField, (k) -> new LinkedList()).add(fieldName);
+                schema.copyToFields.computeIfAbsent(originField, (k) -> new LinkedList<>()).add(fieldName);
                 // replace '.' in field name
                 fieldName = Schema.encodeFieldWithDot(fieldName);
             }

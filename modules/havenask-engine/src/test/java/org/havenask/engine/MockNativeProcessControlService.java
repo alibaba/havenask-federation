@@ -14,6 +14,8 @@
 
 package org.havenask.engine;
 
+import java.net.URL;
+
 import org.havenask.cluster.service.ClusterService;
 import org.havenask.env.Environment;
 import org.havenask.env.NodeEnvironment;
@@ -25,7 +27,9 @@ public class MockNativeProcessControlService extends NativeProcessControlService
         NodeEnvironment nodeEnvironment,
         HavenaskEngineEnvironment havenaskEngineEnvironment) {
         super(clusterService, threadPool, environment, nodeEnvironment, havenaskEngineEnvironment);
-        this.startSearcherCommand = "/bin/ls";
-        this.stopHavenaskCommand = "/bin/ls";
+        String startScript = MockNativeProcessControlService.class.getResource("/fake_sap.sh").getPath();
+        String stopScript = MockNativeProcessControlService.class.getResource("/stop_fake_sap.sh").getPath();
+        this.startSearcherCommand = "sh " + startScript + " sap_server_d roleType=searcher";
+        this.stopHavenaskCommand = "sh " + stopScript;
     }
 }

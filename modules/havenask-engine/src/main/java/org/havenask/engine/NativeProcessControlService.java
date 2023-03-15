@@ -30,6 +30,8 @@ import org.havenask.threadpool.ThreadPool;
 
 public class NativeProcessControlService extends AbstractLifecycleComponent {
     private static final Logger LOGGER = LogManager.getLogger(NativeProcessControlService.class);
+    public static final String SEARCHER_ROLE = "searcher";
+    public static final String QRS_ROLE = "qrs";
 
     private final ClusterService clusterService;
     private final ThreadPool threadPool;
@@ -38,11 +40,10 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
     private final Environment environment;
     private final NodeEnvironment nodeEnvironment;
     private final HavenaskEngineEnvironment havenaskEngineEnvironment;
-    final String SEARCHER_ROLE = "searcher";
-    final String QRS_ROLE = "qrs";
-    private final String START_SEARCHER_COMMAND = "python /ha3_install/usr/local/lib/python/site-packages/ha_tools/local_search_starter.py -i %s/runtimedata/ -c %s/config -p 30468,30480 -b /ha3_install --qrsHttpArpcBindPort 45800";
-    private final String STOP_HAVENASK_COMMAND = "python /ha3_install/usr/local/lib/python/site-packages/ha_tools/local_search_stop.py -c %s/config";
-    private final String CHECK_HAVENASK_ALIVE_COMMAND = "ps aux | grep sap_server_d | grep 'roleType=%s' | grep -v grep | awk '{print $2}'";
+
+    private static final String START_SEARCHER_COMMAND = "python /ha3_install/usr/local/lib/python/site-packages/ha_tools/local_search_starter.py -i %s/runtimedata/ -c %s/config -p 30468,30480 -b /ha3_install --qrsHttpArpcBindPort 45800";
+    private static final String STOP_HAVENASK_COMMAND = "python /ha3_install/usr/local/lib/python/site-packages/ha_tools/local_search_stop.py -c %s/config";
+    private static final String CHECK_HAVENASK_ALIVE_COMMAND = "ps aux | grep sap_server_d | grep 'roleType=%s' | grep -v grep | awk '{print $2}'";
     protected String startSearcherCommand;
     protected String stopHavenaskCommand;
     private ProcessControlTask processControlTask;
@@ -66,7 +67,7 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
     @Override
     protected void doStart() {
         if (processControlTask == null) {
-            processControlTask = new ProcessControlTask(threadPool, TimeValue.timeValueSeconds(10));
+            processControlTask = new ProcessControlTask(threadPool, TimeValue.timeValueSeconds(5));
             processControlTask.rescheduleIfNecessary();
             running = true;
         }
@@ -114,13 +115,8 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
                 return;
             }
 
-            if (clusterService.getClusterApplierService().lifecycleState() != State.STARTED) {
-                LOGGER.warn("cluster service not ready, state={}", clusterService.getClusterApplierService().lifecycleState());
-                return;
-            }
-
             if (isDataNode) {
-                if (checkProcessAlive(SEARCHER_ROLE)) {
+                if (false == checkProcessAlive(SEARCHER_ROLE)) {
                     LOGGER.info("current searcher process is not started, start searcher process");
                     // 启动searcher
                     AccessController.doPrivileged((PrivilegedAction<Process>) () -> {
@@ -147,7 +143,6 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
     }
 
     boolean checkProcessAlive(String role) {
-        boolean flag = true;
         Process process = null;
         String command = String.format(Locale.ROOT, CHECK_HAVENASK_ALIVE_COMMAND, role);
         try {
@@ -155,11 +150,12 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
                 try {
                     return Runtime.getRuntime().exec(new String[]{"sh", "-c", command});
                 } catch (IOException e) {
+                    LOGGER.warn("run check script error, command [{}]", command, e);
                     return null;
                 }
             });
             if (process == null) {
-                // TODO can't get process
+                LOGGER.warn("run check script error, the process is null, don't know the process [{}] status", role);
                 return true;
             }
 
@@ -167,6 +163,7 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
                 byte[] bytes = inputStream.readAllBytes();
                 String result = new String(bytes);
                 if (result.trim().equals("")) {
+                    LOGGER.info("check script don't get the process [{}] pid, the process is not alive", role);
                     return false;
                 }
 
@@ -174,22 +171,21 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
                     if (Integer.valueOf(result.trim()) > 0) {
                         return true;
                     } else {
-                        // TODO log
+                        LOGGER.warn("check script get the process [{}] pid error, check result is [{}]", role, result);
                         return false;
                     }
                 } catch (NumberFormatException e) {
-                    // TODO log
+                    LOGGER.warn("check script get the process [{}] result format error, check result is [{}]", role, result);
                     return false;
                 }
             }
         } catch (IOException e) {
-            // TODO log
-            // pass
+            LOGGER.warn("check script get the process [{}] input error, check result is [{}]", role, e);
         } finally {
             if (process != null) {
                 process.destroy();
             }
         }
-        return flag;
+        return true;
     }
 }
