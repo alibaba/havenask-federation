@@ -15,7 +15,8 @@ havenaskplugin {
 }
 
 dependencies {
-
+  compile "com.alibaba:fastjson:1.2.82"
+  compile 'com.google.guava:guava:26.0-jre'
 }
 
 internalClusterTest {

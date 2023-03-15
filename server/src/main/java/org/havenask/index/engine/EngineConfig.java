@@ -243,6 +243,16 @@ public final class EngineConfig {
     }
 
     /**
+     * Returns the {@link CodecService} used in the engines
+     * <p>
+     *     Note: this settings is only read on startup.
+     * </p>
+     */
+    public CodecService getCodecService() {
+        return codecService;
+    }
+
+    /**
      * Returns a thread-pool mainly used to get estimated time stamps from
      * {@link org.havenask.threadpool.ThreadPool#relativeTimeInMillis()} and to schedule
      * async force merge calls on the {@link org.havenask.threadpool.ThreadPool.Names#FORCE_MERGE} thread-pool

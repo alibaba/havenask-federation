@@ -21,6 +21,8 @@ import org.havenask.cluster.metadata.IndexNameExpressionResolver;
 import org.havenask.cluster.service.ClusterService;
 import org.havenask.common.io.stream.NamedWriteableRegistry;
 import org.havenask.common.xcontent.NamedXContentRegistry;
+import org.havenask.engine.index.engine.EngineSettings;
+import org.havenask.engine.index.engine.HavenaskEngine;
 import org.havenask.env.Environment;
 import org.havenask.env.NodeEnvironment;
 import org.havenask.index.IndexSettings;
@@ -43,6 +45,10 @@ public class HavenaskEnginePlugin extends Plugin implements EnginePlugin, Analys
     @Override
     public Optional<EngineFactory> getEngineFactory(
         IndexSettings indexSettings) {
+        if (EngineSettings.isHavenaskEngine(indexSettings.getSettings())) {
+            return Optional.of(engineConfig -> new HavenaskEngine(engineConfig));
+        }
+
         return Optional.empty();
     }
 
