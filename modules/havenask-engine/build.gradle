@@ -17,7 +17,7 @@ tasks.named("dependencyLicenses").configure {
 }
 
 dependencies {
-  api "com.alibaba:fastjson:1.2.68.noneautotype"
+  api "com.alibaba:fastjson:1.2.83_noneautotype"
 }
 
 bundlePlugin {

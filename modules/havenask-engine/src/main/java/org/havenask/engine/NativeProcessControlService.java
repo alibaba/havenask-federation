@@ -51,7 +51,7 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
     private static final String START_SEARCHER_COMMAND = "cd %s;python %s/havenask/script/general_search_starter.py -i "
         + "%s -c %s -p 30468,30480 -b /ha3_install -M in0 --role searcher";
     private static final String STOP_HAVENASK_COMMAND =
-        "python /ha3_install/usr/local/lib/python/site-packages/ha_tools/local_search_stop.py -c %s/config";
+        "python /ha3_install/usr/local/lib/python/site-packages/ha_tools/local_search_stop.py -c /ha3_install/usr/local/etc/ha3/ha3_alog.conf";
     private static final String CHECK_HAVENASK_ALIVE_COMMAND =
         "ps aux | grep sap_server_d | grep 'roleType=%s' | grep -v grep | awk '{print $2}'";
     protected String startSearcherCommand;
@@ -82,11 +82,7 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
             havenaskEngineEnvironment.getRuntimedataPath(),
             havenaskEngineEnvironment.getConfigPath()
         );
-        this.stopHavenaskCommand = String.format(
-            Locale.ROOT,
-            STOP_HAVENASK_COMMAND,
-            havenaskEngineEnvironment.getDataPath().toAbsolutePath()
-        );
+        this.stopHavenaskCommand = STOP_HAVENASK_COMMAND;
     }
 
     @Override
@@ -111,8 +107,10 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
             LOGGER.info("stop local searcher,qrs process");
             AccessController.doPrivileged((PrivilegedAction<Process>) () -> {
                 try {
-                    return Runtime.getRuntime().exec(new String[] { "sh", "-c", stopHavenaskCommand });
-                } catch (IOException e) {
+                    Process process = Runtime.getRuntime().exec(new String[] { "sh", "-c", stopHavenaskCommand });
+                    process.waitFor();
+                    return process;
+                } catch (Exception e) {
                     LOGGER.warn("stop local searcher,qrs failed", e);
                     return null;
                 }
@@ -148,8 +146,10 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
                     // 启动searcher
                     AccessController.doPrivileged((PrivilegedAction<Process>) () -> {
                         try {
-                            return Runtime.getRuntime().exec(new String[] { "sh", "-c", startSearcherCommand });
-                        } catch (IOException e) {
+                            Process process = Runtime.getRuntime().exec(new String[] { "sh", "-c", startSearcherCommand });
+                            process.waitFor();
+                            return process;
+                        } catch (Exception e) {
                             LOGGER.warn("start searcher process failed", e);
                             return null;
                         }
