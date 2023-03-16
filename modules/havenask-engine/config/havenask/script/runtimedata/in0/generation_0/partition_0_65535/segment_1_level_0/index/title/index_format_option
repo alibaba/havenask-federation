@@ -1,0 +1,39 @@
+{
+"has_bitmap_index":
+  false,
+"has_section_attribute":
+  false,
+"posting_format_option":
+  {
+  "dict_inline_item_count":
+    1,
+  "doc_list_compress_mode":
+    0,
+  "doc_list_format_option":
+    {
+    "has_doc_payload":
+      false,
+    "has_field_map":
+      false,
+    "has_term_frequency":
+      false,
+    "has_term_frequency_bitmap":
+      false,
+    "has_term_frequency_list":
+      false
+    },
+  "has_term_payload":
+    false,
+  "is_compressed_posting_header":
+    true,
+  "pos_list_format_option":
+    {
+    "has_position_list":
+      false,
+    "has_position_payload":
+      false,
+    "has_term_frequency_bitmap":
+      false
+    }
+  }
+}

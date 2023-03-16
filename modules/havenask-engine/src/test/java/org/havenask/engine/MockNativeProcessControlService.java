@@ -14,8 +14,6 @@
 
 package org.havenask.engine;
 
-import java.net.URL;
-
 import org.havenask.cluster.service.ClusterService;
 import org.havenask.env.Environment;
 import org.havenask.env.NodeEnvironment;

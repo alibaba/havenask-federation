@@ -59,7 +59,7 @@ public class HavenaskEnginePlugin extends Plugin implements EnginePlugin, Analys
         NodeEnvironment nodeEnvironment, NamedWriteableRegistry namedWriteableRegistry,
         IndexNameExpressionResolver indexNameExpressionResolver,
         Supplier<RepositoriesService> repositoriesServiceSupplier) {
-        HavenaskEngineEnvironment havenaskEngineEnvironment = new HavenaskEngineEnvironment(clusterService.getSettings());
+        HavenaskEngineEnvironment havenaskEngineEnvironment = new HavenaskEngineEnvironment(environment, clusterService.getSettings());
         havenaskEngineEnvironmentSetOnce.set(havenaskEngineEnvironment);
 
         NativeProcessControlService nativeProcessControlService = new NativeProcessControlService(clusterService, threadPool, environment, nodeEnvironment, havenaskEngineEnvironment);

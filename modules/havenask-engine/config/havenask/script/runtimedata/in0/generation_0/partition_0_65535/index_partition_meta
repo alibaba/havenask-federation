@@ -1,0 +1,11 @@
+{
+"PartitionMeta":
+  [
+    {
+    "SortField":
+      "hits",
+    "SortPattern":
+      "ASC"
+    }
+  ]
+}

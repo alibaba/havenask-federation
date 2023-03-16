@@ -20,7 +20,6 @@ import org.apache.logging.log4j.Logger;
 import org.havenask.cluster.node.DiscoveryNode;
 import org.havenask.cluster.service.ClusterService;
 import org.havenask.common.component.AbstractLifecycleComponent;
-import org.havenask.common.component.Lifecycle.State;
 import org.havenask.common.settings.Settings;
 import org.havenask.common.unit.TimeValue;
 import org.havenask.common.util.concurrent.AbstractAsyncTask;
@@ -41,9 +40,13 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
     private final NodeEnvironment nodeEnvironment;
     private final HavenaskEngineEnvironment havenaskEngineEnvironment;
 
-    private static final String START_SEARCHER_COMMAND = "python /ha3_install/usr/local/lib/python/site-packages/ha_tools/local_search_starter.py -i %s/runtimedata/ -c %s/config -p 30468,30480 -b /ha3_install --qrsHttpArpcBindPort 45800";
-    private static final String STOP_HAVENASK_COMMAND = "python /ha3_install/usr/local/lib/python/site-packages/ha_tools/local_search_stop.py -c %s/config";
-    private static final String CHECK_HAVENASK_ALIVE_COMMAND = "ps aux | grep sap_server_d | grep 'roleType=%s' | grep -v grep | awk '{print $2}'";
+    private static final String START_SEARCHER_COMMAND
+        = "cd %s;python %s/havenask/script/general_search_starter.py -i "
+        + "%s -c %s -p 30468,30480 -b /ha3_install -M in0 --role searcher";
+    private static final String STOP_HAVENASK_COMMAND
+        = "python /ha3_install/usr/local/lib/python/site-packages/ha_tools/local_search_stop.py -c %s/config";
+    private static final String CHECK_HAVENASK_ALIVE_COMMAND
+        = "ps aux | grep sap_server_d | grep 'roleType=%s' | grep -v grep | awk '{print $2}'";
     protected String startSearcherCommand;
     protected String stopHavenaskCommand;
     private ProcessControlTask processControlTask;
@@ -60,8 +63,12 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
         this.nodeEnvironment = nodeEnvironment;
         this.havenaskEngineEnvironment = havenaskEngineEnvironment;
         this.startSearcherCommand = String.format(Locale.ROOT,
-            START_SEARCHER_COMMAND, havenaskEngineEnvironment.getDataPath().toAbsolutePath(), havenaskEngineEnvironment.getDataPath().toAbsolutePath());
-        this.stopHavenaskCommand = String.format(Locale.ROOT, STOP_HAVENASK_COMMAND, havenaskEngineEnvironment.getDataPath().toAbsolutePath());
+            START_SEARCHER_COMMAND, havenaskEngineEnvironment.getDataPath().toAbsolutePath(),
+            environment.configFile().toAbsolutePath(),
+            havenaskEngineEnvironment.getRuntimedataPath(),
+            havenaskEngineEnvironment.getConfigPath());
+        this.stopHavenaskCommand = String.format(Locale.ROOT, STOP_HAVENASK_COMMAND,
+            havenaskEngineEnvironment.getDataPath().toAbsolutePath());
     }
 
     @Override
@@ -79,14 +86,16 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
             LOGGER.info("stop process control service");
             running = false;
             processControlTask.close();
+            processControlTask = null;
         }
 
         if (isDataNode || isIngestNode) {
-            AccessController.doPrivileged((PrivilegedAction<Process>) () -> {
+            LOGGER.info("stop local searcher,qrs process");
+            AccessController.doPrivileged((PrivilegedAction<Process>)() -> {
                 try {
-                    return Runtime.getRuntime().exec(new String[]{"sh", "-c", stopHavenaskCommand});
+                    return Runtime.getRuntime().exec(new String[] {"sh", "-c", stopHavenaskCommand});
                 } catch (IOException e) {
-                    // TODO logger error
+                    LOGGER.warn("stop local searcher,qrs failed", e);
                     return null;
                 }
             });
@@ -119,11 +128,11 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
                 if (false == checkProcessAlive(SEARCHER_ROLE)) {
                     LOGGER.info("current searcher process is not started, start searcher process");
                     // 启动searcher
-                    AccessController.doPrivileged((PrivilegedAction<Process>) () -> {
+                    AccessController.doPrivileged((PrivilegedAction<Process>)() -> {
                         try {
-                            return Runtime.getRuntime().exec(new String[]{"sh", "-c", startSearcherCommand});
+                            return Runtime.getRuntime().exec(new String[] {"sh", "-c", startSearcherCommand});
                         } catch (IOException e) {
-                            // TODO log
+                            LOGGER.warn("start searcher process failed", e);
                             return null;
                         }
                     });
@@ -146,9 +155,9 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
         Process process = null;
         String command = String.format(Locale.ROOT, CHECK_HAVENASK_ALIVE_COMMAND, role);
         try {
-            process = AccessController.doPrivileged((PrivilegedAction<Process>) () -> {
+            process = AccessController.doPrivileged((PrivilegedAction<Process>)() -> {
                 try {
-                    return Runtime.getRuntime().exec(new String[]{"sh", "-c", command});
+                    return Runtime.getRuntime().exec(new String[] {"sh", "-c", command});
                 } catch (IOException e) {
                     LOGGER.warn("run check script error, command [{}]", command, e);
                     return null;
@@ -175,7 +184,8 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
                         return false;
                     }
                 } catch (NumberFormatException e) {
-                    LOGGER.warn("check script get the process [{}] result format error, check result is [{}]", role, result);
+                    LOGGER.warn("check script get the process [{}] result format error, check result is [{}]", role,
+                        result);
                     return false;
                 }
             }
