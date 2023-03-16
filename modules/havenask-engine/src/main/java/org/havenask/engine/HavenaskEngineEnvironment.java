@@ -34,8 +34,12 @@ public class HavenaskEngineEnvironment {
     public static final String HAVENASK_RUNTIMEDATA_PATH = "runtimedata";
     public static final String HAVENASK_TABLE_CONFIG_PATH = "table";
     public static final String HAVENASK_BIZS_CONFIG_PATH = "bizs";
-    public static final Setting<String> HAVENASK_PATH_DATA_SETTING =
-        new Setting<>("havenask.path.data", DEFAULT_DATA_PATH, Function.identity(), Property.NodeScope);
+    public static final Setting<String> HAVENASK_PATH_DATA_SETTING = new Setting<>(
+        "havenask.path.data",
+        DEFAULT_DATA_PATH,
+        Function.identity(),
+        Property.NodeScope
+    );
 
     private final Environment environment;
     private final Path dataPath;

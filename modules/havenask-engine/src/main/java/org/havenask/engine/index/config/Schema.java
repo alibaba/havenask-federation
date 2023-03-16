@@ -1,3 +1,17 @@
+/*
+ * Copyright (c) 2021, Alibaba Group;
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *
+ */
+
 package org.havenask.engine.index.config;
 
 import java.util.HashMap;
@@ -23,17 +37,17 @@ public class Schema {
     public transient String rawSchema;
     // origin field process parameters
     // copyTo field will copy the origin field and write the copied ones(such as multiFields, etc.)
-    public transient Map<String/*origin*/,List<String>> copyToFields = new HashMap<>();
+    public transient Map<String/*origin*/, List<String>> copyToFields = new HashMap<>();
     // float mapped fields will replace/rewrite origin search query
     // should also write twice as copyToFields do.
     public transient Map<String, String> float_long_field_map = new HashMap<>();
     public transient long floatToLongMul = 1L;
     public transient long maxFloatLong = Long.MAX_VALUE;
     public transient long minFloatLong = Long.MIN_VALUE;
-    public transient static final String FLOAT_MULTI_FIELD_NAME = "_f2i";
-    public transient static final char FIELD_DOT_REPLACEMENT = '_';
+    public static final transient String FLOAT_MULTI_FIELD_NAME = "_f2i";
+    public static final transient char FIELD_DOT_REPLACEMENT = '_';
 
-    // HA3 do not allow '.'  for field name
+    // HA3 do not allow '.' for field name
     // currently only multi-field index contains '.'
     public static final String encodeFieldWithDot(String field) {
         return field.replace('.', FIELD_DOT_REPLACEMENT);
@@ -47,11 +61,12 @@ public class Schema {
         } else {
             d = d * floatToLongMul;
         }
-        return (long)d;
+        return (long) d;
     }
 
     public static class FieldInfo {
         public FieldInfo() {}
+
         public FieldInfo(String field_name, String field_type) {
             this.field_name = field_name;
             this.field_type = field_type;
@@ -70,6 +85,7 @@ public class Schema {
         public String index_field;
 
         public Index() {}
+
         public Index(String index_name, String index_type, String index_field) {
             this.index_name = index_name;
             this.index_type = index_type;
@@ -87,6 +103,7 @@ public class Schema {
         public PRIMARYKEYIndex() {
             index_type = "PRIMARYKEY64";
         }
+
         public PRIMARYKEYIndex(String index_name, String index_field) {
             super(index_name, "PRIMARYKEY64", index_field);
         }
@@ -105,6 +122,7 @@ public class Schema {
         public PackIndex() {
             index_type = "PACK";
         }
+
         public List<BoostedField> index_fields = new LinkedList<>();
     }
 
@@ -122,12 +140,12 @@ public class Schema {
             return JsonPrettyFormatter.toJsonString(this);
         }
         JSONObject rawSchemaObj = JsonPrettyFormatter.fromString(rawSchema);
-        //replace table type
+        // replace table type
         String tableType = rawSchemaObj.getString("table_type");
-        if ((!Strings.isNullOrEmpty(tableType))&&(!tableType.equals("normal"))) {
+        if ((!Strings.isNullOrEmpty(tableType)) && (!tableType.equals("normal"))) {
             return rawSchema;
         }
-        //add summary
+        // add summary
         if (summarys != null) {
             if (!rawSchemaObj.containsKey("summarys")) {
                 rawSchemaObj.put("summarys", this.summarys);
@@ -143,7 +161,7 @@ public class Schema {
                 rawSchemaObj.put("summarys", summarysObj);
             }
         }
-        //add attributes
+        // add attributes
         if (attributes != null && attributes.size() > 0) {
             if (!rawSchemaObj.containsKey("attributes")) {
                 rawSchemaObj.put("attributes", attributes);
@@ -153,7 +171,7 @@ public class Schema {
                 rawSchemaObj.put("attributes", attributesArr);
             }
         }
-        //add fields
+        // add fields
         if (fields != null && fields.size() > 0) {
             if (!rawSchemaObj.containsKey("fields")) {
                 rawSchemaObj.put("fields", fields);
@@ -163,7 +181,7 @@ public class Schema {
                 rawSchemaObj.put("fields", fieldsArr);
             }
         }
-        //add indexs
+        // add indexs
         if (indexs != null && indexs.size() > 0) {
             if (!rawSchemaObj.containsKey("indexs")) {
                 rawSchemaObj.put("indexs", indexs);
@@ -173,11 +191,11 @@ public class Schema {
                 rawSchemaObj.put("indexs", indexsArr);
             }
         }
-        //replace table name
+        // replace table name
         if (!Strings.isNullOrEmpty(table_name)) {
             rawSchemaObj.put("table_name", table_name);
         }
-        //replace table type
+        // replace table type
         if (!Strings.isNullOrEmpty(table_type)) {
             rawSchemaObj.put("table_type", table_type);
         }

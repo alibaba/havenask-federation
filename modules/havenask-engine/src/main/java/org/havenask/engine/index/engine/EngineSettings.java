@@ -21,12 +21,22 @@ import org.havenask.common.settings.Settings;
 public class EngineSettings {
     public static final String ENGINE_HAVENASK = "havenask";
 
-    public static final Setting<String> ENGINE_TYPE_SETTING = new Setting<>("index.engine",  "lucene",
-        (s) -> s, Setting.Property.IndexScope, Setting.Property.Final);
+    public static final Setting<String> ENGINE_TYPE_SETTING = new Setting<>(
+        "index.engine",
+        "lucene",
+        (s) -> s,
+        Setting.Property.IndexScope,
+        Setting.Property.Final
+    );
 
     // float/double number will *10^HA3_FLOAT_MUL_BY10 for index and search(using multi fields)
-    public static final Setting<Integer> HA3_FLOAT_MUL_BY10 = new Setting<>("index.havenask.float.mul.by10", "10",
-        Integer::parseInt, Setting.Property.IndexScope, Property.Final);
+    public static final Setting<Integer> HA3_FLOAT_MUL_BY10 = new Setting<>(
+        "index.havenask.float.mul.by10",
+        "10",
+        Integer::parseInt,
+        Setting.Property.IndexScope,
+        Property.Final
+    );
 
     public static boolean isHavenaskEngine(Settings indexSettings) {
         return ENGINE_HAVENASK.equals(ENGINE_TYPE_SETTING.get(indexSettings));

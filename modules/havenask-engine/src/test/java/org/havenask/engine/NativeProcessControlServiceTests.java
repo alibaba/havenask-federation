@@ -40,19 +40,22 @@ public class NativeProcessControlServiceTests extends HavenaskTestCase {
     public void setUp() throws Exception {
         super.setUp();
         threadPool = new TestThreadPool(getTestName());
-        Settings settings = Settings.builder()
-            .put(Environment.PATH_HOME_SETTING.getKey(), createTempDir().toString())
-            .build();
-        ClusterService clusterService = new ClusterService(settings,
+        Settings settings = Settings.builder().put(Environment.PATH_HOME_SETTING.getKey(), createTempDir().toString()).build();
+        ClusterService clusterService = new ClusterService(
+            settings,
             new ClusterSettings(settings, ClusterSettings.BUILT_IN_CLUSTER_SETTINGS),
-            threadPool);
-
+            threadPool
+        );
 
         Environment environment = TestEnvironment.newEnvironment(settings);
         NodeEnvironment nodeEnvironment = new NodeEnvironment(settings, environment);
-        nativeProcessControlService = new MockNativeProcessControlService(clusterService, threadPool,
-            environment, nodeEnvironment,
-            new HavenaskEngineEnvironment(environment, settings));
+        nativeProcessControlService = new MockNativeProcessControlService(
+            clusterService,
+            threadPool,
+            environment,
+            nodeEnvironment,
+            new HavenaskEngineEnvironment(environment, settings)
+        );
         nodeEnvironment.close();
     }
 
@@ -66,14 +69,14 @@ public class NativeProcessControlServiceTests extends HavenaskTestCase {
     }
 
     public void testStartStopSearcher() throws Exception {
-        //启动searcher
+        // 启动searcher
         nativeProcessControlService.start();
         assertBusy(() -> {
             boolean alive = nativeProcessControlService.checkProcessAlive(NativeProcessControlService.SEARCHER_ROLE);
             assertTrue(alive);
         });
 
-        //关闭启动searcher
+        // 关闭启动searcher
         nativeProcessControlService.stop();
         assertBusy(() -> {
             boolean alive = nativeProcessControlService.checkProcessAlive(NativeProcessControlService.SEARCHER_ROLE);
@@ -82,13 +85,13 @@ public class NativeProcessControlServiceTests extends HavenaskTestCase {
     }
 
     public void testCheckProcessAlive() throws Exception {
-        //传递错误的searcher名称
+        // 传递错误的searcher名称
         {
             boolean alive = nativeProcessControlService.checkProcessAlive("wrong_searcher");
             assertFalse(alive);
         }
 
-        //searcher进程不存在
+        // searcher进程不存在
         {
             boolean alive = nativeProcessControlService.checkProcessAlive(NativeProcessControlService.SEARCHER_ROLE);
             assertFalse(alive);
@@ -98,7 +101,7 @@ public class NativeProcessControlServiceTests extends HavenaskTestCase {
         {
             AccessController.doPrivileged((PrivilegedAction<Process>) () -> {
                 try {
-                    return Runtime.getRuntime().exec(new String[]{"sh", "-c", nativeProcessControlService.startSearcherCommand});
+                    return Runtime.getRuntime().exec(new String[] { "sh", "-c", nativeProcessControlService.startSearcherCommand });
                 } catch (IOException e) {
                     return null;
                 }
@@ -111,7 +114,7 @@ public class NativeProcessControlServiceTests extends HavenaskTestCase {
         {
             AccessController.doPrivileged((PrivilegedAction<Process>) () -> {
                 try {
-                    return Runtime.getRuntime().exec(new String[]{"sh", "-c", nativeProcessControlService.startSearcherCommand});
+                    return Runtime.getRuntime().exec(new String[] { "sh", "-c", nativeProcessControlService.startSearcherCommand });
                 } catch (IOException e) {
                     return null;
                 }
@@ -124,7 +127,7 @@ public class NativeProcessControlServiceTests extends HavenaskTestCase {
         {
             AccessController.doPrivileged((PrivilegedAction<Process>) () -> {
                 try {
-                    return Runtime.getRuntime().exec(new String[]{"sh", "-c", nativeProcessControlService.stopHavenaskCommand});
+                    return Runtime.getRuntime().exec(new String[] { "sh", "-c", nativeProcessControlService.stopHavenaskCommand });
                 } catch (IOException e) {
                     return null;
                 }

@@ -15,8 +15,6 @@
 # language governing permissions and limitations under the License.
 
 @defaultMessage Convert to URI
-java.net.URL#getPath()
-java.net.URL#getFile()
 
 @defaultMessage Usage of getLocalHost is discouraged
 java.net.InetAddress#getLocalHost()

@@ -1,9 +1,15 @@
 /*
- * SPDX-License-Identifier: Apache-2.0
+ * Copyright (c) 2021, Alibaba Group;
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  *
- * The Havenask Contributors require contributions made to
- * this file be licensed under the Apache-2.0 license or a
- * compatible open source license.
  */
 
 package org.havenask.engine;
@@ -43,8 +49,7 @@ public class HavenaskEnginePlugin extends Plugin implements EnginePlugin, Analys
     private final SetOnce<NativeProcessControlService> nativeProcessControlServiceSetOnce = new SetOnce<>();
 
     @Override
-    public Optional<EngineFactory> getEngineFactory(
-        IndexSettings indexSettings) {
+    public Optional<EngineFactory> getEngineFactory(IndexSettings indexSettings) {
         if (EngineSettings.isHavenaskEngine(indexSettings.getSettings())) {
             return Optional.of(engineConfig -> new HavenaskEngine(engineConfig));
         }
@@ -53,16 +58,29 @@ public class HavenaskEnginePlugin extends Plugin implements EnginePlugin, Analys
     }
 
     @Override
-    public Collection<Object> createComponents(Client client, ClusterService clusterService, ThreadPool threadPool,
-        ResourceWatcherService resourceWatcherService, ScriptService scriptService,
-        NamedXContentRegistry xContentRegistry, Environment environment,
-        NodeEnvironment nodeEnvironment, NamedWriteableRegistry namedWriteableRegistry,
+    public Collection<Object> createComponents(
+        Client client,
+        ClusterService clusterService,
+        ThreadPool threadPool,
+        ResourceWatcherService resourceWatcherService,
+        ScriptService scriptService,
+        NamedXContentRegistry xContentRegistry,
+        Environment environment,
+        NodeEnvironment nodeEnvironment,
+        NamedWriteableRegistry namedWriteableRegistry,
         IndexNameExpressionResolver indexNameExpressionResolver,
-        Supplier<RepositoriesService> repositoriesServiceSupplier) {
+        Supplier<RepositoriesService> repositoriesServiceSupplier
+    ) {
         HavenaskEngineEnvironment havenaskEngineEnvironment = new HavenaskEngineEnvironment(environment, clusterService.getSettings());
         havenaskEngineEnvironmentSetOnce.set(havenaskEngineEnvironment);
 
-        NativeProcessControlService nativeProcessControlService = new NativeProcessControlService(clusterService, threadPool, environment, nodeEnvironment, havenaskEngineEnvironment);
+        NativeProcessControlService nativeProcessControlService = new NativeProcessControlService(
+            clusterService,
+            threadPool,
+            environment,
+            nodeEnvironment,
+            havenaskEngineEnvironment
+        );
         nativeProcessControlServiceSetOnce.set(nativeProcessControlService);
         return Arrays.asList(nativeProcessControlServiceSetOnce.get(), havenaskEngineEnvironmentSetOnce.get());
     }

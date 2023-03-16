@@ -1,3 +1,17 @@
+/*
+ * Copyright (c) 2021, Alibaba Group;
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *
+ */
+
 package org.havenask.engine.index.config;
 
 import java.util.Collections;
@@ -11,23 +25,19 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 public class TargetInfo {
-    public Map<String,Map<String, TableInfo>> table_info;
+    public Map<String, Map<String, TableInfo>> table_info;
     public Map<String, BizInfo> biz_info;
     public ServiceInfo service_info;
     public boolean clean_disk;
 
     public List<Cm2Config> findExistedBizService(List<Cm2Config> services) {
-        if (service_info == null || service_info.cm2_config == null)
-            return null;
+        if (service_info == null || service_info.cm2_config == null) return null;
         List<Cm2Config> existed = service_info.cm2_config.get("local");
-        if (existed == null)
-            return null;
+        if (existed == null) return null;
         List<Cm2Config> found = new LinkedList<>();
-        Set<String> existedBizs = services.stream().
-            map(cm2Config -> cm2Config.biz_name).collect(Collectors.toSet());
+        Set<String> existedBizs = services.stream().map(cm2Config -> cm2Config.biz_name).collect(Collectors.toSet());
         for (Cm2Config cm : existed) {
-            if (existedBizs.contains(cm))
-                found.add(cm);
+            if (existedBizs.contains(cm)) found.add(cm);
         }
         return found;
     }
@@ -46,26 +56,22 @@ public class TargetInfo {
     }
 
     public boolean removeBizService(List<Cm2Config> services) {
-        if (service_info == null || service_info.cm2_config == null)
-            return false;
+        if (service_info == null || service_info.cm2_config == null) return false;
         return service_info.cm2_config.get("local").removeAll(services);
     }
 
     public List<Cm2Config> removeAllBizService() {
-        if (service_info == null || service_info.cm2_config == null)
-            return null;
+        if (service_info == null || service_info.cm2_config == null) return null;
         return service_info.cm2_config.put("local", new LinkedList<>());
     }
 
     public List<Cm2Config> removeBizByPrefix(String prefix) {
-        if (service_info == null || service_info.cm2_config == null)
-            return null;
+        if (service_info == null || service_info.cm2_config == null) return null;
         List<Cm2Config> current = service_info.cm2_config.get("local");
-        if (current == null)
-            return null;
+        if (current == null) return null;
         List<Cm2Config> removed = new LinkedList<>();
         Iterator<Cm2Config> itr = current.iterator();
-        while(itr.hasNext()) {
+        while (itr.hasNext()) {
             Cm2Config cm = itr.next();
             if (cm.biz_name.startsWith(prefix)) {
                 itr.remove();
@@ -85,7 +91,7 @@ public class TargetInfo {
         public ServiceInfo() {}
 
         public ServiceInfo(String zone) {
-            zone_name= zone;
+            zone_name = zone;
         }
     }
 
@@ -109,9 +115,13 @@ public class TargetInfo {
 
         @Override
         public boolean equals(Object o) {
-            if (this == o) { return true; }
-            if (!(o instanceof Cm2Config)) { return false; }
-            Cm2Config cm2Config = (Cm2Config)o;
+            if (this == o) {
+                return true;
+            }
+            if (!(o instanceof Cm2Config)) {
+                return false;
+            }
+            Cm2Config cm2Config = (Cm2Config) o;
             return Objects.equals(biz_name, cm2Config.biz_name);
         }
 
@@ -133,7 +143,7 @@ public class TargetInfo {
 
     public static class TableInfo {
         public String index_root;
-        public Map<String,Partition> partitions;
+        public Map<String, Partition> partitions;
         public String config_path;
 
         public TableInfo() {}
@@ -150,11 +160,10 @@ public class TargetInfo {
         public int inc_version = 1;
     }
 
-    public static TargetInfo createSearchDefault(String zone, String indexRoot,
-                                                 String tableConf, String bizConf) {
+    public static TargetInfo createSearchDefault(String zone, String indexRoot, String tableConf, String bizConf) {
         TargetInfo targetInfo = new TargetInfo();
 
-        Map<String,Map<String, TableInfo>> tables = new HashMap<>();
+        Map<String, Map<String, TableInfo>> tables = new HashMap<>();
         Map<String, TableInfo> tableInfoMap = new HashMap<>();
         tables.put(zone, tableInfoMap);
         tableInfoMap.put("0", new TableInfo(indexRoot, tableConf));

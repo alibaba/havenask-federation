@@ -38,9 +38,7 @@ import org.havenask.index.mapper.TextSearchInfo;
 
 public class SchemaGenerate {
     // have deprecated fields or not support now.
-    public static final Set<String> ExcludeFields = Set.of(
-        "_field_names", "index", "_type", "_uid", "_parent"
-    );
+    public static final Set<String> ExcludeFields = Set.of("_field_names", "index", "_type", "_uid", "_parent");
 
     private String version() {
         return "v3.7";
@@ -88,8 +86,7 @@ public class SchemaGenerate {
     Logger logger = LogManager.getLogger(SchemaGenerate.class);
 
     public Schema getSchema(EngineConfig engineConfig) {
-        return getSchema(engineConfig.getShardId().getIndexName(), engineConfig,
-            engineConfig.getCodecService().getMapperService());
+        return getSchema(engineConfig.getShardId().getIndexName(), engineConfig, engineConfig.getCodecService().getMapperService());
     }
 
     // generate index schema from mapping
@@ -106,7 +103,7 @@ public class SchemaGenerate {
             String haFieldType = Ha3FieldType.get(field.typeName());
             String fieldName = field.name();
             if (haFieldType == null || fieldName.equals("CMD")) {
-                logger.warn(table + ": invalid mapping type/name for field {}", field.name());
+                logger.warn("{}: invalid mapping type/name for field {}", table, field.name());
                 continue;
             }
 
@@ -132,7 +129,7 @@ public class SchemaGenerate {
             // field info
             if (field.isStored() || field.hasDocValues() || field.isSearchable()) {
                 Schema.FieldInfo fieldInfo = new Schema.FieldInfo(fieldName, haFieldType);
-                //  should configured in analyzer.json
+                // should configured in analyzer.json
                 if (haFieldType.equals("TEXT") && field.indexAnalyzer() != null) {
                     if (analyzers.contains(field.indexAnalyzer().name())) {
                         fieldInfo.analyzer = field.indexAnalyzer().name();
@@ -152,25 +149,25 @@ public class SchemaGenerate {
                     index = new Schema.PRIMARYKEYIndex(indexName, fieldName);
                 } else if (field.typeName().equals("date")) {
                     index = new Schema.Index(indexName, "DATE", fieldName);
-                } else if (haFieldType.equals("TEXT")) { //TODO defualt pack index
+                } else if (haFieldType.equals("TEXT")) { // TODO defualt pack index
                     index = new Schema.Index(indexName, "TEXT", fieldName);
                     indexOptions(index, field.getTextSearchInfo());
                 } else if (haFieldType.equals("STRING")) {
                     index = new Schema.Index(indexName, "STRING", fieldName);
                     indexOptions(index, field.getTextSearchInfo());
-                } else if (haFieldType.equals("INT8") ||
-                    haFieldType.equals("INT16") ||
-                    haFieldType.equals("INTEGER") ||
-                    haFieldType.equals("INT64")) {
-                    index = new Schema.Index(indexName, "NUMBER", fieldName);
-                    indexOptions(index, field.getTextSearchInfo());
-                } else if (haFieldType.equals("DOUBLE") || haFieldType.equals("FLOAT")) {
-                    // not support
-                    continue;
-                    // float index will re-mapped to int64 range index
-                } else {
-                    throw new RuntimeException("index type not supported, field:" + field.name());
-                }
+                } else if (haFieldType.equals("INT8")
+                    || haFieldType.equals("INT16")
+                    || haFieldType.equals("INTEGER")
+                    || haFieldType.equals("INT64")) {
+                        index = new Schema.Index(indexName, "NUMBER", fieldName);
+                        indexOptions(index, field.getTextSearchInfo());
+                    } else if (haFieldType.equals("DOUBLE") || haFieldType.equals("FLOAT")) {
+                        // not support
+                        continue;
+                        // float index will re-mapped to int64 range index
+                    } else {
+                        throw new RuntimeException("index type not supported, field:" + field.name());
+                    }
 
                 schema.indexs.add(index);
             }
@@ -181,7 +178,7 @@ public class SchemaGenerate {
             schema.attributes.add("_primary_term");
             schema.fields.add(new Schema.FieldInfo("_primary_term", Ha3FieldType.get("_primary_term")));
         }
-        //add local checkpoint field
+        // add local checkpoint field
         if (addedFields.contains("_local_checkpoint")) {
             throw new RuntimeException("_local_checkpoint is built-in field name!");
         }
@@ -193,7 +190,7 @@ public class SchemaGenerate {
         // extra schema process
         Integer floatToLong = EngineSettings.HA3_FLOAT_MUL_BY10.get(config.getIndexSettings().getSettings());
         if (floatToLong != null && floatToLong > 0) {
-            schema.floatToLongMul = (long)Math.pow(10, floatToLong);
+            schema.floatToLongMul = (long) Math.pow(10, floatToLong);
             schema.maxFloatLong = Long.MAX_VALUE / schema.floatToLongMul;
             schema.minFloatLong = Long.MIN_VALUE / schema.floatToLongMul;
         }
@@ -206,8 +203,7 @@ public class SchemaGenerate {
         if (options.hasOffsets()) {
             index.doc_payload_flag = 1;
             index.term_frequency_flag = 1;
-        } else if (index.index_type.equals("TEXT") &&
-            (options.hasPositions())) {
+        } else if (index.index_type.equals("TEXT") && (options.hasPositions())) {
             index.doc_payload_flag = 1;
             index.term_frequency_flag = 1;
             index.position_list_flag = 1;

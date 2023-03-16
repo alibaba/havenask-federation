@@ -20,10 +20,13 @@ import org.havenask.env.NodeEnvironment;
 import org.havenask.threadpool.ThreadPool;
 
 public class MockNativeProcessControlService extends NativeProcessControlService {
-    public MockNativeProcessControlService(ClusterService clusterService,
-        ThreadPool threadPool, Environment environment,
+    public MockNativeProcessControlService(
+        ClusterService clusterService,
+        ThreadPool threadPool,
+        Environment environment,
         NodeEnvironment nodeEnvironment,
-        HavenaskEngineEnvironment havenaskEngineEnvironment) {
+        HavenaskEngineEnvironment havenaskEngineEnvironment
+    ) {
         super(clusterService, threadPool, environment, nodeEnvironment, havenaskEngineEnvironment);
         String startScript = MockNativeProcessControlService.class.getResource("/fake_sap.sh").getPath();
         String stopScript = MockNativeProcessControlService.class.getResource("/stop_fake_sap.sh").getPath();

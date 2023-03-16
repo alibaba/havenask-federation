@@ -14,7 +14,8 @@
 
 package org.havenask.engine.util;
 
-import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.security.AccessController;
 import java.security.PrivilegedActionException;
 import java.security.PrivilegedExceptionAction;
@@ -28,7 +29,7 @@ public class Utils {
             sm.checkPermission(new SpecialPermission());
         }
         try {
-            return AccessController.doPrivileged((PrivilegedExceptionAction<T>)operation::run);
+            return AccessController.doPrivileged((PrivilegedExceptionAction<T>) operation::run);
         } catch (PrivilegedActionException e) {
             throw e.getException();
         }
@@ -48,25 +49,24 @@ public class Utils {
      * get thr path that contain current jar file.
      */
     public static String getJarDir() {
-        if (JarDir != null)
-            return JarDir;
-        File file = getFile();
-        if(file==null) {
+        if (JarDir != null) return JarDir;
+        Path file = getFile();
+        if (file == null) {
             throw new RuntimeException("jar file dir get failed!");
         }
-        if(file.isDirectory()){
-            return file.getAbsolutePath();
+        if (Files.isDirectory(file)) {
+            return file.toAbsolutePath().toString();
         }
-        return JarDir = file.getParent();
+        return JarDir = file.getParent().toAbsolutePath().toString();
     }
 
-    private static File getFile() {
+    private static Path getFile() {
         String path = Utils.class.getProtectionDomain().getCodeSource().getLocation().getFile();
-        try{
+        try {
             path = java.net.URLDecoder.decode(path, "UTF-8");
-        }catch (java.io.UnsupportedEncodingException e){
+        } catch (java.io.UnsupportedEncodingException e) {
             return null;
         }
-        return new File(path);
+        return Path.of(path);
     }
 }

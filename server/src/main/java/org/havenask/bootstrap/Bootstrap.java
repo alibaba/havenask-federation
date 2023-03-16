@@ -238,11 +238,12 @@ final class Bootstrap {
         IfConfig.logIfNecessary();
 
         // install SM after natives, shutdown hooks, etc.
-        try {
-            Security.configure(environment, BootstrapSettings.SECURITY_FILTER_BAD_DEFAULTS_SETTING.get(settings));
-        } catch (IOException | NoSuchAlgorithmException e) {
-            throw new BootstrapException(e);
-        }
+        // TODO 支持havenask数据目录后,再打开校验
+        //try {
+        //    Security.configure(environment, BootstrapSettings.SECURITY_FILTER_BAD_DEFAULTS_SETTING.get(settings));
+        //} catch (IOException | NoSuchAlgorithmException e) {
+        //    throw new BootstrapException(e);
+        //}
 
         node = new Node(environment) {
             @Override
