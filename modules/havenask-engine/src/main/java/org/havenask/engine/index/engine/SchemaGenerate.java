@@ -40,17 +40,13 @@ public class SchemaGenerate {
     // have deprecated fields or not support now.
     public static final Set<String> ExcludeFields = Set.of("_field_names", "index", "_type", "_uid", "_parent");
 
-    private String version() {
-        return "v3.7";
-    }
-
     Set<String> analyzers = null;
 
     private Set<String> getAnalyzers() {
         if (analyzers != null) {
             return analyzers;
         }
-        Path analyzerPath = Paths.get(Utils.getJarDir(), version(), "config", "analyzer.json");
+        Path analyzerPath = Paths.get(Utils.getJarDir(), "config", "analyzer.json");
         try {
             Utils.doPrivileged(() -> {
                 String analyzerText = Files.readString(analyzerPath);
