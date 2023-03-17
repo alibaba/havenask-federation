@@ -28,6 +28,8 @@ import org.apache.logging.log4j.message.ParameterizedMessage;
 import org.havenask.cluster.node.DiscoveryNode;
 import org.havenask.cluster.service.ClusterService;
 import org.havenask.common.component.AbstractLifecycleComponent;
+import org.havenask.common.settings.Setting;
+import org.havenask.common.settings.Setting.Property;
 import org.havenask.common.settings.Settings;
 import org.havenask.common.unit.TimeValue;
 import org.havenask.common.util.concurrent.AbstractAsyncTask;
@@ -39,6 +41,27 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
     private static final Logger LOGGER = LogManager.getLogger(NativeProcessControlService.class);
     public static final String SEARCHER_ROLE = "searcher";
     public static final String QRS_ROLE = "qrs";
+    private static final String START_SEARCHER_COMMAND = "cd %s;python %s/havenask/script/general_search_starter.py -i "
+        + "%s -c %s -b /ha3_install -M in0 --role searcher --httpBindPort %d";
+    private static final String STOP_HAVENASK_COMMAND =
+        "python /ha3_install/usr/local/lib/python/site-packages/ha_tools/local_search_stop.py"
+            + " -c /ha3_install/usr/local/etc/ha3/ha3_alog.conf";
+    private static final String CHECK_HAVENASK_ALIVE_COMMAND =
+        "ps aux | grep sap_server_d | grep 'roleType=%s' | grep -v grep | awk '{print $2}'";
+
+    public static final Setting<Integer> HAVENASK_SEARCHER_HTTP_PORT_SETTING = Setting.intSetting(
+        "havenask.searcher.http.port",
+        39200,
+        Property.NodeScope,
+        Setting.Property.Final
+    );
+
+    public static final Setting<Integer> HAVENASK_QRS_HTTP_PORT_SETTING = Setting.intSetting(
+        "havenask.qrs.http.port",
+        49200,
+        Property.NodeScope,
+        Setting.Property.Final
+    );
 
     private final ClusterService clusterService;
     private final ThreadPool threadPool;
@@ -47,14 +70,9 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
     private final Environment environment;
     private final NodeEnvironment nodeEnvironment;
     private final HavenaskEngineEnvironment havenaskEngineEnvironment;
+    private final int searcherHttpPort;
+    private final int qrsHttpPort;
 
-    private static final String START_SEARCHER_COMMAND = "cd %s;python %s/havenask/script/general_search_starter.py -i "
-        + "%s -c %s -p 30468,30480 -b /ha3_install -M in0 --role searcher";
-    private static final String STOP_HAVENASK_COMMAND =
-        "python /ha3_install/usr/local/lib/python/site-packages/ha_tools/local_search_stop.py"
-            + " -c /ha3_install/usr/local/etc/ha3/ha3_alog.conf";
-    private static final String CHECK_HAVENASK_ALIVE_COMMAND =
-        "ps aux | grep sap_server_d | grep 'roleType=%s' | grep -v grep | awk '{print $2}'";
     protected String startSearcherCommand;
     protected String stopHavenaskCommand;
     private ProcessControlTask processControlTask;
@@ -75,13 +93,16 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
         this.environment = environment;
         this.nodeEnvironment = nodeEnvironment;
         this.havenaskEngineEnvironment = havenaskEngineEnvironment;
+        this.searcherHttpPort = HAVENASK_SEARCHER_HTTP_PORT_SETTING.get(settings);
+        this.qrsHttpPort = HAVENASK_QRS_HTTP_PORT_SETTING.get(settings);
         this.startSearcherCommand = String.format(
             Locale.ROOT,
             START_SEARCHER_COMMAND,
             havenaskEngineEnvironment.getDataPath().toAbsolutePath(),
             environment.configFile().toAbsolutePath(),
             havenaskEngineEnvironment.getRuntimedataPath(),
-            havenaskEngineEnvironment.getConfigPath()
+            havenaskEngineEnvironment.getConfigPath(),
+            searcherHttpPort
         );
         this.stopHavenaskCommand = STOP_HAVENASK_COMMAND;
     }
@@ -106,15 +127,23 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
 
         if (isDataNode || isIngestNode) {
             LOGGER.info("stop local searcher,qrs process");
-            AccessController.doPrivileged((PrivilegedAction<Process>) () -> {
+            AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
                 try {
                     Process process = Runtime.getRuntime().exec(new String[] { "sh", "-c", stopHavenaskCommand });
                     process.waitFor();
-                    return process;
+                    if (process.exitValue() != 0) {
+                        try (InputStream inputStream = process.getInputStream()) {
+                            byte[] bytes = inputStream.readAllBytes();
+                            String result = new String(bytes, StandardCharsets.UTF_8);
+                            LOGGER.warn("stop searcher\\qrs failed, failed reason: {}", result);
+                        }
+                    }
+                    process.destroy();
                 } catch (Exception e) {
                     LOGGER.warn("stop local searcher,qrs failed", e);
-                    return null;
                 }
+
+                return null;
             });
         }
     }
@@ -145,15 +174,22 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
                 if (false == checkProcessAlive(SEARCHER_ROLE)) {
                     LOGGER.info("current searcher process is not started, start searcher process");
                     // 启动searcher
-                    AccessController.doPrivileged((PrivilegedAction<Process>) () -> {
+                    AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
                         try {
                             Process process = Runtime.getRuntime().exec(new String[] { "sh", "-c", startSearcherCommand });
                             process.waitFor();
-                            return process;
+                            if (process.exitValue() != 0) {
+                                try (InputStream inputStream = process.getInputStream()) {
+                                    byte[] bytes = inputStream.readAllBytes();
+                                    String result = new String(bytes, StandardCharsets.UTF_8);
+                                    LOGGER.warn("searcher start failed, failed reason: {}", result);
+                                }
+                            }
+                            process.destroy();
                         } catch (Exception e) {
                             LOGGER.warn("start searcher process failed", e);
-                            return null;
                         }
+                        return null;
                     });
                 }
             }
@@ -170,6 +206,12 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
         }
     }
 
+    /**
+     * 检测进程是否存活
+     *
+     * @param role 进程角色: searcher 或者 qrs
+     * @return 返回进程存活状态
+     */
     boolean checkProcessAlive(String role) {
         Process process = null;
         String command = String.format(Locale.ROOT, CHECK_HAVENASK_ALIVE_COMMAND, role);
@@ -215,5 +257,19 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
             }
         }
         return true;
+    }
+
+    /**
+     * @return searcher启动的http port
+     */
+    public int getSearcherHttpPort() {
+        return searcherHttpPort;
+    }
+
+    /**
+     * @return qrs启动的http port
+     */
+    public int getQrsHttpPort() {
+        return qrsHttpPort;
     }
 }

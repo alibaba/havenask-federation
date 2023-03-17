@@ -71,7 +71,7 @@ examples:
         self.parser.add_option('-i', '--index', action='store', dest='indexPath')
         self.parser.add_option('-c', '--config', action='store', dest='configPath')
         self.parser.add_option('-p', '--port', action='store', dest='portList')
-        self.parser.add_option('', '--qrsHttpArpcBindPort', dest='qrsHttpArpcBindPort', type='int', default=0)
+        self.parser.add_option('', '--httpBindPort', dest='httpBindPort', type='int', default=0)
         self.parser.add_option('', '--qrsArpcBindPort', dest='qrsArpcBindPort', type='int', default=0)
 
         self.parser.add_option('-z', '--zone', action='store', dest='zoneName')
@@ -172,7 +172,7 @@ examples:
         else:
             self.offlineConfigPath = os.path.join(self.offlineConfigPath, str(tableVersions[-1]))
 
-        self.qrsHttpArpcBindPort = options.qrsHttpArpcBindPort
+        self.httpBindPort = options.httpBindPort
         self.qrsArpcBindPort = options.qrsArpcBindPort
         self.portList = []
         # self.origin_port_list = map(lambda x:int(x), options.portList.split(","))
@@ -546,7 +546,7 @@ examples:
         os.system("cp %s %s" % (self.qrsCfg, targetCfg))
         startCmd = self.startCmdTemplate % (self.binPath, self.libPath, self.alogConfigPath,
                                             self.binaryPath, targetCfg, 0, 0,
-                                            self.qrsHttpArpcBindPort, self.serviceName,self.serviceName,
+                                            self.httpBindPort, self.serviceName,self.serviceName,
                                             zoneName, self.amonPort, "qrs", self.qrsArpcBindPort, self.ip, zoneName, zoneName, partId)
         if self.qrsQueue :
             startCmd += " --env extraTaskQueues=" + self.qrsQueue
@@ -613,7 +613,7 @@ examples:
             targetCfg = os.path.join(rundir, zoneName + "_%d_search_service_%d.cfg" % (partId, self.portStart))
             os.system("cp %s %s" % (self.searchCfg, targetCfg))
             startCmd = self.startCmdTemplate % (self.binPath, self.libPath, self.alogConfigPath,
-                                                self.binaryPath, targetCfg, 0, 0, 0, self.serviceName, self.serviceName,
+                                                self.binaryPath, targetCfg, 0, 0, self.httpBindPort, self.serviceName, self.serviceName,
                                                 zoneName, self.amonPort, "searcher", 0, self.ip, zoneName, zoneName, partId )
             if self.searcherQueue :
                 startCmd += " --env extraTaskQueues=" + self.searcherQueue
