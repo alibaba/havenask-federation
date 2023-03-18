@@ -18,6 +18,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 
 import org.havenask.engine.index.config.BizConfig;
 import org.havenask.engine.index.config.Schema;
@@ -27,11 +28,11 @@ import org.havenask.index.engine.EngineConfig;
 
 public class BizConfigGenerator {
 
-    private static final String CLUSTER_DIR = "cluster";
-    private static final String CLUSTER_FILE_SUFFIX = "_cluster.json";
+    public static final String CLUSTER_DIR = "cluster";
+    public static final String CLUSTER_FILE_SUFFIX = "_cluster.json";
     private static final String PLUGINS_DIR = "plugins";
-    private static final String SCHEMAS_DIR = "schemas";
-    private static final String SCHEMAS_FILE_SUFFIX = "_schemas.json";
+    public static final String SCHEMAS_DIR = "schemas";
+    public static final String SCHEMAS_FILE_SUFFIX = "_schemas.json";
     private static final String ZONES_DIR = "zones";
     private final Path configPath;
     private final EngineConfig engineConfig;
@@ -50,7 +51,6 @@ public class BizConfigGenerator {
         generateSchema(strVersion);
     }
 
-
     private void generateDefaultBizConfig() {
 
     }
@@ -60,13 +60,13 @@ public class BizConfigGenerator {
         bizConfig.cluster_config.cluster_name = indexName;
         bizConfig.cluster_config.table_name = indexName;
         Path clusterConfigPath = configPath.resolve(version).resolve(CLUSTER_DIR).resolve(indexName + CLUSTER_FILE_SUFFIX);
-        Files.write(clusterConfigPath, bizConfig.toString().getBytes(StandardCharsets.UTF_8));
+        Files.write(clusterConfigPath, bizConfig.toString().getBytes(StandardCharsets.UTF_8), StandardOpenOption.CREATE);
     }
 
     private void generateSchema(String version) throws IOException {
         SchemaGenerate schemaGenerate = new SchemaGenerate();
         Schema schema = schemaGenerate.getSchema(engineConfig);
         Path schemaPath = configPath.resolve(version).resolve(SCHEMAS_DIR).resolve(indexName + SCHEMAS_FILE_SUFFIX);
-        Files.write(schemaPath, schema.toString().getBytes(StandardCharsets.UTF_8));
+        Files.write(schemaPath, schema.toString().getBytes(StandardCharsets.UTF_8), StandardOpenOption.CREATE);
     }
 }

@@ -14,9 +14,10 @@
 
 package org.havenask.engine.index.engine;
 
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -27,9 +28,9 @@ import com.alibaba.fastjson.JSON;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.havenask.common.io.Streams;
 import org.havenask.engine.index.config.Analyzers;
 import org.havenask.engine.index.config.Schema;
-import org.havenask.engine.util.Utils;
 import org.havenask.index.engine.EngineConfig;
 import org.havenask.index.mapper.IdFieldMapper;
 import org.havenask.index.mapper.MappedFieldType;
@@ -42,22 +43,16 @@ public class SchemaGenerate {
 
     Set<String> analyzers = null;
 
-    private Set<String> getAnalyzers() {
+    private Set<String> getAnalyzers() throws IOException {
         if (analyzers != null) {
             return analyzers;
         }
-        Path analyzerPath = Paths.get(Utils.getJarDir(), "config", "analyzer.json");
-        try {
-            Utils.doPrivileged(() -> {
-                String analyzerText = Files.readString(analyzerPath);
-                Analyzers analyzers = JSON.parseObject(analyzerText, Analyzers.class);
-                this.analyzers = Collections.unmodifiableSet(analyzers.analyzers.keySet());
-                return null;
-            });
-        } catch (Exception e) {
-            throw new RuntimeException("get analyzers error!", e);
+        try (InputStream is = getClass().getResourceAsStream("/config/analyzer.json")) {
+            String analyzerText = Streams.copyToString(new InputStreamReader(is, StandardCharsets.UTF_8));
+            Analyzers analyzers = JSON.parseObject(analyzerText, Analyzers.class);
+            this.analyzers = Collections.unmodifiableSet(analyzers.analyzers.keySet());
+            return this.analyzers;
         }
-        return analyzers;
     }
 
     Map<String, String> Ha3FieldType = Map.ofEntries(
@@ -81,12 +76,12 @@ public class SchemaGenerate {
 
     Logger logger = LogManager.getLogger(SchemaGenerate.class);
 
-    public Schema getSchema(EngineConfig engineConfig) {
+    public Schema getSchema(EngineConfig engineConfig) throws IOException {
         return getSchema(engineConfig.getShardId().getIndexName(), engineConfig, engineConfig.getCodecService().getMapperService());
     }
 
     // generate index schema from mapping
-    public Schema getSchema(String table, EngineConfig config, MapperService mapperService) {
+    public Schema getSchema(String table, EngineConfig config, MapperService mapperService) throws IOException {
         Schema schema = new Schema();
         schema.table_name = table;
         if (mapperService == null) {
