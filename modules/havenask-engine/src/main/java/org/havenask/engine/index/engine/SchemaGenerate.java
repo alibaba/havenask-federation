@@ -31,6 +31,7 @@ import org.apache.logging.log4j.Logger;
 import org.havenask.common.io.Streams;
 import org.havenask.engine.index.config.Analyzers;
 import org.havenask.engine.index.config.Schema;
+import org.havenask.index.IndexSettings;
 import org.havenask.index.engine.EngineConfig;
 import org.havenask.index.mapper.IdFieldMapper;
 import org.havenask.index.mapper.MappedFieldType;
@@ -77,11 +78,15 @@ public class SchemaGenerate {
     Logger logger = LogManager.getLogger(SchemaGenerate.class);
 
     public Schema getSchema(EngineConfig engineConfig) throws IOException {
-        return getSchema(engineConfig.getShardId().getIndexName(), engineConfig, engineConfig.getCodecService().getMapperService());
+        return getSchema(
+            engineConfig.getShardId().getIndexName(),
+            engineConfig.getIndexSettings(),
+            engineConfig.getCodecService().getMapperService()
+        );
     }
 
     // generate index schema from mapping
-    public Schema getSchema(String table, EngineConfig config, MapperService mapperService) throws IOException {
+    public Schema getSchema(String table, IndexSettings indexSettings, MapperService mapperService) throws IOException {
         Schema schema = new Schema();
         schema.table_name = table;
         if (mapperService == null) {
@@ -179,7 +184,7 @@ public class SchemaGenerate {
         schema.summarys.summary_fields.add("_local_checkpoint");
 
         // extra schema process
-        Integer floatToLong = EngineSettings.HA3_FLOAT_MUL_BY10.get(config.getIndexSettings().getSettings());
+        Integer floatToLong = EngineSettings.HA3_FLOAT_MUL_BY10.get(indexSettings.getSettings());
         if (floatToLong != null && floatToLong > 0) {
             schema.floatToLongMul = (long) Math.pow(10, floatToLong);
             schema.maxFloatLong = Long.MAX_VALUE / schema.floatToLongMul;

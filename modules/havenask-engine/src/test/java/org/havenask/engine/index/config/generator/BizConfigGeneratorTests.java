@@ -40,7 +40,7 @@ import static org.mockito.Mockito.when;
 public class BizConfigGeneratorTests extends MapperServiceTestCase {
     public void testBasic() throws IOException {
         String indexName = randomAlphaOfLength(5);
-        IndexMetadata build = IndexMetadata.builder("")
+        IndexMetadata build = IndexMetadata.builder(indexName)
             .settings(Settings.builder().put(IndexMetadata.SETTING_VERSION_CREATED, Version.CURRENT))
             .numberOfShards(1)
             .numberOfReplicas(0)
