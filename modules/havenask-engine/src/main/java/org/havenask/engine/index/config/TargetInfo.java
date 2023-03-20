@@ -14,6 +14,7 @@
 
 package org.havenask.engine.index.config;
 
+import java.io.IOException;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -24,20 +25,28 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-public class TargetInfo {
+import org.havenask.common.xcontent.ToXContentObject;
+import org.havenask.common.xcontent.XContentBuilder;
+import org.havenask.common.xcontent.XContentParser;
+
+public class TargetInfo implements ToXContentObject {
     public Map<String, Map<String, TableInfo>> table_info;
     public Map<String, BizInfo> biz_info;
     public ServiceInfo service_info;
     public boolean clean_disk;
 
+    public static TargetInfo fromXContent(XContentParser parser) throws IOException {
+        return null;
+    }
+
     public List<Cm2Config> findExistedBizService(List<Cm2Config> services) {
-        if (service_info == null || service_info.cm2_config == null) return null;
+        if (service_info == null || service_info.cm2_config == null) {return null;}
         List<Cm2Config> existed = service_info.cm2_config.get("local");
-        if (existed == null) return null;
+        if (existed == null) {return null;}
         List<Cm2Config> found = new LinkedList<>();
         Set<String> existedBizs = services.stream().map(cm2Config -> cm2Config.biz_name).collect(Collectors.toSet());
         for (Cm2Config cm : existed) {
-            if (existedBizs.contains(cm)) found.add(cm);
+            if (existedBizs.contains(cm)) {found.add(cm);}
         }
         return found;
     }
@@ -56,19 +65,19 @@ public class TargetInfo {
     }
 
     public boolean removeBizService(List<Cm2Config> services) {
-        if (service_info == null || service_info.cm2_config == null) return false;
+        if (service_info == null || service_info.cm2_config == null) {return false;}
         return service_info.cm2_config.get("local").removeAll(services);
     }
 
     public List<Cm2Config> removeAllBizService() {
-        if (service_info == null || service_info.cm2_config == null) return null;
+        if (service_info == null || service_info.cm2_config == null) {return null;}
         return service_info.cm2_config.put("local", new LinkedList<>());
     }
 
     public List<Cm2Config> removeBizByPrefix(String prefix) {
-        if (service_info == null || service_info.cm2_config == null) return null;
+        if (service_info == null || service_info.cm2_config == null) {return null;}
         List<Cm2Config> current = service_info.cm2_config.get("local");
-        if (current == null) return null;
+        if (current == null) {return null;}
         List<Cm2Config> removed = new LinkedList<>();
         Iterator<Cm2Config> itr = current.iterator();
         while (itr.hasNext()) {
@@ -81,7 +90,12 @@ public class TargetInfo {
         return removed;
     }
 
-    public static class ServiceInfo {
+    @Override
+    public XContentBuilder toXContent(XContentBuilder builder, Params params) throws IOException {
+        return null;
+    }
+
+    public static class ServiceInfo implements ToXContentObject {
         public String zone_name;
         public int version = 0;
         public int part_count = 1;
@@ -92,6 +106,14 @@ public class TargetInfo {
 
         public ServiceInfo(String zone) {
             zone_name = zone;
+        }
+
+        public static ServiceInfo fromXContent(XContentParser parser) throws IOException {
+            return null;
+        }
+        @Override
+        public XContentBuilder toXContent(XContentBuilder builder, Params params) throws IOException {
+            return null;
         }
     }
 
@@ -121,7 +143,7 @@ public class TargetInfo {
             if (!(o instanceof Cm2Config)) {
                 return false;
             }
-            Cm2Config cm2Config = (Cm2Config) o;
+            Cm2Config cm2Config = (Cm2Config)o;
             return Objects.equals(biz_name, cm2Config.biz_name);
         }
 

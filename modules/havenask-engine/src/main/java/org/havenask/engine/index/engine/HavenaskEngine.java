@@ -14,11 +14,61 @@
 
 package org.havenask.engine.index.engine;
 
+import java.io.IOException;
+
+import org.havenask.engine.HavenaskEngineEnvironment;
+import org.havenask.engine.index.config.TargetInfo;
+import org.havenask.engine.index.config.generator.BizConfigGenerator;
+import org.havenask.engine.index.config.generator.TableConfigGenerator;
+import org.havenask.engine.rpc.HeartbeatTargetResponse;
+import org.havenask.engine.rpc.SearcherClient;
+import org.havenask.engine.rpc.UpdateHeartbeatTargetRequest;
 import org.havenask.index.engine.EngineConfig;
 import org.havenask.index.engine.InternalEngine;
 
 public class HavenaskEngine extends InternalEngine {
-    public HavenaskEngine(EngineConfig engineConfig) {
+
+    private final SearcherClient searcherClient;
+    private final HavenaskEngineEnvironment env;
+
+    public HavenaskEngine(EngineConfig engineConfig, SearcherClient searcherClient, HavenaskEngineEnvironment env) {
         super(engineConfig);
+        this.searcherClient = searcherClient;
+        this.env = env;
+    }
+
+    /**
+     * TODO 如何像es一样,解决在关闭engine时,不影响正在进行的查询请求
+     */
+    protected void onClose() {
+
+    }
+
+    /**
+     * 加载数据表
+     * TODO 注意加锁,防止并发更新冲突
+     * @throws IOException
+     */
+    private void activeTable() throws IOException {
+        BizConfigGenerator.generateBiz(engineConfig, env.getConfigPath());
+        TableConfigGenerator.generateTable(engineConfig, env.getConfigPath());
+        // TODO 调整具体参数
+        TargetInfo targetInfo = TargetInfo.createSearchDefault("order", "", "", "");
+        UpdateHeartbeatTargetRequest request = new UpdateHeartbeatTargetRequest(targetInfo);
+        HeartbeatTargetResponse response = searcherClient.updateHeartbeatTarget(request);
+    }
+
+    /**
+     * 卸载数据表
+     * @throws IOException
+     */
+    private void inactiveTable() throws IOException {
+        BizConfigGenerator.removeBiz(engineConfig, env.getConfigPath());
+        TableConfigGenerator.removeTable(engineConfig, env.getConfigPath());
+
+        // TODO 调整具体参数
+        TargetInfo targetInfo = TargetInfo.createSearchDefault("order", "", "", "");
+        UpdateHeartbeatTargetRequest request = new UpdateHeartbeatTargetRequest(targetInfo);
+        HeartbeatTargetResponse response = searcherClient.updateHeartbeatTarget(request);
     }
 }

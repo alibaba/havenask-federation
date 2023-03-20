@@ -37,10 +37,27 @@ public class TableConfigGenerator {
         this.configPath = configPath;
     }
 
+    public static void generateTable(EngineConfig engineConfig, Path configPath) throws IOException {
+        TableConfigGenerator tableConfigGenerator = new TableConfigGenerator(engineConfig, configPath);
+        tableConfigGenerator.generate();
+    }
+
+    public static void removeTable(EngineConfig engineConfig, Path configPath) throws IOException {
+        TableConfigGenerator tableConfigGenerator = new TableConfigGenerator(engineConfig, configPath);
+        tableConfigGenerator.remove();
+    }
+
     public void generate() throws IOException {
         long lastVersion = VersionUtils.getMaxVersion(configPath, 0);
         String strVersion = String.valueOf(lastVersion);
         generateClusterConfig(strVersion);
+    }
+
+    public void remove() throws IOException {
+        long lastVersion = VersionUtils.getMaxVersion(configPath, 0);
+        String strVersion = String.valueOf(lastVersion);
+        Path clusterConfigPath = configPath.resolve(strVersion).resolve(CLUSTER_DIR).resolve(indexName + CLUSTER_FILE_SUFFIX);
+        Files.deleteIfExists(clusterConfigPath);
     }
 
     private void generateClusterConfig(String version) throws IOException {

@@ -44,14 +44,36 @@ public class BizConfigGenerator {
         this.configPath = configPath;
     }
 
+    public static void generateBiz(EngineConfig engineConfig, Path configPath) throws IOException {
+        BizConfigGenerator bizConfigGenerator = new BizConfigGenerator(engineConfig, configPath);
+        bizConfigGenerator.generate();
+    }
+
+    public static void removeBiz(EngineConfig engineConfig, Path configPath) throws IOException {
+        BizConfigGenerator bizConfigGenerator = new BizConfigGenerator(engineConfig, configPath);
+        bizConfigGenerator.remove();
+    }
+
     public void generate() throws IOException {
         long lastVersion = VersionUtils.getMaxVersion(configPath, 0);
         String strVersion = String.valueOf(lastVersion);
         generateClusterConfig(strVersion);
         generateSchema(strVersion);
+        generateDefaultBizConfig(strVersion);
     }
 
-    private void generateDefaultBizConfig() {
+    public void remove() throws IOException {
+        long lastVersion = VersionUtils.getMaxVersion(configPath, 0);
+        String strVersion = String.valueOf(lastVersion);
+        Path clusterConfigPath = configPath.resolve(strVersion).resolve(CLUSTER_DIR).resolve(indexName + CLUSTER_FILE_SUFFIX);
+        Files.deleteIfExists(clusterConfigPath);
+
+        Path schemaPath = configPath.resolve(strVersion).resolve(SCHEMAS_DIR).resolve(indexName + SCHEMAS_FILE_SUFFIX);
+        Files.deleteIfExists(schemaPath);
+    }
+
+    // TODO 实现具体功能
+    private void generateDefaultBizConfig(String version) {
 
     }
 

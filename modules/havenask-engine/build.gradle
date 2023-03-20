@@ -17,8 +17,9 @@ tasks.named("dependencyLicenses").configure {
 }
 
 dependencies {
-  api "com.alibaba:fastjson:1.2.83_noneautotype"
+  api 'com.alibaba:fastjson:1.2.83_noneautotype'
   api 'org.apache.commons:commons-lang3:3.4'
+  api 'com.squareup.okhttp3:okhttp:4.10.0'
 }
 
 bundlePlugin {
