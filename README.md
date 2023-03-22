@@ -3,13 +3,13 @@
 
 基于Havenask，我们推出了分布式联邦集群解决方案——Havenask-federation。它在保留Havenask引擎强大功能的同时，还具备以下特点：
 
-* 提升Havenask易用性：Havenask-federation借鉴了Elasticsearch的简单易用优势，通过Havenask-federation来使用Havenask，可以降低Havenask的使用门槛，方便开发者更好的使用Havenask引擎。
+* 提升Havenask易用性：Havenask-federation继承了Elasticsearch简单上手，使用方便的优势，通过Havenask-federation来使用Havenask，可以降低Havenask的使用门槛，方便开发者更好的使用Havenask引擎。
 
 * 兼容Elasticsearch生态：Havenask-federation可以支持绝大多数Elasticsearch API，方便使用Elasticsearch的SDK和相关工具访问Havenask-federation，实现快速迁移和扩展。
 
 # Havenask-federation架构
 
-havenask-federation承担三种角色：master、data、coordinate，其中data角色负责管理Havenask  Searcher进程，coordinate角色负责管理Havenask Qrs进程，一个havenask-fed进程可以同时承担master、data、coordinate角色。
+Havenask-federation承担三种角色：master、data、coordinate，其中data角色负责管理Havenask的Searcher进程，coordinate角色负责管理Havenask的Qrs进程，Havenask-federation进程可以同时承担master、data、coordinate角色。
 
 ## 分布式架构
 
