@@ -19,7 +19,8 @@ tasks.named("dependencyLicenses").configure {
 dependencies {
   api 'com.alibaba:fastjson:1.2.83_noneautotype'
   api 'org.apache.commons:commons-lang3:3.4'
-  api 'com.squareup.okhttp3:okhttp:4.10.0'
+  implementation 'com.squareup.okhttp3:okhttp:3.6.0'
+  implementation 'com.squareup.okio:okio:1.11.0'
 }
 
 bundlePlugin {
@@ -50,9 +51,6 @@ tasks.named("thirdPartyAudit").configure {
           "javax.ws.rs.ext.MessageBodyReader",
           "javax.ws.rs.ext.MessageBodyWriter",
           "javax.ws.rs.ext.Providers",
-          "okhttp3.MediaType",
-          "okhttp3.RequestBody",
-          "okhttp3.ResponseBody",
           "org.apache.commons.logging.Log",
           "org.apache.commons.logging.LogFactory",
           "org.glassfish.jersey.CommonProperties",

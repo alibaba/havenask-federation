@@ -25,6 +25,8 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import org.havenask.common.ParseField;
+import org.havenask.common.xcontent.ConstructingObjectParser;
 import org.havenask.common.xcontent.ToXContentObject;
 import org.havenask.common.xcontent.XContentBuilder;
 import org.havenask.common.xcontent.XContentParser;
@@ -35,7 +37,26 @@ public class TargetInfo implements ToXContentObject {
     public ServiceInfo service_info;
     public boolean clean_disk;
 
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {return true;}
+        if (o == null || getClass() != o.getClass()) {return false;}
+        TargetInfo that = (TargetInfo)o;
+        return clean_disk == that.clean_disk && table_info.equals(that.table_info) && biz_info.equals(that.biz_info)
+            && service_info.equals(that.service_info);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(table_info, biz_info, service_info, clean_disk);
+    }
+
     public static TargetInfo fromXContent(XContentParser parser) throws IOException {
+        return null;
+    }
+
+    @Override
+    public XContentBuilder toXContent(XContentBuilder builder, Params params) throws IOException {
         return null;
     }
 
@@ -90,30 +111,68 @@ public class TargetInfo implements ToXContentObject {
         return removed;
     }
 
-    @Override
-    public XContentBuilder toXContent(XContentBuilder builder, Params params) throws IOException {
-        return null;
-    }
-
     public static class ServiceInfo implements ToXContentObject {
+        private static final ParseField ZONE_NAME_FIELD = new ParseField("zone_name");
+        private static final ParseField VERSION_FIELD = new ParseField("version");
+        private static final ParseField PART_COUNT_FIELD = new ParseField("part_count");
+        private static final ParseField PART_ID_FIELD = new ParseField("part_id");
+
+        private static final ConstructingObjectParser<ServiceInfo, Void> PARSER =
+            new ConstructingObjectParser<>(ServiceInfo.class.getName(), true,
+                args -> {
+                    return new ServiceInfo((String)args[0], (int)args[1], (int)args[2], (int)args[3]);
+                }
+            );
+
+        static {
+            PARSER.declareString(ConstructingObjectParser.constructorArg(), ZONE_NAME_FIELD);
+            PARSER.declareInt(ConstructingObjectParser.constructorArg(), VERSION_FIELD);
+            PARSER.declareInt(ConstructingObjectParser.constructorArg(), PART_COUNT_FIELD);
+            PARSER.declareInt(ConstructingObjectParser.constructorArg(), PART_ID_FIELD);
+
+        }
+
+        public ServiceInfo(String zone_name, int version, int part_count, int part_id) {
+            this.zone_name = zone_name;
+            this.version = version;
+            this.part_count = part_count;
+            this.part_id = part_id;
+        }
+
         public String zone_name;
         public int version = 0;
         public int part_count = 1;
         public int part_id = 0;
         public Map<String, List<Cm2Config>> cm2_config;
 
-        public ServiceInfo() {}
-
-        public ServiceInfo(String zone) {
-            zone_name = zone;
-        }
-
         public static ServiceInfo fromXContent(XContentParser parser) throws IOException {
-            return null;
+            return PARSER.apply(parser, null);
         }
+
         @Override
         public XContentBuilder toXContent(XContentBuilder builder, Params params) throws IOException {
-            return null;
+            builder.startObject();
+            builder.field(ZONE_NAME_FIELD.getPreferredName(), zone_name);
+            builder.field(VERSION_FIELD.getPreferredName(), version);
+            builder.field(PART_COUNT_FIELD.getPreferredName(), part_count);
+            builder.field(PART_ID_FIELD.getPreferredName(), part_id);
+            builder.endObject();
+            return builder;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) {return true;}
+            if (o == null || getClass() != o.getClass()) {return false;}
+            ServiceInfo that = (ServiceInfo)o;
+            return version == that.version && part_count == that.part_count && part_id == that.part_id
+                && zone_name.equals(
+                that.zone_name) && cm2_config.equals(that.cm2_config);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(zone_name, version, part_count, part_id, cm2_config);
         }
     }
 
@@ -137,23 +196,23 @@ public class TargetInfo implements ToXContentObject {
 
         @Override
         public boolean equals(Object o) {
-            if (this == o) {
-                return true;
-            }
-            if (!(o instanceof Cm2Config)) {
-                return false;
-            }
+            if (this == o) {return true;}
+            if (o == null || getClass() != o.getClass()) {return false;}
             Cm2Config cm2Config = (Cm2Config)o;
-            return Objects.equals(biz_name, cm2Config.biz_name);
+            return part_count == cm2Config.part_count && part_id == cm2Config.part_id && tcp_port == cm2Config.tcp_port
+                && version == cm2Config.version && biz_name.equals(cm2Config.biz_name) && ip.equals(cm2Config.ip);
         }
 
         @Override
         public int hashCode() {
-            return Objects.hashCode(biz_name);
+            return Objects.hash(biz_name, part_count, part_id, tcp_port, version, ip);
         }
     }
 
     public static class BizInfo {
+        private static final ParseField DEFAULT_NAME_FIELD = new ParseField("default");
+        private static final ParseField CONFIG_PATH__FIELD = new ParseField("config_path");
+
         public String config_path;
 
         public BizInfo() {}
@@ -176,10 +235,38 @@ public class TargetInfo implements ToXContentObject {
             partitions = new HashMap<>();
             partitions.put("0_65535", new Partition());
         }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) {return true;}
+            if (o == null || getClass() != o.getClass()) {return false;}
+            TableInfo tableInfo = (TableInfo)o;
+            return index_root.equals(tableInfo.index_root) && partitions.equals(tableInfo.partitions)
+                && config_path.equals(
+                tableInfo.config_path);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(index_root, partitions, config_path);
+        }
     }
 
     public static class Partition {
         public int inc_version = 1;
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) {return true;}
+            if (o == null || getClass() != o.getClass()) {return false;}
+            Partition partition = (Partition)o;
+            return inc_version == partition.inc_version;
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(inc_version);
+        }
     }
 
     public static TargetInfo createSearchDefault(String zone, String indexRoot, String tableConf, String bizConf) {

@@ -2237,7 +2237,7 @@ public class InternalEngine extends Engine {
      * is failed.
      */
     @Override
-    protected final void closeNoLock(String reason, CountDownLatch closedLatch) {
+    protected void closeNoLock(String reason, CountDownLatch closedLatch) {
         if (isClosed.compareAndSet(false, true)) {
             assert rwl.isWriteLockedByCurrentThread() || failEngineLock.isHeldByCurrentThread() :
                 "Either the write lock must be held or the engine must be currently be failing itself";

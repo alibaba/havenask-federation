@@ -27,9 +27,9 @@ import org.havenask.engine.index.config.TargetInfo.ServiceInfo;
 import static org.havenask.common.xcontent.XContentParserUtils.ensureExpectedToken;
 
 public class HeartbeatTargetResponse implements ToXContentObject {
-    public static final ParseField SIGNATURE_FIELD = new ParseField("signature");
-    public static final ParseField CUSTOM_INFO_FIELD = new ParseField("customInfo");
-    public static final ParseField SERVICE_INFO_FIELD = new ParseField("serviceInfo");
+    private static final ParseField SIGNATURE_FIELD = new ParseField("signature");
+    private static final ParseField CUSTOM_INFO_FIELD = new ParseField("customInfo");
+    private static final ParseField SERVICE_INFO_FIELD = new ParseField("serviceInfo");
 
     private final TargetInfo customInfo;
     private final ServiceInfo serviceInfo;
@@ -39,6 +39,18 @@ public class HeartbeatTargetResponse implements ToXContentObject {
         this.customInfo = customInfo;
         this.serviceInfo = serviceInfo;
         this.signature = signature;
+    }
+
+    public TargetInfo getCustomInfo() {
+        return customInfo;
+    }
+
+    public ServiceInfo getServiceInfo() {
+        return serviceInfo;
+    }
+
+    public TargetInfo getSignature() {
+        return signature;
     }
 
     public static HeartbeatTargetResponse fromXContent(XContentParser parser) throws IOException {

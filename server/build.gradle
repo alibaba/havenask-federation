@@ -99,8 +99,8 @@ dependencies {
   api project(':libs:havenask-x-content')
   api project(":libs:havenask-geo")
 
-  compileOnly project(':libs:havenask-plugin-classloader')
-  testRuntimeOnly project(':libs:havenask-plugin-classloader')
+  compile project(':libs:havenask-plugin-classloader')
+  // testRuntimeOnly project(':libs:havenask-plugin-classloader')
 
   // lucene
   api "org.apache.lucene:lucene-core:${versions.lucene}"
