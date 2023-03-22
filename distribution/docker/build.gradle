@@ -1,0 +1,269 @@
+/* 
+*Copyright (c) 2021, Alibaba Group;
+*Licensed under the Apache License, Version 2.0 (the "License");
+*you may not use this file except in compliance with the License.
+*You may obtain a copy of the License at
+
+*   http://www.apache.org/licenses/LICENSE-2.0
+
+*Unless required by applicable law or agreed to in writing, software
+*distributed under the License is distributed on an "AS IS" BASIS,
+*WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+*See the License for the specific language governing permissions and
+*limitations under the License.
+*
+* Modifications Copyright Havenask Contributors. See
+* GitHub history for details.
+*/
+
+import org.havenask.gradle.Architecture
+import org.havenask.gradle.DockerBase
+import org.havenask.gradle.LoggedExec
+import org.havenask.gradle.VersionProperties
+import org.havenask.gradle.docker.DockerBuildTask
+import org.havenask.gradle.info.BuildParams
+import org.havenask.gradle.testfixtures.TestFixturesPlugin
+apply plugin: 'havenask.standalone-rest-test'
+apply plugin: 'havenask.test.fixtures'
+apply plugin: 'havenask.internal-distribution-download'
+apply plugin: 'havenask.rest-resources'
+
+testFixtures.useFixture()
+
+configurations {
+  arm64DockerSource
+  dockerSource
+}
+
+dependencies {
+  arm64DockerSource project(path: ":distribution:archives:linux-arm64-tar", configuration:"default")
+  dockerSource project(path: ":distribution:archives:linux-tar", configuration:"default")
+}
+
+ext.expansions = { Architecture architecture, DockerBase base, boolean local ->
+  String classifier
+  if (local) {
+    if (architecture == Architecture.ARM64) {
+      classifier = "linux-arm64"
+    } else if (architecture == Architecture.X64) {
+      classifier = "linux-x64"
+    } else {
+      throw new IllegalArgumentException("Unsupported architecture [" + architecture + "]")
+    }
+  } else {
+    /* When sourcing the Havenask build remotely, the same Dockerfile needs
+     * to be able to fetch the artifact for any supported platform. We can't make
+     * the decision here. Bash will interpolate the `arch` command for us. */
+    classifier = "linux-\$(arch)"
+  }
+
+  final String havenask = "havenask-${VersionProperties.getHavenask()}-${classifier}.tar.gz"
+
+  /* Both the following Dockerfile commands put the resulting artifact at
+   * the same location, regardless of classifier, so that the commands that
+   * follow in the Dockerfile don't have to know about the runtime
+   * architecture. */
+  String sourceHavenask
+  if (local) {
+    sourceHavenask = "COPY $havenask /opt/havenask.tar.gz"
+  } else {
+    //TODO - replace the URL for Havenask when available
+    sourceHavenask = """
+RUN curl --retry 8 -S -L \\
+      --output /opt/havenask.tar.gz \\
+      <artifacts_link_placeholder>
+"""
+  }
+
+  return [
+          'base_image'          : base.getImage() + ":" + VersionProperties.getRuntimeImage(),
+          'build_date'          : BuildParams.buildDate,
+          'git_revision'        : BuildParams.gitRevision,
+          'license'             : 'Apache-2.0',
+          'package_manager'     : 'yum',
+          'source_havenask'   : sourceHavenask,
+          'docker_base'         : base.name().toLowerCase(),
+          'version'             : VersionProperties.getHavenask()
+  ]
+}
+
+private static String buildPath(Architecture architecture, DockerBase base) {
+  return 'build/' +
+          (architecture == Architecture.ARM64 ? 'arm64-' : '') +
+          'docker'
+}
+
+private static String taskName(String prefix, Architecture architecture, DockerBase base, String suffix) {
+  return prefix +
+          (architecture == Architecture.ARM64 ? 'Arm64' : '') +
+          suffix
+}
+
+project.ext {
+  dockerBuildContext = { Architecture architecture, DockerBase base, boolean local ->
+    copySpec {
+      into('bin') {
+        from project.projectDir.toPath().resolve("src/docker/bin")
+      }
+
+      into('config') {
+        from project.projectDir.toPath().resolve("src/docker/config")
+      }
+
+      from(project.projectDir.toPath().resolve("src/docker/Dockerfile")) {
+        expand(expansions(architecture, base, local))
+      }
+    }
+  }
+}
+
+void addCopyDockerContextTask(Architecture architecture, DockerBase base) {
+  if (base != DockerBase.HAVENASK) {
+    throw new GradleException("The only allowed docker base image for builds is HAVENASK")
+  }
+
+  tasks.register(taskName("copy", architecture, base, "DockerContext"), Sync) {
+    expansions(architecture, base, true).findAll { it.key != 'build_date' }.each { k, v ->
+      inputs.property(k, { v.toString() })
+    }
+    into buildPath(architecture, base)
+
+    with dockerBuildContext(architecture, base, true)
+
+    if (architecture == Architecture.ARM64) {
+      from configurations.arm64DockerSource
+    } else {
+      from configurations.dockerSource
+    }
+  }
+}
+
+def createAndSetWritable(Object... locations) {
+  locations.each { location ->
+    File file = file(location)
+    file.mkdirs()
+    file.setWritable(true, false)
+  }
+}
+
+
+havenask_distributions {
+  Architecture.values().each { eachArchitecture ->
+    "docker${ eachArchitecture == Architecture.ARM64 ? '_arm64' : '' }" {
+      architecture = eachArchitecture
+      type = 'docker'
+      version = VersionProperties.getHavenask()
+      failIfUnavailable = false // This ensures we don't attempt to build images if docker is unavailable
+    }
+  }
+}
+
+tasks.named("preProcessFixture").configure {
+  dependsOn havenask_distributions.docker
+  doLast {
+    // tests expect to have an empty repo
+    project.delete(
+            "${buildDir}/repo"
+    )
+    createAndSetWritable(
+            "${buildDir}/repo",
+            "${buildDir}/logs/1",
+            "${buildDir}/logs/2"
+    )
+  }
+}
+
+tasks.register("integTest", Test) {
+  outputs.doNotCacheIf('Build cache is disabled for Docker tests') { true }
+  maxParallelForks = '1'
+  include '**/*IT.class'
+}
+
+tasks.named("check").configure {
+  dependsOn "integTest"
+}
+
+void addBuildDockerImage(Architecture architecture, DockerBase base) {
+  if (base != DockerBase.HAVENASK) {
+    throw new GradleException("The only allowed docker base image for builds is HAVENASK")
+  }
+
+  final TaskProvider<DockerBuildTask> buildDockerImageTask =
+          tasks.register(taskName("build", architecture, base, "DockerImage"), DockerBuildTask) {
+            onlyIf { Architecture.current() == architecture }
+            TaskProvider<Sync> copyContextTask = tasks.named(taskName("copy", architecture, base, "DockerContext"))
+            dependsOn(copyContextTask)
+            dockerContext.fileProvider(copyContextTask.map { it.destinationDir })
+            baseImages = [ base.getImage() + ":" + VersionProperties.getRuntimeImage() ]
+
+            String version = VersionProperties.getHavenask()
+            tags = [
+                    "havenask/havenask-fed:${version}",
+                    "havenask-fed:test"
+            ]
+          }
+  tasks.named("assemble").configure {
+    dependsOn(buildDockerImageTask)
+  }
+}
+
+for (final Architecture architecture : Architecture.values()) {
+  // We only create Docker images for the distribution on HAVENASK.
+  for (final DockerBase base : DockerBase.values()) {
+    if (base == DockerBase.HAVENASK) {
+      addCopyDockerContextTask(architecture, base)
+      addBuildDockerImage(architecture, base)
+    }
+  }
+}
+
+// We build the images used in compose locally, but the pull command insists on using a repository
+// thus we must disable it to prevent it from doing so.
+// Everything will still be pulled since we will build the local images on a pull
+if (tasks.findByName("composePull")) {
+  tasks.composePull.enabled = false
+}
+
+/*
+ * The export subprojects write out the generated Docker images to disk, so
+ * that they can be easily reloaded, for example into a VM for distribution testing
+ */
+subprojects { Project subProject ->
+  if (subProject.name.endsWith('-export')) {
+    apply plugin: 'distribution'
+
+    final Architecture architecture = subProject.name.contains('arm64-') ? Architecture.ARM64 : Architecture.X64
+    final DockerBase base = DockerBase.HAVENASK
+
+    final String arch = architecture == Architecture.ARM64 ? '-arm64' : ''
+    final String extension = 'docker.tar'
+    final String artifactName = "havenask${arch}_test"
+
+    final String exportTaskName = taskName("export", architecture, base, "DockerImage")
+    final String buildTaskName = taskName("build", architecture, base, "DockerImage")
+    final String tarFile = "${parent.projectDir}/build/${artifactName}_${VersionProperties.getHavenask()}.${extension}"
+
+    tasks.register(exportTaskName, LoggedExec) {
+      inputs.file("${parent.projectDir}/build/markers/${buildTaskName}.marker")
+      executable 'docker'
+      outputs.file(tarFile)
+      args "save",
+              "-o",
+              tarFile,
+              "havenask-fed:test"
+
+      dependsOn(parent.path + ":" + buildTaskName)
+      onlyIf { Architecture.current() == architecture }
+    }
+
+    artifacts.add('default', file(tarFile)) {
+      type 'tar'
+      name artifactName
+      builtBy exportTaskName
+    }
+
+    tasks.named("assemble").configure {
+      dependsOn(exportTaskName)
+    }
+  }
+}

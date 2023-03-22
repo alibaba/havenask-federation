@@ -1,0 +1,517 @@
+/* 
+*Copyright (c) 2021, Alibaba Group;
+*Licensed under the Apache License, Version 2.0 (the "License");
+*you may not use this file except in compliance with the License.
+*You may obtain a copy of the License at
+
+*   http://www.apache.org/licenses/LICENSE-2.0
+
+*Unless required by applicable law or agreed to in writing, software
+*distributed under the License is distributed on an "AS IS" BASIS,
+*WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+*See the License for the specific language governing permissions and
+*limitations under the License.
+*
+* Modifications Copyright Havenask Contributors. See
+* GitHub history for details.
+*/
+
+/*
+ * Licensed to Elasticsearch under one or more contributor
+ * license agreements. See the NOTICE file distributed with
+ * this work for additional information regarding copyright
+ * ownership. Elasticsearch licenses this file to you under
+ * the Apache License, Version 2.0 (the "License"); you may
+ * not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ */
+
+import org.havenask.gradle.LoggedExec
+import org.havenask.gradle.MavenFilteringHack
+import org.havenask.gradle.OS
+import org.havenask.gradle.info.BuildParams
+import org.redline_rpm.header.Flags
+
+import java.nio.file.Files
+import java.nio.file.Path
+import java.util.regex.Matcher
+import java.util.regex.Pattern
+
+/*****************************************************************************
+ *                         Deb and rpm configuration                         *
+ *****************************************************************************
+ *
+ * The general strategy here is to build a directory on disk that contains
+ * stuff that needs to be copied into the distributions. This is
+ * important for two reasons:
+ * 1. ospackage wants to copy the directory permissions that it sees off of the
+ *    filesystem. If you ask it to create a directory that doesn't already
+ *    exist on disk it petulantly creates it with 0755 permissions, no matter
+ *    how hard you try to convince it otherwise.
+ * 2. Convincing ospackage to pick up an empty directory as part of a set of
+ *    directories on disk is reasonably easy. Convincing it to just create an
+ *    empty directory requires more wits than I have.
+ * 3. ospackage really wants to suck up some of the debian control scripts
+ *    directly from the filesystem. It doesn't want to process them through
+ *    MavenFilteringHack or any other copy-style action.
+ *
+ * The following commands are useful when it comes to check the user/group
+ * and files permissions set within the RPM and DEB packages:
+ *
+ *    rpm -qlp --dump path/to/havenask.rpm
+ *    dpkg -c path/to/havenask.deb
+ */
+
+plugins {
+  id "nebula.ospackage-base" version "8.3.0"
+}
+
+void addProcessFilesTask(String type, boolean jdk) {
+  String packagingFiles = "build/packaging/${jdk ? '' : 'no-jdk-'}${type}"
+
+  String taskName = "process'${jdk ? '' : 'NoJdk'}${type.capitalize()}Files"
+  tasks.register(taskName, Copy) {
+    into packagingFiles
+
+    with copySpec {
+      from 'src/common'
+      from "src/${type}"
+      MavenFilteringHack.filter(it, expansionsForDistribution(type, jdk))
+    }
+
+    into('etc/havenask') {
+      with configFiles(type, jdk)
+    }
+    MavenFilteringHack.filter(it, expansionsForDistribution(type, jdk))
+
+    doLast {
+      // create empty dirs, we set the permissions when configuring the packages
+      mkdir "${packagingFiles}/var/log/havenask"
+      mkdir "${packagingFiles}/var/lib/havenask"
+      mkdir "${packagingFiles}/usr/share/havenask/plugins"
+
+      // bare empty dir for /etc/havenask and /etc/havenask/jvm.options.d
+      mkdir "${packagingFiles}/havenask"
+      mkdir "${packagingFiles}/havenask/jvm.options.d"
+    }
+  }
+}
+
+addProcessFilesTask('deb', true)
+addProcessFilesTask('deb', false)
+addProcessFilesTask('rpm', true)
+addProcessFilesTask('rpm', false)
+
+// Common configuration that is package dependent. This can't go in ospackage
+// since we have different templated files that need to be consumed, but the structure
+// is the same
+Closure commonPackageConfig(String type, boolean jdk, String architecture) {
+  return {
+    onlyIf {
+      OS.current().equals(OS.WINDOWS) == false
+    }
+    dependsOn "process'${jdk ? '' : 'NoJdk'}${type.capitalize()}Files"
+    packageName "havenask"
+    if (type == 'deb') {
+      if (architecture == 'x64') {
+        arch('amd64')
+      } else {
+        assert architecture == 'arm64' : architecture
+        arch('arm64')
+      }
+    } else {
+      assert type == 'rpm' : type
+      if (architecture == 'x64') {
+        arch('x86_64')
+      } else {
+        assert architecture == 'arm64' : architecture
+        arch('aarch64')
+      }
+    }
+    // Follow havenask's file naming convention
+    String jdkString = jdk ? "" : "-no-jdk"
+    String prefix = "${architecture == 'arm64' ? 'arm64-' : ''}${jdk ? '' : 'no-jdk-'}${type}"
+    destinationDirectory = file("${prefix}/build/distributions")
+
+    // SystemPackagingTask overrides default archive task convention mappings, but doesn't provide a setter so we have to override the convention mapping itself
+    // Deb convention uses a '_' for final separator before architecture, rpm uses a '.'
+    if (type == 'deb') {
+      conventionMapping.archiveFile = { objects.fileProperty().fileValue(file("${destinationDirectory.get()}/${packageName}_${project.version}${jdkString}_${archString}.${type}")) }
+    } else {
+      conventionMapping.archiveFile = { objects.fileProperty().fileValue(file("${destinationDirectory.get()}/${packageName}-${project.version}${jdkString}.${archString}.${type}")) }
+    }
+
+    String packagingFiles = "build/packaging/${jdk ? '' : 'no-jdk-'}${type}"
+
+    String scripts = "${packagingFiles}/scripts"
+    preInstall file("${scripts}/preinst")
+    postInstall file("${scripts}/postinst")
+    preUninstall file("${scripts}/prerm")
+    postUninstall file("${scripts}/postrm")
+    if (type == 'rpm') {
+      postTrans file("${scripts}/posttrans")
+    }
+
+    // top level "into" directive is not inherited from ospackage for some reason, so we must
+    // specify it again explicitly for copying common files
+    into('/usr/share/havenask') {
+      into('bin') {
+        with binFiles(type, jdk)
+      }
+      from(rootProject.projectDir) {
+        include 'README.md'
+        fileMode 0644
+      }
+      into('lib') {
+        with libFiles()
+      }
+      into('modules') {
+        with modulesFiles('linux-' + ((architecture == 'x64') ? 'x64' : architecture))
+      }
+      if (jdk) {
+        into('jdk') {
+          with jdkFiles(project, 'linux', architecture)
+        }
+      }
+      // we need to specify every intermediate directory in these paths so the package managers know they are explicitly
+      // intended to manage them; otherwise they may be left behind on uninstallation. duplicate calls of the same
+      // directory are fine
+      eachFile { FileCopyDetails fcp ->
+        String[] segments = fcp.relativePath.segments
+        for (int i = segments.length - 2; i > 2; --i) {
+          if (type == 'rpm') {
+            directory('/' + segments[0..i].join('/'), 0755)
+          }
+          if (segments[-2] == 'bin' || segments[-1] == 'jspawnhelper') {
+            fcp.mode = 0755
+          } else {
+            fcp.mode = 0644
+          }
+        }
+      }
+    }
+
+    // license files
+    if (type == 'deb') {
+      into("/usr/share/doc/${packageName}") {
+        from "${packagingFiles}/copyright"
+        fileMode 0644
+      }
+    } else {
+      assert type == 'rpm'
+      into('/usr/share/havenask') {
+        from(rootProject.file('licenses')) {
+          include 'APACHE-LICENSE-2.0.txt'
+          rename { 'LICENSE.txt' }
+        }
+        fileMode 0644
+      }
+    }
+
+    // ========= config files =========
+    configurationFile '/etc/havenask/havenask.yml'
+    configurationFile '/etc/havenask/jvm.options'
+    configurationFile '/etc/havenask/log4j2.properties'
+    from("${packagingFiles}") {
+      dirMode 02750
+      into('/etc')
+      permissionGroup 'havenask'
+      includeEmptyDirs true
+      createDirectoryEntry true
+      include("havenask") // empty dir, just to add directory entry
+      include("havenask/jvm.options.d") // empty dir, just to add directory entry
+    }
+    from("${packagingFiles}/etc/havenask") {
+      into('/etc/havenask')
+      dirMode 02750
+      fileMode 0660
+      permissionGroup 'havenask'
+      includeEmptyDirs true
+      createDirectoryEntry true
+      fileType CONFIG | NOREPLACE
+    }
+    String envFile = expansionsForDistribution(type, jdk)['path.env']
+    configurationFile envFile
+    into(new File(envFile).getParent()) {
+      fileType CONFIG | NOREPLACE
+      permissionGroup 'havenask'
+      fileMode 0660
+      from "${packagingFiles}/env/havenask"
+    }
+
+    // ========= systemd =========
+    into('/usr/lib/tmpfiles.d') {
+      from "${packagingFiles}/systemd/havenask.conf"
+      fileMode 0644
+    }
+    into('/usr/lib/systemd/system') {
+      fileType CONFIG | NOREPLACE
+      from "${packagingFiles}/systemd/havenask.service"
+      fileMode 0644
+    }
+    into('/usr/lib/sysctl.d') {
+      fileType CONFIG | NOREPLACE
+      from "${packagingFiles}/systemd/sysctl/havenask.conf"
+      fileMode 0644
+    }
+    into('/usr/share/havenask/bin') {
+      from "${packagingFiles}/systemd/systemd-entrypoint"
+      fileMode 0755
+    }
+
+    // ========= sysV init =========
+    configurationFile '/etc/init.d/havenask'
+    into('/etc/init.d') {
+      fileMode 0750
+      fileType CONFIG | NOREPLACE
+      from "${packagingFiles}/init.d/havenask"
+    }
+
+    // ========= empty dirs =========
+    // NOTE: these are created under packagingFiles as empty, but the permissions are set here
+    Closure copyEmptyDir = { path, u, g, mode ->
+      File file = new File(path)
+      into(file.parent) {
+        from "${packagingFiles}/${file.parent}"
+        include file.name
+        includeEmptyDirs true
+        createDirectoryEntry true
+        user u
+        permissionGroup g
+        dirMode mode
+      }
+    }
+    copyEmptyDir('/var/log/havenask', 'havenask', 'havenask', 02750)
+    copyEmptyDir('/var/lib/havenask', 'havenask', 'havenask', 02750)
+    copyEmptyDir('/usr/share/havenask/plugins', 'root', 'root', 0755)
+
+    into '/usr/share/havenask'
+    with noticeFile(jdk)
+  }
+}
+
+apply plugin: 'nebula.ospackage-base'
+
+// this is package indepdendent configuration
+ospackage {
+  maintainer 'Havenask Team <havenask@amazon.com>'
+  summary 'Distributed RESTful search engine built for the cloud'
+  packageDescription '''
+    Reference documentation can be found at
+    https://github.com/alibaba/havenask-federation
+  '''.stripIndent().trim()
+  url 'https://github.com/alibaba/havenask-federation'
+
+  // signing setup
+  if (project.hasProperty('signing.password') && BuildParams.isSnapshotBuild() == false) {
+    signingKeyId = project.hasProperty('signing.keyId') ? project.property('signing.keyId') : 'D88E42B4'
+    signingKeyPassphrase = project.property('signing.password')
+    signingKeyRingFile = project.hasProperty('signing.secretKeyRingFile') ?
+      project.file(project.property('signing.secretKeyRingFile')) :
+      new File(new File(System.getProperty('user.home'), '.gnupg'), 'secring.gpg')
+  }
+
+  // version found on oldest supported distro, centos-6
+  requires('coreutils', '8.4', GREATER | EQUAL)
+
+  fileMode 0644
+  dirMode 0755
+  user 'root'
+  permissionGroup 'root'
+
+  into '/usr/share/havenask'
+}
+
+Closure commonDebConfig(boolean jdk, String architecture) {
+  return {
+    configure(commonPackageConfig('deb', jdk, architecture))
+
+    // jdeb does not provide a way to set the License control attribute, and ospackage
+    // silently ignores setting it. Instead, we set the license as "custom field"
+    customFields['License'] = 'ASL-2.0'
+
+    archiveVersion = project.version.replace('-', '~')
+    packageGroup 'web'
+
+    // versions found on oldest supported distro, centos-6
+    requires('bash', '4.1', GREATER | EQUAL)
+    requires('lsb-base', '4', GREATER | EQUAL)
+    requires 'libc6'
+    requires 'adduser'
+
+    into('/usr/share/lintian/overrides') {
+      from('src/deb/lintian/havenask')
+      fileMode 0644
+    }
+  }
+}
+
+tasks.register('buildArm64Deb', Deb) {
+  configure(commonDebConfig(true, 'arm64'))
+}
+
+tasks.register('buildDeb', Deb) {
+  configure(commonDebConfig(true, 'x64'))
+}
+
+tasks.register('buildNoJdkDeb', Deb) {
+  configure(commonDebConfig(true, 'x64'))
+}
+
+Closure commonRpmConfig(boolean jdk, String architecture) {
+  return {
+    configure(commonPackageConfig('rpm', jdk, architecture))
+
+    license 'ASL-2.0'
+
+    packageGroup 'Application/Internet'
+    requires '/bin/bash'
+
+    obsoletes packageName, '7.0.0', Flags.LESS
+
+    prefix '/usr'
+    packager 'Havenask'
+    archiveVersion = project.version.replace('-', '_')
+    release = '1'
+    os 'LINUX'
+    distribution 'Havenask'
+    vendor 'Havenask'
+    // TODO ospackage doesn't support icon but we used to have one
+
+    // without this the rpm will have parent dirs of any files we copy in, eg /etc/havenask
+    addParentDirs false
+  }
+}
+
+tasks.register('buildArm64Rpm', Rpm) {
+  configure(commonRpmConfig(true, 'arm64'))
+}
+
+tasks.register('buildRpm', Rpm) {
+  configure(commonRpmConfig(true, 'x64'))
+}
+
+tasks.register('buildNoJdkRpm', Rpm) {
+  configure(commonRpmConfig(true, 'x64'))
+}
+
+Closure dpkgExists = { it -> new File('/bin/dpkg-deb').exists() || new File('/usr/bin/dpkg-deb').exists() || new File('/usr/local/bin/dpkg-deb').exists() }
+Closure rpmExists = { it -> new File('/bin/rpm').exists() || new File('/usr/bin/rpm').exists() || new File('/usr/local/bin/rpm').exists() }
+
+Closure debFilter = { f -> f.name.endsWith('.deb') }
+
+// This configures the default artifact for the distribution specific
+// subprojects. We have subprojects because Gradle project substitutions
+// can only bind to the default configuration of a project
+subprojects {
+  apply plugin: 'distribution'
+
+  String buildTask = "build${it.name.replaceAll(/-[a-z]/) { it.substring(1).toUpperCase() }.capitalize()}"
+  ext.buildDist = parent.tasks.named(buildTask)
+  artifacts {
+    'default' buildDist
+  }
+
+  if (dpkgExists() || rpmExists()) {
+
+    // sanity checks if packages can be extracted
+    final File extractionDir = new File(buildDir, 'extracted')
+    File packageExtractionDir
+    if (project.name.contains('deb')) {
+      packageExtractionDir = new File(extractionDir, 'deb-extracted')
+    } else {
+      assert project.name.contains('rpm')
+      packageExtractionDir = new File(extractionDir, 'rpm-extracted')
+    }
+    tasks.register('checkExtraction', LoggedExec) {
+      dependsOn buildDist
+      doFirst {
+        delete(extractionDir)
+        extractionDir.mkdirs()
+      }
+    }
+
+    tasks.named("check").configure { dependsOn "checkExtraction" }
+    if (project.name.contains('deb')) {
+      tasks.named("checkExtraction").configure {
+        onlyIf dpkgExists
+        commandLine 'dpkg-deb', '-x', "${-> buildDist.get().outputs.files.filter(debFilter).singleFile}", packageExtractionDir
+      }
+    } else {
+      assert project.name.contains('rpm')
+      tasks.named("checkExtraction").configure {
+        onlyIf rpmExists
+        final File rpmDatabase = new File(extractionDir, 'rpm-database')
+        commandLine 'rpm',
+          '--badreloc',
+          '--ignorearch',
+          '--ignoreos',
+          '--nodeps',
+          '--noscripts',
+          '--notriggers',
+          '--dbpath',
+          rpmDatabase,
+          '--relocate',
+          "/=${packageExtractionDir}",
+          '-i',
+          "${-> buildDist.get().outputs.files.singleFile}"
+      }
+    }
+
+    tasks.register("checkLicense") {
+      dependsOn buildDist, "checkExtraction"
+    }
+    check.dependsOn "checkLicense"
+    if (project.name.contains('deb')) {
+      tasks.named("checkLicense").configure {
+        onlyIf dpkgExists
+        doLast {
+          Path copyrightPath
+          String expectedLicense
+          String licenseFilename
+          copyrightPath = packageExtractionDir.toPath().resolve("usr/share/doc/havenask/copyright")
+          expectedLicense = "ASL-2.0"
+          licenseFilename = "APACHE-LICENSE-2.0.txt"
+          final List<String> header = Arrays.asList("Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/",
+            "Copyright: Elasticsearch B.V. <info@elastic.co>",
+            "Copyright: Havenask Contributors",
+            "License: " + expectedLicense)
+          final List<String> licenseLines = Files.readAllLines(rootDir.toPath().resolve("licenses/" + licenseFilename))
+          final List<String> expectedLines = header + licenseLines.collect { " " + it }
+          assertLinesInFile(copyrightPath, expectedLines)
+        }
+      }
+    } else {
+      assert project.name.contains('rpm')
+      tasks.named("checkLicense").configure {
+        onlyIf rpmExists
+        doLast {
+          String licenseFilename = "APACHE-LICENSE-2.0.txt"
+          final List<String> licenseLines = Files.readAllLines(rootDir.toPath().resolve("licenses/" + licenseFilename))
+          final Path licensePath = packageExtractionDir.toPath().resolve("usr/share/havenask/LICENSE.txt")
+          assertLinesInFile(licensePath, licenseLines)
+        }
+      }
+    }
+
+    tasks.register("checkNotice") {
+      dependsOn buildDist, "checkExtraction"
+      onlyIf {
+        (project.name.contains('deb') && dpkgExists.call(it)) || (project.name.contains('rpm') && rpmExists.call(it))
+      }
+      doLast {
+        final List<String> noticeLines = Arrays.asList("Havenask (https://havenask.org/)", "Copyright 2022 Havenask Contributors")
+        final Path noticePath = packageExtractionDir.toPath().resolve("usr/share/havenask/NOTICE.txt")
+        assertLinesInFile(noticePath, noticeLines)
+      }
+    }
+    tasks.named("check").configure { dependsOn "checkNotice" }
+  }
+}

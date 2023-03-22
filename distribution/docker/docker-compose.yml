@@ -1,0 +1,51 @@
+# Only used for testing the docker images
+version: '3'
+services:
+  havenask-1:
+    image: havenask-fed:test
+    environment:
+       - node.name=havenask-1
+       - cluster.initial_master_nodes=havenask-1,havenask-2
+       - discovery.seed_hosts=havenask-2:9300
+       - cluster.name=havenask
+       - bootstrap.memory_lock=true
+       - "HAVENASK_JAVA_OPTS=-Xms512m -Xmx512m"
+       - path.repo=/tmp/havenask-repo
+       - node.attr.testattr=test
+       - cluster.routing.allocation.disk.watermark.low=1b
+       - cluster.routing.allocation.disk.watermark.high=1b
+       - cluster.routing.allocation.disk.watermark.flood_stage=1b
+       - node.store.allow_mmap=false
+    volumes:
+       - ./build/repo:/tmp/havenask-repo
+       - ./build/logs/1:/usr/share/havenask/logs
+    ports:
+      - "9200"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+  havenask-2:
+    image: havenask-fed:test
+    environment:
+       - node.name=havenask-2
+       - cluster.initial_master_nodes=havenask-1,havenask-2
+       - discovery.seed_hosts=havenask-1:9300
+       - cluster.name=havenask
+       - bootstrap.memory_lock=true
+       - "HAVENASK_JAVA_OPTS=-Xms512m -Xmx512m"
+       - path.repo=/tmp/havenask-repo
+       - node.attr.testattr=test
+       - cluster.routing.allocation.disk.watermark.low=1b
+       - cluster.routing.allocation.disk.watermark.high=1b
+       - cluster.routing.allocation.disk.watermark.flood_stage=1b
+       - node.store.allow_mmap=false
+    volumes:
+       - ./build/repo:/tmp/havenask-repo
+       - ./build/logs/2:/usr/share/havenask/logs
+    ports:
+      - "9200"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1

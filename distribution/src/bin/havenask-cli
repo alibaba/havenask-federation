@@ -1,0 +1,32 @@
+#!/bin/bash
+
+set -e -o pipefail
+
+source "`dirname "$0"`"/havenask-env
+
+IFS=';' read -r -a additional_sources <<< "$HAVENASK_ADDITIONAL_SOURCES"
+for additional_source in "${additional_sources[@]}"
+do
+  source "$HAVENASK_HOME"/bin/$additional_source
+done
+
+IFS=';' read -r -a additional_classpath_directories <<< "$HAVENASK_ADDITIONAL_CLASSPATH_DIRECTORIES"
+for additional_classpath_directory in "${additional_classpath_directories[@]}"
+do
+  HAVENASK_CLASSPATH="$HAVENASK_CLASSPATH:$HAVENASK_HOME/$additional_classpath_directory/*"
+done
+
+# use a small heap size for the CLI tools, and thus the serial collector to
+# avoid stealing many CPU cycles; a user can override by setting HAVENASK_JAVA_OPTS
+HAVENASK_JAVA_OPTS="-Xms4m -Xmx64m -XX:+UseSerialGC ${HAVENASK_JAVA_OPTS}"
+
+exec \
+  "$JAVA" \
+  "$XSHARE" \
+  $HAVENASK_JAVA_OPTS \
+  -Dhavenask.path.home="$HAVENASK_HOME" \
+  -Dhavenask.path.conf="$HAVENASK_PATH_CONF" \
+  -Dhavenask.distribution.type="$HAVENASK_DISTRIBUTION_TYPE" \
+  -cp "$HAVENASK_CLASSPATH" \
+  "$HAVENASK_MAIN_CLASS" \
+  "$@"

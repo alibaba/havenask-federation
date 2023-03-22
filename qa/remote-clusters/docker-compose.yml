@@ -1,0 +1,74 @@
+# Only used for testing the docker images
+version: '3.7'
+services:
+  havenask-1:
+    image: havenask-fed:test
+    environment:
+       - node.name=havenask-1
+       - cluster.initial_master_nodes=havenask-1
+       - cluster.name=havenask-1
+       - bootstrap.memory_lock=true
+       - network.publish_host=127.0.0.1
+       - "HAVENASK_JAVA_OPTS=-Xms512m -Xmx512m"
+       - path.repo=/tmp/havenask-repo
+       - node.attr.testattr=test
+       - cluster.routing.allocation.disk.watermark.low=1b
+       - cluster.routing.allocation.disk.watermark.high=1b
+       - cluster.routing.allocation.disk.watermark.flood_stage=1b
+       - node.store.allow_mmap=false
+    volumes:
+       - ./build/repo:/tmp/havenask-repo
+       - ./build/logs/1:/usr/share/havenask/logs
+    ports:
+      - "9200"
+      - "9300"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
+    healthcheck:
+      start_period: 15s
+      test: ["CMD", "curl", "-f", "http://localhost:9200"]
+      interval: 10s
+      timeout: 2s
+      retries: 5
+  havenask-2:
+    image: havenask-fed:test
+    environment:
+       - node.name=havenask-2
+       - cluster.initial_master_nodes=havenask-2
+       - cluster.name=havenask-2
+       - bootstrap.memory_lock=true
+       - network.publish_host=127.0.0.1
+       - "HAVENASK_JAVA_OPTS=-Xms512m -Xmx512m"
+       - path.repo=/tmp/havenask-repo
+       - node.attr.testattr=test
+       - cluster.routing.allocation.disk.watermark.low=1b
+       - cluster.routing.allocation.disk.watermark.high=1b
+       - cluster.routing.allocation.disk.watermark.flood_stage=1b
+       - node.store.allow_mmap=false
+    volumes:
+       - ./build/repo:/tmp/havenask-repo
+       - ./build/logs/2:/usr/share/havenask/logs
+    ports:
+      - "9200"
+      - "9300"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    healthcheck:
+      start_period: 15s
+      test: ["CMD", "curl", "-f", "http://localhost:9200"]
+      interval: 10s
+      timeout: 2s
+      retries: 5
+  haproxy:
+    image: haproxy:2.1.2
+    ports:
+      - "9600"
+    volumes:
+      - ./haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro

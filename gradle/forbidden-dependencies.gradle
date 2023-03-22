@@ -1,0 +1,45 @@
+/* 
+*Copyright (c) 2021, Alibaba Group;
+*Licensed under the Apache License, Version 2.0 (the "License");
+*you may not use this file except in compliance with the License.
+*You may obtain a copy of the License at
+
+*   http://www.apache.org/licenses/LICENSE-2.0
+
+*Unless required by applicable law or agreed to in writing, software
+*distributed under the License is distributed on an "AS IS" BASIS,
+*WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+*See the License for the specific language governing permissions and
+*limitations under the License.
+*
+* Modifications Copyright Havenask Contributors. See
+* GitHub history for details.
+*/
+
+
+// we do not want any of these dependencies on the compilation classpath
+// because they could then be used within Havenask
+List<String> FORBIDDEN_DEPENDENCIES = [
+  'guava'
+]
+
+Closure checkDeps = { Configuration configuration ->
+  configuration.resolutionStrategy.eachDependency {
+    String artifactName = it.target.name
+    if (FORBIDDEN_DEPENDENCIES.contains(artifactName)) {
+      throw new GradleException("Dependency '${artifactName}' on configuration '${configuration.name}' is not allowed. " +
+        "If it is needed as a transitive depenency, try adding it to the runtime classpath")
+    }
+  }
+}
+
+subprojects {
+  if (project.path.startsWith(':test:fixtures:') || project.path.equals(':build-tools')) {
+    // fixtures are allowed to use whatever dependencies they want...
+    return
+  }
+  pluginManager.withPlugin('java') {
+    checkDeps(configurations.compileClasspath)
+    checkDeps(configurations.testCompileClasspath)
+  }
+}

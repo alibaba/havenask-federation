@@ -1,0 +1,6 @@
+#!/bin/bash
+
+HAVENASK_MAIN_CLASS=org.havenask.plugins.PluginCli \
+  HAVENASK_ADDITIONAL_CLASSPATH_DIRECTORIES=lib/tools/plugin-cli \
+  "`dirname "$0"`"/havenask-cli \
+  "$@"

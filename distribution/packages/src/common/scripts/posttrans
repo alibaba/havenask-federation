@@ -1,0 +1,22 @@
+# source the default env file
+if [ -f "${path.env}" ]; then
+    . "${path.env}"
+fi
+
+export HAVENASK_PATH_CONF=${HAVENASK_PATH_CONF:-${path.conf}}
+
+if [ ! -f "${HAVENASK_PATH_CONF}"/havenask.keystore ]; then
+    /usr/share/havenask/bin/havenask-keystore create
+    chown root:havenask "${HAVENASK_PATH_CONF}"/havenask.keystore
+    chmod 660 "${HAVENASK_PATH_CONF}"/havenask.keystore
+    md5sum "${HAVENASK_PATH_CONF}"/havenask.keystore > "${HAVENASK_PATH_CONF}"/.havenask.keystore.initial_md5sum
+else
+    if /usr/share/havenask/bin/havenask-keystore has-passwd --silent ; then
+      echo "### Warning: unable to upgrade encrypted keystore" 1>&2
+      echo " Please run havenask-keystore upgrade and enter password" 1>&2
+    else
+      /usr/share/havenask/bin/havenask-keystore upgrade
+    fi
+fi
+
+${scripts.footer}

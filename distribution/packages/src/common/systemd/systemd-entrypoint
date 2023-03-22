@@ -1,0 +1,10 @@
+#!/bin/sh
+
+# This wrapper script allows SystemD to feed a file containing a passphrase into
+# the main Havenask startup script
+
+if [ -n "$HAVENASK_KEYSTORE_PASSPHRASE_FILE" ] ; then
+  exec /usr/share/havenask/bin/havenask "$@" < "$HAVENASK_KEYSTORE_PASSPHRASE_FILE"
+else
+  exec /usr/share/havenask/bin/havenask "$@"
+fi

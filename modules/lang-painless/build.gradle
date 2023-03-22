@@ -1,0 +1,216 @@
+/*
+*Copyright (c) 2021, Alibaba Group;
+*Licensed under the Apache License, Version 2.0 (the "License");
+*you may not use this file except in compliance with the License.
+*You may obtain a copy of the License at
+
+*   http://www.apache.org/licenses/LICENSE-2.0
+
+*Unless required by applicable law or agreed to in writing, software
+*distributed under the License is distributed on an "AS IS" BASIS,
+*WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+*See the License for the specific language governing permissions and
+*limitations under the License.
+*
+* Modifications Copyright Havenask Contributors. See
+* GitHub history for details.
+*/
+
+/*
+ * Licensed to Elasticsearch under one or more contributor
+ * license agreements. See the NOTICE file distributed with
+ * this work for additional information regarding copyright
+ * ownership. Elasticsearch licenses this file to you under
+ * the Apache License, Version 2.0 (the "License"); you may
+ * not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+import org.havenask.gradle.testclusters.DefaultTestClustersTask;
+apply plugin: 'havenask.validate-rest-spec'
+apply plugin: 'havenask.yaml-rest-test'
+
+havenaskplugin {
+  description 'An easy, safe and fast scripting language for Havenask'
+  classname 'org.havenask.painless.PainlessPlugin'
+}
+
+testClusters.all {
+  module ':modules:mapper-extras'
+  systemProperty 'havenask.scripting.update.ctx_in_params', 'false'
+  // TODO: remove this once cname is prepended to transport.publish_address by default in 8.0
+  systemProperty 'havenask.transport.cname_in_publish_address', 'true'
+}
+
+dependencies {
+  api 'org.antlr:antlr4-runtime:4.5.3'
+  api 'org.ow2.asm:asm-util:7.2'
+  api 'org.ow2.asm:asm-tree:7.2'
+  api 'org.ow2.asm:asm-commons:7.2'
+  api 'org.ow2.asm:asm-analysis:7.2'
+  api 'org.ow2.asm:asm:7.2'
+  api project('spi')
+}
+
+tasks.named("dependencyLicenses").configure {
+  mapping from: /asm-.*/, to: 'asm'
+}
+
+restResources {
+  restApi {
+    includeCore '_common', 'cluster', 'nodes', 'indices', 'index', 'search', 'get', 'bulk', 'update',
+                'scripts_painless_execute', 'put_script', 'delete_script'
+  }
+}
+
+tasks.named("test").configure {
+  // in WhenThingsGoWrongTests we intentionally generate an out of memory error, this prevents the heap from being dumped to disk
+  jvmArgs '-XX:-OmitStackTraceInFastThrow', '-XX:-HeapDumpOnOutOfMemoryError'
+}
+
+/* Build Javadoc for the Java classes in Painless's public API that are in the
+ * Painless plugin */
+tasks.register("apiJavadoc", Javadoc) {
+  source = sourceSets.main.allJava
+  classpath = sourceSets.main.runtimeClasspath
+  include '**/org/havenask/painless/api/'
+  destinationDir = new File(docsDir, 'apiJavadoc')
+}
+
+tasks.register("apiJavadocJar", Jar) {
+  archiveClassifier = 'apiJavadoc'
+  from apiJavadoc
+}
+
+tasks.named("assemble").configure {
+  dependsOn "apiJavadocJar"
+}
+/**********************************************
+ *           Context API Generation           *
+ **********************************************/
+
+sourceSets {
+  doc
+}
+
+dependencies {
+  docImplementation project(':server')
+  docImplementation project(':modules:lang-painless')
+}
+
+testClusters {
+  generateContextCluster {
+    testDistribution = 'ARCHIVE'
+  }
+}
+
+tasks.register("generateContextDoc", DefaultTestClustersTask) {
+  dependsOn sourceSets.doc.runtimeClasspath
+  useCluster testClusters.generateContextCluster
+  doFirst {
+    project.javaexec {
+      main = 'org.havenask.painless.ContextDocGenerator'
+      classpath = sourceSets.doc.runtimeClasspath
+      systemProperty "cluster.uri", "${-> testClusters.generateContextCluster.singleNode().getAllHttpSocketURI().get(0)}"
+    }.assertNormalExitValue()
+  }
+}
+
+/**********************************************
+ *            Parser regeneration             *
+ **********************************************/
+
+configurations {
+  regenerate
+}
+
+dependencies {
+  regenerate 'org.antlr:antlr4:4.5.3'
+}
+
+String grammarPath = 'src/main/antlr'
+String outputPath = 'src/main/java/org/havenask/painless/antlr'
+
+tasks.register("cleanGenerated", Delete) {
+  delete fileTree(grammarPath) {
+    include '*.tokens'
+  }
+  delete fileTree(outputPath) {
+    include 'Painless*.java'
+  }
+}
+
+tasks.register("regenLexer", JavaExec) {
+  dependsOn "cleanGenerated"
+  main = 'org.antlr.v4.Tool'
+  classpath = configurations.regenerate
+  systemProperty 'file.encoding', 'UTF-8'
+  systemProperty 'user.language', 'en'
+  systemProperty 'user.country', 'US'
+  systemProperty 'user.variant', ''
+  args '-Werror',
+    '-package', 'org.havenask.painless.antlr',
+    '-o', outputPath,
+    "${file(grammarPath)}/PainlessLexer.g4"
+}
+
+tasks.register("regenParser", JavaExec) {
+  dependsOn "regenLexer"
+  main = 'org.antlr.v4.Tool'
+  classpath = configurations.regenerate
+  systemProperty 'file.encoding', 'UTF-8'
+  systemProperty 'user.language', 'en'
+  systemProperty 'user.country', 'US'
+  systemProperty 'user.variant', ''
+  args '-Werror',
+    '-package', 'org.havenask.painless.antlr',
+    '-no-listener',
+    '-visitor',
+    // '-Xlog',
+    '-o', outputPath,
+    "${file(grammarPath)}/PainlessParser.g4"
+}
+
+tasks.register("regen") {
+  dependsOn "regenParser"
+  doLast {
+    // moves token files to grammar directory for use with IDE's
+    ant.move(file: "${outputPath}/PainlessLexer.tokens", toDir: grammarPath)
+    ant.move(file: "${outputPath}/PainlessParser.tokens", toDir: grammarPath)
+    // make the generated classes package private
+    ant.replaceregexp(match: 'public ((interface|class) \\QPainless\\E\\w+)',
+      replace: '\\1',
+      encoding: 'UTF-8') {
+      fileset(dir: outputPath, includes: 'Painless*.java')
+    }
+    // make the lexer abstract
+    ant.replaceregexp(match: '(class \\QPainless\\ELexer)',
+      replace: 'abstract \\1',
+      encoding: 'UTF-8') {
+      fileset(dir: outputPath, includes: 'PainlessLexer.java')
+    }
+    // nuke timestamps/filenames in generated files
+    ant.replaceregexp(match: '\\Q// Generated from \\E.*',
+      replace: '\\/\\/ ANTLR GENERATED CODE: DO NOT EDIT',
+      encoding: 'UTF-8') {
+      fileset(dir: outputPath, includes: 'Painless*.java')
+    }
+    // remove tabs in antlr generated files
+    ant.replaceregexp(match: '\t', flags: 'g', replace: '  ', encoding: 'UTF-8') {
+      fileset(dir: outputPath, includes: 'Painless*.java')
+    }
+    // fix line endings
+    ant.fixcrlf(srcdir: outputPath, eol: 'lf') {
+      patternset(includes: 'Painless*.java')
+    }
+  }
+}

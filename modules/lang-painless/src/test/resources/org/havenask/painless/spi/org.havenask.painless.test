@@ -1,0 +1,55 @@
+# whitelist for tests
+
+# TODO: remove this when the transition from Joda to Java datetimes is completed
+class org.havenask.script.JodaCompatibleZonedDateTime {
+  (Instant, ZoneId)
+}
+
+# for unit tests only
+class org.havenask.painless.api.Json {
+  def load(String)
+  String dump(def)
+  String dump(def,boolean)
+}
+
+class org.havenask.painless.BindingsTests$BindingsTestScript {
+}
+
+class org.havenask.painless.FeatureTestObject @no_import {
+  int z
+  ()
+  (int,int)
+  int getX()
+  int getY()
+  Integer getI()
+  void setX(int)
+  void setY(int)
+  void setI(Integer)
+  boolean overloadedStatic()
+  boolean overloadedStatic(boolean)
+  int staticNumberTest(Number)
+  int staticNumberArgument(int, int) @inject_constant[1="testInject0"]
+  Double mixedAdd(int, Byte, char, Float)
+  Object twoFunctionsOfX(Function,Function)
+  void listInput(List)
+  int injectTimesX(int, short) @inject_constant[1="testInject0"]
+  int timesSupplier(Function, short, int)
+  int injectWithLambda(int, Function, short) @inject_constant[1="testInject0"]
+  int org.havenask.painless.FeatureTestAugmentationObject augmentInjectTimesX(int, short) @inject_constant[1="testInject0"]
+  int org.havenask.painless.FeatureTestAugmentationObject augmentTimesSupplier(Function, short, int)
+  int org.havenask.painless.FeatureTestAugmentationObject augmentInjectWithLambda(int, Function, short) @inject_constant[1="testInject0"]
+  int injectMultiTimesX(int, int, int, short) @inject_constant[1="testInject0", 2="testInject1", 3="testInject2"]
+  int injectMultiWithLambda(int, int, int, Function, short) @inject_constant[1="testInject0", 2="testInject1", 3="testInject0"]
+  int org.havenask.painless.FeatureTestAugmentationObject augmentInjectMultiTimesX(int, int, short) @inject_constant[1="testInject1", 2="testInject2"]
+  int org.havenask.painless.FeatureTestAugmentationObject augmentInjectMultiWithLambda(int, int, int, int, Function, short) @inject_constant[1="testInject2", 2="testInject1", 3="testInject1", 4="testInject2"]
+  int org.havenask.painless.FeatureTestAugmentationObject getTotal()
+  int org.havenask.painless.FeatureTestAugmentationObject addToTotal(int)
+}
+
+static_import {
+  int staticAddIntsTest(int, int) from_class org.havenask.painless.StaticTestObject
+  float staticAddFloatsTest(float, float) from_class org.havenask.painless.FeatureTestObject
+  int addWithState(int, int, int, double) bound_to org.havenask.painless.BindingsTests$BindingTestClass
+  int addThisWithState(BindingsTests.BindingsTestScript, int, int, int, double) bound_to org.havenask.painless.BindingsTests$ThisBindingTestClass
+  int addEmptyThisWithState(BindingsTests.BindingsTestScript, int) bound_to org.havenask.painless.BindingsTests$EmptyThisBindingTestClass
+}

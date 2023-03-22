@@ -1,0 +1,5 @@
+#!/bin/bash
+
+HAVENASK_MAIN_CLASS=org.havenask.index.shard.ShardToolCli \
+  "`dirname "$0"`"/havenask-cli \
+  "$@"

@@ -1,0 +1,83 @@
+/*
+*Copyright (c) 2021, Alibaba Group;
+*Licensed under the Apache License, Version 2.0 (the "License");
+*you may not use this file except in compliance with the License.
+*You may obtain a copy of the License at
+
+*   http://www.apache.org/licenses/LICENSE-2.0
+
+*Unless required by applicable law or agreed to in writing, software
+*distributed under the License is distributed on an "AS IS" BASIS,
+*WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+*See the License for the specific language governing permissions and
+*limitations under the License.
+*
+* Modifications Copyright Havenask Contributors. See
+* GitHub history for details.
+*/
+
+/*
+ * Licensed to Elasticsearch under one or more contributor
+ * license agreements. See the NOTICE file distributed with
+ * this work for additional information regarding copyright
+ * ownership. Elasticsearch licenses this file to you under
+ * the Apache License, Version 2.0 (the "License"); you may
+ * not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+import org.havenask.gradle.MavenFilteringHack
+
+apply plugin: 'havenask.standalone-rest-test'
+apply plugin: 'havenask.rest-test'
+
+// The integ-test-distribution is published to maven
+apply plugin: 'havenask.publish'
+
+group = "org.havenask.distribution.integ-test-zip"
+
+integTest {
+  dependsOn assemble
+}
+
+processTestResources {
+  inputs.properties(project(':distribution').restTestExpansions)
+  MavenFilteringHack.filter(it, project(':distribution').restTestExpansions)
+}
+
+// make the pom file name use havenask instead of the project name
+archivesBaseName = "havenask"
+ext.buildDist = parent.tasks.named("buildIntegTestZip")
+
+publishing {
+  publications {
+    nebula {
+      pom.packaging = 'zip'
+      artifact(buildDist.flatMap { it.archiveFile })
+    }
+  }
+}
+
+integTest {
+  /*
+   * There are two unique things going on here:
+   * 1. These tests can be run against an external cluster with
+   *    -Dtests.rest.cluster=whatever and -Dtest.cluster=whatever
+   * 2. *One* of these tests is incompatible with that and should be skipped
+   *    when running against an external cluster.
+   */
+  if (System.getProperty("tests.rest.cluster") == null) {
+    nonInputProperties.systemProperty 'tests.logfile',
+      "${-> testClusters.integTest.singleNode().getServerLog()}"
+  } else {
+    systemProperty 'tests.logfile', '--external--'
+  }
+}
