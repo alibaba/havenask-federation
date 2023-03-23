@@ -82,6 +82,7 @@ import java.io.UnsupportedEncodingException;
 import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
+import java.security.NoSuchAlgorithmException;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
@@ -237,12 +238,11 @@ final class Bootstrap {
         IfConfig.logIfNecessary();
 
         // install SM after natives, shutdown hooks, etc.
-        // TODO 支持havenask数据目录后,再打开校验
-        //try {
-        //    Security.configure(environment, BootstrapSettings.SECURITY_FILTER_BAD_DEFAULTS_SETTING.get(settings));
-        //} catch (IOException | NoSuchAlgorithmException e) {
-        //    throw new BootstrapException(e);
-        //}
+        try {
+            Security.configure(environment, BootstrapSettings.SECURITY_FILTER_BAD_DEFAULTS_SETTING.get(settings));
+        } catch (IOException | NoSuchAlgorithmException e) {
+            throw new BootstrapException(e);
+        }
 
         node = new Node(environment) {
             @Override

@@ -17,29 +17,18 @@ package org.havenask.engine.index.config;
 import java.io.IOException;
 
 import org.havenask.common.xcontent.XContentParser;
+import org.havenask.engine.index.config.TargetInfo.TableInfo;
 import org.havenask.test.AbstractXContentTestCase;
 
-public class TargetInfoTests extends AbstractXContentTestCase<TargetInfo> {
-    public void testCreateSearchDefault() {
-        String zone = "zone";
-        String indexRoot = "indexRoot";
-        String tableConf = "tableConf";
-        String bizConf = "bizConf";
-        TargetInfo targetInfo = TargetInfo.createSearchDefault(zone, indexRoot, tableConf, bizConf);
+public class TableInfoTests extends AbstractXContentTestCase<TableInfo> {
+    @Override
+    protected TableInfo createTestInstance() {
+        return new TableInfo(randomAlphaOfLength(5), randomAlphaOfLength(5));
     }
 
     @Override
-    protected TargetInfo createTestInstance() {
-        String zone = "zone";
-        String indexRoot = "indexRoot";
-        String tableConf = "tableConf";
-        String bizConf = "bizConf";
-        return TargetInfo.createSearchDefault(zone, indexRoot, tableConf, bizConf);
-    }
-
-    @Override
-    protected TargetInfo doParseInstance(XContentParser parser) throws IOException {
-        return TargetInfo.fromXContent(parser);
+    protected TableInfo doParseInstance(XContentParser parser) throws IOException {
+        return TableInfo.fromXContent(parser);
     }
 
     @Override

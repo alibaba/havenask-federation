@@ -21,8 +21,10 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.stream.Collectors;
 
 import org.havenask.common.ParseField;
@@ -30,12 +32,18 @@ import org.havenask.common.xcontent.ConstructingObjectParser;
 import org.havenask.common.xcontent.ToXContentObject;
 import org.havenask.common.xcontent.XContentBuilder;
 import org.havenask.common.xcontent.XContentParser;
+import org.havenask.common.xcontent.XContentParser.Token;
 
 public class TargetInfo implements ToXContentObject {
     public Map<String, Map<String, TableInfo>> table_info;
-    public Map<String, BizInfo> biz_info;
+    public BizInfo biz_info;
     public ServiceInfo service_info;
     public boolean clean_disk;
+
+    private static final ParseField TABLE_INFO_FIELD = new ParseField("table_info");
+    private static final ParseField BIZ_INFO_FIELD = new ParseField("biz_info");
+    private static final ParseField SERVICE_INFO_FIELD = new ParseField("service_info");
+    private static final ParseField CLEAN_DISK_FIELD = new ParseField("clean_disk");
 
     @Override
     public boolean equals(Object o) {
@@ -45,7 +53,7 @@ public class TargetInfo implements ToXContentObject {
         if (o == null || getClass() != o.getClass()) {
             return false;
         }
-        TargetInfo that = (TargetInfo) o;
+        TargetInfo that = (TargetInfo)o;
         return clean_disk == that.clean_disk
             && table_info.equals(that.table_info)
             && biz_info.equals(that.biz_info)
@@ -58,12 +66,59 @@ public class TargetInfo implements ToXContentObject {
     }
 
     public static TargetInfo fromXContent(XContentParser parser) throws IOException {
-        return null;
+        TargetInfo targetInfo = new TargetInfo();
+        String currentFieldName = null;
+        while (parser.nextToken() != XContentParser.Token.END_OBJECT) {
+            if (parser.currentToken() == XContentParser.Token.FIELD_NAME) {
+                currentFieldName = parser.currentName();
+            } else if (TABLE_INFO_FIELD.getPreferredName().equals(currentFieldName)) {
+                Map<String, Map<String, TableInfo>> tableInfos = new TreeMap<>();
+                while (parser.nextToken() != XContentParser.Token.END_OBJECT) {
+                    if (parser.currentToken() == XContentParser.Token.FIELD_NAME) {
+                        currentFieldName = parser.currentName();
+                    } else if (parser.currentToken() == XContentParser.Token.START_OBJECT) {
+                        Map<String, TableInfo> tableMap = new TreeMap<>();
+                        tableInfos.put(currentFieldName, tableMap);
+                        if (parser.currentToken() == XContentParser.Token.FIELD_NAME) {
+                            currentFieldName = parser.currentName();
+                        } else if (parser.currentToken() == XContentParser.Token.START_OBJECT) {
+                            TableInfo tableInfo = TableInfo.fromXContent(parser);
+                            tableMap.put(currentFieldName, tableInfo);
+                        }
+                    }
+                }
+            } else if (BIZ_INFO_FIELD.getPreferredName().equals(currentFieldName)) {
+                targetInfo.biz_info = BizInfo.fromXContent(parser);
+            } else if (SERVICE_INFO_FIELD.getPreferredName().equals(currentFieldName)) {
+                targetInfo.service_info = ServiceInfo.fromXContent(parser);
+            } else if (CLEAN_DISK_FIELD.getPreferredName().equals(currentFieldName)) {
+                targetInfo.clean_disk = parser.booleanValue();
+            }
+        }
+        return targetInfo;
     }
 
     @Override
     public XContentBuilder toXContent(XContentBuilder builder, Params params) throws IOException {
-        return null;
+        builder.startObject();
+        builder.startObject(TABLE_INFO_FIELD.getPreferredName());
+        for (Entry<String, Map<String, TableInfo>> entry : table_info.entrySet()) {
+            String tableName = entry.getKey();
+            builder.startObject(tableName);
+            Map<String, TableInfo> map = entry.getValue();
+            for (Entry<String, TableInfo> e : map.entrySet()) {
+                String version = e.getKey();
+                TableInfo tableInfo = e.getValue();
+                builder.field(version, tableInfo);
+            }
+            builder.endObject();
+        }
+        builder.endObject();
+        builder.field(BIZ_INFO_FIELD.getPreferredName(), biz_info);
+        builder.field(SERVICE_INFO_FIELD.getPreferredName(), service_info);
+        builder.field(CLEAN_DISK_FIELD.getPreferredName(), clean_disk);
+        builder.endObject();
+        return builder;
     }
 
     public List<Cm2Config> findExistedBizService(List<Cm2Config> services) {
@@ -140,7 +195,9 @@ public class TargetInfo implements ToXContentObject {
         private static final ConstructingObjectParser<ServiceInfo, Void> PARSER = new ConstructingObjectParser<>(
             ServiceInfo.class.getName(),
             true,
-            args -> { return new ServiceInfo((String) args[0], (int) args[1], (int) args[2], (int) args[3]); }
+            args -> {
+                return new ServiceInfo((String)args[0], (int)args[1], (int)args[2], (int)args[3]);
+            }
         );
 
         static {
@@ -150,6 +207,8 @@ public class TargetInfo implements ToXContentObject {
             PARSER.declareInt(ConstructingObjectParser.constructorArg(), PART_ID_FIELD);
 
         }
+
+        public ServiceInfo() {}
 
         public ServiceInfo(String zone_name) {
             this.zone_name = zone_name;
@@ -169,7 +228,22 @@ public class TargetInfo implements ToXContentObject {
         public Map<String, List<Cm2Config>> cm2_config;
 
         public static ServiceInfo fromXContent(XContentParser parser) throws IOException {
-            return PARSER.apply(parser, null);
+            ServiceInfo serviceInfo = new ServiceInfo();
+            String currentFieldName = null;
+            while (parser.nextToken() != XContentParser.Token.END_OBJECT) {
+                if (parser.currentToken() == XContentParser.Token.FIELD_NAME) {
+                    currentFieldName = parser.currentName();
+                } else if (ZONE_NAME_FIELD.getPreferredName().equals(currentFieldName)) {
+                    serviceInfo.zone_name = parser.text();
+                } else if (VERSION_FIELD.getPreferredName().equals(currentFieldName)) {
+                    serviceInfo.version = parser.intValue();
+                } else if (PART_COUNT_FIELD.getPreferredName().equals(currentFieldName)) {
+                    serviceInfo.part_count = parser.intValue();
+                } else if (PART_ID_FIELD.getPreferredName().equals(currentFieldName)) {
+                    serviceInfo.part_count = parser.intValue();
+                }
+            }
+            return serviceInfo;
         }
 
         @Override
@@ -191,7 +265,7 @@ public class TargetInfo implements ToXContentObject {
             if (o == null || getClass() != o.getClass()) {
                 return false;
             }
-            ServiceInfo that = (ServiceInfo) o;
+            ServiceInfo that = (ServiceInfo)o;
             return version == that.version
                 && part_count == that.part_count
                 && part_id == that.part_id
@@ -231,7 +305,7 @@ public class TargetInfo implements ToXContentObject {
             if (o == null || getClass() != o.getClass()) {
                 return false;
             }
-            Cm2Config cm2Config = (Cm2Config) o;
+            Cm2Config cm2Config = (Cm2Config)o;
             return part_count == cm2Config.part_count
                 && part_id == cm2Config.part_id
                 && tcp_port == cm2Config.tcp_port
@@ -246,9 +320,9 @@ public class TargetInfo implements ToXContentObject {
         }
     }
 
-    public static class BizInfo {
+    public static class BizInfo implements ToXContentObject {
         private static final ParseField DEFAULT_NAME_FIELD = new ParseField("default");
-        private static final ParseField CONFIG_PATH__FIELD = new ParseField("config_path");
+        private static final ParseField CONFIG_PATH_FIELD = new ParseField("config_path");
 
         public String config_path;
 
@@ -257,20 +331,64 @@ public class TargetInfo implements ToXContentObject {
         public BizInfo(String configPath) {
             config_path = configPath;
         }
+
+        public static BizInfo fromXContent(XContentParser parser) throws IOException {
+            BizInfo bizInfo = new BizInfo();
+            String currentFieldName = null;
+            while (parser.nextToken() != XContentParser.Token.END_OBJECT) {
+                if (parser.currentToken() == XContentParser.Token.FIELD_NAME) {
+                    currentFieldName = parser.currentName();
+                } else if (DEFAULT_NAME_FIELD.getPreferredName().equals(currentFieldName)) {
+                    while (parser.nextToken() != XContentParser.Token.END_OBJECT) {
+                        if (parser.currentToken() == XContentParser.Token.FIELD_NAME) {
+                            currentFieldName = parser.currentName();
+                        } else if (CONFIG_PATH_FIELD.getPreferredName().equals(currentFieldName)) {
+                            bizInfo.config_path = parser.text();
+                        }
+                    }
+                }
+            }
+            return bizInfo;
+        }
+
+        public XContentBuilder toXContent(XContentBuilder builder, Params params) throws IOException {
+            builder.startObject();
+            builder.startObject(DEFAULT_NAME_FIELD.getPreferredName());
+            builder.field(CONFIG_PATH_FIELD.getPreferredName(), config_path);
+            builder.endObject();
+            builder.endObject();
+            return builder;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) {return true;}
+            if (o == null || getClass() != o.getClass()) {return false;}
+            BizInfo bizInfo = (BizInfo)o;
+            return config_path.equals(bizInfo.config_path);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(config_path);
+        }
     }
 
-    public static class TableInfo {
+    public static class TableInfo implements ToXContentObject {
         public String index_root;
-        public Map<String, Partition> partitions;
+        public Partition partition;
         public String config_path;
+
+        private static final ParseField INDEX_ROOT_FIELD = new ParseField("index_root");
+        private static final ParseField CONFIG_PATH_FIELD = new ParseField("config_path");
+        private static final ParseField PARTITIONS_FIELD = new ParseField("partitions");
 
         public TableInfo() {}
 
         public TableInfo(String indexRoot, String configPath) {
             index_root = indexRoot;
             config_path = configPath;
-            partitions = new HashMap<>();
-            partitions.put("0_65535", new Partition());
+            partition = new Partition();
         }
 
         @Override
@@ -281,21 +399,72 @@ public class TargetInfo implements ToXContentObject {
             if (o == null || getClass() != o.getClass()) {
                 return false;
             }
-            TableInfo tableInfo = (TableInfo) o;
+            TableInfo tableInfo = (TableInfo)o;
             return index_root.equals(tableInfo.index_root)
-                && partitions.equals(tableInfo.partitions)
+                && partition.equals(tableInfo.partition)
                 && config_path.equals(tableInfo.config_path);
         }
 
         @Override
         public int hashCode() {
-            return Objects.hash(index_root, partitions, config_path);
+            return Objects.hash(index_root, partition, config_path);
+        }
+
+        public static TableInfo fromXContent(XContentParser parser) throws IOException {
+            TableInfo tableInfo = new TableInfo();
+            String currentFieldName = null;
+            while (parser.nextToken() != XContentParser.Token.END_OBJECT) {
+                if (parser.currentToken() == XContentParser.Token.FIELD_NAME) {
+                    currentFieldName = parser.currentName();
+                } else if (INDEX_ROOT_FIELD.getPreferredName().equals(currentFieldName)) {
+                    tableInfo.index_root = parser.text();
+                } else if (CONFIG_PATH_FIELD.getPreferredName().equals(currentFieldName)) {
+                    tableInfo.config_path = parser.text();
+                } else if (PARTITIONS_FIELD.getPreferredName().equals(currentFieldName)) {
+                    while (parser.nextToken() != XContentParser.Token.END_OBJECT) {
+                        if (parser.currentToken() == XContentParser.Token.FIELD_NAME) {
+                            currentFieldName = parser.currentName();
+                        } else if ("0_65535".equals(currentFieldName)) {
+                            while (parser.nextToken() != XContentParser.Token.END_OBJECT) {
+                                if (parser.currentToken() == XContentParser.Token.FIELD_NAME) {
+                                    currentFieldName = parser.currentName();
+                                } else if ("inc_version".equals(currentFieldName)) {
+                                    tableInfo.partition = new Partition(parser.intValue());
+                                }
+                            }
+                        }
+                    }
+                } else if (parser.currentToken() == XContentParser.Token.START_OBJECT) {
+                    parser.skipChildren();
+                }
+            }
+            return tableInfo;
+        }
+
+        @Override
+        public XContentBuilder toXContent(XContentBuilder builder, Params params) throws IOException {
+            builder.startObject();
+            builder.field(INDEX_ROOT_FIELD.getPreferredName(), index_root);
+            builder.startObject(PARTITIONS_FIELD.getPreferredName());
+            builder.startObject("0_65535");
+            builder.field("inc_version", partition.inc_version);
+            builder.endObject();
+            builder.endObject();
+            builder.field(CONFIG_PATH_FIELD.getPreferredName(), config_path);
+            builder.endObject();
+            return builder;
         }
     }
 
     public static class Partition {
         public int inc_version = 1;
 
+        public Partition() {}
+
+        public Partition(int inc_version) {
+            this.inc_version = inc_version;
+        }
+
         @Override
         public boolean equals(Object o) {
             if (this == o) {
@@ -304,7 +473,7 @@ public class TargetInfo implements ToXContentObject {
             if (o == null || getClass() != o.getClass()) {
                 return false;
             }
-            Partition partition = (Partition) o;
+            Partition partition = (Partition)o;
             return inc_version == partition.inc_version;
         }
 
@@ -323,8 +492,7 @@ public class TargetInfo implements ToXContentObject {
         tableInfoMap.put("0", new TableInfo(indexRoot, tableConf));
         targetInfo.table_info = tables;
 
-        targetInfo.biz_info = new HashMap<>();
-        targetInfo.biz_info.put("default", new BizInfo(bizConf));
+        targetInfo.biz_info = new BizInfo(bizConf);
 
         targetInfo.service_info = new ServiceInfo(zone);
 
@@ -340,8 +508,7 @@ public class TargetInfo implements ToXContentObject {
         serviceInfo.cm2_config.put("local", new LinkedList<>());
 
         targetInfo.table_info = Collections.emptyMap();
-        targetInfo.biz_info = new HashMap<>();
-        targetInfo.biz_info.put("default", new BizInfo(bizConf));
+        targetInfo.biz_info = new BizInfo(bizConf);
 
         return targetInfo;
     }
