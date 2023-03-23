@@ -9,9 +9,12 @@ name: Java CI with Gradle
 
 on:
   push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
+    branches-ignore:
+      - 'backport/**'
+      - 'create-pull-request/**'
+      - 'dependabot/**'
+  pull_request_target:
+    types: [opened, synchronize, reopened]
 
 permissions:
   contents: read
