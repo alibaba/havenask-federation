@@ -46,13 +46,12 @@ public class SearcherHttpClient implements SearcherClient {
 
     @Override
     public HeartbeatTargetResponse getHeartbeatTarget() throws IOException {
-        Request request = new Request.Builder()
-            .url(url + HEART_BEAT_URL)
-            .build();
+        Request request = new Request.Builder().url(url + HEART_BEAT_URL).build();
         Response response = client.newCall(request).execute();
-        try (XContentParser parser = JSON.xContent().createParser(NamedXContentRegistry.EMPTY,
-            LoggingDeprecationHandler.INSTANCE, response.body()
-                .byteStream())) {
+        try (
+            XContentParser parser = JSON.xContent()
+                .createParser(NamedXContentRegistry.EMPTY, LoggingDeprecationHandler.INSTANCE, response.body().byteStream())
+        ) {
             HeartbeatTargetResponse heartbeatTargetResponse = HeartbeatTargetResponse.fromXContent(parser);
             return heartbeatTargetResponse;
         }
@@ -61,18 +60,15 @@ public class SearcherHttpClient implements SearcherClient {
     @Override
     public HeartbeatTargetResponse updateHeartbeatTarget(UpdateHeartbeatTargetRequest request) throws IOException {
         RequestBody body = RequestBody.create(MediaType.parse("application/json"), Strings.toString(request));
-        Request httpRequest = new Request.Builder()
-            .url(url + HEART_BEAT_URL)
-            .post(body)
-            .build();
+        Request httpRequest = new Request.Builder().url(url + HEART_BEAT_URL).post(body).build();
         Response response = client.newCall(httpRequest).execute();
-        try (XContentParser parser = JSON.xContent().createParser(NamedXContentRegistry.EMPTY,
-            LoggingDeprecationHandler.INSTANCE, response.body()
-                .byteStream())) {
+        try (
+            XContentParser parser = JSON.xContent()
+                .createParser(NamedXContentRegistry.EMPTY, LoggingDeprecationHandler.INSTANCE, response.body().byteStream())
+        ) {
             // TODO change to debug
             if (logger.isInfoEnabled()) {
-                logger.info("updateHeartbeatTarget, request[{}], response[{}]", Strings.toString(request),
-                    response.body().string());
+                logger.info("updateHeartbeatTarget, request[{}], response[{}]", Strings.toString(request), response.body().string());
             }
 
             HeartbeatTargetResponse heartbeatTargetResponse = HeartbeatTargetResponse.fromXContent(parser);

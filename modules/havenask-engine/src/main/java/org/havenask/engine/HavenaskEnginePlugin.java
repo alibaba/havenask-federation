@@ -54,7 +54,9 @@ public class HavenaskEnginePlugin extends Plugin implements EnginePlugin, Analys
     @Override
     public Optional<EngineFactory> getEngineFactory(IndexSettings indexSettings) {
         if (EngineSettings.isHavenaskEngine(indexSettings.getSettings())) {
-            return Optional.of(engineConfig -> new HavenaskEngine(engineConfig, searcherClientSetOnce.get(), havenaskEngineEnvironmentSetOnce.get()));
+            return Optional.of(
+                engineConfig -> new HavenaskEngine(engineConfig, searcherClientSetOnce.get(), havenaskEngineEnvironmentSetOnce.get())
+            );
         }
 
         return Optional.empty();
@@ -74,8 +76,7 @@ public class HavenaskEnginePlugin extends Plugin implements EnginePlugin, Analys
         IndexNameExpressionResolver indexNameExpressionResolver,
         Supplier<RepositoriesService> repositoriesServiceSupplier
     ) {
-        HavenaskEngineEnvironment havenaskEngineEnvironment = new HavenaskEngineEnvironment(environment,
-            clusterService.getSettings());
+        HavenaskEngineEnvironment havenaskEngineEnvironment = new HavenaskEngineEnvironment(environment, clusterService.getSettings());
         havenaskEngineEnvironmentSetOnce.set(havenaskEngineEnvironment);
 
         NativeProcessControlService nativeProcessControlService = new NativeProcessControlService(
@@ -88,7 +89,6 @@ public class HavenaskEnginePlugin extends Plugin implements EnginePlugin, Analys
         nativeProcessControlServiceSetOnce.set(nativeProcessControlService);
         SearcherClient searcherClient = new SearcherHttpClient(nativeProcessControlService.getSearcherHttpPort());
         searcherClientSetOnce.set(searcherClient);
-        return Arrays.asList(nativeProcessControlServiceSetOnce.get(), havenaskEngineEnvironmentSetOnce.get(),
-            searcherClientSetOnce.get());
+        return Arrays.asList(nativeProcessControlServiceSetOnce.get(), havenaskEngineEnvironmentSetOnce.get(), searcherClientSetOnce.get());
     }
 }

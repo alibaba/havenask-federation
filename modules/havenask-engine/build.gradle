@@ -32,6 +32,7 @@ bundlePlugin {
 tasks.named("thirdPartyAudit").configure {
   ignoreMissingClasses(
           // classes are missing
+          'android.util.Log',
           "com.google.common.collect.ArrayListMultimap",
           "com.google.common.collect.Multimap",
           "javax.money.CurrencyUnit",

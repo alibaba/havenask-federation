@@ -39,10 +39,16 @@ public class TargetInfo implements ToXContentObject {
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) {return true;}
-        if (o == null || getClass() != o.getClass()) {return false;}
-        TargetInfo that = (TargetInfo)o;
-        return clean_disk == that.clean_disk && table_info.equals(that.table_info) && biz_info.equals(that.biz_info)
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        TargetInfo that = (TargetInfo) o;
+        return clean_disk == that.clean_disk
+            && table_info.equals(that.table_info)
+            && biz_info.equals(that.biz_info)
             && service_info.equals(that.service_info);
     }
 
@@ -61,13 +67,19 @@ public class TargetInfo implements ToXContentObject {
     }
 
     public List<Cm2Config> findExistedBizService(List<Cm2Config> services) {
-        if (service_info == null || service_info.cm2_config == null) {return null;}
+        if (service_info == null || service_info.cm2_config == null) {
+            return null;
+        }
         List<Cm2Config> existed = service_info.cm2_config.get("local");
-        if (existed == null) {return null;}
+        if (existed == null) {
+            return null;
+        }
         List<Cm2Config> found = new LinkedList<>();
         Set<String> existedBizs = services.stream().map(cm2Config -> cm2Config.biz_name).collect(Collectors.toSet());
         for (Cm2Config cm : existed) {
-            if (existedBizs.contains(cm)) {found.add(cm);}
+            if (existedBizs.contains(cm)) {
+                found.add(cm);
+            }
         }
         return found;
     }
@@ -86,19 +98,27 @@ public class TargetInfo implements ToXContentObject {
     }
 
     public boolean removeBizService(List<Cm2Config> services) {
-        if (service_info == null || service_info.cm2_config == null) {return false;}
+        if (service_info == null || service_info.cm2_config == null) {
+            return false;
+        }
         return service_info.cm2_config.get("local").removeAll(services);
     }
 
     public List<Cm2Config> removeAllBizService() {
-        if (service_info == null || service_info.cm2_config == null) {return null;}
+        if (service_info == null || service_info.cm2_config == null) {
+            return null;
+        }
         return service_info.cm2_config.put("local", new LinkedList<>());
     }
 
     public List<Cm2Config> removeBizByPrefix(String prefix) {
-        if (service_info == null || service_info.cm2_config == null) {return null;}
+        if (service_info == null || service_info.cm2_config == null) {
+            return null;
+        }
         List<Cm2Config> current = service_info.cm2_config.get("local");
-        if (current == null) {return null;}
+        if (current == null) {
+            return null;
+        }
         List<Cm2Config> removed = new LinkedList<>();
         Iterator<Cm2Config> itr = current.iterator();
         while (itr.hasNext()) {
@@ -117,12 +137,11 @@ public class TargetInfo implements ToXContentObject {
         private static final ParseField PART_COUNT_FIELD = new ParseField("part_count");
         private static final ParseField PART_ID_FIELD = new ParseField("part_id");
 
-        private static final ConstructingObjectParser<ServiceInfo, Void> PARSER =
-            new ConstructingObjectParser<>(ServiceInfo.class.getName(), true,
-                args -> {
-                    return new ServiceInfo((String)args[0], (int)args[1], (int)args[2], (int)args[3]);
-                }
-            );
+        private static final ConstructingObjectParser<ServiceInfo, Void> PARSER = new ConstructingObjectParser<>(
+            ServiceInfo.class.getName(),
+            true,
+            args -> { return new ServiceInfo((String) args[0], (int) args[1], (int) args[2], (int) args[3]); }
+        );
 
         static {
             PARSER.declareString(ConstructingObjectParser.constructorArg(), ZONE_NAME_FIELD);
@@ -130,6 +149,10 @@ public class TargetInfo implements ToXContentObject {
             PARSER.declareInt(ConstructingObjectParser.constructorArg(), PART_COUNT_FIELD);
             PARSER.declareInt(ConstructingObjectParser.constructorArg(), PART_ID_FIELD);
 
+        }
+
+        public ServiceInfo(String zone_name) {
+            this.zone_name = zone_name;
         }
 
         public ServiceInfo(String zone_name, int version, int part_count, int part_id) {
@@ -162,12 +185,18 @@ public class TargetInfo implements ToXContentObject {
 
         @Override
         public boolean equals(Object o) {
-            if (this == o) {return true;}
-            if (o == null || getClass() != o.getClass()) {return false;}
-            ServiceInfo that = (ServiceInfo)o;
-            return version == that.version && part_count == that.part_count && part_id == that.part_id
-                && zone_name.equals(
-                that.zone_name) && cm2_config.equals(that.cm2_config);
+            if (this == o) {
+                return true;
+            }
+            if (o == null || getClass() != o.getClass()) {
+                return false;
+            }
+            ServiceInfo that = (ServiceInfo) o;
+            return version == that.version
+                && part_count == that.part_count
+                && part_id == that.part_id
+                && zone_name.equals(that.zone_name)
+                && cm2_config.equals(that.cm2_config);
         }
 
         @Override
@@ -196,11 +225,19 @@ public class TargetInfo implements ToXContentObject {
 
         @Override
         public boolean equals(Object o) {
-            if (this == o) {return true;}
-            if (o == null || getClass() != o.getClass()) {return false;}
-            Cm2Config cm2Config = (Cm2Config)o;
-            return part_count == cm2Config.part_count && part_id == cm2Config.part_id && tcp_port == cm2Config.tcp_port
-                && version == cm2Config.version && biz_name.equals(cm2Config.biz_name) && ip.equals(cm2Config.ip);
+            if (this == o) {
+                return true;
+            }
+            if (o == null || getClass() != o.getClass()) {
+                return false;
+            }
+            Cm2Config cm2Config = (Cm2Config) o;
+            return part_count == cm2Config.part_count
+                && part_id == cm2Config.part_id
+                && tcp_port == cm2Config.tcp_port
+                && version == cm2Config.version
+                && biz_name.equals(cm2Config.biz_name)
+                && ip.equals(cm2Config.ip);
         }
 
         @Override
@@ -238,12 +275,16 @@ public class TargetInfo implements ToXContentObject {
 
         @Override
         public boolean equals(Object o) {
-            if (this == o) {return true;}
-            if (o == null || getClass() != o.getClass()) {return false;}
-            TableInfo tableInfo = (TableInfo)o;
-            return index_root.equals(tableInfo.index_root) && partitions.equals(tableInfo.partitions)
-                && config_path.equals(
-                tableInfo.config_path);
+            if (this == o) {
+                return true;
+            }
+            if (o == null || getClass() != o.getClass()) {
+                return false;
+            }
+            TableInfo tableInfo = (TableInfo) o;
+            return index_root.equals(tableInfo.index_root)
+                && partitions.equals(tableInfo.partitions)
+                && config_path.equals(tableInfo.config_path);
         }
 
         @Override
@@ -257,9 +298,13 @@ public class TargetInfo implements ToXContentObject {
 
         @Override
         public boolean equals(Object o) {
-            if (this == o) {return true;}
-            if (o == null || getClass() != o.getClass()) {return false;}
-            Partition partition = (Partition)o;
+            if (this == o) {
+                return true;
+            }
+            if (o == null || getClass() != o.getClass()) {
+                return false;
+            }
+            Partition partition = (Partition) o;
             return inc_version == partition.inc_version;
         }
 

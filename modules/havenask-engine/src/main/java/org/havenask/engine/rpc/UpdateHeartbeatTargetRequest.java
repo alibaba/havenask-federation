@@ -39,8 +39,7 @@ public class UpdateHeartbeatTargetRequest implements ToXContentObject {
         builder.startObject();
         builder.field(SIGNATURE_FIELD.getPreferredName(), targetInfo);
         builder.field(CUSTOM_INFO_FIELD.getPreferredName(), targetInfo);
-        builder.field(GLOBAL_CUSTOM_INFO_FIELD.getPreferredName(),
-            Map.of(CUSTOM_INFO_FIELD.getPreferredName(), targetInfo));
+        builder.field(GLOBAL_CUSTOM_INFO_FIELD.getPreferredName(), Map.of(CUSTOM_INFO_FIELD.getPreferredName(), targetInfo));
         builder.endObject();
         return builder;
     }

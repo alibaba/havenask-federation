@@ -41,7 +41,7 @@ public class HavenaskEngine extends InternalEngine {
         try {
             activeTable();
         } catch (IOException e) {
-            e.printStackTrace();
+            // TODO
         }
     }
 
@@ -55,7 +55,6 @@ public class HavenaskEngine extends InternalEngine {
             inactiveTable();
         } catch (IOException e) {
             // TODO
-            e.printStackTrace();
         }
     }
 
@@ -105,7 +104,6 @@ public class HavenaskEngine extends InternalEngine {
                 Thread.sleep(100);
             } catch (InterruptedException e) {
                 // TODO
-                // e.printStackTrace();
             }
             timeout -= 100;
             HeartbeatTargetResponse response = searcherClient.updateHeartbeatTarget(request);

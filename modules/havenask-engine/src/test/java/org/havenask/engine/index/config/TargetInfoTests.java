@@ -23,6 +23,5 @@ public class TargetInfoTests extends HavenaskTestCase {
         String tableConf = "tableConf";
         String bizConf = "bizConf";
         TargetInfo targetInfo = TargetInfo.createSearchDefault(zone, indexRoot, tableConf, bizConf);
-        System.out.println(targetInfo);
     }
 }
