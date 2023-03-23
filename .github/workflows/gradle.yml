@@ -14,23 +14,23 @@ on:
       - 'create-pull-request/**'
       - 'dependabot/**'
   pull_request_target:
-    types: [opened, synchronize, reopened]
+    types: [ opened, synchronize, reopened ]
 
 permissions:
   contents: read
 
 jobs:
- test:
- runs-on: ubuntu-latest
+  test:
+  runs-on: ubuntu-latest
 
- steps:
- - name: Checkout code
- uses: actions/checkout@v2
+  steps:
+    - name: Checkout code
+  uses: actions/checkout@v2
 
- - name: Setup JDK
- uses: actions/setup-java@v1
- with:
- java-version:11
+    - name: Setup JDK
+  uses: actions/setup-java@v1
+  with:
+  java-version:15
 
- - name: Run Tests
- run: ./gradlew check
+  - name: Run Tests
+  run: ./gradlew check
