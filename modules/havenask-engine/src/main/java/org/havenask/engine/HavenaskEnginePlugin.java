@@ -26,6 +26,8 @@ import org.havenask.client.Client;
 import org.havenask.cluster.metadata.IndexNameExpressionResolver;
 import org.havenask.cluster.service.ClusterService;
 import org.havenask.common.io.stream.NamedWriteableRegistry;
+import org.havenask.common.settings.Setting;
+import org.havenask.common.settings.Setting.Property;
 import org.havenask.common.xcontent.NamedXContentRegistry;
 import org.havenask.engine.index.engine.EngineSettings;
 import org.havenask.engine.index.engine.HavenaskEngine;
@@ -50,6 +52,13 @@ public class HavenaskEnginePlugin extends Plugin implements EnginePlugin, Analys
     private final SetOnce<HavenaskEngineEnvironment> havenaskEngineEnvironmentSetOnce = new SetOnce<>();
     private final SetOnce<NativeProcessControlService> nativeProcessControlServiceSetOnce = new SetOnce<>();
     private final SetOnce<SearcherClient> searcherClientSetOnce = new SetOnce<>();
+
+    public static final Setting<Boolean> HAVENASK_ENGINE_ENABLED_SETTING = Setting.boolSetting(
+        "havenask.engine.enabled",
+        false,
+        Property.NodeScope,
+        Setting.Property.Final
+    );
 
     @Override
     public Optional<EngineFactory> getEngineFactory(IndexSettings indexSettings) {

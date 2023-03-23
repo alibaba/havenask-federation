@@ -65,6 +65,7 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
 
     private final ClusterService clusterService;
     private final ThreadPool threadPool;
+    private final boolean enabled;
     private final boolean isDataNode;
     private final boolean isIngestNode;
     private final Environment environment;
@@ -89,6 +90,7 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
         Settings settings = clusterService.getSettings();
         isDataNode = DiscoveryNode.isDataNode(settings);
         isIngestNode = DiscoveryNode.isIngestNode(settings);
+        enabled = HavenaskEnginePlugin.HAVENASK_ENGINE_ENABLED_SETTING.get(settings);
         this.threadPool = threadPool;
         this.environment = environment;
         this.nodeEnvironment = nodeEnvironment;
@@ -109,7 +111,7 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
 
     @Override
     protected void doStart() {
-        if (processControlTask == null) {
+        if (enabled && processControlTask == null) {
             processControlTask = new ProcessControlTask(threadPool, TimeValue.timeValueSeconds(5));
             processControlTask.rescheduleIfNecessary();
             running = true;
@@ -125,7 +127,7 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
             processControlTask = null;
         }
 
-        if (isDataNode || isIngestNode) {
+        if (enabled && (isDataNode || isIngestNode)) {
             LOGGER.info("stop local searcher,qrs process");
             AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
                 try {
