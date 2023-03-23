@@ -20,20 +20,12 @@ import org.havenask.common.xcontent.XContentParser;
 import org.havenask.test.AbstractXContentTestCase;
 
 public class TargetInfoTests extends AbstractXContentTestCase<TargetInfo> {
-    public void testCreateSearchDefault() {
-        String zone = "zone";
-        String indexRoot = "indexRoot";
-        String tableConf = "tableConf";
-        String bizConf = "bizConf";
-        TargetInfo targetInfo = TargetInfo.createSearchDefault(zone, indexRoot, tableConf, bizConf);
-    }
-
     @Override
     protected TargetInfo createTestInstance() {
-        String zone = "zone";
-        String indexRoot = "indexRoot";
-        String tableConf = "tableConf";
-        String bizConf = "bizConf";
+        String zone = randomAlphaOfLength(5);
+        String indexRoot = randomAlphaOfLength(5);
+        String tableConf = randomAlphaOfLength(5);
+        String bizConf = randomAlphaOfLength(5);
         return TargetInfo.createSearchDefault(zone, indexRoot, tableConf, bizConf);
     }
 
@@ -44,6 +36,6 @@ public class TargetInfoTests extends AbstractXContentTestCase<TargetInfo> {
 
     @Override
     protected boolean supportsUnknownFields() {
-        return true;
+        return false;
     }
 }

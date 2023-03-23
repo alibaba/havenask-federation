@@ -64,7 +64,12 @@ public class HavenaskEnginePlugin extends Plugin implements EnginePlugin, Analys
     public Optional<EngineFactory> getEngineFactory(IndexSettings indexSettings) {
         if (EngineSettings.isHavenaskEngine(indexSettings.getSettings())) {
             return Optional.of(
-                engineConfig -> new HavenaskEngine(engineConfig, searcherClientSetOnce.get(), havenaskEngineEnvironmentSetOnce.get())
+                engineConfig -> new HavenaskEngine(
+                    engineConfig,
+                    searcherClientSetOnce.get(),
+                    havenaskEngineEnvironmentSetOnce.get(),
+                    nativeProcessControlServiceSetOnce.get()
+                )
             );
         }
 

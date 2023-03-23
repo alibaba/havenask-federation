@@ -17,18 +17,18 @@ package org.havenask.engine.index.config;
 import java.io.IOException;
 
 import org.havenask.common.xcontent.XContentParser;
-import org.havenask.engine.index.config.TargetInfo.BizInfo;
+import org.havenask.engine.index.config.TargetInfo.ServiceInfo;
 import org.havenask.test.AbstractXContentTestCase;
 
-public class BizInfoTests extends AbstractXContentTestCase<BizInfo> {
+public class ServiceInfoTests extends AbstractXContentTestCase<ServiceInfo> {
     @Override
-    protected BizInfo createTestInstance() {
-        return new BizInfo(randomAlphaOfLength(5));
+    protected ServiceInfo createTestInstance() {
+        return new ServiceInfo(randomAlphaOfLength(5), randomInt(), randomInt(), randomInt());
     }
 
     @Override
-    protected BizInfo doParseInstance(XContentParser parser) throws IOException {
-        return BizInfo.fromXContent(parser);
+    protected ServiceInfo doParseInstance(XContentParser parser) throws IOException {
+        return ServiceInfo.fromXContent(parser);
     }
 
     @Override

@@ -32,7 +32,6 @@ import org.havenask.common.xcontent.ConstructingObjectParser;
 import org.havenask.common.xcontent.ToXContentObject;
 import org.havenask.common.xcontent.XContentBuilder;
 import org.havenask.common.xcontent.XContentParser;
-import org.havenask.common.xcontent.XContentParser.Token;
 
 public class TargetInfo implements ToXContentObject {
     public Map<String, Map<String, TableInfo>> table_info;
@@ -53,7 +52,7 @@ public class TargetInfo implements ToXContentObject {
         if (o == null || getClass() != o.getClass()) {
             return false;
         }
-        TargetInfo that = (TargetInfo)o;
+        TargetInfo that = (TargetInfo) o;
         return clean_disk == that.clean_disk
             && table_info.equals(that.table_info)
             && biz_info.equals(that.biz_info)
@@ -79,14 +78,17 @@ public class TargetInfo implements ToXContentObject {
                     } else if (parser.currentToken() == XContentParser.Token.START_OBJECT) {
                         Map<String, TableInfo> tableMap = new TreeMap<>();
                         tableInfos.put(currentFieldName, tableMap);
-                        if (parser.currentToken() == XContentParser.Token.FIELD_NAME) {
-                            currentFieldName = parser.currentName();
-                        } else if (parser.currentToken() == XContentParser.Token.START_OBJECT) {
-                            TableInfo tableInfo = TableInfo.fromXContent(parser);
-                            tableMap.put(currentFieldName, tableInfo);
+                        while (parser.nextToken() != XContentParser.Token.END_OBJECT) {
+                            if (parser.currentToken() == XContentParser.Token.FIELD_NAME) {
+                                currentFieldName = parser.currentName();
+                            } else if (parser.currentToken() == XContentParser.Token.START_OBJECT) {
+                                TableInfo tableInfo = TableInfo.fromXContent(parser);
+                                tableMap.put(currentFieldName, tableInfo);
+                            }
                         }
                     }
                 }
+                targetInfo.table_info = tableInfos;
             } else if (BIZ_INFO_FIELD.getPreferredName().equals(currentFieldName)) {
                 targetInfo.biz_info = BizInfo.fromXContent(parser);
             } else if (SERVICE_INFO_FIELD.getPreferredName().equals(currentFieldName)) {
@@ -195,9 +197,7 @@ public class TargetInfo implements ToXContentObject {
         private static final ConstructingObjectParser<ServiceInfo, Void> PARSER = new ConstructingObjectParser<>(
             ServiceInfo.class.getName(),
             true,
-            args -> {
-                return new ServiceInfo((String)args[0], (int)args[1], (int)args[2], (int)args[3]);
-            }
+            args -> { return new ServiceInfo((String) args[0], (int) args[1], (int) args[2], (int) args[3]); }
         );
 
         static {
@@ -228,22 +228,7 @@ public class TargetInfo implements ToXContentObject {
         public Map<String, List<Cm2Config>> cm2_config;
 
         public static ServiceInfo fromXContent(XContentParser parser) throws IOException {
-            ServiceInfo serviceInfo = new ServiceInfo();
-            String currentFieldName = null;
-            while (parser.nextToken() != XContentParser.Token.END_OBJECT) {
-                if (parser.currentToken() == XContentParser.Token.FIELD_NAME) {
-                    currentFieldName = parser.currentName();
-                } else if (ZONE_NAME_FIELD.getPreferredName().equals(currentFieldName)) {
-                    serviceInfo.zone_name = parser.text();
-                } else if (VERSION_FIELD.getPreferredName().equals(currentFieldName)) {
-                    serviceInfo.version = parser.intValue();
-                } else if (PART_COUNT_FIELD.getPreferredName().equals(currentFieldName)) {
-                    serviceInfo.part_count = parser.intValue();
-                } else if (PART_ID_FIELD.getPreferredName().equals(currentFieldName)) {
-                    serviceInfo.part_count = parser.intValue();
-                }
-            }
-            return serviceInfo;
+            return PARSER.parse(parser, null);
         }
 
         @Override
@@ -265,12 +250,12 @@ public class TargetInfo implements ToXContentObject {
             if (o == null || getClass() != o.getClass()) {
                 return false;
             }
-            ServiceInfo that = (ServiceInfo)o;
+            ServiceInfo that = (ServiceInfo) o;
             return version == that.version
                 && part_count == that.part_count
                 && part_id == that.part_id
-                && zone_name.equals(that.zone_name)
-                && cm2_config.equals(that.cm2_config);
+                && Objects.equals(zone_name, that.zone_name)
+                && Objects.equals(cm2_config, that.cm2_config);
         }
 
         @Override
@@ -305,7 +290,7 @@ public class TargetInfo implements ToXContentObject {
             if (o == null || getClass() != o.getClass()) {
                 return false;
             }
-            Cm2Config cm2Config = (Cm2Config)o;
+            Cm2Config cm2Config = (Cm2Config) o;
             return part_count == cm2Config.part_count
                 && part_id == cm2Config.part_id
                 && tcp_port == cm2Config.tcp_port
@@ -362,9 +347,13 @@ public class TargetInfo implements ToXContentObject {
 
         @Override
         public boolean equals(Object o) {
-            if (this == o) {return true;}
-            if (o == null || getClass() != o.getClass()) {return false;}
-            BizInfo bizInfo = (BizInfo)o;
+            if (this == o) {
+                return true;
+            }
+            if (o == null || getClass() != o.getClass()) {
+                return false;
+            }
+            BizInfo bizInfo = (BizInfo) o;
             return config_path.equals(bizInfo.config_path);
         }
 
@@ -399,7 +388,7 @@ public class TargetInfo implements ToXContentObject {
             if (o == null || getClass() != o.getClass()) {
                 return false;
             }
-            TableInfo tableInfo = (TableInfo)o;
+            TableInfo tableInfo = (TableInfo) o;
             return index_root.equals(tableInfo.index_root)
                 && partition.equals(tableInfo.partition)
                 && config_path.equals(tableInfo.config_path);
@@ -434,8 +423,6 @@ public class TargetInfo implements ToXContentObject {
                             }
                         }
                     }
-                } else if (parser.currentToken() == XContentParser.Token.START_OBJECT) {
-                    parser.skipChildren();
                 }
             }
             return tableInfo;
@@ -473,7 +460,7 @@ public class TargetInfo implements ToXContentObject {
             if (o == null || getClass() != o.getClass()) {
                 return false;
             }
-            Partition partition = (Partition)o;
+            Partition partition = (Partition) o;
             return inc_version == partition.inc_version;
         }
 

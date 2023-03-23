@@ -43,6 +43,8 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
     public static final String QRS_ROLE = "qrs";
     private static final String START_SEARCHER_COMMAND = "cd %s;python %s/havenask/script/general_search_starter.py -i "
         + "%s -c %s -b /ha3_install -M in0 --role searcher --httpBindPort %d";
+    private static final String UPDATE_SEARCHER_COMMAND = "cd %s;python %s/havenask/script/general_search_updater.py -i "
+        + "%s -c %s -M in0 --role searcher";
     private static final String STOP_HAVENASK_COMMAND =
         "python /ha3_install/usr/local/lib/python/site-packages/ha_tools/local_search_stop.py"
             + " -c /ha3_install/usr/local/etc/ha3/ha3_alog.conf";
@@ -75,6 +77,7 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
     private final int qrsHttpPort;
 
     protected String startSearcherCommand;
+    protected String updateSearcherCommand;
     protected String stopHavenaskCommand;
     private ProcessControlTask processControlTask;
     private boolean running;
@@ -105,6 +108,14 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
             havenaskEngineEnvironment.getRuntimedataPath(),
             havenaskEngineEnvironment.getConfigPath(),
             searcherHttpPort
+        );
+        this.updateSearcherCommand = String.format(
+            Locale.ROOT,
+            UPDATE_SEARCHER_COMMAND,
+            havenaskEngineEnvironment.getDataPath().toAbsolutePath(),
+            environment.configFile().toAbsolutePath(),
+            havenaskEngineEnvironment.getRuntimedataPath(),
+            havenaskEngineEnvironment.getConfigPath()
         );
         this.stopHavenaskCommand = STOP_HAVENASK_COMMAND;
     }
@@ -273,5 +284,28 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
      */
     public int getQrsHttpPort() {
         return qrsHttpPort;
+    }
+
+    public synchronized void updateDataNodeTarget() {
+        if (isDataNode) {
+            // 更新datanode searcher的target
+            AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
+                try {
+                    Process process = Runtime.getRuntime().exec(new String[] { "sh", "-c", updateSearcherCommand });
+                    process.waitFor();
+                    if (process.exitValue() != 0) {
+                        try (InputStream inputStream = process.getInputStream()) {
+                            byte[] bytes = inputStream.readAllBytes();
+                            String result = new String(bytes, StandardCharsets.UTF_8);
+                            LOGGER.warn("searcher update target failed, failed reason: {}", result);
+                        }
+                    }
+                    process.destroy();
+                } catch (Exception e) {
+                    LOGGER.warn("searcher update target unexpected failed", e);
+                }
+                return null;
+            });
+        }
     }
 }

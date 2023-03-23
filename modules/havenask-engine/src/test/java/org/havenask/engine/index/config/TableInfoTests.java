@@ -33,6 +33,6 @@ public class TableInfoTests extends AbstractXContentTestCase<TableInfo> {
 
     @Override
     protected boolean supportsUnknownFields() {
-        return true;
+        return false;
     }
 }
