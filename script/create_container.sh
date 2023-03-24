@@ -55,7 +55,7 @@ EOF
 
 chmod a+x $CONTAINER_DIR/initContainer.sh
 
-docker run -p 9200:9200 -p 5005:5005 -p 39200:39200 --ulimit nofile=655350:655350 --privileged --cap-add SYS_ADMIN --device /dev/fuse --ulimit memlock=-1 --cpu-shares=15360 --cpu-quota=9600000 --cpu-period=100000 --memory=500000m -d  --name $CONTAINER_NAME -v /Users/weizijun/workspace/haven-internal/example:/home/$USER/havenask -v $CONTAINER_DIR/initContainer.sh:/tmp/initContainer.sh $IMAGE /sbin/init 1> /dev/null
+docker run -p 9200:9200 -p 5005:5005 -p 39200:39200 --ulimit nofile=655350:655350 --privileged --cap-add SYS_ADMIN --device /dev/fuse --ulimit memlock=-1 --cpu-shares=15360 --cpu-quota=9600000 --cpu-period=100000 --memory=500000m -d  --name $CONTAINER_NAME -v $CONTAINER_DIR/initContainer.sh:/tmp/initContainer.sh $IMAGE /sbin/init 1> /dev/null
 
 
 if [ $? -ne 0 ]; then

@@ -25,7 +25,8 @@ import org.havenask.engine.util.VersionUtils;
 import org.havenask.index.engine.EngineConfig;
 
 public class TableConfigGenerator {
-    public static final String CLUSTER_DIR = "cluster";
+    public static final String TABLE_DIR = "table";
+    public static final String CLUSTER_DIR = "clusters";
     public static final String CLUSTER_FILE_SUFFIX = "_cluster.json";
     private final Path configPath;
     private final EngineConfig engineConfig;
@@ -34,7 +35,7 @@ public class TableConfigGenerator {
     public TableConfigGenerator(EngineConfig engineConfig, Path configPath) {
         this.engineConfig = engineConfig;
         this.indexName = engineConfig.getShardId().getIndexName();
-        this.configPath = configPath;
+        this.configPath = configPath.resolve(TABLE_DIR);
     }
 
     public static void generateTable(EngineConfig engineConfig, Path configPath) throws IOException {

@@ -47,6 +47,7 @@ public class HavenaskEngine extends InternalEngine {
             activeTable();
         } catch (IOException e) {
             // TODO
+            logger.error("shard [{}] activeTable exception", engineConfig.getShardId(), e);
         }
     }
 
@@ -60,6 +61,7 @@ public class HavenaskEngine extends InternalEngine {
             inactiveTable();
         } catch (IOException e) {
             // TODO
+            logger.error("shard [{}] inactiveTable exception", engineConfig.getShardId(), e);
         }
     }
 
@@ -72,7 +74,7 @@ public class HavenaskEngine extends InternalEngine {
         BizConfigGenerator.generateBiz(engineConfig, env.getConfigPath());
         TableConfigGenerator.generateTable(engineConfig, env.getConfigPath());
         // 更新配置表信息
-        nativeProcessControlService.updateDataNodeTarget();
+        // nativeProcessControlService.updateDataNodeTarget();
     }
 
     /**
@@ -83,6 +85,6 @@ public class HavenaskEngine extends InternalEngine {
         BizConfigGenerator.removeBiz(engineConfig, env.getConfigPath());
         TableConfigGenerator.removeTable(engineConfig, env.getConfigPath());
         // 更新配置表信息
-        nativeProcessControlService.updateDataNodeTarget();
+        // nativeProcessControlService.updateDataNodeTarget();
     }
 }

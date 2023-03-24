@@ -16,6 +16,7 @@ package org.havenask.engine;
 
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 import java.util.function.Supplier;
 
@@ -90,7 +91,8 @@ public class HavenaskEnginePlugin extends Plugin implements EnginePlugin, Analys
         IndexNameExpressionResolver indexNameExpressionResolver,
         Supplier<RepositoriesService> repositoriesServiceSupplier
     ) {
-        HavenaskEngineEnvironment havenaskEngineEnvironment = new HavenaskEngineEnvironment(environment, clusterService.getSettings());
+        HavenaskEngineEnvironment havenaskEngineEnvironment = new HavenaskEngineEnvironment(environment,
+            clusterService.getSettings());
         havenaskEngineEnvironmentSetOnce.set(havenaskEngineEnvironment);
 
         NativeProcessControlService nativeProcessControlService = new NativeProcessControlService(
@@ -103,6 +105,13 @@ public class HavenaskEnginePlugin extends Plugin implements EnginePlugin, Analys
         nativeProcessControlServiceSetOnce.set(nativeProcessControlService);
         SearcherClient searcherClient = new SearcherHttpClient(nativeProcessControlService.getSearcherHttpPort());
         searcherClientSetOnce.set(searcherClient);
-        return Arrays.asList(nativeProcessControlServiceSetOnce.get(), havenaskEngineEnvironmentSetOnce.get(), searcherClientSetOnce.get());
+        return Arrays.asList(nativeProcessControlServiceSetOnce.get(), havenaskEngineEnvironmentSetOnce.get(),
+            searcherClientSetOnce.get());
+    }
+
+    @Override
+    public List<Setting<?>> getSettings() {
+        return Arrays.asList(HAVENASK_ENGINE_ENABLED_SETTING, HavenaskEngineEnvironment.HAVENASK_PATH_DATA_SETTING,
+            EngineSettings.ENGINE_TYPE_SETTING, EngineSettings.HA3_FLOAT_MUL_BY10);
     }
 }

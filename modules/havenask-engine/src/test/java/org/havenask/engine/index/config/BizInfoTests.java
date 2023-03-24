@@ -35,4 +35,6 @@ public class BizInfoTests extends AbstractXContentTestCase<BizInfo> {
     protected boolean supportsUnknownFields() {
         return false;
     }
+
+
 }

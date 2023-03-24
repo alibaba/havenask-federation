@@ -26,6 +26,7 @@ import org.havenask.test.HavenaskTestCase;
 
 import static org.havenask.engine.index.config.generator.TableConfigGenerator.CLUSTER_DIR;
 import static org.havenask.engine.index.config.generator.TableConfigGenerator.CLUSTER_FILE_SUFFIX;
+import static org.havenask.engine.index.config.generator.TableConfigGenerator.TABLE_DIR;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -35,11 +36,11 @@ public class TableConfigGeneratorTests extends HavenaskTestCase {
         EngineConfig engineConfig = mock(EngineConfig.class);
         when(engineConfig.getShardId()).thenReturn(new ShardId(new Index(indexName, randomAlphaOfLength(5)), 0));
         Path configPath = createTempDir();
-        Files.createDirectories(configPath.resolve("0").resolve(CLUSTER_DIR));
+        Files.createDirectories(configPath.resolve(TABLE_DIR).resolve("0").resolve(CLUSTER_DIR));
         TableConfigGenerator tableConfigGenerator = new TableConfigGenerator(engineConfig, configPath);
         tableConfigGenerator.generate();
 
-        Path clusterConfigPath = configPath.resolve("0").resolve(CLUSTER_DIR).resolve(indexName + CLUSTER_FILE_SUFFIX);
+        Path clusterConfigPath = configPath.resolve(TABLE_DIR).resolve("0").resolve(CLUSTER_DIR).resolve(indexName + CLUSTER_FILE_SUFFIX);
         assertTrue(Files.exists(clusterConfigPath));
         String content = Files.readString(clusterConfigPath);
         String expect = String.format(

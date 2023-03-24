@@ -28,7 +28,8 @@ import org.havenask.index.engine.EngineConfig;
 
 public class BizConfigGenerator {
 
-    public static final String CLUSTER_DIR = "cluster";
+    public static final String BIZ_DIR = "bizs";
+    public static final String CLUSTER_DIR = "clusters";
     public static final String CLUSTER_FILE_SUFFIX = "_cluster.json";
     private static final String PLUGINS_DIR = "plugins";
     public static final String SCHEMAS_DIR = "schemas";
@@ -41,7 +42,7 @@ public class BizConfigGenerator {
     public BizConfigGenerator(EngineConfig engineConfig, Path configPath) {
         this.engineConfig = engineConfig;
         this.indexName = engineConfig.getShardId().getIndexName();
-        this.configPath = configPath;
+        this.configPath = configPath.resolve(BIZ_DIR);
     }
 
     public static void generateBiz(EngineConfig engineConfig, Path configPath) throws IOException {

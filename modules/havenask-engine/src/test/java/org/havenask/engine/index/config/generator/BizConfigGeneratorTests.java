@@ -30,6 +30,7 @@ import org.havenask.index.mapper.MapperService;
 import org.havenask.index.mapper.MapperServiceTestCase;
 import org.havenask.index.shard.ShardId;
 
+import static org.havenask.engine.index.config.generator.BizConfigGenerator.BIZ_DIR;
 import static org.havenask.engine.index.config.generator.BizConfigGenerator.CLUSTER_DIR;
 import static org.havenask.engine.index.config.generator.BizConfigGenerator.CLUSTER_FILE_SUFFIX;
 import static org.havenask.engine.index.config.generator.BizConfigGenerator.SCHEMAS_DIR;
@@ -55,13 +56,13 @@ public class BizConfigGeneratorTests extends MapperServiceTestCase {
         when(engineConfig.getCodecService()).thenReturn(codecService);
         when(engineConfig.getIndexSettings()).thenReturn(settings);
         Path configPath = createTempDir();
-        Files.createDirectories(configPath.resolve("0").resolve(CLUSTER_DIR));
-        Files.createDirectories(configPath.resolve("0").resolve(SCHEMAS_DIR));
+        Files.createDirectories(configPath.resolve(BIZ_DIR).resolve("0").resolve(CLUSTER_DIR));
+        Files.createDirectories(configPath.resolve(BIZ_DIR).resolve("0").resolve(SCHEMAS_DIR));
         BizConfigGenerator bizConfigGenerator = new BizConfigGenerator(engineConfig, configPath);
         bizConfigGenerator.generate();
 
         {
-            Path clusterConfigPath = configPath.resolve("0").resolve(CLUSTER_DIR).resolve(indexName + CLUSTER_FILE_SUFFIX);
+            Path clusterConfigPath = configPath.resolve(BIZ_DIR).resolve("0").resolve(CLUSTER_DIR).resolve(indexName + CLUSTER_FILE_SUFFIX);
             assertTrue(Files.exists(clusterConfigPath));
             String content = Files.readString(clusterConfigPath);
             String expect = String.format(
@@ -106,7 +107,7 @@ public class BizConfigGeneratorTests extends MapperServiceTestCase {
         }
 
         {
-            Path schemaConfigPath = configPath.resolve("0").resolve(SCHEMAS_DIR).resolve(indexName + SCHEMAS_FILE_SUFFIX);
+            Path schemaConfigPath = configPath.resolve(BIZ_DIR).resolve("0").resolve(SCHEMAS_DIR).resolve(indexName + SCHEMAS_FILE_SUFFIX);
             assertTrue(Files.exists(schemaConfigPath));
             String content = Files.readString(schemaConfigPath);
             String expect = String.format(

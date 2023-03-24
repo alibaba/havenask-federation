@@ -166,6 +166,9 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
 
     }
 
+    /**
+     * 进程管理任务
+     */
     class ProcessControlTask extends AbstractAsyncTask {
 
         ProcessControlTask(ThreadPool threadPool, TimeValue interval) {
