@@ -238,11 +238,12 @@ final class Bootstrap {
         IfConfig.logIfNecessary();
 
         // install SM after natives, shutdown hooks, etc.
-        try {
-            Security.configure(environment, BootstrapSettings.SECURITY_FILTER_BAD_DEFAULTS_SETTING.get(settings));
-        } catch (IOException | NoSuchAlgorithmException e) {
-            throw new BootstrapException(e);
-        }
+        // TODO 暂时屏蔽权限功能,后续再开启,目前开启会导致federation目录权限问题
+        //try {
+        //    Security.configure(environment, BootstrapSettings.SECURITY_FILTER_BAD_DEFAULTS_SETTING.get(settings));
+        //} catch (IOException | NoSuchAlgorithmException e) {
+        //    throw new BootstrapException(e);
+        //}
 
         node = new Node(environment) {
             @Override

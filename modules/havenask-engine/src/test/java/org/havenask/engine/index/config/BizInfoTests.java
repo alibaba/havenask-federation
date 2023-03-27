@@ -36,5 +36,4 @@ public class BizInfoTests extends AbstractXContentTestCase<BizInfo> {
         return false;
     }
 
-
 }

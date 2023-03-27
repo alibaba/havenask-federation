@@ -17,6 +17,7 @@ package org.havenask.engine.index.engine;
 import java.io.IOException;
 import java.util.concurrent.CountDownLatch;
 
+import org.apache.logging.log4j.message.ParameterizedMessage;
 import org.havenask.engine.HavenaskEngineEnvironment;
 import org.havenask.engine.NativeProcessControlService;
 import org.havenask.engine.index.config.generator.BizConfigGenerator;
@@ -47,7 +48,7 @@ public class HavenaskEngine extends InternalEngine {
             activeTable();
         } catch (IOException e) {
             // TODO
-            logger.error("shard [{}] activeTable exception", engineConfig.getShardId(), e);
+            logger.error(() -> new ParameterizedMessage("shard [{}] activeTable exception", engineConfig.getShardId()), e);
         }
     }
 
@@ -61,13 +62,14 @@ public class HavenaskEngine extends InternalEngine {
             inactiveTable();
         } catch (IOException e) {
             // TODO
-            logger.error("shard [{}] inactiveTable exception", engineConfig.getShardId(), e);
+            logger.error(() -> new ParameterizedMessage("shard [{}] inactiveTable exception", engineConfig.getShardId()), e);
         }
     }
 
     /**
      * 加载数据表
      * TODO 注意加锁,防止并发更新冲突
+     *
      * @throws IOException
      */
     private void activeTable() throws IOException {
@@ -79,6 +81,7 @@ public class HavenaskEngine extends InternalEngine {
 
     /**
      * 卸载数据表
+     *
      * @throws IOException
      */
     private synchronized void inactiveTable() throws IOException {
