@@ -21,7 +21,7 @@ setup:
 "Expressions scripting test":
   - skip:
       version: " - "
-      reason: hits.total is returned as an object in 7.0.0
+      reason: skip this test until security enabled
   - do:
       search:
         rest_total_hits_as_int: true
@@ -37,8 +37,8 @@ setup:
 ---
 "Expressions aggregation score test":
     - skip:
-          version: " - "
-          reason: hits.total is returned as an object in 7.0.0
+        version: " - "
+        reason: skip this test until security enabled
     - do:
         search:
           rest_total_hits_as_int: true
