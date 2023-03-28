@@ -43,16 +43,14 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
     public static final String QRS_ROLE = "qrs";
     private static final String START_SEARCHER_COMMAND = "cd %s;python %s/havenask/script/general_search_starter.py -i "
         + "%s -c %s -b /ha3_install -M in0 --role searcher --httpBindPort %d";
-    private static final String UPDATE_SEARCHER_COMMAND =
-        "cd %s;python %s/havenask/script/general_search_updater.py -i "
-            + "%s -c %s -M in0 --role searcher";
+    private static final String UPDATE_SEARCHER_COMMAND = "cd %s;python %s/havenask/script/general_search_updater.py -i "
+        + "%s -c %s -M in0 --role searcher";
     private static final String STOP_HAVENASK_COMMAND =
         "python /ha3_install/usr/local/lib/python/site-packages/ha_tools/local_search_stop.py"
             + " -c /ha3_install/usr/local/etc/ha3/ha3_alog.conf";
     private static final String CHECK_HAVENASK_ALIVE_COMMAND =
         "ps aux | grep sap_server_d | grep 'roleType=%s' | grep -v grep | awk '{print $2}'";
-    private static final String START_BS_JOB_COMMAND
-        = "python %s/havenask/script/bs_job_starter.py %s %s %s %s ";
+    private static final String START_BS_JOB_COMMAND = "python %s/havenask/script/bs_job_starter.py %s %s %s %s ";
 
     public static final Setting<Integer> HAVENASK_SEARCHER_HTTP_PORT_SETTING = Setting.intSetting(
         "havenask.searcher.http.port",
@@ -122,7 +120,9 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
             havenaskEngineEnvironment.getConfigPath()
         );
         this.stopHavenaskCommand = STOP_HAVENASK_COMMAND;
-        this.startBsJobCommand = String.format(Locale.ROOT, START_BS_JOB_COMMAND,
+        this.startBsJobCommand = String.format(
+            Locale.ROOT,
+            START_BS_JOB_COMMAND,
             environment.configFile().toAbsolutePath(),
             havenaskEngineEnvironment.getConfigPath().toAbsolutePath(),
             havenaskEngineEnvironment.getDataPath().toAbsolutePath(),
@@ -151,9 +151,9 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
 
         if (enabled && (isDataNode || isIngestNode)) {
             LOGGER.info("stop local searcher,qrs process");
-            AccessController.doPrivileged((PrivilegedAction<Void>)() -> {
+            AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
                 try {
-                    Process process = Runtime.getRuntime().exec(new String[] {"sh", "-c", stopHavenaskCommand});
+                    Process process = Runtime.getRuntime().exec(new String[] { "sh", "-c", stopHavenaskCommand });
                     process.waitFor();
                     if (process.exitValue() != 0) {
                         try (InputStream inputStream = process.getInputStream()) {
@@ -201,10 +201,9 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
                 if (false == checkProcessAlive(SEARCHER_ROLE)) {
                     LOGGER.info("current searcher process is not started, start searcher process");
                     // 启动searcher
-                    AccessController.doPrivileged((PrivilegedAction<Void>)() -> {
+                    AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
                         try {
-                            Process process = Runtime.getRuntime().exec(
-                                new String[] {"sh", "-c", startSearcherCommand});
+                            Process process = Runtime.getRuntime().exec(new String[] { "sh", "-c", startSearcherCommand });
                             process.waitFor();
                             if (process.exitValue() != 0) {
                                 try (InputStream inputStream = process.getInputStream()) {
@@ -244,9 +243,9 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
         Process process = null;
         String command = String.format(Locale.ROOT, CHECK_HAVENASK_ALIVE_COMMAND, role);
         try {
-            process = AccessController.doPrivileged((PrivilegedAction<Process>)() -> {
+            process = AccessController.doPrivileged((PrivilegedAction<Process>) () -> {
                 try {
-                    return Runtime.getRuntime().exec(new String[] {"sh", "-c", command});
+                    return Runtime.getRuntime().exec(new String[] { "sh", "-c", command });
                 } catch (IOException e) {
                     LOGGER.warn(() -> new ParameterizedMessage("run check script error, command [{}]", command), e);
                     return null;
@@ -273,8 +272,7 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
                         return false;
                     }
                 } catch (NumberFormatException e) {
-                    LOGGER.warn("check script get the process [{}] result format error, check result is [{}]", role,
-                        result);
+                    LOGGER.warn("check script get the process [{}] result format error, check result is [{}]", role, result);
                     return false;
                 }
             }
@@ -305,9 +303,9 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
     public void updateDataNodeTarget() {
         if (isDataNode) {
             // 更新datanode searcher的target
-            AccessController.doPrivileged((PrivilegedAction<Void>)() -> {
+            AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
                 try {
-                    Process process = Runtime.getRuntime().exec(new String[] {"sh", "-c", updateSearcherCommand});
+                    Process process = Runtime.getRuntime().exec(new String[] { "sh", "-c", updateSearcherCommand });
                     process.waitFor();
                     if (process.exitValue() != 0) {
                         try (InputStream inputStream = process.getInputStream()) {
@@ -329,9 +327,9 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
         if (isDataNode) {
             // 启动bs job
             final String finalStartBsJobCommand = startBsJobCommand + " " + indexName;
-            AccessController.doPrivileged((PrivilegedAction<Void>)() -> {
+            AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
                 try {
-                    Process process = Runtime.getRuntime().exec(new String[] {"sh", "-c", finalStartBsJobCommand});
+                    Process process = Runtime.getRuntime().exec(new String[] { "sh", "-c", finalStartBsJobCommand });
                     process.waitFor();
                     if (process.exitValue() != 0) {
                         try (InputStream inputStream = process.getInputStream()) {

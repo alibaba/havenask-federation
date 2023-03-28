@@ -177,7 +177,10 @@ public class BizConfigGeneratorTests extends MapperServiceTestCase {
         }
 
         {
-            Path dataTablesPath = configPath.resolve(BIZ_DIR).resolve("0").resolve(DATA_TABLES_DIR).resolve(indexName + DATA_TABLES_FILE_SUFFIX);
+            Path dataTablesPath = configPath.resolve(BIZ_DIR)
+                .resolve("0")
+                .resolve(DATA_TABLES_DIR)
+                .resolve(indexName + DATA_TABLES_FILE_SUFFIX);
             assertTrue(Files.exists(dataTablesPath));
             String content = Files.readString(dataTablesPath);
             String expect = String.format(

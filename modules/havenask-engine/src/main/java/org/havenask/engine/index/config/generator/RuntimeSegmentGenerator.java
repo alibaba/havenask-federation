@@ -14,13 +14,10 @@
 
 package org.havenask.engine.index.config.generator;
 
-import java.io.IOException;
 import java.nio.file.Files;
-import java.nio.file.Path;
 
 import org.havenask.engine.HavenaskEngineEnvironment;
 import org.havenask.engine.NativeProcessControlService;
-import org.havenask.engine.util.Utils;
 
 public class RuntimeSegmentGenerator {
 
@@ -28,8 +25,11 @@ public class RuntimeSegmentGenerator {
     private final HavenaskEngineEnvironment havenaskEngineEnvironment;
     private final String indexName;
 
-    public RuntimeSegmentGenerator(HavenaskEngineEnvironment havenaskEngineEnvironment,
-        NativeProcessControlService nativeProcessControlService, String indexName) {
+    public RuntimeSegmentGenerator(
+        HavenaskEngineEnvironment havenaskEngineEnvironment,
+        NativeProcessControlService nativeProcessControlService,
+        String indexName
+    ) {
         this.havenaskEngineEnvironment = havenaskEngineEnvironment;
         this.indexName = indexName;
         this.nativeProcessControlService = nativeProcessControlService;
@@ -41,22 +41,16 @@ public class RuntimeSegmentGenerator {
         }
     }
 
-    public void remove() {
-        Path dataPath = havenaskEngineEnvironment.getRuntimedataPath().resolve(indexName);
-        Utils.deleteDir(dataPath.toFile());
-    }
-
-    public static void generateRuntimeSegment(HavenaskEngineEnvironment havenaskEngineEnvironment,
-        NativeProcessControlService nativeProcessControlService, String indexName) {
-        RuntimeSegmentGenerator runtimeSegmentGenerator = new RuntimeSegmentGenerator(havenaskEngineEnvironment,
-            nativeProcessControlService, indexName);
+    public static void generateRuntimeSegment(
+        HavenaskEngineEnvironment havenaskEngineEnvironment,
+        NativeProcessControlService nativeProcessControlService,
+        String indexName
+    ) {
+        RuntimeSegmentGenerator runtimeSegmentGenerator = new RuntimeSegmentGenerator(
+            havenaskEngineEnvironment,
+            nativeProcessControlService,
+            indexName
+        );
         runtimeSegmentGenerator.generate();
-    }
-
-    public static void removeRuntimeSegment(HavenaskEngineEnvironment havenaskEngineEnvironment,
-        NativeProcessControlService nativeProcessControlService, String indexName) throws IOException {
-        RuntimeSegmentGenerator runtimeSegmentGenerator = new RuntimeSegmentGenerator(havenaskEngineEnvironment,
-            nativeProcessControlService, indexName);
-        runtimeSegmentGenerator.remove();
     }
 }

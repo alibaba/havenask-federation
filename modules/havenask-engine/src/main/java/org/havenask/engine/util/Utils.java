@@ -14,7 +14,6 @@
 
 package org.havenask.engine.util;
 
-import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.AccessController;
@@ -50,7 +49,9 @@ public class Utils {
      * get thr path that contain current jar file.
      */
     public static String getJarDir() {
-        if (JarDir != null) return JarDir;
+        if (JarDir != null) {
+            return JarDir;
+        }
         Path file = getFile();
         if (file == null) {
             throw new RuntimeException("jar file dir get failed!");
@@ -69,21 +70,5 @@ public class Utils {
             return null;
         }
         return Path.of(path);
-    }
-
-    /**
-     * 删除目录
-     * @param file
-     */
-    public static void deleteDir(File file) {
-        if (file.isDirectory()) {
-            File[] files = file.listFiles();
-            if (files != null) {
-                for (File f : files) {
-                    deleteDir(f);
-                }
-            }
-        }
-        file.delete();
     }
 }
