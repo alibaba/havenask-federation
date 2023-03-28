@@ -21,16 +21,19 @@ import org.apache.logging.log4j.message.ParameterizedMessage;
 import org.havenask.engine.HavenaskEngineEnvironment;
 import org.havenask.engine.NativeProcessControlService;
 import org.havenask.engine.index.config.generator.BizConfigGenerator;
+import org.havenask.engine.index.config.generator.RuntimeSegmentGenerator;
 import org.havenask.engine.index.config.generator.TableConfigGenerator;
 import org.havenask.engine.rpc.SearcherClient;
 import org.havenask.index.engine.EngineConfig;
 import org.havenask.index.engine.InternalEngine;
+import org.havenask.index.shard.ShardId;
 
 public class HavenaskEngine extends InternalEngine {
 
     private final SearcherClient searcherClient;
     private final HavenaskEngineEnvironment env;
     private final NativeProcessControlService nativeProcessControlService;
+    private final ShardId shardId;
 
     public HavenaskEngine(
         EngineConfig engineConfig,
@@ -42,6 +45,7 @@ public class HavenaskEngine extends InternalEngine {
         this.searcherClient = searcherClient;
         this.env = env;
         this.nativeProcessControlService = nativeProcessControlService;
+        this.shardId = engineConfig.getShardId();
 
         // 加载配置表
         try {
@@ -75,8 +79,10 @@ public class HavenaskEngine extends InternalEngine {
     private void activeTable() throws IOException {
         BizConfigGenerator.generateBiz(engineConfig, env.getConfigPath());
         TableConfigGenerator.generateTable(engineConfig, env.getConfigPath());
+        // 初始化segment信息
+        RuntimeSegmentGenerator.generateRuntimeSegment(env, nativeProcessControlService, shardId.getIndexName());
         // 更新配置表信息
-        // nativeProcessControlService.updateDataNodeTarget();
+        nativeProcessControlService.updateDataNodeTarget();
     }
 
     /**
@@ -88,6 +94,6 @@ public class HavenaskEngine extends InternalEngine {
         BizConfigGenerator.removeBiz(engineConfig, env.getConfigPath());
         TableConfigGenerator.removeTable(engineConfig, env.getConfigPath());
         // 更新配置表信息
-        // nativeProcessControlService.updateDataNodeTarget();
+        nativeProcessControlService.updateDataNodeTarget();
     }
 }

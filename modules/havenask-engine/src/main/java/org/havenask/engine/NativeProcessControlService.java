@@ -43,13 +43,16 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
     public static final String QRS_ROLE = "qrs";
     private static final String START_SEARCHER_COMMAND = "cd %s;python %s/havenask/script/general_search_starter.py -i "
         + "%s -c %s -b /ha3_install -M in0 --role searcher --httpBindPort %d";
-    private static final String UPDATE_SEARCHER_COMMAND = "cd %s;python %s/havenask/script/general_search_updater.py -i "
-        + "%s -c %s -M in0 --role searcher";
+    private static final String UPDATE_SEARCHER_COMMAND =
+        "cd %s;python %s/havenask/script/general_search_updater.py -i "
+            + "%s -c %s -M in0 --role searcher";
     private static final String STOP_HAVENASK_COMMAND =
         "python /ha3_install/usr/local/lib/python/site-packages/ha_tools/local_search_stop.py"
             + " -c /ha3_install/usr/local/etc/ha3/ha3_alog.conf";
     private static final String CHECK_HAVENASK_ALIVE_COMMAND =
         "ps aux | grep sap_server_d | grep 'roleType=%s' | grep -v grep | awk '{print $2}'";
+    private static final String START_BS_JOB_COMMAND
+        = "python %s/havenask/script/bs_job_starter.py %s %s %s %s ";
 
     public static final Setting<Integer> HAVENASK_SEARCHER_HTTP_PORT_SETTING = Setting.intSetting(
         "havenask.searcher.http.port",
@@ -79,6 +82,7 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
     protected String startSearcherCommand;
     protected String updateSearcherCommand;
     protected String stopHavenaskCommand;
+    protected String startBsJobCommand;
     private ProcessControlTask processControlTask;
     private boolean running;
 
@@ -118,6 +122,13 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
             havenaskEngineEnvironment.getConfigPath()
         );
         this.stopHavenaskCommand = STOP_HAVENASK_COMMAND;
+        this.startBsJobCommand = String.format(Locale.ROOT, START_BS_JOB_COMMAND,
+            environment.configFile().toAbsolutePath(),
+            havenaskEngineEnvironment.getConfigPath().toAbsolutePath(),
+            havenaskEngineEnvironment.getDataPath().toAbsolutePath(),
+            havenaskEngineEnvironment.getBsWorkPath().toAbsolutePath(),
+            havenaskEngineEnvironment.getRuntimedataPath().toAbsolutePath()
+        );
     }
 
     @Override
@@ -140,9 +151,9 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
 
         if (enabled && (isDataNode || isIngestNode)) {
             LOGGER.info("stop local searcher,qrs process");
-            AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
+            AccessController.doPrivileged((PrivilegedAction<Void>)() -> {
                 try {
-                    Process process = Runtime.getRuntime().exec(new String[] { "sh", "-c", stopHavenaskCommand });
+                    Process process = Runtime.getRuntime().exec(new String[] {"sh", "-c", stopHavenaskCommand});
                     process.waitFor();
                     if (process.exitValue() != 0) {
                         try (InputStream inputStream = process.getInputStream()) {
@@ -190,15 +201,16 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
                 if (false == checkProcessAlive(SEARCHER_ROLE)) {
                     LOGGER.info("current searcher process is not started, start searcher process");
                     // 启动searcher
-                    AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
+                    AccessController.doPrivileged((PrivilegedAction<Void>)() -> {
                         try {
-                            Process process = Runtime.getRuntime().exec(new String[] { "sh", "-c", startSearcherCommand });
+                            Process process = Runtime.getRuntime().exec(
+                                new String[] {"sh", "-c", startSearcherCommand});
                             process.waitFor();
                             if (process.exitValue() != 0) {
                                 try (InputStream inputStream = process.getInputStream()) {
                                     byte[] bytes = inputStream.readAllBytes();
                                     String result = new String(bytes, StandardCharsets.UTF_8);
-                                    LOGGER.warn("searcher start failed, failed reason: {}", result);
+                                    LOGGER.warn("searcher start failed, exit value: {}, failed reason: {}", process.exitValue(), result);
                                 }
                             }
                             process.destroy();
@@ -232,9 +244,9 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
         Process process = null;
         String command = String.format(Locale.ROOT, CHECK_HAVENASK_ALIVE_COMMAND, role);
         try {
-            process = AccessController.doPrivileged((PrivilegedAction<Process>) () -> {
+            process = AccessController.doPrivileged((PrivilegedAction<Process>)() -> {
                 try {
-                    return Runtime.getRuntime().exec(new String[] { "sh", "-c", command });
+                    return Runtime.getRuntime().exec(new String[] {"sh", "-c", command});
                 } catch (IOException e) {
                     LOGGER.warn(() -> new ParameterizedMessage("run check script error, command [{}]", command), e);
                     return null;
@@ -261,7 +273,8 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
                         return false;
                     }
                 } catch (NumberFormatException e) {
-                    LOGGER.warn("check script get the process [{}] result format error, check result is [{}]", role, result);
+                    LOGGER.warn("check script get the process [{}] result format error, check result is [{}]", role,
+                        result);
                     return false;
                 }
             }
@@ -289,23 +302,47 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
         return qrsHttpPort;
     }
 
-    public synchronized void updateDataNodeTarget() {
+    public void updateDataNodeTarget() {
         if (isDataNode) {
             // 更新datanode searcher的target
-            AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
+            AccessController.doPrivileged((PrivilegedAction<Void>)() -> {
                 try {
-                    Process process = Runtime.getRuntime().exec(new String[] { "sh", "-c", updateSearcherCommand });
+                    Process process = Runtime.getRuntime().exec(new String[] {"sh", "-c", updateSearcherCommand});
                     process.waitFor();
                     if (process.exitValue() != 0) {
                         try (InputStream inputStream = process.getInputStream()) {
                             byte[] bytes = inputStream.readAllBytes();
                             String result = new String(bytes, StandardCharsets.UTF_8);
-                            LOGGER.warn("searcher update target failed, failed reason: {}", result);
+                            LOGGER.warn("searcher update target failed, exit value: {}, failed reason: {}", process.exitValue(), result);
                         }
                     }
                     process.destroy();
                 } catch (Exception e) {
                     LOGGER.warn("searcher update target unexpected failed", e);
+                }
+                return null;
+            });
+        }
+    }
+
+    public void startBsJob(String indexName) {
+        if (isDataNode) {
+            // 启动bs job
+            final String finalStartBsJobCommand = startBsJobCommand + " " + indexName;
+            AccessController.doPrivileged((PrivilegedAction<Void>)() -> {
+                try {
+                    Process process = Runtime.getRuntime().exec(new String[] {"sh", "-c", finalStartBsJobCommand});
+                    process.waitFor();
+                    if (process.exitValue() != 0) {
+                        try (InputStream inputStream = process.getInputStream()) {
+                            byte[] bytes = inputStream.readAllBytes();
+                            String result = new String(bytes, StandardCharsets.UTF_8);
+                            LOGGER.warn("start bs job failed, exit value: {}, failed reason: {}", process.exitValue(), result);
+                        }
+                    }
+                    process.destroy();
+                } catch (Exception e) {
+                    LOGGER.warn("start bs job unexpected failed", e);
                 }
                 return null;
             });

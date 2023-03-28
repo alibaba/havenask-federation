@@ -34,6 +34,7 @@ public class HavenaskEngineEnvironment {
     public static final String HAVENASK_RUNTIMEDATA_PATH = "runtimedata";
     public static final String HAVENASK_TABLE_CONFIG_PATH = "table";
     public static final String HAVENASK_BIZS_CONFIG_PATH = "bizs";
+    public static final String HAVENASK_BS_WORK_PATH = "bs";
     public static final Setting<String> HAVENASK_PATH_DATA_SETTING = new Setting<>(
         "havenask.path.data",
         DEFAULT_DATA_PATH,
@@ -45,6 +46,7 @@ public class HavenaskEngineEnvironment {
     private final Path dataPath;
     private final Path configPath;
     private final Path runtimedataPath;
+    private final Path bsWorkPath;
     private final Path tablePath;
     private final Path bizsPath;
 
@@ -67,19 +69,44 @@ public class HavenaskEngineEnvironment {
 
         configPath = dataPath.resolve(HAVENASK_CONFIG_PATH);
         runtimedataPath = dataPath.resolve(HAVENASK_RUNTIMEDATA_PATH);
+        bsWorkPath = dataPath.resolve(HAVENASK_BS_WORK_PATH);
         tablePath = dataPath.resolve(HAVENASK_TABLE_CONFIG_PATH);
         bizsPath = dataPath.resolve(HAVENASK_BIZS_CONFIG_PATH);
     }
 
+    /**
+     * get havenask data path
+     *
+     * @return dataPath
+     */
     public Path getDataPath() {
         return dataPath;
     }
 
+    /**
+     * get config path
+     *
+     * @return configPath
+     */
     public Path getConfigPath() {
         return configPath;
     }
 
+    /**
+     * get runtime data path
+     *
+     * @return runtimedataPath
+     */
     public Path getRuntimedataPath() {
         return runtimedataPath;
+    }
+
+    /**
+     * get table config path
+     *
+     * @return bsWorkPath
+     */
+    public Path getBsWorkPath() {
+        return bsWorkPath;
     }
 }

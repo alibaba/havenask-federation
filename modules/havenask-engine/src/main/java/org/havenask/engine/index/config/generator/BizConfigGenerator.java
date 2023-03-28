@@ -19,8 +19,11 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.util.List;
 
 import org.havenask.engine.index.config.BizConfig;
+import org.havenask.engine.index.config.DataTable;
+import org.havenask.engine.index.config.Processor.ProcessorChainConfig;
 import org.havenask.engine.index.config.Schema;
 import org.havenask.engine.index.engine.SchemaGenerate;
 import org.havenask.engine.util.VersionUtils;
@@ -33,8 +36,10 @@ public class BizConfigGenerator {
     public static final String CLUSTER_FILE_SUFFIX = "_cluster.json";
     private static final String PLUGINS_DIR = "plugins";
     public static final String SCHEMAS_DIR = "schemas";
-    public static final String SCHEMAS_FILE_SUFFIX = "_schemas.json";
-    private static final String ZONES_DIR = "zones";
+    public static final String SCHEMAS_FILE_SUFFIX = "_schema.json";
+    public static final String ZONE_FILE_SUFFIX = "_zone.json";
+    public static final String DATA_TABLES_DIR = "data_tables";
+    public static final String DATA_TABLES_FILE_SUFFIX = "_table.json";
     private final Path configPath;
     private final EngineConfig engineConfig;
     private final String indexName;
@@ -61,6 +66,7 @@ public class BizConfigGenerator {
         generateClusterConfig(strVersion);
         generateSchema(strVersion);
         generateDefaultBizConfig(strVersion);
+        generateDataTable(strVersion);
     }
 
     public void remove() throws IOException {
@@ -71,6 +77,9 @@ public class BizConfigGenerator {
 
         Path schemaPath = configPath.resolve(strVersion).resolve(SCHEMAS_DIR).resolve(indexName + SCHEMAS_FILE_SUFFIX);
         Files.deleteIfExists(schemaPath);
+
+        Path dataTablePath = configPath.resolve(strVersion).resolve(DATA_TABLES_DIR).resolve(indexName + DATA_TABLES_FILE_SUFFIX);
+        Files.deleteIfExists(dataTablePath);
     }
 
     // TODO 实现具体功能
@@ -91,5 +100,14 @@ public class BizConfigGenerator {
         Schema schema = schemaGenerate.getSchema(engineConfig);
         Path schemaPath = configPath.resolve(version).resolve(SCHEMAS_DIR).resolve(indexName + SCHEMAS_FILE_SUFFIX);
         Files.write(schemaPath, schema.toString().getBytes(StandardCharsets.UTF_8), StandardOpenOption.CREATE);
+    }
+
+    private void generateDataTable(String version) throws IOException {
+        DataTable dataTable = new DataTable();
+        ProcessorChainConfig processorChainConfig = new ProcessorChainConfig();
+        processorChainConfig.clusters = List.of(indexName);
+        dataTable.processor_chain_config = List.of(processorChainConfig);
+        Path dataTablePath = configPath.resolve(version).resolve(DATA_TABLES_DIR).resolve(indexName + DATA_TABLES_FILE_SUFFIX);
+        Files.write(dataTablePath, dataTable.toString().getBytes(StandardCharsets.UTF_8), StandardOpenOption.CREATE);
     }
 }

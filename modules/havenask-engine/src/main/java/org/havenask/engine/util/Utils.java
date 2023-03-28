@@ -14,6 +14,7 @@
 
 package org.havenask.engine.util;
 
+import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.AccessController;
@@ -68,5 +69,21 @@ public class Utils {
             return null;
         }
         return Path.of(path);
+    }
+
+    /**
+     * 删除目录
+     * @param file
+     */
+    public static void deleteDir(File file) {
+        if (file.isDirectory()) {
+            File[] files = file.listFiles();
+            if (files != null) {
+                for (File f : files) {
+                    deleteDir(f);
+                }
+            }
+        }
+        file.delete();
     }
 }

@@ -425,8 +425,8 @@ examples:
         arpcPort = portList[1]
         address = "%s:%d" %(self.ip, httpArpcPort)
         while timeout > 0:
-            time.sleep(30)
-            timeout -= 30
+            time.sleep(0.1)
+            timeout -= 0.1
             log_file = os.path.join(self.localSearchDir, "qrs", 'logs/ha3.log')
             log_state = self.check_log_file(log_file)
             if log_state != 0:
@@ -475,8 +475,8 @@ examples:
     def _loadSearcherTarget(self, targetInfos, timeout = 300):
         self.readyZones = {}
         while timeout > 0:
-            time.sleep(30)
-            timeout -= 30
+            time.sleep(0.1)
+            timeout -= 0.1
             count = 0
             for targetInfo in targetInfos:
                 portList = self._getSearcherPortList(count)
