@@ -19,6 +19,9 @@ import java.nio.file.Files;
 import org.havenask.engine.HavenaskEngineEnvironment;
 import org.havenask.engine.NativeProcessControlService;
 
+/**
+ * TODO 后续将该流程调整在shard目录创建\删除的流程中
+ */
 public class RuntimeSegmentGenerator {
 
     private final NativeProcessControlService nativeProcessControlService;
