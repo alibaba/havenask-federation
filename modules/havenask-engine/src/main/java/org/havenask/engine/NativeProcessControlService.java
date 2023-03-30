@@ -43,8 +43,12 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
     public static final String QRS_ROLE = "qrs";
     private static final String START_SEARCHER_COMMAND = "cd %s;python %s/havenask/script/general_search_starter.py -i "
         + "%s -c %s -b /ha3_install -M in0 --role searcher --httpBindPort %d";
+    private static final String START_QRS_COMMAND = "cd %s;python %s/havenask/script/general_search_starter.py -i "
+        + "%s -c %s -b /ha3_install -M in0 --role qrs --httpBindPort %d";
     private static final String UPDATE_SEARCHER_COMMAND = "cd %s;python %s/havenask/script/general_search_updater.py -i "
         + "%s -c %s -M in0 --role searcher";
+    private static final String UPDATE_QRS_COMMAND = "cd %s;python %s/havenask/script/general_search_updater.py -i "
+        + "%s -c %s -M in0 --role qrs";
     private static final String STOP_HAVENASK_COMMAND =
         "python /ha3_install/usr/local/lib/python/site-packages/ha_tools/local_search_stop.py"
             + " -c /ha3_install/usr/local/etc/ha3/ha3_alog.conf";
@@ -78,6 +82,8 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
 
     protected String startSearcherCommand;
     protected String updateSearcherCommand;
+    protected String startQrsCommand;
+    protected String updateQrsCommand;
     protected String stopHavenaskCommand;
     private ProcessControlTask processControlTask;
     private boolean running;
@@ -112,6 +118,23 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
         this.updateSearcherCommand = String.format(
             Locale.ROOT,
             UPDATE_SEARCHER_COMMAND,
+            havenaskEngineEnvironment.getDataPath().toAbsolutePath(),
+            environment.configFile().toAbsolutePath(),
+            havenaskEngineEnvironment.getRuntimedataPath(),
+            havenaskEngineEnvironment.getConfigPath()
+        );
+        this.startQrsCommand = String.format(
+            Locale.ROOT,
+            START_QRS_COMMAND,
+            havenaskEngineEnvironment.getDataPath().toAbsolutePath(),
+            environment.configFile().toAbsolutePath(),
+            havenaskEngineEnvironment.getRuntimedataPath(),
+            havenaskEngineEnvironment.getConfigPath(),
+            qrsHttpPort
+        );
+        this.updateQrsCommand = String.format(
+            Locale.ROOT,
+            UPDATE_QRS_COMMAND,
             havenaskEngineEnvironment.getDataPath().toAbsolutePath(),
             environment.configFile().toAbsolutePath(),
             havenaskEngineEnvironment.getRuntimedataPath(),
@@ -204,6 +227,30 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
                             process.destroy();
                         } catch (Exception e) {
                             LOGGER.warn("start searcher process failed", e);
+                        }
+                        return null;
+                    });
+                }
+            }
+
+            if (isIngestNode) {
+                if (false == checkProcessAlive(QRS_ROLE)) {
+                    LOGGER.info("current qrs process is not started, start qrs process");
+                    // 启动qrs
+                    AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
+                        try {
+                            Process process = Runtime.getRuntime().exec(new String[] { "sh", "-c", startQrsCommand });
+                            process.waitFor();
+                            if (process.exitValue() != 0) {
+                                try (InputStream inputStream = process.getInputStream()) {
+                                    byte[] bytes = inputStream.readAllBytes();
+                                    String result = new String(bytes, StandardCharsets.UTF_8);
+                                    LOGGER.warn("qrs start failed, failed reason: {}", result);
+                                }
+                            }
+                            process.destroy();
+                        } catch (Exception e) {
+                            LOGGER.warn("start qrs process failed", e);
                         }
                         return null;
                     });
@@ -306,6 +353,29 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
                     process.destroy();
                 } catch (Exception e) {
                     LOGGER.warn("searcher update target unexpected failed", e);
+                }
+                return null;
+            });
+        }
+    }
+
+    public synchronized void updateIngestNodeTarget() {
+        if (isIngestNode) {
+            // 更新ingestnode qrs的target
+            AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
+                try {
+                    Process process = Runtime.getRuntime().exec(new String[] { "sh", "-c", updateQrsCommand });
+                    process.waitFor();
+                    if (process.exitValue() != 0) {
+                        try (InputStream inputStream = process.getInputStream()) {
+                            byte[] bytes = inputStream.readAllBytes();
+                            String result = new String(bytes, StandardCharsets.UTF_8);
+                            LOGGER.warn("qrs update target failed, failed reason: {}", result);
+                        }
+                    }
+                    process.destroy();
+                } catch (Exception e) {
+                    LOGGER.warn("qrs update target unexpected failed", e);
                 }
                 return null;
             });
