@@ -1,9 +1,3 @@
-package org.havenask.engine.util;
-
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.stream.Stream;
 /*
  * Copyright (c) 2021, Alibaba Group;
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,6 +11,14 @@ import java.util.stream.Stream;
  * limitations under the License.
  *
  */
+
+package org.havenask.engine.util;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.stream.Stream;
+
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
