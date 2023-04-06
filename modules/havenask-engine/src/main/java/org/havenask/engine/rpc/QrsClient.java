@@ -12,16 +12,11 @@
  *
  */
 
-package org.havenask.engine.search.action;
+package org.havenask.engine.rpc;
 
-import org.havenask.action.ActionType;
+import java.io.IOException;
 
-public class HavenaskSqlAction extends ActionType<HavenaskSqlResponse> {
+public interface QrsClient extends HavenaskClient {
 
-    public static final HavenaskSqlAction INSTANCE = new HavenaskSqlAction();
-    public static final String NAME = "indices:data/havenask/sql";
-
-    private HavenaskSqlAction() {
-        super(NAME, HavenaskSqlResponse::new);
-    }
+    QrsSqlResponse executeSql(QrsSqlRequest request) throws IOException;
 }

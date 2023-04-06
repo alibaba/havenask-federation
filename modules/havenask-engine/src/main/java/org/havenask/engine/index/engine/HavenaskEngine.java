@@ -22,24 +22,24 @@ import org.havenask.engine.HavenaskEngineEnvironment;
 import org.havenask.engine.NativeProcessControlService;
 import org.havenask.engine.index.config.generator.BizConfigGenerator;
 import org.havenask.engine.index.config.generator.TableConfigGenerator;
-import org.havenask.engine.rpc.SearcherClient;
+import org.havenask.engine.rpc.HavenaskClient;
 import org.havenask.index.engine.EngineConfig;
 import org.havenask.index.engine.InternalEngine;
 
 public class HavenaskEngine extends InternalEngine {
 
-    private final SearcherClient searcherClient;
+    private final HavenaskClient havenaskClient;
     private final HavenaskEngineEnvironment env;
     private final NativeProcessControlService nativeProcessControlService;
 
     public HavenaskEngine(
         EngineConfig engineConfig,
-        SearcherClient searcherClient,
+        HavenaskClient havenaskClient,
         HavenaskEngineEnvironment env,
         NativeProcessControlService nativeProcessControlService
     ) {
         super(engineConfig);
-        this.searcherClient = searcherClient;
+        this.havenaskClient = havenaskClient;
         this.env = env;
         this.nativeProcessControlService = nativeProcessControlService;
 

@@ -57,7 +57,6 @@ public class HavenaskSqlRequest extends ActionRequest {
         return validationException;
     }
 
-    // 写一个writeTo方法
     @Override
     public void writeTo(StreamOutput out) throws IOException {
         super.writeTo(out);
@@ -67,11 +66,7 @@ public class HavenaskSqlRequest extends ActionRequest {
 
     @Override
     public String toString() {
-        return "HavenaskSqlRequest{" +
-            "sql='" + sql + '\'' +
-            ", kvpair='" + kvpair + '\'' +
-            '}';
+        return "HavenaskSqlRequest{" + "sql='" + sql + '\'' + ", kvpair='" + kvpair + '\'' + '}';
     }
-
 
 }

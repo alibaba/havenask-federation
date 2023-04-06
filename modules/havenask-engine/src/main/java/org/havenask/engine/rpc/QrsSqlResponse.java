@@ -14,19 +14,20 @@
 
 package org.havenask.engine.rpc;
 
-import java.io.IOException;
+public class QrsSqlResponse {
+    private final String result;
+    private final int resultCode;
 
-public interface SearcherClient {
-    /**
-     * 获取searcher heartbeat target数据
-     * @return Heartbeat target响应结果
-     */
-    HeartbeatTargetResponse getHeartbeatTarget() throws IOException;
+    public QrsSqlResponse(String result, int resultCode) {
+        this.result = result;
+        this.resultCode = resultCode;
+    }
 
-    /**
-     * 更新searcher heartbeat target
-     * @param request 更新请求
-     * @return 更新searcher heartbeat target的响应结果
-     */
-    HeartbeatTargetResponse updateHeartbeatTarget(UpdateHeartbeatTargetRequest request) throws IOException;
+    public String getResult() {
+        return result;
+    }
+
+    public int getResultCode() {
+        return resultCode;
+    }
 }

@@ -22,22 +22,30 @@ import org.havenask.common.io.stream.StreamOutput;
 
 public class HavenaskSqlResponse extends ActionResponse {
 
-        private final String result;
+    private final String result;
+    private final int resultCode;
 
-        public HavenaskSqlResponse(StreamInput in) throws IOException {
-            result = in.readString();
-        }
+    public HavenaskSqlResponse(StreamInput in) throws IOException {
+        result = in.readString();
+        resultCode = in.readInt();
+    }
 
-        public HavenaskSqlResponse(String result) {
-            this.result = result;
-        }
+    public HavenaskSqlResponse(String result, int resultCode) {
+        this.result = result;
+        this.resultCode = resultCode;
+    }
 
-        public String getResult() {
-            return result;
-        }
+    public String getResult() {
+        return result;
+    }
 
-        @Override
-        public void writeTo(StreamOutput out) throws IOException {
-            out.writeString(result);
-        }
+    public int getResultCode() {
+        return resultCode;
+    }
+
+    @Override
+    public void writeTo(StreamOutput out) throws IOException {
+        out.writeString(result);
+        out.writeInt(resultCode);
+    }
 }

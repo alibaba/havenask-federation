@@ -12,16 +12,21 @@
  *
  */
 
-package org.havenask.engine.search.action;
+package org.havenask.engine.rpc;
 
-import org.havenask.action.ActionType;
+import java.io.IOException;
 
-public class HavenaskSqlAction extends ActionType<HavenaskSqlResponse> {
+public interface HavenaskClient {
+    /**
+     * 获取searcher heartbeat target数据
+     * @return Heartbeat target响应结果
+     */
+    HeartbeatTargetResponse getHeartbeatTarget() throws IOException;
 
-    public static final HavenaskSqlAction INSTANCE = new HavenaskSqlAction();
-    public static final String NAME = "indices:data/havenask/sql";
-
-    private HavenaskSqlAction() {
-        super(NAME, HavenaskSqlResponse::new);
-    }
+    /**
+     * 更新searcher heartbeat target
+     * @param request 更新请求
+     * @return 更新searcher heartbeat target的响应结果
+     */
+    HeartbeatTargetResponse updateHeartbeatTarget(UpdateHeartbeatTargetRequest request) throws IOException;
 }

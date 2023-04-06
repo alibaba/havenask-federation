@@ -12,16 +12,22 @@
  *
  */
 
-package org.havenask.engine.search.action;
+package org.havenask.engine.rpc;
 
-import org.havenask.action.ActionType;
+public class QrsSqlRequest {
+    private final String sql;
+    private final String kvpair;
 
-public class HavenaskSqlAction extends ActionType<HavenaskSqlResponse> {
+    public QrsSqlRequest(String sql, String kvpair) {
+        this.sql = sql;
+        this.kvpair = kvpair;
+    }
 
-    public static final HavenaskSqlAction INSTANCE = new HavenaskSqlAction();
-    public static final String NAME = "indices:data/havenask/sql";
+    public String getSql() {
+        return sql;
+    }
 
-    private HavenaskSqlAction() {
-        super(NAME, HavenaskSqlResponse::new);
+    public String getKvpair() {
+        return kvpair;
     }
 }

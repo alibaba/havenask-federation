@@ -38,10 +38,7 @@ public class RestHavenaskSqlAction extends BaseRestHandler {
     }
 
     public List<Route> routes() {
-        return List.of(
-            new Route(Method.GET, "/_havenask/sql"),
-            new Route(Method.POST, "/_havenask/sql")
-        );
+        return List.of(new Route(Method.GET, "/_havenask/sql"), new Route(Method.POST, "/_havenask/sql"));
     }
 
     @Override
@@ -136,12 +133,15 @@ public class RestHavenaskSqlAction extends BaseRestHandler {
         }
 
         HavenaskSqlRequest havenaskSqlRequest = new HavenaskSqlRequest(query, kvpair);
-        return channel -> client.execute(HavenaskSqlAction.INSTANCE, havenaskSqlRequest,
-            new RestBuilderListener<>(channel) {
-                @Override
-                public RestResponse buildResponse(HavenaskSqlResponse response, XContentBuilder builder) {
-                    return new BytesRestResponse(RestStatus.OK, response.getResult());
+        return channel -> client.execute(HavenaskSqlAction.INSTANCE, havenaskSqlRequest, new RestBuilderListener<>(channel) {
+            @Override
+            public RestResponse buildResponse(HavenaskSqlResponse response, XContentBuilder builder) {
+                RestStatus status = RestStatus.fromCode(response.getResultCode());
+                if (status == null) {
+                    status = RestStatus.INTERNAL_SERVER_ERROR;
                 }
-            });
+                return new BytesRestResponse(status, response.getResult());
+            }
+        });
     }
 }
