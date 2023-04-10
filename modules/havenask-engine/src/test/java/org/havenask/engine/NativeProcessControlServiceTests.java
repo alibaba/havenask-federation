@@ -87,6 +87,22 @@ public class NativeProcessControlServiceTests extends HavenaskTestCase {
         });
     }
 
+    public void testStartStopQrs() throws Exception {
+        // 启动qrs
+        nativeProcessControlService.start();
+        assertBusy(() -> {
+            boolean alive = nativeProcessControlService.checkProcessAlive(NativeProcessControlService.QRS_ROLE);
+            assertTrue(alive);
+        });
+
+        // 关闭启动qrs
+        nativeProcessControlService.stop();
+        assertBusy(() -> {
+            boolean alive = nativeProcessControlService.checkProcessAlive(NativeProcessControlService.QRS_ROLE);
+            assertFalse(alive);
+        });
+    }
+
     public void testCheckProcessAlive() throws Exception {
         // 传递错误的searcher名称
         {
