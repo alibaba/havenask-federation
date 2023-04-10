@@ -394,7 +394,6 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
         }
     }
 
-                    
     public synchronized void updateIngestNodeTarget() {
         if (isIngestNode) {
             // 更新ingestnode qrs的target
