@@ -51,85 +51,7 @@ public class RestHavenaskSqlAction extends BaseRestHandler {
         String kvpair = request.param("kvpair");
         if (kvpair == null) {
             // 组装kvpair
-            String trace = request.param("trace");
-            String formatType = request.param("format");
-            long timeout = request.paramAsLong("timeout", -1);
-            boolean searchInfo = request.paramAsBoolean("searchInfo", false);
-            boolean sqlPlan = request.paramAsBoolean("sqlPlan", false);
-            boolean forbitMergeSearchInfo = request.paramAsBoolean("forbitMergeSearchInfo", false);
-            boolean resultReadable = request.paramAsBoolean("resultReadable", false);
-            int parallel = request.paramAsInt("parallel", 1);
-            String parallelTables = request.param("parallelTables");
-            String databaseName = request.param("databaseName");
-            boolean lackResultEnable = request.paramAsBoolean("lackResultEnable", false);
-            boolean optimizerDebug = request.paramAsBoolean("optimizerDebug", false);
-            boolean sortLimitTogether = request.paramAsBoolean("sortLimitTogether", true);
-            boolean forceLimit = request.paramAsBoolean("forceLimit", false);
-            boolean joinConditionCheck = request.paramAsBoolean("joinConditionCheck", true);
-            boolean forceJoinHask = request.paramAsBoolean("forceJoinHask", false);
-            boolean planLevel = request.paramAsBoolean("planLevel", false);
-            boolean cacheEnable = request.paramAsBoolean("cacheEnable", false);
-
-            StringBuffer kvBuffer = new StringBuffer();
-            if (trace != null) {
-                kvBuffer.append("trace:").append(trace).append(";");
-            }
-            if (formatType != null) {
-                kvBuffer.append("format:").append(formatType).append(";");
-            }
-            if (timeout > 0) {
-                kvBuffer.append("timeout:").append(timeout).append(";");
-            }
-            if (searchInfo) {
-                kvBuffer.append("searchInfo:").append(searchInfo).append(";");
-            }
-            if (sqlPlan) {
-                kvBuffer.append("sqlPlan:").append(sqlPlan).append(";");
-            }
-            if (forbitMergeSearchInfo) {
-                kvBuffer.append("forbitMergeSearchInfo:").append(forbitMergeSearchInfo).append(";");
-            }
-            if (resultReadable) {
-                kvBuffer.append("resultReadable:").append(resultReadable).append(";");
-            }
-            if (parallel > 1) {
-                kvBuffer.append("parallel:").append(parallel).append(";");
-            }
-            if (parallelTables != null) {
-                kvBuffer.append("parallelTables:").append(parallelTables).append(";");
-            }
-            if (databaseName != null) {
-                kvBuffer.append("databaseName:").append(databaseName).append(";");
-            }
-            if (lackResultEnable) {
-                kvBuffer.append("lackResultEnable:").append(lackResultEnable).append(";");
-            }
-            if (optimizerDebug) {
-                kvBuffer.append("optimizerDebug:").append(optimizerDebug).append(";");
-            }
-            if (false == sortLimitTogether) {
-                kvBuffer.append("sortLimitTogether:").append(sortLimitTogether).append(";");
-            }
-            if (forceLimit) {
-                kvBuffer.append("forceLimit:").append(forceLimit).append(";");
-            }
-            if (false == joinConditionCheck) {
-                kvBuffer.append("joinConditionCheck:").append(joinConditionCheck).append(";");
-            }
-            if (forceJoinHask) {
-                kvBuffer.append("forceJoinHask:").append(forceJoinHask).append(";");
-            }
-            if (planLevel) {
-                kvBuffer.append("planLevel:").append(planLevel).append(";");
-            }
-            if (cacheEnable) {
-                kvBuffer.append("cacheEnable:").append(cacheEnable).append(";");
-            }
-
-            kvpair = kvBuffer.toString();
-            if (kvpair.length() > 0) {
-                kvpair = kvpair.substring(0, kvpair.length() - 1);
-            }
+            kvpair = buildKvpair(request);
         }
 
         HavenaskSqlRequest havenaskSqlRequest = new HavenaskSqlRequest(query, kvpair);
@@ -143,5 +65,90 @@ public class RestHavenaskSqlAction extends BaseRestHandler {
                 return new BytesRestResponse(status, response.getResult());
             }
         });
+    }
+
+    static String buildKvpair(RestRequest request) {
+        String trace = request.param("trace");
+        String formatType = request.param("format");
+        long timeout = request.paramAsLong("timeout", -1);
+        boolean searchInfo = request.paramAsBoolean("searchInfo", false);
+        boolean sqlPlan = request.paramAsBoolean("sqlPlan", false);
+        boolean forbitMergeSearchInfo = request.paramAsBoolean("forbitMergeSearchInfo", false);
+        boolean resultReadable = request.paramAsBoolean("resultReadable", false);
+        int parallel = request.paramAsInt("parallel", 1);
+        String parallelTables = request.param("parallelTables");
+        String databaseName = request.param("databaseName");
+        boolean lackResultEnable = request.paramAsBoolean("lackResultEnable", false);
+        boolean optimizerDebug = request.paramAsBoolean("optimizerDebug", false);
+        boolean sortLimitTogether = request.paramAsBoolean("sortLimitTogether", true);
+        boolean forceLimit = request.paramAsBoolean("forceLimit", false);
+        boolean joinConditionCheck = request.paramAsBoolean("joinConditionCheck", true);
+        boolean forceJoinHask = request.paramAsBoolean("forceJoinHask", false);
+        boolean planLevel = request.paramAsBoolean("planLevel", false);
+        boolean cacheEnable = request.paramAsBoolean("cacheEnable", false);
+
+        StringBuffer kvBuffer = new StringBuffer();
+        if (trace != null) {
+            kvBuffer.append("trace:").append(trace).append(";");
+        }
+        if (formatType != null) {
+            kvBuffer.append("format:").append(formatType).append(";");
+        }
+        if (timeout > 0) {
+            kvBuffer.append("timeout:").append(timeout).append(";");
+        }
+        if (searchInfo) {
+            kvBuffer.append("searchInfo:").append(searchInfo).append(";");
+        }
+        if (sqlPlan) {
+            kvBuffer.append("sqlPlan:").append(sqlPlan).append(";");
+        }
+        if (forbitMergeSearchInfo) {
+            kvBuffer.append("forbitMergeSearchInfo:").append(forbitMergeSearchInfo).append(";");
+        }
+        if (resultReadable) {
+            kvBuffer.append("resultReadable:").append(resultReadable).append(";");
+        }
+        if (parallel > 1) {
+            kvBuffer.append("parallel:").append(parallel).append(";");
+        }
+        if (parallelTables != null) {
+            kvBuffer.append("parallelTables:").append(parallelTables).append(";");
+        }
+        if (databaseName != null) {
+            kvBuffer.append("databaseName:").append(databaseName).append(";");
+        }
+        if (lackResultEnable) {
+            kvBuffer.append("lackResultEnable:").append(lackResultEnable).append(";");
+        }
+        if (optimizerDebug) {
+            kvBuffer.append("optimizerDebug:").append(optimizerDebug).append(";");
+        }
+        if (false == sortLimitTogether) {
+            kvBuffer.append("sortLimitTogether:").append(sortLimitTogether).append(";");
+        }
+        if (forceLimit) {
+            kvBuffer.append("forceLimit:").append(forceLimit).append(";");
+        }
+        if (false == joinConditionCheck) {
+            kvBuffer.append("joinConditionCheck:").append(joinConditionCheck).append(";");
+        }
+        if (forceJoinHask) {
+            kvBuffer.append("forceJoinHask:").append(forceJoinHask).append(";");
+        }
+        if (planLevel) {
+            kvBuffer.append("planLevel:").append(planLevel).append(";");
+        }
+        if (cacheEnable) {
+            kvBuffer.append("cacheEnable:").append(cacheEnable).append(";");
+        }
+
+        String kvpair = kvBuffer.toString();
+        if (kvpair.length() == 0) {
+            return null;
+        } else if (kvpair.length() > 0) {
+            kvpair = kvpair.substring(0, kvpair.length() - 1);
+        }
+        return kvpair;
     }
 }
