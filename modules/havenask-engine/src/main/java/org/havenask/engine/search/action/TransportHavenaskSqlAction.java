@@ -19,6 +19,7 @@ import java.io.IOException;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.havenask.action.ActionListener;
+import org.havenask.action.ingest.IngestActionForwarder;
 import org.havenask.action.support.ActionFilters;
 import org.havenask.action.support.HandledTransportAction;
 import org.havenask.cluster.service.ClusterService;
@@ -37,6 +38,7 @@ public class TransportHavenaskSqlAction extends HandledTransportAction<HavenaskS
     private static final Logger logger = LogManager.getLogger(TransportHavenaskSqlAction.class);
 
     private ClusterService clusterService;
+    private final IngestActionForwarder ingestForwarder;
     private QrsClient qrsClient;
 
     @Inject
@@ -47,11 +49,18 @@ public class TransportHavenaskSqlAction extends HandledTransportAction<HavenaskS
         ActionFilters actionFilters
     ) {
         super(HavenaskSqlAction.NAME, transportService, actionFilters, HavenaskSqlRequest::new, Names.SEARCH);
+        this.clusterService = clusterService;
+        this.ingestForwarder = new IngestActionForwarder(transportService);
         this.qrsClient = new QrsHttpClient(nativeProcessControlService.getQrsHttpPort());
     }
 
     @Override
     protected void doExecute(Task task, HavenaskSqlRequest request, ActionListener<HavenaskSqlResponse> listener) {
+        if (false == clusterService.localNode().isIngestNode()) {
+            ingestForwarder.forwardIngestRequest(HavenaskSqlAction.INSTANCE, request, listener);
+            return;
+        }
+
         QrsSqlRequest qrsSqlRequest = new QrsSqlRequest(request.getSql(), request.getKvpair());
         try {
             QrsSqlResponse result = qrsClient.executeSql(qrsSqlRequest);
