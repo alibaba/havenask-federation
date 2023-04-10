@@ -174,14 +174,6 @@ public class SchemaGenerate {
             schema.attributes.add("_primary_term");
             schema.fields.add(new Schema.FieldInfo("_primary_term", Ha3FieldType.get("_primary_term")));
         }
-        // add local checkpoint field
-        if (addedFields.contains("_local_checkpoint")) {
-            throw new RuntimeException("_local_checkpoint is built-in field name!");
-        }
-        addedFields.add("_local_checkpoint");
-        schema.attributes.add("_local_checkpoint");
-        schema.fields.add(new Schema.FieldInfo("_local_checkpoint", Ha3FieldType.get("_local_checkpoint")));
-        schema.summarys.summary_fields.add("_local_checkpoint");
 
         // extra schema process
         Integer floatToLong = EngineSettings.HA3_FLOAT_MUL_BY10.get(indexSettings.getSettings());

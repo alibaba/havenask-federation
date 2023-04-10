@@ -14,17 +14,18 @@
 
 package org.havenask.engine.index.config;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class Processor {
     public ProcessorChainConfig[] processor_chain_config;
 
     public static class ProcessorChainConfig {
-        public String table_name;
-        public String[] clusters;
-        public Module[] modules;
-        public ProcessChain[] document_processor_chain;
-        public ProcessChain[] sub_document_processor_chain;
+        public List<String> clusters = new ArrayList<>();
+        public List<Module> modules = new ArrayList<>();
+        public List<ProcessChain> document_processor_chain = List.of(new ProcessChain());
     }
 
     public static Processor getEmptyProcessor() {
@@ -34,8 +35,8 @@ public class Processor {
     }
 
     public static class ProcessorConfig {
-        public int processor_queue_size;
-        public int processor_thread_num;
+        public int processor_queue_size = 2000;
+        public int processor_thread_num = 30;
     }
 
     public static class Module {
@@ -45,9 +46,9 @@ public class Processor {
     }
 
     public static class ProcessChain {
-        public String class_name;
-        public String module_name;
-        public Map<String, String> parameters;
+        public String class_name = "TokenizeDocumentProcessor";
+        public String module_name = "";
+        public Map<String, String> parameters = new HashMap<>();
 
         public ProcessChain() {}
 
@@ -55,4 +56,10 @@ public class Processor {
             this.class_name = class_name;
         }
     }
+
+    public static class ProcessorRuleConfig {
+        public int parallel_num = 1;
+        public int partition_count = 1;
+    }
+
 }

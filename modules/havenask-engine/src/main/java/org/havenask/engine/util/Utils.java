@@ -49,7 +49,9 @@ public class Utils {
      * get thr path that contain current jar file.
      */
     public static String getJarDir() {
-        if (JarDir != null) return JarDir;
+        if (JarDir != null) {
+            return JarDir;
+        }
         Path file = getFile();
         if (file == null) {
             throw new RuntimeException("jar file dir get failed!");
