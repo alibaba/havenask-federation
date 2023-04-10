@@ -23,17 +23,27 @@ import java.util.function.Supplier;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.lucene.util.SetOnce;
+import org.havenask.action.ActionRequest;
+import org.havenask.action.ActionResponse;
 import org.havenask.client.Client;
 import org.havenask.cluster.metadata.IndexNameExpressionResolver;
+import org.havenask.cluster.node.DiscoveryNodes;
 import org.havenask.cluster.service.ClusterService;
 import org.havenask.common.io.stream.NamedWriteableRegistry;
+import org.havenask.common.settings.ClusterSettings;
+import org.havenask.common.settings.IndexScopedSettings;
 import org.havenask.common.settings.Setting;
 import org.havenask.common.settings.Setting.Property;
+import org.havenask.common.settings.Settings;
+import org.havenask.common.settings.SettingsFilter;
 import org.havenask.common.xcontent.NamedXContentRegistry;
 import org.havenask.engine.index.engine.EngineSettings;
 import org.havenask.engine.index.engine.HavenaskEngine;
 import org.havenask.engine.rpc.HavenaskClient;
 import org.havenask.engine.rpc.http.HavenaskHttpClient;
+import org.havenask.engine.search.action.HavenaskSqlAction;
+import org.havenask.engine.search.action.TransportHavenaskSqlAction;
+import org.havenask.engine.search.rest.RestHavenaskSqlAction;
 import org.havenask.env.Environment;
 import org.havenask.env.NodeEnvironment;
 import org.havenask.index.IndexSettings;
@@ -44,6 +54,8 @@ import org.havenask.plugins.EnginePlugin;
 import org.havenask.plugins.Plugin;
 import org.havenask.plugins.SearchPlugin;
 import org.havenask.repositories.RepositoriesService;
+import org.havenask.rest.RestController;
+import org.havenask.rest.RestHandler;
 import org.havenask.script.ScriptService;
 import org.havenask.threadpool.ThreadPool;
 import org.havenask.watcher.ResourceWatcherService;
@@ -115,5 +127,23 @@ public class HavenaskEnginePlugin extends Plugin implements EnginePlugin, Analys
             EngineSettings.ENGINE_TYPE_SETTING,
             EngineSettings.HA3_FLOAT_MUL_BY10
         );
+    }
+
+    @Override
+    public List<ActionHandler<? extends ActionRequest, ? extends ActionResponse>> getActions() {
+        return Arrays.asList(new ActionHandler<>(HavenaskSqlAction.INSTANCE, TransportHavenaskSqlAction.class));
+    }
+
+    @Override
+    public List<RestHandler> getRestHandlers(
+        Settings settings,
+        RestController restController,
+        ClusterSettings clusterSettings,
+        IndexScopedSettings indexScopedSettings,
+        SettingsFilter settingsFilter,
+        IndexNameExpressionResolver indexNameExpressionResolver,
+        Supplier<DiscoveryNodes> nodesInCluster
+    ) {
+        return Arrays.asList(new RestHavenaskSqlAction());
     }
 }

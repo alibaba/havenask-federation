@@ -18,5 +18,12 @@ import java.io.IOException;
 
 public interface QrsClient extends HavenaskClient {
 
+    /**
+     * Execute havenask sql
+     *
+     * @param request havenask sql request
+     * @return havenask sql response
+     * @throws IOException
+     */
     QrsSqlResponse executeSql(QrsSqlRequest request) throws IOException;
 }

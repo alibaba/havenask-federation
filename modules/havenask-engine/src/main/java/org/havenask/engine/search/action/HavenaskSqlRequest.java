@@ -15,6 +15,7 @@
 package org.havenask.engine.search.action;
 
 import java.io.IOException;
+import java.util.Objects;
 
 import org.havenask.action.ActionRequest;
 import org.havenask.action.ActionRequestValidationException;
@@ -69,4 +70,20 @@ public class HavenaskSqlRequest extends ActionRequest {
         return "HavenaskSqlRequest{" + "sql='" + sql + '\'' + ", kvpair='" + kvpair + '\'' + '}';
     }
 
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        HavenaskSqlRequest that = (HavenaskSqlRequest) o;
+        return Objects.equals(sql, that.sql) && Objects.equals(kvpair, that.kvpair);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(sql, kvpair);
+    }
 }

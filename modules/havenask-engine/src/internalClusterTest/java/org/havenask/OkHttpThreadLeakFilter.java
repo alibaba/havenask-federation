@@ -12,16 +12,13 @@
  *
  */
 
-package org.havenask.engine.search.action;
+package org.havenask;
 
-import org.havenask.action.ActionType;
+import com.carrotsearch.randomizedtesting.ThreadFilter;
 
-public class HavenaskSqlAction extends ActionType<HavenaskSqlResponse> {
-
-    public static final HavenaskSqlAction INSTANCE = new HavenaskSqlAction();
-    public static final String NAME = "indices:data/read/havenask/sql";
-
-    private HavenaskSqlAction() {
-        super(NAME, HavenaskSqlResponse::new);
+public class OkHttpThreadLeakFilter implements ThreadFilter {
+    @Override
+    public boolean reject(Thread t) {
+        return t.getName().startsWith("Okio") || t.getName().startsWith("OkHttp");
     }
 }
