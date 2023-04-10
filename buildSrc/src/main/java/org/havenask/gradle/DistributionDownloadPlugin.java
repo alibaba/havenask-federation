@@ -236,23 +236,14 @@ public class DistributionDownloadPlugin implements Plugin<Project> {
         }
 
         String extension = distribution.getType().toString();
-        String classifier = distroVersion.onOrAfter("1.0.0") ? ":x64" : ":x86_64";
+        String classifier = ":" + (Architecture.current() == Architecture.AARCH64 ? "aarch64" : "x86_64");
         if (distribution.getType() == Type.ARCHIVE) {
             extension = distribution.getPlatform() == Platform.WINDOWS ? "zip" : "tar.gz";
-
-            if (distroVersion.onOrAfter("1.0.0")) {
-                switch (distribution.getArchitecture()) {
-                    case ARM64:
-                        classifier = ":" + distribution.getPlatform() + "-arm64";
-                        break;
-                    case X64:
-                        classifier = ":" + distribution.getPlatform() + "-x64";
-                        break;
-                    default:
-                        throw new IllegalArgumentException("Unsupported architecture: " + distribution.getArchitecture());
-                }
-            } else if (distroVersion.onOrAfter("7.0.0")) {
-                classifier = ":" + distribution.getPlatform() + "-x86_64";
+            if (distroVersion.onOrAfter("7.0.0")) {
+                classifier = ":"
+                    + distribution.getPlatform()
+                    + "-"
+                    + (Architecture.current() == Architecture.AARCH64 ? "aarch64" : "x86_64");
             } else {
                 classifier = "";
             }

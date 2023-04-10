@@ -56,7 +56,7 @@ import java.util.regex.Pattern;
 public class Jdk implements Buildable, Iterable<File> {
 
     private static final List<String> ALLOWED_ARCHITECTURES = Collections.unmodifiableList(Arrays.asList("aarch64", "x64"));
-    private static final List<String> ALLOWED_VENDORS = Collections.unmodifiableList(Arrays.asList("adoptopenjdk", "openjdk"));
+    private static final List<String> ALLOWED_VENDORS = Collections.unmodifiableList(Arrays.asList("adoptopenjdk", "openjdk", "azul"));
     private static final List<String> ALLOWED_PLATFORMS = Collections.unmodifiableList(Arrays.asList("darwin", "linux", "windows", "mac"));
     private static final Pattern VERSION_PATTERN = Pattern.compile("(\\d+)(\\.\\d+\\.\\d+)?\\+(\\d+(?:\\.\\d+)?)(@([a-f0-9]{32}))?");
     private static final Pattern LEGACY_VERSION_PATTERN = Pattern.compile("(\\d)(u\\d+)\\+(b\\d+?)(@([a-f0-9]{32}))?");
@@ -127,10 +127,9 @@ public class Jdk implements Buildable, Iterable<File> {
     }
 
     public void setArchitecture(final String architecture) {
-        String jdkArchitecture = translateJdkArchitecture(architecture);
-        if (ALLOWED_ARCHITECTURES.contains(jdkArchitecture) == false) {
+        if (ALLOWED_ARCHITECTURES.contains(architecture) == false) {
             throw new IllegalArgumentException(
-                "unknown architecture [" + jdkArchitecture + "] for jdk [" + name + "], must be one of " + ALLOWED_ARCHITECTURES
+                "unknown architecture [" + architecture + "] for jdk [" + name + "], must be one of " + ALLOWED_ARCHITECTURES
             );
         }
         this.architecture.set(architecture);
@@ -235,13 +234,6 @@ public class Jdk implements Buildable, Iterable<File> {
         major = jdkVersionMatcher.group(1);
         build = jdkVersionMatcher.group(3);
         hash = jdkVersionMatcher.group(5);
-    }
-
-    private String translateJdkArchitecture(String architecture) {
-        /*
-         * Jdk uses aarch64 from ARM. Translating from arm64 to aarch64 which Jdk understands.
-         */
-        return "arm64".equals(architecture) ? "aarch64" : architecture;
     }
 
 }

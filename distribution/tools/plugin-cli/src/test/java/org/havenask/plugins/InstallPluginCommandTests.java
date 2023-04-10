@@ -656,7 +656,7 @@ public class InstallPluginCommandTests extends HavenaskTestCase {
         final Path pluginDir = createPluginDir(temp);
         final Path resourcesDir = pluginDir.resolve("resources");
         final Path platformDir = pluginDir.resolve("platform");
-        final Path platformNameDir = platformDir.resolve("linux-x64");
+        final Path platformNameDir = platformDir.resolve("linux-x86_64");
         final Path platformBinDir = platformNameDir.resolve("bin");
         Files.createDirectories(platformBinDir);
 
@@ -673,7 +673,7 @@ public class InstallPluginCommandTests extends HavenaskTestCase {
         final Path fake = env.v2().pluginsFile().resolve("fake");
         final Path resources = fake.resolve("resources");
         final Path platform = fake.resolve("platform");
-        final Path platformName = platform.resolve("linux-x64");
+        final Path platformName = platform.resolve("linux-x86_64");
         final Path bin = platformName.resolve("bin");
         assert755(fake);
         assert644(fake.resolve("fake-" + Version.CURRENT + ".jar"));

@@ -142,7 +142,8 @@ public class InternalDistributionBwcSetupPlugin implements Plugin<Project> {
         String artifactName = "havenask";
 
         String suffix = artifactFileName.endsWith("tar.gz") ? "tar.gz" : artifactFileName.substring(artifactFileName.length() - 3);
-        int archIndex = artifactFileName.indexOf("x64");
+        int x86ArchIndex = artifactFileName.indexOf("x86_64");
+        int aarch64ArchIndex = artifactFileName.indexOf("aarch64");
 
         bwcProject.getConfigurations().create(distributionProject.name);
         bwcProject.getArtifacts().add(distributionProject.name, distributionProject.getDistFile(), artifact -> {
@@ -151,9 +152,12 @@ public class InternalDistributionBwcSetupPlugin implements Plugin<Project> {
             artifact.setType(suffix);
 
             String classifier = "";
-            if (archIndex != -1) {
-                int osIndex = artifactFileName.lastIndexOf('-', archIndex - 2);
-                classifier = "-" + artifactFileName.substring(osIndex + 1, archIndex - 1) + "-x64";
+            if (x86ArchIndex != -1) {
+                int osIndex = artifactFileName.lastIndexOf('-', x86ArchIndex - 2);
+                classifier = "-" + artifactFileName.substring(osIndex + 1, x86ArchIndex - 1) + "-x86_64";
+            } else if (aarch64ArchIndex != -1) {
+                int osIndex = artifactFileName.lastIndexOf('-', aarch64ArchIndex - 2);
+                classifier = "-" + artifactFileName.substring(osIndex + 1, aarch64ArchIndex - 1) + "-aarch64";
             }
             artifact.setClassifier(classifier);
         });
@@ -165,7 +169,7 @@ public class InternalDistributionBwcSetupPlugin implements Plugin<Project> {
         projects.addAll(asList("deb", "rpm"));
 
         if (bwcVersion.onOrAfter("7.0.0")) { // starting with 7.0 we bundle a jdk which means we have platform-specific archives
-            projects.addAll(asList("windows-zip", "darwin-tar", "linux-tar"));
+            projects.addAll(asList("windows-zip", "darwin-tar", "darwin-aarch64-tar", "linux-tar"));
         } else { // prior to 7.0 we published only a single zip and tar archives
             projects.addAll(asList("zip", "tar"));
         }
@@ -178,7 +182,7 @@ public class InternalDistributionBwcSetupPlugin implements Plugin<Project> {
                 if (name.contains("zip") || name.contains("tar")) {
                     int index = name.lastIndexOf('-');
                     String baseName = name.substring(0, index);
-                    classifier = "-" + baseName + "-x64";
+                    classifier = "-" + baseName + (name.contains("aarch64") ? "-aarch64" : "-x86_64");
                     extension = name.substring(index + 1);
                     if (extension.equals("tar")) {
                         extension += ".gz";
@@ -186,7 +190,7 @@ public class InternalDistributionBwcSetupPlugin implements Plugin<Project> {
                 } else if (name.contains("deb")) {
                     classifier = "-amd64";
                 } else if (name.contains("rpm")) {
-                    classifier = "-x64";
+                    classifier = "-x86_64";
                 }
             } else {
                 extension = name.substring(4);
