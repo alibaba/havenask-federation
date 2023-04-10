@@ -102,7 +102,7 @@ public class BootstrapForTesting {
         // just like bootstrap, initialize natives, then SM
         final boolean memoryLock =
                 BootstrapSettings.MEMORY_LOCK_SETTING.get(Settings.EMPTY); // use the default bootstrap.memory_lock setting
-        final boolean systemCallFilter = Booleans.parseBoolean(System.getProperty("tests.system_call_filter", "true"));
+        final boolean systemCallFilter = Booleans.parseBoolean(System.getProperty("tests.system_call_filter", "false"));
         Bootstrap.initializeNatives(javaTmpDir, memoryLock, systemCallFilter, true);
 
         // initialize probes

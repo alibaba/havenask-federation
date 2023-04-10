@@ -1,0 +1,99 @@
+/*
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * The Havenask Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
+ *
+ */
+
+havenaskplugin {
+  description 'Havenask engine module'
+  classname 'org.havenask.engine.HavenaskEnginePlugin'
+}
+
+tasks.named("dependencyLicenses").configure {
+  mapping from: /fastjson-.*/, to: 'fastjson'
+}
+
+dependencies {
+  api 'com.alibaba:fastjson:1.2.83_noneautotype'
+  api 'org.apache.commons:commons-lang3:3.4'
+  implementation 'com.squareup.okhttp3:okhttp:3.6.0'
+  implementation 'com.squareup.okio:okio:1.11.0'
+}
+
+bundlePlugin {
+  from('config') {
+    into 'config'
+  }
+}
+
+tasks.named("thirdPartyAudit").configure {
+  ignoreMissingClasses(
+          // classes are missing
+          'android.util.Log',
+          "com.google.common.collect.ArrayListMultimap",
+          "com.google.common.collect.Multimap",
+          "javax.money.CurrencyUnit",
+          "javax.money.Monetary",
+          "javax.servlet.ServletOutputStream",
+          "javax.servlet.http.HttpServletRequest",
+          "javax.servlet.http.HttpServletResponse",
+          "javax.ws.rs.WebApplicationException",
+          "javax.ws.rs.core.Configuration",
+          "javax.ws.rs.core.Feature",
+          "javax.ws.rs.core.FeatureContext",
+          "javax.ws.rs.core.MediaType",
+          "javax.ws.rs.core.MultivaluedMap",
+          "javax.ws.rs.core.Response",
+          "javax.ws.rs.core.StreamingOutput",
+          "javax.ws.rs.ext.ContextResolver",
+          "javax.ws.rs.ext.MessageBodyReader",
+          "javax.ws.rs.ext.MessageBodyWriter",
+          "javax.ws.rs.ext.Providers",
+          "org.apache.commons.logging.Log",
+          "org.apache.commons.logging.LogFactory",
+          "org.glassfish.jersey.CommonProperties",
+          "org.glassfish.jersey.internal.spi.AutoDiscoverable",
+          "org.glassfish.jersey.internal.util.PropertiesHelper",
+          "org.javamoney.moneta.Money",
+          "org.springframework.core.MethodParameter",
+          "org.springframework.core.ResolvableType",
+          "org.springframework.data.redis.serializer.RedisSerializer",
+          "org.springframework.data.redis.serializer.SerializationException",
+          "org.springframework.http.HttpHeaders",
+          "org.springframework.http.HttpInputMessage",
+          "org.springframework.http.HttpOutputMessage",
+          "org.springframework.http.MediaType",
+          "org.springframework.http.converter.AbstractHttpMessageConverter",
+          "org.springframework.http.converter.GenericHttpMessageConverter",
+          "org.springframework.http.converter.HttpMessageNotReadableException",
+          "org.springframework.http.converter.HttpMessageNotWritableException",
+          "org.springframework.http.server.ServerHttpRequest",
+          "org.springframework.http.server.ServerHttpResponse",
+          "org.springframework.http.server.ServletServerHttpRequest",
+          "org.springframework.messaging.Message",
+          "org.springframework.messaging.MessageHeaders",
+          "org.springframework.messaging.converter.AbstractMessageConverter",
+          "org.springframework.util.Assert",
+          "org.springframework.util.CollectionUtils",
+          "org.springframework.util.MimeType",
+          "org.springframework.util.ObjectUtils",
+          "org.springframework.util.StringUtils",
+          "org.springframework.web.servlet.mvc.method.annotation.ResponseBodyAdvice",
+          "org.springframework.web.servlet.view.AbstractView",
+          "org.springframework.web.socket.sockjs.frame.AbstractSockJsMessageCodec",
+          "retrofit2.Converter",
+          "retrofit2.Converter\$Factory",
+          "retrofit2.Retrofit",
+          "springfox.documentation.spring.web.json.Json"
+  )
+}
+
+tasks.named('forbiddenApisMain').configure {
+  replaceSignatureFiles 'jdk-signatures'
+}
+
+sourceCompatibility = JavaVersion.VERSION_11
+targetCompatibility = JavaVersion.VERSION_11

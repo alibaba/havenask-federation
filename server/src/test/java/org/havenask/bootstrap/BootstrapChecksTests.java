@@ -1,17 +1,17 @@
 /*
-*Copyright (c) 2021, Alibaba Group;
-*Licensed under the Apache License, Version 2.0 (the "License");
-*you may not use this file except in compliance with the License.
-*You may obtain a copy of the License at
+ *Copyright (c) 2021, Alibaba Group;
+ *Licensed under the Apache License, Version 2.0 (the "License");
+ *you may not use this file except in compliance with the License.
+ *You may obtain a copy of the License at
 
-*   http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
 
-*Unless required by applicable law or agreed to in writing, software
-*distributed under the License is distributed on an "AS IS" BASIS,
-*WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-*See the License for the specific language governing permissions and
-*limitations under the License.
-*/
+ *Unless required by applicable law or agreed to in writing, software
+ *distributed under the License is distributed on an "AS IS" BASIS,
+ *WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *See the License for the specific language governing permissions and
+ *limitations under the License.
+ */
 
 /*
  * Licensed to Elasticsearch under one or more contributor
@@ -39,21 +39,6 @@
 
 package org.havenask.bootstrap;
 
-import org.apache.logging.log4j.Logger;
-import org.apache.lucene.util.Constants;
-import org.havenask.cluster.coordination.ClusterBootstrapService;
-import org.havenask.cluster.metadata.Metadata;
-import org.havenask.common.CheckedConsumer;
-import org.havenask.common.settings.Settings;
-import org.havenask.common.transport.BoundTransportAddress;
-import org.havenask.common.transport.TransportAddress;
-import org.havenask.discovery.DiscoveryModule;
-import org.havenask.discovery.SettingsBasedSeedHostsProvider;
-import org.havenask.monitor.jvm.JvmInfo;
-import org.havenask.node.NodeValidationException;
-import org.havenask.test.AbstractBootstrapCheckTestCase;
-import org.hamcrest.Matcher;
-
 import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -65,14 +50,29 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
-import static org.havenask.discovery.DiscoveryModule.ZEN2_DISCOVERY_TYPE;
-import static org.havenask.discovery.DiscoveryModule.ZEN_DISCOVERY_TYPE;
+import org.apache.logging.log4j.Logger;
+import org.apache.lucene.util.Constants;
+import org.hamcrest.Matcher;
+import org.havenask.cluster.coordination.ClusterBootstrapService;
+import org.havenask.cluster.metadata.Metadata;
+import org.havenask.common.CheckedConsumer;
+import org.havenask.common.settings.Settings;
+import org.havenask.common.transport.BoundTransportAddress;
+import org.havenask.common.transport.TransportAddress;
+import org.havenask.discovery.DiscoveryModule;
+import org.havenask.discovery.SettingsBasedSeedHostsProvider;
+import org.havenask.monitor.jvm.JvmInfo;
+import org.havenask.node.NodeValidationException;
+import org.havenask.test.AbstractBootstrapCheckTestCase;
+
 import static org.hamcrest.CoreMatchers.allOf;
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.Matchers.hasToString;
 import static org.hamcrest.Matchers.not;
+import static org.havenask.discovery.DiscoveryModule.ZEN2_DISCOVERY_TYPE;
+import static org.havenask.discovery.DiscoveryModule.ZEN_DISCOVERY_TYPE;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -129,7 +129,8 @@ public class BootstrapChecksTests extends AbstractBootstrapCheckTestCase {
 
         final String discoveryType = randomFrom(ZEN_DISCOVERY_TYPE, ZEN2_DISCOVERY_TYPE, "single-node");
 
-        assertEquals(BootstrapChecks.enforceLimits(boundTransportAddress, discoveryType), !"single-node".equals(discoveryType));
+        assertEquals(BootstrapChecks.enforceLimits(boundTransportAddress, discoveryType),
+            !"single-node".equals(discoveryType));
     }
 
     public void testEnforceLimitsWhenPublishingToNonLocalAddress() {
@@ -147,18 +148,20 @@ public class BootstrapChecksTests extends AbstractBootstrapCheckTestCase {
 
         final String discoveryType = randomFrom(ZEN_DISCOVERY_TYPE, ZEN2_DISCOVERY_TYPE, "single-node");
 
-        assertEquals(BootstrapChecks.enforceLimits(boundTransportAddress, discoveryType), !"single-node".equals(discoveryType));
+        assertEquals(BootstrapChecks.enforceLimits(boundTransportAddress, discoveryType),
+            !"single-node".equals(discoveryType));
     }
 
     public void testExceptionAggregation() {
         final List<BootstrapCheck> checks = Arrays.asList(
-                context -> BootstrapCheck.BootstrapCheckResult.failure("first"),
-                context -> BootstrapCheck.BootstrapCheckResult.failure("second"));
+            context -> BootstrapCheck.BootstrapCheckResult.failure("first"),
+            context -> BootstrapCheck.BootstrapCheckResult.failure("second"));
 
         final NodeValidationException e =
-                expectThrows(NodeValidationException.class,
-                    () -> BootstrapChecks.check(emptyContext, true, checks));
-        assertThat(e, hasToString(allOf(containsString("bootstrap checks failed"), containsString("first"), containsString("second"))));
+            expectThrows(NodeValidationException.class,
+                () -> BootstrapChecks.check(emptyContext, true, checks));
+        assertThat(e, hasToString(
+            allOf(containsString("bootstrap checks failed"), containsString("first"), containsString("second"))));
         final Throwable[] suppressed = e.getSuppressed();
         assertThat(suppressed.length, equalTo(2));
         assertThat(suppressed[0], instanceOf(IllegalStateException.class));
@@ -194,13 +197,13 @@ public class BootstrapChecksTests extends AbstractBootstrapCheckTestCase {
         };
 
         final NodeValidationException e =
-                expectThrows(
-                        NodeValidationException.class,
-                        () -> BootstrapChecks.check(emptyContext, true, Collections.singletonList(check)));
+            expectThrows(
+                NodeValidationException.class,
+                () -> BootstrapChecks.check(emptyContext, true, Collections.singletonList(check)));
         assertThat(
-                e.getMessage(),
-                containsString("initial heap size [" + initialHeapSize.get() + "] " +
-                        "not equal to maximum heap size [" + maxHeapSize.get() + "]"));
+            e.getMessage(),
+            containsString("initial heap size [" + initialHeapSize.get() + "] " +
+                "not equal to maximum heap size [" + maxHeapSize.get() + "]"));
         final String memoryLockingMessage = "and prevents memory locking from locking the entire heap";
         final Matcher<String> memoryLockingMatcher;
         if (isMemoryLocked) {
@@ -246,8 +249,8 @@ public class BootstrapChecksTests extends AbstractBootstrapCheckTestCase {
         }
 
         final NodeValidationException e =
-                expectThrows(NodeValidationException.class,
-                        () -> BootstrapChecks.check(emptyContext, true, Collections.singletonList(check)));
+            expectThrows(NodeValidationException.class,
+                () -> BootstrapChecks.check(emptyContext, true, Collections.singletonList(check)));
         assertThat(e.getMessage(), containsString("max file descriptors"));
 
         maxFileDescriptorCount.set(randomIntBetween(limit + 1, Integer.MAX_VALUE));
@@ -300,14 +303,14 @@ public class BootstrapChecksTests extends AbstractBootstrapCheckTestCase {
                 Settings.builder().put("bootstrap.memory_lock", testCase.mlockallSet).build(), null);
             if (testCase.shouldFail) {
                 final NodeValidationException e = expectThrows(
-                        NodeValidationException.class,
-                        () -> BootstrapChecks.check(
-                                bootstrapContext,
-                                true,
-                                Collections.singletonList(check)));
+                    NodeValidationException.class,
+                    () -> BootstrapChecks.check(
+                        bootstrapContext,
+                        true,
+                        Collections.singletonList(check)));
                 assertThat(
-                        e.getMessage(),
-                        containsString("memory locking requested for havenask process but memory is not locked"));
+                    e.getMessage(),
+                    containsString("memory locking requested for havenask process but memory is not locked"));
             } else {
                 // nothing should happen
                 BootstrapChecks.check(bootstrapContext, true, Collections.singletonList(check));
@@ -326,8 +329,8 @@ public class BootstrapChecksTests extends AbstractBootstrapCheckTestCase {
         };
 
         final NodeValidationException e = expectThrows(
-                NodeValidationException.class,
-                () -> BootstrapChecks.check(emptyContext, true, Collections.singletonList(check)));
+            NodeValidationException.class,
+            () -> BootstrapChecks.check(emptyContext, true, Collections.singletonList(check)));
         assertThat(e.getMessage(), containsString("max number of threads"));
 
         maxNumberOfThreads.set(randomIntBetween(limit + 1, Integer.MAX_VALUE));
@@ -356,8 +359,8 @@ public class BootstrapChecksTests extends AbstractBootstrapCheckTestCase {
         };
 
         final NodeValidationException e = expectThrows(
-                NodeValidationException.class,
-                () -> BootstrapChecks.check(emptyContext, true, Collections.singletonList(check)));
+            NodeValidationException.class,
+            () -> BootstrapChecks.check(emptyContext, true, Collections.singletonList(check)));
         assertThat(e.getMessage(), containsString("max size virtual memory"));
 
         maxSizeVirtualMemory.set(rlimInfinity);
@@ -385,8 +388,8 @@ public class BootstrapChecksTests extends AbstractBootstrapCheckTestCase {
         };
 
         final NodeValidationException e = expectThrows(
-                NodeValidationException.class,
-                () -> BootstrapChecks.check(emptyContext, true, Collections.singletonList(check)));
+            NodeValidationException.class,
+            () -> BootstrapChecks.check(emptyContext, true, Collections.singletonList(check)));
         assertThat(e.getMessage(), containsString("max file size"));
 
         maxFileSize.set(rlimInfinity);
@@ -408,12 +411,12 @@ public class BootstrapChecksTests extends AbstractBootstrapCheckTestCase {
         };
 
         final NodeValidationException e = expectThrows(
-                NodeValidationException.class,
-                () -> BootstrapChecks.check(emptyContext, true, Collections.singletonList(check)));
+            NodeValidationException.class,
+            () -> BootstrapChecks.check(emptyContext, true, Collections.singletonList(check)));
         assertThat(
-                e.getMessage(),
-                containsString("JVM is using the client VM [Java HotSpot(TM) 32-Bit Client VM] " +
-                        "but should be using a server VM for the best performance"));
+            e.getMessage(),
+            containsString("JVM is using the client VM [Java HotSpot(TM) 32-Bit Client VM] " +
+                "but should be using a server VM for the best performance"));
 
         vmName.set("Java HotSpot(TM) 32-Bit Server VM");
         BootstrapChecks.check(emptyContext, true, Collections.singletonList(check));
@@ -434,7 +437,8 @@ public class BootstrapChecksTests extends AbstractBootstrapCheckTestCase {
         assertThat(
             e.getMessage(),
             containsString("JVM is using the serial collector but should not be for the best performance; " + "" +
-                "either it's the default for the VM [" + JvmInfo.jvmInfo().getVmName() +"] or -XX:+UseSerialGC was explicitly specified"));
+                "either it's the default for the VM [" + JvmInfo.jvmInfo().getVmName()
+                + "] or -XX:+UseSerialGC was explicitly specified"));
 
         useSerialGC.set("false");
         BootstrapChecks.check(emptyContext, true, Collections.singletonList(check));
@@ -442,10 +446,11 @@ public class BootstrapChecksTests extends AbstractBootstrapCheckTestCase {
 
     public void testSystemCallFilterCheck() throws NodeValidationException {
         final AtomicBoolean isSystemCallFilterInstalled = new AtomicBoolean();
-        BootstrapContext context = randomBoolean() ? createTestContext(Settings.builder().put("bootstrap.system_call_filter", true)
-            .build(), null) : emptyContext;
+        BootstrapContext context = createTestContext(Settings.builder().put("bootstrap.system_call_filter", true)
+            .build(), null);
 
-        final BootstrapChecks.SystemCallFilterCheck systemCallFilterEnabledCheck = new BootstrapChecks.SystemCallFilterCheck() {
+        final BootstrapChecks.SystemCallFilterCheck systemCallFilterEnabledCheck
+            = new BootstrapChecks.SystemCallFilterCheck() {
             @Override
             boolean isSystemCallFilterInstalled() {
                 return isSystemCallFilterInstalled.get();
@@ -462,8 +467,11 @@ public class BootstrapChecksTests extends AbstractBootstrapCheckTestCase {
 
         isSystemCallFilterInstalled.set(true);
         BootstrapChecks.check(context, true, Collections.singletonList(systemCallFilterEnabledCheck));
-        BootstrapContext context_1 = createTestContext(Settings.builder().put("bootstrap.system_call_filter", false).build(), null);
-        final BootstrapChecks.SystemCallFilterCheck systemCallFilterNotEnabledCheck = new BootstrapChecks.SystemCallFilterCheck() {
+        BootstrapContext context_1 = randomBoolean() ? createTestContext(
+            Settings.builder().put("bootstrap.system_call_filter", false).build(), null) :
+            emptyContext;
+        final BootstrapChecks.SystemCallFilterCheck systemCallFilterNotEnabledCheck
+            = new BootstrapChecks.SystemCallFilterCheck() {
             @Override
             boolean isSystemCallFilterInstalled() {
                 return isSystemCallFilterInstalled.get();
@@ -528,7 +536,8 @@ public class BootstrapChecksTests extends AbstractBootstrapCheckTestCase {
                 e.getMessage(),
                 containsString(
                     "OnError [" + command + "] requires forking but is prevented by system call filters " +
-                        "([bootstrap.system_call_filter=true]); upgrade to at least Java 8u92 and use ExitOnOutOfMemoryError")));
+                        "([bootstrap.system_call_filter=true]); upgrade to at least Java 8u92 and use "
+                        + "ExitOnOutOfMemoryError")));
     }
 
     public void testOnOutOfMemoryErrorCheck() throws NodeValidationException {
@@ -556,7 +565,8 @@ public class BootstrapChecksTests extends AbstractBootstrapCheckTestCase {
                 e.getMessage(),
                 containsString(
                     "OnOutOfMemoryError [" + command + "]"
-                        + " requires forking but is prevented by system call filters ([bootstrap.system_call_filter=true]);"
+                        + " requires forking but is prevented by system call filters ([bootstrap"
+                        + ".system_call_filter=true]);"
                         + " upgrade to at least Java 8u92 and use ExitOnOutOfMemoryError")));
     }
 
@@ -582,7 +592,8 @@ public class BootstrapChecksTests extends AbstractBootstrapCheckTestCase {
         disableMightFork.run();
         BootstrapChecks.check(emptyContext, true, Collections.singletonList(check));
 
-        // if system call filter is enabled, and we might fork, the check should be enforced, regardless of bootstrap checks being enabled
+        // if system call filter is enabled, and we might fork, the check should be enforced, regardless of bootstrap
+        // checks being enabled
         // or not
         isSystemCallFilterInstalled.set(true);
         enableMightFork.run();
@@ -595,7 +606,7 @@ public class BootstrapChecksTests extends AbstractBootstrapCheckTestCase {
 
     public void testEarlyAccessCheck() throws NodeValidationException {
         final AtomicReference<String> javaVersion
-                = new AtomicReference<>(randomFrom("1.8.0_152-ea", "9-ea"));
+            = new AtomicReference<>(randomFrom("1.8.0_152-ea", "9-ea"));
         final BootstrapChecks.EarlyAccessCheck eaCheck = new BootstrapChecks.EarlyAccessCheck() {
 
             @Override
@@ -612,16 +623,16 @@ public class BootstrapChecksTests extends AbstractBootstrapCheckTestCase {
 
         final List<BootstrapCheck> checks = Collections.singletonList(eaCheck);
         final NodeValidationException e = expectThrows(
-                NodeValidationException.class,
-                () -> {
-                    BootstrapChecks.check(emptyContext, true, checks);
-                });
+            NodeValidationException.class,
+            () -> {
+                BootstrapChecks.check(emptyContext, true, checks);
+            });
         assertThat(
-                e.getMessage(),
-                containsString(
-                        "Java version ["
-                                + javaVersion.get()
-                                + "] is an early-access build, only use release builds"));
+            e.getMessage(),
+            containsString(
+                "Java version ["
+                    + javaVersion.get()
+                    + "] is an early-access build, only use release builds"));
 
         // if not on an early-access build, nothing should happen
         javaVersion.set(randomFrom("1.8.0_152", "9"));
@@ -633,7 +644,8 @@ public class BootstrapChecksTests extends AbstractBootstrapCheckTestCase {
         final AtomicBoolean isG1GCEnabled = new AtomicBoolean(true);
         final AtomicBoolean isJava8 = new AtomicBoolean(true);
         final AtomicReference<String> jvmVersion =
-            new AtomicReference<>(String.format(Locale.ROOT, "25.%d-b%d", randomIntBetween(0, 39), randomIntBetween(1, 128)));
+            new AtomicReference<>(
+                String.format(Locale.ROOT, "25.%d-b%d", randomIntBetween(0, 39), randomIntBetween(1, 128)));
         final BootstrapChecks.G1GCCheck g1GCCheck = new BootstrapChecks.G1GCCheck() {
 
             @Override
@@ -665,7 +677,8 @@ public class BootstrapChecksTests extends AbstractBootstrapCheckTestCase {
         assertThat(
             e.getMessage(),
             containsString(
-                "JVM version [" + jvmVersion.get() + "] can cause data corruption when used with G1GC; upgrade to at least Java 8u40"));
+                "JVM version [" + jvmVersion.get()
+                    + "] can cause data corruption when used with G1GC; upgrade to at least Java 8u40"));
 
         // if G1GC is disabled, nothing should happen
         isG1GCEnabled.set(false);
@@ -712,8 +725,8 @@ public class BootstrapChecksTests extends AbstractBootstrapCheckTestCase {
 
         final List<BootstrapCheck> checks = Collections.singletonList(allPermissionCheck);
         final NodeValidationException e = expectThrows(
-                NodeValidationException.class,
-                () -> BootstrapChecks.check(emptyContext, true, checks));
+            NodeValidationException.class,
+            () -> BootstrapChecks.check(emptyContext, true, checks));
         assertThat(e, hasToString(containsString("granting the all permission effectively disables security")));
 
         // if all permissions are not granted, nothing should happen
@@ -744,10 +757,11 @@ public class BootstrapChecksTests extends AbstractBootstrapCheckTestCase {
         final List<BootstrapCheck> checks = Collections.singletonList(new BootstrapChecks.DiscoveryConfiguredCheck());
 
         final BootstrapContext zen1Context = createTestContext(Settings.builder()
-                .put(DiscoveryModule.DISCOVERY_TYPE_SETTING.getKey(), ZEN_DISCOVERY_TYPE).build(), Metadata.EMPTY_METADATA);
+            .put(DiscoveryModule.DISCOVERY_TYPE_SETTING.getKey(), ZEN_DISCOVERY_TYPE).build(), Metadata.EMPTY_METADATA);
 
         final BootstrapContext zen2Context = createTestContext(Settings.builder()
-            .put(DiscoveryModule.DISCOVERY_TYPE_SETTING.getKey(), ZEN2_DISCOVERY_TYPE).build(), Metadata.EMPTY_METADATA);
+                .put(DiscoveryModule.DISCOVERY_TYPE_SETTING.getKey(), ZEN2_DISCOVERY_TYPE).build(),
+            Metadata.EMPTY_METADATA);
 
         // not always enforced
         BootstrapChecks.check(zen2Context, false, checks);
@@ -758,25 +772,33 @@ public class BootstrapChecksTests extends AbstractBootstrapCheckTestCase {
 
         assertThat(expectThrows(NodeValidationException.class,
                 () -> BootstrapChecks.check(zen1Context, true, checks)),
-                hasToString(containsString("discovery type [legacy-zen-for-testing-only-do-not-use] is unsuitable for production use")));
+            hasToString(containsString(
+                "discovery type [legacy-zen-for-testing-only-do-not-use] is unsuitable for production use")));
 
         final NodeValidationException e = expectThrows(NodeValidationException.class,
             () -> BootstrapChecks.check(zen2Context, true, checks));
-        assertThat(e, hasToString(containsString("the default discovery settings are unsuitable for production use; at least one " +
-            "of [discovery.seed_hosts, discovery.seed_providers, cluster.initial_master_nodes] must be configured")));
+        assertThat(e, hasToString(
+            containsString("the default discovery settings are unsuitable for production use; at least one " +
+                "of [discovery.seed_hosts, discovery.seed_providers, cluster.initial_master_nodes] must be "
+                + "configured")));
 
         CheckedConsumer<Settings.Builder, NodeValidationException> ensureChecksPass = b ->
         {
             final BootstrapContext context = createTestContext(b
-                .put(DiscoveryModule.DISCOVERY_TYPE_SETTING.getKey(), ZEN2_DISCOVERY_TYPE).build(), Metadata.EMPTY_METADATA);
+                    .put(DiscoveryModule.DISCOVERY_TYPE_SETTING.getKey(), ZEN2_DISCOVERY_TYPE).build(),
+                Metadata.EMPTY_METADATA);
             BootstrapChecks.check(context, true, checks);
         };
 
-        ensureChecksPass.accept(Settings.builder().putList(ClusterBootstrapService.INITIAL_MASTER_NODES_SETTING.getKey()));
+        ensureChecksPass.accept(
+            Settings.builder().putList(ClusterBootstrapService.INITIAL_MASTER_NODES_SETTING.getKey()));
         ensureChecksPass.accept(Settings.builder().putList(DiscoveryModule.DISCOVERY_SEED_PROVIDERS_SETTING.getKey()));
-        ensureChecksPass.accept(Settings.builder().putList(SettingsBasedSeedHostsProvider.DISCOVERY_SEED_HOSTS_SETTING.getKey()));
-        ensureChecksPass.accept(Settings.builder().putList(DiscoveryModule.LEGACY_DISCOVERY_HOSTS_PROVIDER_SETTING.getKey()));
-        ensureChecksPass.accept(Settings.builder().putList(SettingsBasedSeedHostsProvider.LEGACY_DISCOVERY_ZEN_PING_UNICAST_HOSTS_SETTING
-            .getKey()));
+        ensureChecksPass.accept(
+            Settings.builder().putList(SettingsBasedSeedHostsProvider.DISCOVERY_SEED_HOSTS_SETTING.getKey()));
+        ensureChecksPass.accept(
+            Settings.builder().putList(DiscoveryModule.LEGACY_DISCOVERY_HOSTS_PROVIDER_SETTING.getKey()));
+        ensureChecksPass.accept(
+            Settings.builder().putList(SettingsBasedSeedHostsProvider.LEGACY_DISCOVERY_ZEN_PING_UNICAST_HOSTS_SETTING
+                .getKey()));
     }
 }

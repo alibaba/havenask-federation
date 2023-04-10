@@ -19,7 +19,9 @@ setup:
 
 ---
 "Expressions scripting test":
-
+  - skip:
+      version: " - "
+      reason: skip this test until security enabled
   - do:
       search:
         rest_total_hits_as_int: true
@@ -34,7 +36,9 @@ setup:
 
 ---
 "Expressions aggregation score test":
-
+    - skip:
+        version: " - "
+        reason: skip this test until security enabled
     - do:
         search:
           rest_total_hits_as_int: true

@@ -58,6 +58,7 @@ import java.util.Map;
 public class CodecService {
 
     private final Map<String, Codec> codecs;
+    private final MapperService mapperService;
 
     public static final String DEFAULT_CODEC = "default";
     public static final String BEST_COMPRESSION_CODEC = "best_compression";
@@ -65,6 +66,7 @@ public class CodecService {
     public static final String LUCENE_DEFAULT_CODEC = "lucene_default";
 
     public CodecService(@Nullable MapperService mapperService, Logger logger) {
+        this.mapperService = mapperService;
         final MapBuilder<String, Codec> codecs = MapBuilder.<String, Codec>newMapBuilder();
         if (mapperService == null) {
             codecs.put(DEFAULT_CODEC, new Lucene87Codec());
@@ -95,5 +97,9 @@ public class CodecService {
      */
     public String[] availableCodecs() {
         return codecs.keySet().toArray(new String[0]);
+    }
+
+    public MapperService getMapperService() {
+        return mapperService;
     }
 }
