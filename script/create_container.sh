@@ -43,31 +43,11 @@ echo "Info: Container entry: $CONTAINER_DIR"
 mkdir -p $CONTAINER_DIR
 
 
-cat >  $CONTAINER_DIR/initContainer.sh  << EOF
-##!/bin/bash
-groupadd havenask
-useradd -l -u $USERID -G havenask -md /home/$USER -s /bin/bash $USER
-echo -e "\n$USER ALL=(ALL) NOPASSWD:ALL\n" >> /etc/sudoers
-echo "PS1='[\u@havenask \w]\\$'" > /home/$USER/.bashrc
-echo "export TERM='xterm-256color'" >> /home/$USER/.bashrc
-EOF
-
-
-chmod a+x $CONTAINER_DIR/initContainer.sh
-
-docker run -p 9200:9200 -p 5005:5005 -p 39200:39200 --ulimit nofile=655350:655350 --privileged --cap-add SYS_ADMIN --device /dev/fuse --ulimit memlock=-1 --cpu-shares=15360 --cpu-quota=9600000 --cpu-period=100000 --memory=500000m -d  --name $CONTAINER_NAME -v $CONTAINER_DIR/initContainer.sh:/tmp/initContainer.sh $IMAGE /sbin/init 1> /dev/null
+docker run -p 9200:9200 -p 5005:5005 -p 39200:39200 -p 49200:49200 --ulimit nofile=655350:655350 --privileged --cap-add SYS_ADMIN --device /dev/fuse --ulimit memlock=-1 --cpu-shares=15360 --cpu-quota=9600000 --cpu-period=100000 --memory=500000m -d  --name $CONTAINER_NAME -v $CONTAINER_DIR/initContainer.sh:/tmp/initContainer.sh $IMAGE /sbin/init 1> /dev/null
 
 
 if [ $? -ne 0 ]; then
     echo "ERROR, run container failed, please check."
-    exit 3
-fi
-
-echo "Begin initialize container:"
-docker exec $CONTAINER_NAME /bin/bash -c "/tmp/initContainer.sh"
-
-if [ $? -ne 0 ]; then
-    echo "ERROR, initialize container failed, please check."
     exit 3
 fi
 
