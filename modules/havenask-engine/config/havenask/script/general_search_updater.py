@@ -78,7 +78,7 @@ examples:
             line = line.strip()
             ports = []
             for port in line.split(" "):
-                match = re.search("[0-9]+", line)
+                match = re.search("[0-9]+", port)
                 if match:
                     ports.append(int(match.group(0)))
                     self.portList.append(int(match.group(0)))
@@ -121,7 +121,7 @@ examples:
             },
             "biz_info" : {
                 "default" : {
-                    "config_path" : self.onlineConfigPath
+                    "config_path" : self.createConfigLink('qrs', 'biz', 'default', self.onlineConfigPath)
                 }
             },
             "table_info" : {
@@ -188,17 +188,29 @@ examples:
                 response = json.loads(out)
                 if response["signature"] == requestSig:
                     serviceInfo = json.loads(response["serviceInfo"])
-                    arpcAddress = "%s:%d" %(self.ip, arpcPort)
-                    topoStr = serviceInfo["cm2"]["topo_info"]
-                    targetTopoStr = "tcp:" + arpcAddress + "#" +topoStr
-                    self.readyZones[roleName] = targetTopoStr
-                    print "searcher [%s] is ready for search, topo [%s]" % (roleName, targetTopoStr)
+                    infos = serviceInfo["cm2"]["topo_info"].strip('|').split('|')
+                    for info in infos:
+                        splitInfo = info.split(':')
+                        localConfig = {}
+                        localConfig["biz_name"] = splitInfo[0]
+                        localConfig["part_count"] = int(splitInfo[1])
+                        localConfig["part_id"] = int(splitInfo[2])
+                        localConfig["version"] = int(splitInfo[3])
+                        localConfig["ip"] = self.ip
+                        localConfig["tcp_port"] = arpcPort
+                        if splitInfo[0] == 'default':
+                            self.readyZones[roleName] = localConfig
+                            print "searcher [%s] is ready for search, topo [%s]" % (roleName, json.dumps(localConfig))
+                        else:
+                            zoneName = splitInfo[0] + "_" + str(partId)
+                            self.readyZones[zoneName] = localConfig
+                            print "searcher [%s] is ready for search, topo [%s]" % (zoneName, json.dumps(localConfig))
                 if len(targetInfos) == len(self.readyZones):
                     print "all searcher is ready."
+                    with open(os.path.join(self.workdir, "readyZones.json"), "w") as f:
+                        json.dump(self.readyZones, f)
                     return True
-                
-        with open(os.path.join(self.workdir, "readyZones.json"), "w") as f:
-            json.dump(self.readyZones, f)
+
         return timeout > 0
 
 if __name__ == '__main__':
