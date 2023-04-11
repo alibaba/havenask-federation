@@ -7,6 +7,8 @@
  *
  */
 
+apply plugin: 'havenask.internal-cluster-test'
+
 havenaskplugin {
   description 'Havenask engine module'
   classname 'org.havenask.engine.HavenaskEnginePlugin'
@@ -97,3 +99,7 @@ tasks.named('forbiddenApisMain').configure {
 
 sourceCompatibility = JavaVersion.VERSION_11
 targetCompatibility = JavaVersion.VERSION_11
+
+internalClusterTest {
+  systemProperty 'tests.security.manager', 'false'
+}

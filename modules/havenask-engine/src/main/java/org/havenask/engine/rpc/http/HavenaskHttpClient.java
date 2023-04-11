@@ -28,19 +28,19 @@ import org.havenask.common.xcontent.LoggingDeprecationHandler;
 import org.havenask.common.xcontent.NamedXContentRegistry;
 import org.havenask.common.xcontent.XContentParser;
 import org.havenask.engine.rpc.HeartbeatTargetResponse;
-import org.havenask.engine.rpc.SearcherClient;
+import org.havenask.engine.rpc.HavenaskClient;
 import org.havenask.engine.rpc.UpdateHeartbeatTargetRequest;
 
 import static org.havenask.common.xcontent.XContentType.JSON;
 
-public class SearcherHttpClient implements SearcherClient {
-    private static final Logger logger = LogManager.getLogger(SearcherHttpClient.class);
+public class HavenaskHttpClient implements HavenaskClient {
+    private static final Logger logger = LogManager.getLogger(HavenaskHttpClient.class);
     private static final String HEART_BEAT_URL = "/HeartbeatService/heartbeat";
 
-    private OkHttpClient client = new OkHttpClient();
-    private final String url;
+    protected OkHttpClient client = new OkHttpClient();
+    protected final String url;
 
-    public SearcherHttpClient(int port) {
+    public HavenaskHttpClient(int port) {
         this.url = "http://127.0.0.1:" + port;
     }
 
