@@ -20,16 +20,17 @@ import java.util.Collection;
 import org.hamcrest.Matchers;
 import org.havenask.common.settings.Settings;
 import org.havenask.engine.HavenaskEnginePlugin;
-import org.havenask.engine.HavenaskITTestCase;
 import org.havenask.plugins.Plugin;
+import org.havenask.test.HavenaskIntegTestCase;
 import org.havenask.transport.nio.MockNioTransportPlugin;
 
-public class SqlActionNoIngestIT extends HavenaskITTestCase {
+public class SqlActionNoIngestIT extends HavenaskIntegTestCase {
 
     @Override
     protected Settings nodeSettings(int nodeOrdinal) {
-        Settings.Builder builder = Settings.builder().put(super.nodeSettings(nodeOrdinal)).put("node.ingest", false);
-        builder.remove("node.roles");
+        Settings.Builder builder = Settings.builder()
+            .put(super.nodeSettings(nodeOrdinal))
+            .putList("node.roles", Arrays.asList("master", "data"));
         return builder.build();
     }
 
