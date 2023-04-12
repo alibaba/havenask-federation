@@ -14,35 +14,52 @@
 
 package org.havenask.engine.index.config;
 
+import java.util.Arrays;
 import java.util.List;
 
 import org.havenask.engine.index.config.BizConfig.HashMode;
+import org.havenask.engine.util.JsonPrettyFormatter;
 
+/**
+ * {
+ *     "dependency_table": [
+ *         "in0"
+ *     ],
+ *     "cluster_config" : {
+ *         "hash_mode" : {
+ *             "hash_field" : "_id",
+ *             "hash_function" : "HASH"
+ *         },
+ *         "query_config" : {
+ *             "default_index" : "title",
+ *             "default_operator" : "AND"
+ *         },
+ *         "table_name" : "in0"
+ *     }
+ * }
+ */
 public class ZoneBiz {
-    public ClusterConfig cluster_config;
-    public FunctionConfig function_config;
+    public List<String> dependency_table = Arrays.asList("in0");
+    public ClusterConfig cluster_config = new ClusterConfig();
 
     public static class ClusterConfig {
-        public String table_name;
-        public HashMode hash_mode;
-        public JoinConfig join_config;
+        public String table_name = "in0";
+        public HashMode hash_mode = new HashMode("_id", "HASH");
+        public QueryConfig query_config = new QueryConfig("title", "AND");
     }
 
-    public static class JoinConfig {
-        public List<JoinInfo> join_infos;
+    public static class QueryConfig {
+        public String default_index;
+        public String default_operator;
+
+        public QueryConfig(String default_index, String default_operator) {
+            this.default_index = default_index;
+            this.default_operator = default_operator;
+        }
     }
 
-    public static class JoinInfo {
-
+    @Override
+    public String toString() {
+        return JsonPrettyFormatter.toJsonString(this);
     }
-
-    public static class FunctionConfig {
-        public List<Function_> functions;
-        public List<Module> modules;
-    }
-
-    public static class Function_ {
-
-    }
-
 }
