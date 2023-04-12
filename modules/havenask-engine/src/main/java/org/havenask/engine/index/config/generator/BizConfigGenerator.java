@@ -19,12 +19,15 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import org.havenask.engine.index.config.BizConfig;
 import org.havenask.engine.index.config.DataTable;
 import org.havenask.engine.index.config.Processor.ProcessorChainConfig;
 import org.havenask.engine.index.config.Schema;
+import org.havenask.engine.index.config.ZoneBiz;
 import org.havenask.engine.index.engine.SchemaGenerate;
 import org.havenask.engine.util.VersionUtils;
 import org.havenask.index.engine.EngineConfig;
@@ -37,9 +40,9 @@ public class BizConfigGenerator {
     private static final String PLUGINS_DIR = "plugins";
     public static final String SCHEMAS_DIR = "schemas";
     public static final String SCHEMAS_FILE_SUFFIX = "_schema.json";
-    public static final String ZONE_FILE_SUFFIX = "_zone.json";
     public static final String DATA_TABLES_DIR = "data_tables";
     public static final String DATA_TABLES_FILE_SUFFIX = "_table.json";
+    public static final String DEFAULT_BIZ_CONFIG = "zones/general/default_biz.json";
     private final Path configPath;
     private final EngineConfig engineConfig;
     private final String indexName;
@@ -80,11 +83,30 @@ public class BizConfigGenerator {
 
         Path dataTablePath = configPath.resolve(strVersion).resolve(DATA_TABLES_DIR).resolve(indexName + DATA_TABLES_FILE_SUFFIX);
         Files.deleteIfExists(dataTablePath);
+
+        removeDefaultBizConfig(strVersion);
     }
 
-    // TODO 实现具体功能
-    private void generateDefaultBizConfig(String version) {
+    private synchronized void generateDefaultBizConfig(String version) throws IOException {
+        Path defaultBizConfigPath = configPath.resolve(version).resolve(DEFAULT_BIZ_CONFIG);
 
+        String strZone = Files.readString(defaultBizConfigPath, StandardCharsets.UTF_8);
+        ZoneBiz zoneBiz = ZoneBiz.parse(strZone);
+        Set<String> indices = new HashSet<>(zoneBiz.dependency_table);
+        indices.add(indexName);
+        zoneBiz.dependency_table = indices;
+        Files.write(defaultBizConfigPath, zoneBiz.toString().getBytes(StandardCharsets.UTF_8), StandardOpenOption.CREATE);
+    }
+
+    private synchronized void removeDefaultBizConfig(String version) throws IOException {
+        Path defaultBizConfigPath = configPath.resolve(version).resolve(DEFAULT_BIZ_CONFIG);
+
+        String strZone = Files.readString(defaultBizConfigPath, StandardCharsets.UTF_8);
+        ZoneBiz zoneBiz = ZoneBiz.parse(strZone);
+        Set<String> indices = new HashSet<>(zoneBiz.dependency_table);
+        indices.remove(indexName);
+        zoneBiz.dependency_table = indices;
+        Files.write(defaultBizConfigPath, zoneBiz.toString().getBytes(StandardCharsets.UTF_8), StandardOpenOption.CREATE);
     }
 
     private void generateClusterConfig(String version) throws IOException {

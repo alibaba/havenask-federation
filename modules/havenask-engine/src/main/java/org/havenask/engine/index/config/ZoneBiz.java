@@ -14,9 +14,10 @@
 
 package org.havenask.engine.index.config;
 
-import java.util.Arrays;
-import java.util.List;
+import java.util.Objects;
+import java.util.Set;
 
+import org.havenask.engine.index.config.BizConfig.ClusterConfig;
 import org.havenask.engine.index.config.BizConfig.HashMode;
 import org.havenask.engine.util.JsonPrettyFormatter;
 
@@ -39,13 +40,32 @@ import org.havenask.engine.util.JsonPrettyFormatter;
  * }
  */
 public class ZoneBiz {
-    public List<String> dependency_table = Arrays.asList("in0");
+    public Set<String> dependency_table = Set.of("in0");
     public ClusterConfig cluster_config = new ClusterConfig();
 
     public static class ClusterConfig {
         public String table_name = "in0";
         public HashMode hash_mode = new HashMode("_id", "HASH");
         public QueryConfig query_config = new QueryConfig("title", "AND");
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) {
+                return true;
+            }
+            if (o == null || getClass() != o.getClass()) {
+                return false;
+            }
+            ClusterConfig that = (ClusterConfig) o;
+            return Objects.equals(table_name, that.table_name)
+                && Objects.equals(hash_mode, that.hash_mode)
+                && Objects.equals(query_config, that.query_config);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(table_name, hash_mode, query_config);
+        }
     }
 
     public static class QueryConfig {
@@ -56,10 +76,48 @@ public class ZoneBiz {
             this.default_index = default_index;
             this.default_operator = default_operator;
         }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) {
+                return true;
+            }
+            if (o == null || getClass() != o.getClass()) {
+                return false;
+            }
+            QueryConfig that = (QueryConfig) o;
+            return Objects.equals(default_index, that.default_index) && Objects.equals(default_operator, that.default_operator);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(default_index, default_operator);
+        }
+    }
+
+    public static ZoneBiz parse(String json) {
+        return JsonPrettyFormatter.fromJsonString(json, ZoneBiz.class);
     }
 
     @Override
     public String toString() {
         return JsonPrettyFormatter.toJsonString(this);
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        ZoneBiz zoneBiz = (ZoneBiz) o;
+        return Objects.equals(dependency_table, zoneBiz.dependency_table) && Objects.equals(cluster_config, zoneBiz.cluster_config);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(dependency_table, cluster_config);
     }
 }

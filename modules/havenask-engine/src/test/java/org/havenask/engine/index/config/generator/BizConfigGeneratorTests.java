@@ -15,13 +15,16 @@
 package org.havenask.engine.index.config.generator;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.util.Locale;
 
 import org.havenask.Version;
 import org.havenask.cluster.metadata.IndexMetadata;
 import org.havenask.common.settings.Settings;
+import org.havenask.engine.index.config.ZoneBiz;
 import org.havenask.index.Index;
 import org.havenask.index.IndexSettings;
 import org.havenask.index.codec.CodecService;
@@ -35,6 +38,7 @@ import static org.havenask.engine.index.config.generator.BizConfigGenerator.CLUS
 import static org.havenask.engine.index.config.generator.BizConfigGenerator.CLUSTER_FILE_SUFFIX;
 import static org.havenask.engine.index.config.generator.BizConfigGenerator.DATA_TABLES_DIR;
 import static org.havenask.engine.index.config.generator.BizConfigGenerator.DATA_TABLES_FILE_SUFFIX;
+import static org.havenask.engine.index.config.generator.BizConfigGenerator.DEFAULT_BIZ_CONFIG;
 import static org.havenask.engine.index.config.generator.BizConfigGenerator.SCHEMAS_DIR;
 import static org.havenask.engine.index.config.generator.BizConfigGenerator.SCHEMAS_FILE_SUFFIX;
 import static org.mockito.Mockito.mock;
@@ -61,6 +65,13 @@ public class BizConfigGeneratorTests extends MapperServiceTestCase {
         Files.createDirectories(configPath.resolve(BIZ_DIR).resolve("0").resolve(CLUSTER_DIR));
         Files.createDirectories(configPath.resolve(BIZ_DIR).resolve("0").resolve(SCHEMAS_DIR));
         Files.createDirectories(configPath.resolve(BIZ_DIR).resolve("0").resolve(DATA_TABLES_DIR));
+        Files.createDirectories(configPath.resolve(BIZ_DIR).resolve("0").resolve("zones").resolve("general"));
+        ZoneBiz zoneBiz = new ZoneBiz();
+        Files.write(
+            configPath.resolve(BIZ_DIR).resolve("0").resolve(DEFAULT_BIZ_CONFIG),
+            zoneBiz.toString().getBytes(StandardCharsets.UTF_8),
+            StandardOpenOption.CREATE
+        );
         BizConfigGenerator bizConfigGenerator = new BizConfigGenerator(engineConfig, configPath);
         bizConfigGenerator.generate();
 
@@ -214,6 +225,37 @@ public class BizConfigGeneratorTests extends MapperServiceTestCase {
                 indexName
             );
             assertEquals(expect, content);
+        }
+
+        {
+            Path defaultBizPath = configPath.resolve(BIZ_DIR).resolve("0").resolve(DEFAULT_BIZ_CONFIG);
+            assertTrue(Files.exists(defaultBizPath));
+            String content = Files.readString(defaultBizPath);
+            ZoneBiz zoneBizNew = ZoneBiz.parse(content);
+            ZoneBiz expect = ZoneBiz.parse(
+                String.format(
+                    Locale.ROOT,
+                    "{\n"
+                        + "\t\"cluster_config\":{\n"
+                        + "\t\t\"hash_mode\":{\n"
+                        + "\t\t\t\"hash_field\":\"_id\",\n"
+                        + "\t\t\t\"hash_function\":\"HASH\"\n"
+                        + "\t\t},\n"
+                        + "\t\t\"query_config\":{\n"
+                        + "\t\t\t\"default_index\":\"title\",\n"
+                        + "\t\t\t\"default_operator\":\"AND\"\n"
+                        + "\t\t},\n"
+                        + "\t\t\"table_name\":\"in0\"\n"
+                        + "\t},\n"
+                        + "\t\"dependency_table\":[\n"
+                        + "\t\t\"in0\",\n"
+                        + "\t\t\"%s\"\n"
+                        + "\t]\n"
+                        + "}",
+                    indexName
+                )
+            );
+            assertEquals(expect, zoneBizNew);
         }
     }
 }
