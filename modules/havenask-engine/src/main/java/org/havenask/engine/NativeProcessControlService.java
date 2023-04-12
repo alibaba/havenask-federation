@@ -348,7 +348,7 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
     }
 
     public void updateDataNodeTarget() {
-        if (isDataNode) {
+        if (isDataNode && running) {
             // 更新datanode searcher的target
             AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
                 try {
