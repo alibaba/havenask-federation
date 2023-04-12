@@ -38,6 +38,34 @@ public class EngineSettings {
         Property.Final
     );
 
+    // index.havenask.realtime.enable
+    public static final Setting<Boolean> HA3_REALTIME_ENABLE = new Setting<>(
+        "index.havenask.realtime.enable",
+        "false",
+        Boolean::parseBoolean,
+        Setting.Property.IndexScope,
+        Property.Final
+    );
+
+    // index.havenask.realtime.topic_name
+    public static final Setting<String> HA3_REALTIME_TOPIC_NAME = new Setting<>(
+        "index.havenask.realtime.topic_name",
+        "",
+        (s) -> s,
+        Setting.Property.IndexScope,
+        Property.Final
+    );
+
+    // index.havenask.realtime.bootstrap
+    public static final Setting<String> HA3_REALTIME_BOOTSTRAP = new Setting<>(
+        "index.havenask.realtime.bootstrap",
+        "",
+        (s) -> s,
+        Setting.Property.IndexScope,
+        Property.Final
+    );
+
+
     public static boolean isHavenaskEngine(Settings indexSettings) {
         return ENGINE_HAVENASK.equals(ENGINE_TYPE_SETTING.get(indexSettings));
     }

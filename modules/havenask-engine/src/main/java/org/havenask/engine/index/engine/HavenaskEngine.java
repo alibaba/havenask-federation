@@ -80,7 +80,7 @@ public class HavenaskEngine extends InternalEngine {
         BizConfigGenerator.generateBiz(engineConfig, env.getConfigPath());
         TableConfigGenerator.generateTable(engineConfig, env.getConfigPath());
         // 初始化segment信息
-        RuntimeSegmentGenerator.generateRuntimeSegment(env, nativeProcessControlService, shardId.getIndexName());
+        RuntimeSegmentGenerator.generateRuntimeSegment(env, nativeProcessControlService, shardId.getIndexName(), engineConfig.getIndexSettings().getSettings());
         // 更新配置表信息
         nativeProcessControlService.updateDataNodeTarget();
     }

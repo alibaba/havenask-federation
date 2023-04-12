@@ -370,6 +370,30 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
         }
     }
 
+    public void startBsJob(String indexName, String realtimeInfo) {
+        if (isDataNode) {
+            // 启动bs job
+            final String finalStartBsJobCommand = startBsJobCommand + " " + indexName + " '" + realtimeInfo + "'";
+            AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
+                try {
+                    Process process = Runtime.getRuntime().exec(new String[] { "sh", "-c", finalStartBsJobCommand });
+                    process.waitFor();
+                    if (process.exitValue() != 0) {
+                        try (InputStream inputStream = process.getInputStream()) {
+                            byte[] bytes = inputStream.readAllBytes();
+                            String result = new String(bytes, StandardCharsets.UTF_8);
+                            LOGGER.warn("bs job start failed, exit value: {}, failed reason: {}", process.exitValue(), result);
+                        }
+                    }
+                    process.destroy();
+                } catch (Exception e) {
+                    LOGGER.warn("start bs job unexpected failed", e);
+                }
+                return null;
+            });
+        }
+    }
+
     public void startBsJob(String indexName) {
         if (isDataNode) {
             // 启动bs job
