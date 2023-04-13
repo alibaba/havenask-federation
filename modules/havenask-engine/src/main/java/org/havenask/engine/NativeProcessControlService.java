@@ -42,9 +42,9 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
     public static final String SEARCHER_ROLE = "searcher";
     public static final String QRS_ROLE = "qrs";
     private static final String START_SEARCHER_COMMAND = "cd %s;python %s/havenask/script/general_search_starter.py -i "
-        + "%s -c %s -b /ha3_install -M in0 --role searcher --httpBindPort %d --arpcBindPort %d";
+        + "%s -c %s -b /ha3_install -M in0 --role searcher --httpBindPort %d --arpcBindPort %d >> search.log 2>> search.error.log";
     private static final String START_QRS_COMMAND = "cd %s;python %s/havenask/script/general_search_starter.py -i "
-        + "%s -c %s -b /ha3_install -M in0 --role qrs --httpBindPort %d --arpcBindPort %d";
+        + "%s -c %s -b /ha3_install -M in0 --role qrs --httpBindPort %d --arpcBindPort %d >> qrs.log 2>> qrs.error.log";
     private static final String UPDATE_SEARCHER_COMMAND = "cd %s;python %s/havenask/script/general_search_updater.py -i "
         + "%s -c %s -M in0 --role searcher";
     private static final String UPDATE_QRS_COMMAND = "cd %s;python %s/havenask/script/general_search_updater.py -i "
