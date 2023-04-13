@@ -58,6 +58,7 @@ public class HavenaskEngine extends InternalEngine {
 
     /**
      * TODO 如何像es一样,解决在关闭engine时,不影响正在进行的查询请求
+     * TODO 解决关闭节点时,会对每个shard执行inactiveTable操作的问题
      */
     @Override
     protected final void closeNoLock(String reason, CountDownLatch closedLatch) {

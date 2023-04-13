@@ -42,9 +42,9 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
     public static final String SEARCHER_ROLE = "searcher";
     public static final String QRS_ROLE = "qrs";
     private static final String START_SEARCHER_COMMAND = "cd %s;python %s/havenask/script/general_search_starter.py -i "
-        + "%s -c %s -b /ha3_install -M in0 --role searcher --httpBindPort %d";
+        + "%s -c %s -b /ha3_install -M in0 --role searcher --httpBindPort %d --arpcBindPort %d";
     private static final String START_QRS_COMMAND = "cd %s;python %s/havenask/script/general_search_starter.py -i "
-        + "%s -c %s -b /ha3_install -M in0 --role qrs --httpBindPort %d";
+        + "%s -c %s -b /ha3_install -M in0 --role qrs --httpBindPort %d --arpcBindPort %d";
     private static final String UPDATE_SEARCHER_COMMAND = "cd %s;python %s/havenask/script/general_search_updater.py -i "
         + "%s -c %s -M in0 --role searcher";
     private static final String UPDATE_QRS_COMMAND = "cd %s;python %s/havenask/script/general_search_updater.py -i "
@@ -63,9 +63,23 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
         Setting.Property.Final
     );
 
+    public static final Setting<Integer> HAVENASK_SEARCHER_TCP_PORT_SETTING = Setting.intSetting(
+        "havenask.searcher.tcp.port",
+        39300,
+        Property.NodeScope,
+        Setting.Property.Final
+    );
+
     public static final Setting<Integer> HAVENASK_QRS_HTTP_PORT_SETTING = Setting.intSetting(
         "havenask.qrs.http.port",
         49200,
+        Property.NodeScope,
+        Setting.Property.Final
+    );
+
+    public static final Setting<Integer> HAVENASK_QRS_TCP_PORT_SETTING = Setting.intSetting(
+        "havenask.qrs.tcp.port",
+        49300,
         Property.NodeScope,
         Setting.Property.Final
     );
@@ -79,7 +93,9 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
     private final NodeEnvironment nodeEnvironment;
     private final HavenaskEngineEnvironment havenaskEngineEnvironment;
     private final int searcherHttpPort;
+    private final int searcherTcpPort;
     private final int qrsHttpPort;
+    private final int qrsTcpPort;
 
     protected String startSearcherCommand;
     protected String updateSearcherCommand;
@@ -107,7 +123,9 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
         this.nodeEnvironment = nodeEnvironment;
         this.havenaskEngineEnvironment = havenaskEngineEnvironment;
         this.searcherHttpPort = HAVENASK_SEARCHER_HTTP_PORT_SETTING.get(settings);
+        this.searcherTcpPort = HAVENASK_SEARCHER_TCP_PORT_SETTING.get(settings);
         this.qrsHttpPort = HAVENASK_QRS_HTTP_PORT_SETTING.get(settings);
+        this.qrsTcpPort = HAVENASK_QRS_TCP_PORT_SETTING.get(settings);
         this.startSearcherCommand = String.format(
             Locale.ROOT,
             START_SEARCHER_COMMAND,
@@ -115,7 +133,8 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
             environment.configFile().toAbsolutePath(),
             havenaskEngineEnvironment.getRuntimedataPath(),
             havenaskEngineEnvironment.getConfigPath(),
-            searcherHttpPort
+            searcherHttpPort,
+            searcherTcpPort
         );
         this.updateSearcherCommand = String.format(
             Locale.ROOT,
@@ -132,7 +151,8 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
             environment.configFile().toAbsolutePath(),
             havenaskEngineEnvironment.getRuntimedataPath(),
             havenaskEngineEnvironment.getConfigPath(),
-            qrsHttpPort
+            qrsHttpPort,
+            qrsTcpPort
         );
         this.updateQrsCommand = String.format(
             Locale.ROOT,
@@ -348,7 +368,7 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
     }
 
     public void updateDataNodeTarget() {
-        if (isDataNode) {
+        if (isDataNode && running) {
             // 更新datanode searcher的target
             AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
                 try {

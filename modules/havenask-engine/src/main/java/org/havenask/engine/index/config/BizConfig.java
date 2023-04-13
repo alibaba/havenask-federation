@@ -15,6 +15,7 @@
 package org.havenask.engine.index.config;
 
 import java.util.List;
+import java.util.Objects;
 
 import org.havenask.engine.util.JsonPrettyFormatter;
 
@@ -67,6 +68,23 @@ public class BizConfig {
         public HashMode(String hash_field, String hash_function) {
             this.hash_field = hash_field;
             this.hash_function = hash_function;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) {
+                return true;
+            }
+            if (o == null || getClass() != o.getClass()) {
+                return false;
+            }
+            HashMode hashMode = (HashMode) o;
+            return Objects.equals(hash_field, hashMode.hash_field) && Objects.equals(hash_function, hashMode.hash_function);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(hash_field, hash_function);
         }
     }
 
