@@ -14,7 +14,6 @@
 
 package org.havenask.engine.index.engine;
 
-import java.time.Instant;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -23,52 +22,38 @@ import org.havenask.common.settings.Setting;
 import org.havenask.common.settings.Setting.Property;
 import org.havenask.common.settings.Settings;
 
-import static org.havenask.cluster.metadata.IndexMetadata.INDEX_NUMBER_OF_REPLICAS_SETTING;
 import static org.havenask.cluster.metadata.IndexMetadata.INDEX_NUMBER_OF_SHARDS_SETTING;
 
 public class EngineSettings {
     public static final String ENGINE_HAVENASK = "havenask";
     public static final String ENGINE_LUCENE = "lucene";
 
-    public static final Setting<String> ENGINE_TYPE_SETTING = new Setting<>(
-        "index.engine",
-        "lucene",
-        (s) -> s,
-        new Setting.Validator<>() {
-            @Override
-            public void validate(String value) {}
+    public static final Setting<String> ENGINE_TYPE_SETTING = new Setting<>("index.engine", "lucene", (s) -> s, new Setting.Validator<>() {
+        @Override
+        public void validate(String value) {}
 
-            @Override
-            public void validate(String value, Map<Setting<?>, Object> settings) {
-                // value must be lucene or havenask
-                if (!ENGINE_LUCENE.equals(value) && !ENGINE_HAVENASK.equals(value)) {
-                    throw new IllegalArgumentException("Invalid engine type [" + value + "], must be [lucene] or [havenask]");
-                }
-
-                if (ENGINE_HAVENASK.equals(value)) {
-                    // havenask engine only support 1 shard
-                    Integer shards = (Integer) settings.get(INDEX_NUMBER_OF_SHARDS_SETTING);
-                    if (shards != null && shards != 1) {
-                        throw new IllegalArgumentException("havenask engine only support 1 shard");
-                    }
-
-                    // havenask engine only support 0 replica
-                    Integer replicas = (Integer) settings.get(INDEX_NUMBER_OF_REPLICAS_SETTING);
-                    if (replicas != null && replicas != 0) {
-                        throw new IllegalArgumentException("havenask engine only support 0 replica");
-                    }
-                }
+        @Override
+        public void validate(String value, Map<Setting<?>, Object> settings) {
+            // value must be lucene or havenask
+            if (!ENGINE_LUCENE.equals(value) && !ENGINE_HAVENASK.equals(value)) {
+                throw new IllegalArgumentException("Invalid engine type [" + value + "], must be [lucene] or [havenask]");
             }
 
-            @Override
-            public Iterator<Setting<?>> settings() {
-                List<Setting<?>> settings = List.of(INDEX_NUMBER_OF_REPLICAS_SETTING, INDEX_NUMBER_OF_SHARDS_SETTING);
-                return settings.iterator();
+            if (ENGINE_HAVENASK.equals(value)) {
+                // havenask engine only support 1 shard
+                Integer shards = (Integer) settings.get(INDEX_NUMBER_OF_SHARDS_SETTING);
+                if (shards != null && shards != 1) {
+                    throw new IllegalArgumentException("havenask engine only support 1 shard");
+                }
             }
-        },
-        Setting.Property.IndexScope,
-        Setting.Property.Final
-    );
+        }
+
+        @Override
+        public Iterator<Setting<?>> settings() {
+            List<Setting<?>> settings = List.of(INDEX_NUMBER_OF_SHARDS_SETTING);
+            return settings.iterator();
+        }
+    }, Setting.Property.IndexScope, Setting.Property.Final);
 
     // float/double number will *10^HA3_FLOAT_MUL_BY10 for index and search(using multi fields)
     public static final Setting<Integer> HA3_FLOAT_MUL_BY10 = new Setting<>(

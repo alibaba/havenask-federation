@@ -19,7 +19,6 @@ import org.havenask.test.HavenaskTestCase;
 
 import static org.havenask.cluster.metadata.IndexMetadata.SETTING_NUMBER_OF_REPLICAS;
 
-
 public class HavenaskIndexSettingProviderTests extends HavenaskTestCase {
 
     public void testGetAdditionalIndexSettings() {
@@ -29,10 +28,18 @@ public class HavenaskIndexSettingProviderTests extends HavenaskTestCase {
         assertEquals(0, replicas);
     }
 
-    // test for default engine
-    public void testGetAdditionalIndexSettingsDefaultEngine() {
+    // test for havenask engine only support 0 replica
+    public void testGetAdditionalIndexSettingsWithReplica() {
         HavenaskIndexSettingProvider provider = new HavenaskIndexSettingProvider();
-        Settings settings = provider.getAdditionalIndexSettings("test", false, Settings.builder().put("index.engine", "lucene").build());
-        assertNull(settings.get(SETTING_NUMBER_OF_REPLICAS));
+        try {
+            provider.getAdditionalIndexSettings(
+                "test",
+                false,
+                Settings.builder().put("index.engine", "havenask").put(SETTING_NUMBER_OF_REPLICAS, 1).build()
+            );
+            fail("should throw IllegalArgumentException");
+        } catch (IllegalArgumentException e) {
+            assertEquals("havenask engine only support 0 replica", e.getMessage());
+        }
     }
 }

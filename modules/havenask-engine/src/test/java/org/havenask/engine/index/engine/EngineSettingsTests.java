@@ -20,7 +20,7 @@ import org.havenask.test.HavenaskTestCase;
 public class EngineSettingsTests extends HavenaskTestCase {
     // test isHavenaskEngine
     public void testIsHavenaskEngine() {
-        Settings settings = Settings.builder().put("index.engine", "havenask").put("index.number_of_replicas", 0).build();
+        Settings settings = Settings.builder().put("index.engine", "havenask").build();
         assertTrue(EngineSettings.isHavenaskEngine(settings));
     }
 
@@ -58,20 +58,9 @@ public class EngineSettingsTests extends HavenaskTestCase {
         }
     }
 
-    // test ENGINE_TYPE_SETTING replica
-    public void testEngineTypeSettingReplica() {
-        Settings settings = Settings.builder().put("index.engine", "havenask").put("index.number_of_replicas", 1).build();
-        try {
-            EngineSettings.ENGINE_TYPE_SETTING.get(settings);
-            fail("should throw IllegalArgumentException");
-        } catch (IllegalArgumentException e) {
-            assertEquals("havenask engine only support 0 replica", e.getMessage());
-        }
-    }
-
-    // test ENGINE_TYPE_SETTING right shard and replica
-    public void testEngineTypeSettingRightShardAndReplica() {
-        Settings settings = Settings.builder().put("index.engine", "havenask").put("index.number_of_shards", 1).put("index.number_of_replicas", 0).build();
+    // test ENGINE_TYPE_SETTING right shard
+    public void testEngineTypeSettingRightShard() {
+        Settings settings = Settings.builder().put("index.engine", "havenask").put("index.number_of_shards", 1).build();
         assertEquals("havenask", EngineSettings.ENGINE_TYPE_SETTING.get(settings));
     }
 

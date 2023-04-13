@@ -15,19 +15,17 @@
 package org.havenask.engine;
 
 import org.havenask.common.settings.Settings;
-import org.havenask.engine.index.engine.EngineSettings;
 import org.havenask.index.shard.IndexSettingProvider;
 
 import static org.havenask.cluster.metadata.IndexMetadata.SETTING_NUMBER_OF_REPLICAS;
 
 public class HavenaskIndexSettingProvider implements IndexSettingProvider {
     public Settings getAdditionalIndexSettings(String indexName, boolean isDataStreamIndex, Settings templateAndRequestSettings) {
-        if (EngineSettings.isHavenaskEngine(templateAndRequestSettings)) {
-            return Settings.builder()
-                .put(SETTING_NUMBER_OF_REPLICAS, 0)
-                .build();
-        } else {
-            return Settings.EMPTY;
+        int replica = templateAndRequestSettings.getAsInt(SETTING_NUMBER_OF_REPLICAS, 0);
+        if (replica != 0) {
+            throw new IllegalArgumentException("havenask engine only support 0 replica");
         }
+
+        return Settings.builder().put(SETTING_NUMBER_OF_REPLICAS, 0).build();
     }
 }
