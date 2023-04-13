@@ -48,6 +48,7 @@ import org.havenask.env.Environment;
 import org.havenask.env.NodeEnvironment;
 import org.havenask.index.IndexSettings;
 import org.havenask.index.engine.EngineFactory;
+import org.havenask.index.shard.IndexSettingProvider;
 import org.havenask.plugins.ActionPlugin;
 import org.havenask.plugins.AnalysisPlugin;
 import org.havenask.plugins.EnginePlugin;
@@ -145,5 +146,10 @@ public class HavenaskEnginePlugin extends Plugin implements EnginePlugin, Analys
         Supplier<DiscoveryNodes> nodesInCluster
     ) {
         return Arrays.asList(new RestHavenaskSqlAction());
+    }
+
+    @Override
+    public Collection<IndexSettingProvider> getAdditionalIndexSettingProviders() {
+        return Arrays.asList(new HavenaskIndexSettingProvider());
     }
 }
