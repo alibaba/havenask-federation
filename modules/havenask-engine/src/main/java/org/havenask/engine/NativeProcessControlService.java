@@ -394,6 +394,7 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
         if (isDataNode) {
             // 启动bs job
             final String finalStartBsJobCommand = startBsJobCommand + " " + indexName + " '" + realtimeInfo + "'";
+            LOGGER.info("start bs job command: {}", finalStartBsJobCommand);
             AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
                 try {
                     Process process = Runtime.getRuntime().exec(new String[] { "sh", "-c", finalStartBsJobCommand });
@@ -418,6 +419,7 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
         if (isDataNode) {
             // 启动bs job
             final String finalStartBsJobCommand = startBsJobCommand + " " + indexName;
+            LOGGER.info("start bs job command: {}", finalStartBsJobCommand);
             AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
                 try {
                     Process process = Runtime.getRuntime().exec(new String[] { "sh", "-c", finalStartBsJobCommand });
