@@ -72,7 +72,7 @@ examples:
         self.parser.add_option('-c', '--config', action='store', dest='configPath')
         self.parser.add_option('-p', '--port', action='store', dest='portList')
         self.parser.add_option('', '--httpBindPort', dest='httpBindPort', type='int', default=0)
-        self.parser.add_option('', '--qrsArpcBindPort', dest='qrsArpcBindPort', type='int', default=0)
+        self.parser.add_option('', '--arpcBindPort', dest='arpcBindPort', type='int', default=0)
 
         self.parser.add_option('-z', '--zone', action='store', dest='zoneName')
         self.parser.add_option('-j', '--tables', action='store', dest='atables')
@@ -173,7 +173,7 @@ examples:
             self.offlineConfigPath = os.path.join(self.offlineConfigPath, str(tableVersions[-1]))
 
         self.httpBindPort = options.httpBindPort
-        self.qrsArpcBindPort = options.qrsArpcBindPort
+        self.arpcBindPort = options.arpcBindPort
         self.portList = []
         # self.origin_port_list = map(lambda x:int(x), options.portList.split(","))
         self.searcher_port_list = []
@@ -545,9 +545,9 @@ examples:
         targetCfg = os.path.join(rundir, "qrs_service_%d.cfg" % (self.portStart))
         os.system("cp %s %s" % (self.qrsCfg, targetCfg))
         startCmd = self.startCmdTemplate % (self.binPath, self.libPath, self.alogConfigPath,
-                                            self.binaryPath, targetCfg, 0, 0,
+                                            self.binaryPath, targetCfg, self.arpcBindPort, 0,
                                             self.httpBindPort, self.serviceName,self.serviceName,
-                                            zoneName, self.amonPort, "qrs", self.qrsArpcBindPort, self.ip, zoneName, zoneName, partId)
+                                            zoneName, self.amonPort, "qrs", self.arpcBindPort, self.ip, zoneName, zoneName, partId)
         if self.qrsQueue :
             startCmd += " --env extraTaskQueues=" + self.qrsQueue
         if self.qrsQueueSize :
@@ -613,8 +613,8 @@ examples:
             targetCfg = os.path.join(rundir, zoneName + "_%d_search_service_%d.cfg" % (partId, self.portStart))
             os.system("cp %s %s" % (self.searchCfg, targetCfg))
             startCmd = self.startCmdTemplate % (self.binPath, self.libPath, self.alogConfigPath,
-                                                self.binaryPath, targetCfg, 0, 0, self.httpBindPort, self.serviceName, self.serviceName,
-                                                zoneName, self.amonPort, "searcher", 0, self.ip, zoneName, zoneName, partId )
+                                                self.binaryPath, targetCfg, self.arpcBindPort, 0, self.httpBindPort, self.serviceName, self.serviceName,
+                                                zoneName, self.amonPort, "searcher", self.arpcBindPort, self.ip, zoneName, zoneName, partId )
             if self.searcherQueue :
                 startCmd += " --env extraTaskQueues=" + self.searcherQueue
             if self.searcherQueueSize :
