@@ -205,7 +205,9 @@ examples:
                             zoneName = splitInfo[0] + "_" + str(partId)
                             self.readyZones[zoneName] = localConfig
                             print "searcher [%s] is ready for search, topo [%s]" % (zoneName, json.dumps(localConfig))
-                if len(targetInfos) == len(self.readyZones):
+                elif timeout <= 0:
+                    print "searcher [%s] load target [%s] failed" % (roleName, targetStr)
+                if len(infos) > 0 and len(targetInfos) == (len(self.readyZones) / len(infos)):
                     print "all searcher is ready."
                     with open(os.path.join(self.workdir, "readyZones.json"), "w") as f:
                         json.dump(self.readyZones, f)
