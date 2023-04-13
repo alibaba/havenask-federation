@@ -21,14 +21,25 @@ import com.carrotsearch.randomizedtesting.annotations.ThreadLeakFilters;
 import org.hamcrest.Matchers;
 import org.havenask.OkHttpThreadLeakFilter;
 import org.havenask.common.SuppressForbidden;
+import org.havenask.common.settings.Settings;
 import org.havenask.engine.HavenaskEnginePlugin;
 import org.havenask.engine.HavenaskITTestCase;
 import org.havenask.plugins.Plugin;
+import org.havenask.test.HavenaskIntegTestCase;
 import org.havenask.transport.nio.MockNioTransportPlugin;
 
 @SuppressForbidden(reason = "use a http server")
 @ThreadLeakFilters(filters = { OkHttpThreadLeakFilter.class })
+@HavenaskIntegTestCase.ClusterScope(numDataNodes = 1, numClientNodes = 0, scope = HavenaskIntegTestCase.Scope.TEST)
 public class SqlActionIT extends HavenaskITTestCase {
+
+    @Override
+    protected Settings nodeSettings(int nodeOrdinal) {
+        Settings.Builder builder = Settings.builder()
+            .put(super.nodeSettings(nodeOrdinal))
+            .putList("node.roles", Arrays.asList("master", "data", "ingest"));
+        return builder.build();
+    }
 
     @Override
     protected Collection<Class<? extends Plugin>> nodePlugins() {
