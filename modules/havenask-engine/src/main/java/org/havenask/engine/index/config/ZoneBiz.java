@@ -17,30 +17,31 @@ package org.havenask.engine.index.config;
 import java.util.Objects;
 import java.util.Set;
 
-import org.havenask.engine.index.config.BizConfig.ClusterConfig;
 import org.havenask.engine.index.config.BizConfig.HashMode;
 import org.havenask.engine.util.JsonPrettyFormatter;
 
 /**
  * {
+ *   "turing_options_config": {
  *     "dependency_table": [
- *         "in0"
- *     ],
- *     "cluster_config" : {
- *         "hash_mode" : {
- *             "hash_field" : "_id",
- *             "hash_function" : "HASH"
- *         },
- *         "query_config" : {
- *             "default_index" : "title",
- *             "default_operator" : "AND"
- *         },
- *         "table_name" : "in0"
- *     }
+ *       "in0"
+ *     ]
+ *   },
+ *   "cluster_config": {
+ *     "hash_mode": {
+ *       "hash_field": "docid",
+ *       "hash_function": "HASH"
+ *     },
+ *     "query_config": {
+ *       "default_index": "title",
+ *       "default_operator": "AND"
+ *     },
+ *     "table_name": "in0"
+ *   }
  * }
  */
 public class ZoneBiz {
-    public Set<String> dependency_table = Set.of("in0");
+    public TuringOptionsConfig turing_options_config = new TuringOptionsConfig();
     public ClusterConfig cluster_config = new ClusterConfig();
 
     public static class ClusterConfig {
@@ -65,6 +66,27 @@ public class ZoneBiz {
         @Override
         public int hashCode() {
             return Objects.hash(table_name, hash_mode, query_config);
+        }
+    }
+
+    public static class TuringOptionsConfig {
+        public Set<String> dependency_table = Set.of("in0");
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) {
+                return true;
+            }
+            if (o == null || getClass() != o.getClass()) {
+                return false;
+            }
+            TuringOptionsConfig that = (TuringOptionsConfig) o;
+            return Objects.equals(dependency_table, that.dependency_table);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(dependency_table);
         }
     }
 
@@ -113,11 +135,12 @@ public class ZoneBiz {
             return false;
         }
         ZoneBiz zoneBiz = (ZoneBiz) o;
-        return Objects.equals(dependency_table, zoneBiz.dependency_table) && Objects.equals(cluster_config, zoneBiz.cluster_config);
+        return Objects.equals(turing_options_config, zoneBiz.turing_options_config)
+            && Objects.equals(cluster_config, zoneBiz.cluster_config);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(dependency_table, cluster_config);
+        return Objects.hash(turing_options_config, cluster_config);
     }
 }
