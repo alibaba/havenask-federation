@@ -135,7 +135,8 @@ public class ZoneBiz {
             return false;
         }
         ZoneBiz zoneBiz = (ZoneBiz) o;
-        return Objects.equals(turing_options_config, zoneBiz.turing_options_config) && Objects.equals(cluster_config, zoneBiz.cluster_config);
+        return Objects.equals(turing_options_config, zoneBiz.turing_options_config)
+            && Objects.equals(cluster_config, zoneBiz.cluster_config);
     }
 
     @Override

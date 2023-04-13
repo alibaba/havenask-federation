@@ -95,7 +95,12 @@ public class BizConfigGenerator {
         Set<String> indices = new HashSet<>(zoneBiz.turing_options_config.dependency_table);
         indices.add(indexName);
         zoneBiz.turing_options_config.dependency_table = indices;
-        Files.write(defaultBizConfigPath, zoneBiz.toString().getBytes(StandardCharsets.UTF_8), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+        Files.write(
+            defaultBizConfigPath,
+            zoneBiz.toString().getBytes(StandardCharsets.UTF_8),
+            StandardOpenOption.CREATE,
+            StandardOpenOption.TRUNCATE_EXISTING
+        );
     }
 
     private synchronized void removeDefaultBizConfig(String version) throws IOException {
@@ -106,7 +111,12 @@ public class BizConfigGenerator {
         Set<String> indices = new HashSet<>(zoneBiz.turing_options_config.dependency_table);
         indices.remove(indexName);
         zoneBiz.turing_options_config.dependency_table = indices;
-        Files.write(defaultBizConfigPath, zoneBiz.toString().getBytes(StandardCharsets.UTF_8), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+        Files.write(
+            defaultBizConfigPath,
+            zoneBiz.toString().getBytes(StandardCharsets.UTF_8),
+            StandardOpenOption.CREATE,
+            StandardOpenOption.TRUNCATE_EXISTING
+        );
     }
 
     private void generateClusterConfig(String version) throws IOException {
@@ -114,14 +124,24 @@ public class BizConfigGenerator {
         bizConfig.cluster_config.cluster_name = indexName;
         bizConfig.cluster_config.table_name = indexName;
         Path clusterConfigPath = configPath.resolve(version).resolve(CLUSTER_DIR).resolve(indexName + CLUSTER_FILE_SUFFIX);
-        Files.write(clusterConfigPath, bizConfig.toString().getBytes(StandardCharsets.UTF_8), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+        Files.write(
+            clusterConfigPath,
+            bizConfig.toString().getBytes(StandardCharsets.UTF_8),
+            StandardOpenOption.CREATE,
+            StandardOpenOption.TRUNCATE_EXISTING
+        );
     }
 
     private void generateSchema(String version) throws IOException {
         SchemaGenerate schemaGenerate = new SchemaGenerate();
         Schema schema = schemaGenerate.getSchema(engineConfig);
         Path schemaPath = configPath.resolve(version).resolve(SCHEMAS_DIR).resolve(indexName + SCHEMAS_FILE_SUFFIX);
-        Files.write(schemaPath, schema.toString().getBytes(StandardCharsets.UTF_8), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+        Files.write(
+            schemaPath,
+            schema.toString().getBytes(StandardCharsets.UTF_8),
+            StandardOpenOption.CREATE,
+            StandardOpenOption.TRUNCATE_EXISTING
+        );
     }
 
     private void generateDataTable(String version) throws IOException {
@@ -130,6 +150,11 @@ public class BizConfigGenerator {
         processorChainConfig.clusters = List.of(indexName);
         dataTable.processor_chain_config = List.of(processorChainConfig);
         Path dataTablePath = configPath.resolve(version).resolve(DATA_TABLES_DIR).resolve(indexName + DATA_TABLES_FILE_SUFFIX);
-        Files.write(dataTablePath, dataTable.toString().getBytes(StandardCharsets.UTF_8), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+        Files.write(
+            dataTablePath,
+            dataTable.toString().getBytes(StandardCharsets.UTF_8),
+            StandardOpenOption.CREATE,
+            StandardOpenOption.TRUNCATE_EXISTING
+        );
     }
 }
