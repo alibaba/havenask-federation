@@ -14,6 +14,8 @@
 
 package org.havenask.engine.index.config;
 
+import com.alibaba.fastjson.annotation.JSONField;
+
 import org.havenask.engine.util.JsonPrettyFormatter;
 
 /**
@@ -36,6 +38,7 @@ public class RealtimeInfo {
     public String module_name = "kafka";
     public String module_path = "libbs_raw_doc_reader_plugin.so";
     public String topic_name;
+    @JSONField(name = "bootstrap.servers")
     public String bootstrap_servers;
     public String src_signature = "16113477091138423397";
     public String realtime_process_rawdoc = "true";
