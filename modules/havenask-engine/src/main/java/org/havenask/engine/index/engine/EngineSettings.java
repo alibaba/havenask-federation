@@ -82,15 +82,14 @@ public class EngineSettings {
         Property.Final
     );
 
-    // index.havenask.realtime.bootstrap
-    public static final Setting<String> HA3_REALTIME_BOOTSTRAP = new Setting<>(
-        "index.havenask.realtime.bootstrap",
+    // index.havenask.realtime.bootstrap.servers
+    public static final Setting<String> HA3_REALTIME_BOOTSTRAP_SERVERS = new Setting<>(
+        "index.havenask.realtime.bootstrap.servers",
         "",
         (s) -> s,
         Setting.Property.IndexScope,
         Property.Final
     );
-
 
     public static boolean isHavenaskEngine(Settings indexSettings) {
         return ENGINE_HAVENASK.equals(ENGINE_TYPE_SETTING.get(indexSettings));

@@ -22,8 +22,6 @@ import org.havenask.engine.NativeProcessControlService;
 import org.havenask.engine.index.config.RealtimeInfo;
 import org.havenask.engine.index.engine.EngineSettings;
 
-import static org.havenask.engine.index.engine.EngineSettings.HA3_REALTIME_ENABLE;
-
 /**
  * TODO 后续将该流程调整在shard目录创建\删除的流程中
  */
@@ -48,8 +46,8 @@ public class RuntimeSegmentGenerator {
             boolean realTime = EngineSettings.HA3_REALTIME_ENABLE.get(settings);
             if (realTime) {
                 String topic = EngineSettings.HA3_REALTIME_TOPIC_NAME.get(settings);
-                String bootstrap = EngineSettings.HA3_REALTIME_BOOTSTRAP.get(settings);
-                RealtimeInfo realtimeInfo = new RealtimeInfo(indexName, topic, bootstrap);
+                String bootstrapServers = EngineSettings.HA3_REALTIME_BOOTSTRAP_SERVERS.get(settings);
+                RealtimeInfo realtimeInfo = new RealtimeInfo(indexName, topic, bootstrapServers);
 
                 nativeProcessControlService.startBsJob(indexName, realtimeInfo.toString());
             } else {

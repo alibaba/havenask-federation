@@ -23,6 +23,7 @@ public class BizConfig {
     public BuildOptionConfig build_option_config = new BuildOptionConfig();
     public ClusterConfig cluster_config = new ClusterConfig();
     public OfflineIndexConfig offline_index_config = new OfflineIndexConfig();
+    public boolean realtime = false;
 
     public static class BuildOptionConfig {
         public boolean async_build = true;

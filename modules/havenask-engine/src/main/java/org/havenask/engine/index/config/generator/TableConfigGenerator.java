@@ -19,8 +19,14 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.util.List;
 
 import org.havenask.engine.index.config.BizConfig;
+import org.havenask.engine.index.config.DataTable;
+import org.havenask.engine.index.config.Processor.ProcessorChainConfig;
+import org.havenask.engine.index.config.Schema;
+import org.havenask.engine.index.engine.EngineSettings;
+import org.havenask.engine.index.engine.SchemaGenerate;
 import org.havenask.engine.util.VersionUtils;
 import org.havenask.index.engine.EngineConfig;
 
@@ -28,6 +34,10 @@ public class TableConfigGenerator {
     public static final String TABLE_DIR = "table";
     public static final String CLUSTER_DIR = "clusters";
     public static final String CLUSTER_FILE_SUFFIX = "_cluster.json";
+    public static final String SCHEMAS_DIR = "schemas";
+    public static final String SCHEMAS_FILE_SUFFIX = "_schema.json";
+    public static final String DATA_TABLES_DIR = "data_tables";
+    public static final String DATA_TABLES_FILE_SUFFIX = "_table.json";
     private final Path configPath;
     private final EngineConfig engineConfig;
     private final String indexName;
@@ -52,6 +62,8 @@ public class TableConfigGenerator {
         long lastVersion = VersionUtils.getMaxVersion(configPath, 0);
         String strVersion = String.valueOf(lastVersion);
         generateClusterConfig(strVersion);
+        generateSchema(strVersion);
+        generateDataTable(strVersion);
     }
 
     public void remove() throws IOException {
@@ -59,16 +71,49 @@ public class TableConfigGenerator {
         String strVersion = String.valueOf(lastVersion);
         Path clusterConfigPath = configPath.resolve(strVersion).resolve(CLUSTER_DIR).resolve(indexName + CLUSTER_FILE_SUFFIX);
         Files.deleteIfExists(clusterConfigPath);
+
+        Path schemaPath = configPath.resolve(strVersion).resolve(SCHEMAS_DIR).resolve(indexName + SCHEMAS_FILE_SUFFIX);
+        Files.deleteIfExists(schemaPath);
+
+        Path dataTablePath = configPath.resolve(strVersion).resolve(DATA_TABLES_DIR).resolve(indexName + DATA_TABLES_FILE_SUFFIX);
+        Files.deleteIfExists(dataTablePath);
     }
 
     private void generateClusterConfig(String version) throws IOException {
         BizConfig bizConfig = new BizConfig();
         bizConfig.cluster_config.cluster_name = indexName;
         bizConfig.cluster_config.table_name = indexName;
+        bizConfig.realtime = EngineSettings.HA3_REALTIME_ENABLE.get(engineConfig.getIndexSettings().getSettings());
         Path clusterConfigPath = configPath.resolve(version).resolve(CLUSTER_DIR).resolve(indexName + CLUSTER_FILE_SUFFIX);
         Files.write(
             clusterConfigPath,
             bizConfig.toString().getBytes(StandardCharsets.UTF_8),
+            StandardOpenOption.CREATE,
+            StandardOpenOption.TRUNCATE_EXISTING
+        );
+    }
+
+    private void generateSchema(String version) throws IOException {
+        SchemaGenerate schemaGenerate = new SchemaGenerate();
+        Schema schema = schemaGenerate.getSchema(engineConfig);
+        Path schemaPath = configPath.resolve(version).resolve(SCHEMAS_DIR).resolve(indexName + SCHEMAS_FILE_SUFFIX);
+        Files.write(
+            schemaPath,
+            schema.toString().getBytes(StandardCharsets.UTF_8),
+            StandardOpenOption.CREATE,
+            StandardOpenOption.TRUNCATE_EXISTING
+        );
+    }
+
+    private void generateDataTable(String version) throws IOException {
+        DataTable dataTable = new DataTable();
+        ProcessorChainConfig processorChainConfig = new ProcessorChainConfig();
+        processorChainConfig.clusters = List.of(indexName);
+        dataTable.processor_chain_config = List.of(processorChainConfig);
+        Path dataTablePath = configPath.resolve(version).resolve(DATA_TABLES_DIR).resolve(indexName + DATA_TABLES_FILE_SUFFIX);
+        Files.write(
+            dataTablePath,
+            dataTable.toString().getBytes(StandardCharsets.UTF_8),
             StandardOpenOption.CREATE,
             StandardOpenOption.TRUNCATE_EXISTING
         );

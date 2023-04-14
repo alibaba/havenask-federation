@@ -27,9 +27,7 @@ public class HavenaskIndexSettingProvider implements IndexSettingProvider {
             if (replica != 0) {
                 throw new IllegalArgumentException("havenask engine only support 0 replica");
             }
-            return Settings.builder()
-                .put(SETTING_NUMBER_OF_REPLICAS, 0)
-                .build();
+            return Settings.builder().put(SETTING_NUMBER_OF_REPLICAS, 0).build();
         } else {
             return Settings.EMPTY;
         }
