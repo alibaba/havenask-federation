@@ -65,16 +65,41 @@ public class EngineSettings {
     );
 
     // index.havenask.realtime.enable
-    public static final Setting<Boolean> HA3_REALTIME_ENABLE = new Setting<>(
+    public static final Setting<Boolean> HAVENASK_REALTIME_ENABLE = new Setting<>(
         "index.havenask.realtime.enable",
         "false",
         Boolean::parseBoolean,
+        new Setting.Validator<>() {
+            @Override
+            public void validate(Boolean value) {}
+
+            @Override
+            public void validate(Boolean value, Map<Setting<?>, Object> settings) {
+                if (value) {
+                    // index.havenask.realtime.topic_name and index.havenask.realtime.bootstrap.servers must be set
+                    String topicName = (String) settings.get(HAVENASK_REALTIME_TOPIC_NAME);
+                    String bootstrapServers = (String) settings.get(HAVENASK_REALTIME_BOOTSTRAP_SERVERS);
+                    if (topicName == null || topicName.isEmpty()) {
+                        throw new IllegalArgumentException("index.havenask.realtime.topic_name must be set");
+                    }
+                    if (bootstrapServers == null || bootstrapServers.isEmpty()) {
+                        throw new IllegalArgumentException("index.havenask.realtime.bootstrap.servers must be set");
+                    }
+                }
+            }
+
+            @Override
+            public Iterator<Setting<?>> settings() {
+                List<Setting<?>> settings = List.of(HAVENASK_REALTIME_TOPIC_NAME, HAVENASK_REALTIME_BOOTSTRAP_SERVERS);
+                return settings.iterator();
+            }
+        },
         Setting.Property.IndexScope,
         Property.Final
     );
 
     // index.havenask.realtime.topic_name
-    public static final Setting<String> HA3_REALTIME_TOPIC_NAME = new Setting<>(
+    public static final Setting<String> HAVENASK_REALTIME_TOPIC_NAME = new Setting<>(
         "index.havenask.realtime.topic_name",
         "",
         (s) -> s,
@@ -83,7 +108,7 @@ public class EngineSettings {
     );
 
     // index.havenask.realtime.bootstrap.servers
-    public static final Setting<String> HA3_REALTIME_BOOTSTRAP_SERVERS = new Setting<>(
+    public static final Setting<String> HAVENASK_REALTIME_BOOTSTRAP_SERVERS = new Setting<>(
         "index.havenask.realtime.bootstrap.servers",
         "",
         (s) -> s,

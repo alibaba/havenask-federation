@@ -64,4 +64,32 @@ public class EngineSettingsTests extends HavenaskTestCase {
         assertEquals("havenask", EngineSettings.ENGINE_TYPE_SETTING.get(settings));
     }
 
+    // test index.havenask.realtime.enable
+    public void testHavenaskRealtimeEnable() {
+        Settings settings = Settings.builder().put("index.havenask.realtime.enable", true).build();
+        try {
+            EngineSettings.HAVENASK_REALTIME_ENABLE.get(settings);
+            fail("should throw IllegalArgumentException");
+        } catch (IllegalArgumentException e) {
+            assertEquals("index.havenask.realtime.topic_name must be set", e.getMessage());
+        }
+
+        settings = Settings.builder().put("index.havenask.realtime.enable", true).put("index.havenask.realtime.topic_name", "test").build();
+        try {
+            EngineSettings.HAVENASK_REALTIME_ENABLE.get(settings);
+            fail("should throw IllegalArgumentException");
+        } catch (IllegalArgumentException e) {
+            assertEquals("index.havenask.realtime.bootstrap.servers must be set", e.getMessage());
+        }
+
+        settings = Settings.builder()
+            .put("index.havenask.realtime.enable", true)
+            .put("index.havenask.realtime.topic_name", "test")
+            .put("index.havenask.realtime.bootstrap.servers", "localhost:9092")
+            .build();
+        assertTrue(EngineSettings.HAVENASK_REALTIME_ENABLE.get(settings));
+
+        settings = Settings.builder().put("index.havenask.realtime.enable", false).build();
+        assertFalse(EngineSettings.HAVENASK_REALTIME_ENABLE.get(settings));
+    }
 }

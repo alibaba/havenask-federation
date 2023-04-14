@@ -43,10 +43,10 @@ public class RuntimeSegmentGenerator {
 
     public void generate(Settings settings) {
         if (false == Files.exists(havenaskEngineEnvironment.getRuntimedataPath().resolve(indexName))) {
-            boolean realTime = EngineSettings.HA3_REALTIME_ENABLE.get(settings);
+            boolean realTime = EngineSettings.HAVENASK_REALTIME_ENABLE.get(settings);
             if (realTime) {
-                String topic = EngineSettings.HA3_REALTIME_TOPIC_NAME.get(settings);
-                String bootstrapServers = EngineSettings.HA3_REALTIME_BOOTSTRAP_SERVERS.get(settings);
+                String topic = EngineSettings.HAVENASK_REALTIME_TOPIC_NAME.get(settings);
+                String bootstrapServers = EngineSettings.HAVENASK_REALTIME_BOOTSTRAP_SERVERS.get(settings);
                 RealtimeInfo realtimeInfo = new RealtimeInfo(indexName, topic, bootstrapServers);
 
                 nativeProcessControlService.startBsJob(indexName, realtimeInfo.toString());

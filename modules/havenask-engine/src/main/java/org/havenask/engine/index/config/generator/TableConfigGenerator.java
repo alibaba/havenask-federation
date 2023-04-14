@@ -83,7 +83,7 @@ public class TableConfigGenerator {
         BizConfig bizConfig = new BizConfig();
         bizConfig.cluster_config.cluster_name = indexName;
         bizConfig.cluster_config.table_name = indexName;
-        bizConfig.realtime = EngineSettings.HA3_REALTIME_ENABLE.get(engineConfig.getIndexSettings().getSettings());
+        bizConfig.realtime = EngineSettings.HAVENASK_REALTIME_ENABLE.get(engineConfig.getIndexSettings().getSettings());
         Path clusterConfigPath = configPath.resolve(version).resolve(CLUSTER_DIR).resolve(indexName + CLUSTER_FILE_SUFFIX);
         Files.write(
             clusterConfigPath,
