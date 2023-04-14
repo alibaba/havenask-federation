@@ -370,6 +370,7 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
     public void updateDataNodeTarget() {
         if (isDataNode && running) {
             // 更新datanode searcher的target
+            LOGGER.info("update searcher target, command: {}", updateSearcherCommand);
             AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
                 try {
                     Process process = Runtime.getRuntime().exec(new String[] { "sh", "-c", updateSearcherCommand });
@@ -417,6 +418,7 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
     public synchronized void updateIngestNodeTarget() {
         if (isIngestNode && running) {
             // 更新ingestnode qrs的target
+            LOGGER.info("update qrs target, command: {}", updateQrsCommand);
             AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
                 try {
                     Process process = Runtime.getRuntime().exec(new String[] { "sh", "-c", updateQrsCommand });

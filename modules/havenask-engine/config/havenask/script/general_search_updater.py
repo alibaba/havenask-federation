@@ -186,6 +186,7 @@ examples:
                     print "set target %s failed." % targetStr
                     continue
                 response = json.loads(out)
+                infos = []
                 if response["signature"] == requestSig:
                     serviceInfo = json.loads(response["serviceInfo"])
                     infos = serviceInfo["cm2"]["topo_info"].strip('|').split('|')
