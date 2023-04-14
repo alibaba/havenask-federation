@@ -84,6 +84,7 @@ public class HavenaskEngine extends InternalEngine {
         RuntimeSegmentGenerator.generateRuntimeSegment(env, nativeProcessControlService, shardId.getIndexName());
         // 更新配置表信息
         nativeProcessControlService.updateDataNodeTarget();
+        nativeProcessControlService.updateIngestNodeTarget();
     }
 
     /**
@@ -96,5 +97,6 @@ public class HavenaskEngine extends InternalEngine {
         TableConfigGenerator.removeTable(engineConfig, env.getConfigPath());
         // 更新配置表信息
         nativeProcessControlService.updateDataNodeTarget();
+        nativeProcessControlService.updateIngestNodeTarget();
     }
 }
