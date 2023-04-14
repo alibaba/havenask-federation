@@ -16,7 +16,9 @@ package org.havenask.engine;
 
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.function.Supplier;
 
@@ -61,6 +63,9 @@ import org.havenask.script.ScriptService;
 import org.havenask.threadpool.ThreadPool;
 import org.havenask.watcher.ResourceWatcherService;
 
+import static org.havenask.discovery.DiscoveryModule.DISCOVERY_TYPE_SETTING;
+import static org.havenask.discovery.DiscoveryModule.SINGLE_NODE_DISCOVERY_TYPE;
+
 public class HavenaskEnginePlugin extends Plugin implements EnginePlugin, AnalysisPlugin, ActionPlugin, SearchPlugin {
     private static Logger logger = LogManager.getLogger(HavenaskEnginePlugin.class);
     private final SetOnce<HavenaskEngineEnvironment> havenaskEngineEnvironmentSetOnce = new SetOnce<>();
@@ -70,6 +75,27 @@ public class HavenaskEnginePlugin extends Plugin implements EnginePlugin, Analys
     public static final Setting<Boolean> HAVENASK_ENGINE_ENABLED_SETTING = Setting.boolSetting(
         "havenask.engine.enabled",
         false,
+        new Setting.Validator<>() {
+            @Override
+            public void validate(Boolean value) {}
+
+            @Override
+            public void validate(Boolean value, Map<Setting<?>, Object> settings) {
+                // DISCOVERY_TYPE_SETTING must be single-node when havenask engine is enabled
+                if (value) {
+                    String discoveryType = (String) settings.get(DISCOVERY_TYPE_SETTING);
+                    if (false == SINGLE_NODE_DISCOVERY_TYPE.equals(discoveryType)) {
+                        throw new IllegalArgumentException("havenask engine can only be enabled when discovery type is single-node");
+                    }
+                }
+            }
+
+            @Override
+            public Iterator<Setting<?>> settings() {
+                List<Setting<?>> settings = List.of(DISCOVERY_TYPE_SETTING);
+                return settings.iterator();
+            }
+        },
         Property.NodeScope,
         Setting.Property.Final
     );
