@@ -66,6 +66,11 @@ public class TableConfigGenerator {
         bizConfig.cluster_config.cluster_name = indexName;
         bizConfig.cluster_config.table_name = indexName;
         Path clusterConfigPath = configPath.resolve(version).resolve(CLUSTER_DIR).resolve(indexName + CLUSTER_FILE_SUFFIX);
-        Files.write(clusterConfigPath, bizConfig.toString().getBytes(StandardCharsets.UTF_8), StandardOpenOption.CREATE);
+        Files.write(
+            clusterConfigPath,
+            bizConfig.toString().getBytes(StandardCharsets.UTF_8),
+            StandardOpenOption.CREATE,
+            StandardOpenOption.TRUNCATE_EXISTING
+        );
     }
 }

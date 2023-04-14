@@ -247,15 +247,54 @@ public class BizConfigGeneratorTests extends MapperServiceTestCase {
                         + "\t\t},\n"
                         + "\t\t\"table_name\":\"in0\"\n"
                         + "\t},\n"
-                        + "\t\"dependency_table\":[\n"
-                        + "\t\t\"in0\",\n"
-                        + "\t\t\"%s\"\n"
-                        + "\t]\n"
+                        + "\t\"turing_options_config\":{\n"
+                        + "\t\t\"dependency_table\":[\"%s\",\"in0\"]\n"
+                        + "\t}\n"
                         + "}",
                     indexName
                 )
             );
             assertEquals(expect, zoneBizNew);
         }
+
+        bizConfigGenerator.remove();
+        Path clusterConfigPath = configPath.resolve(BIZ_DIR).resolve("0").resolve(CLUSTER_DIR).resolve(indexName + CLUSTER_FILE_SUFFIX);
+        assertFalse(Files.exists(clusterConfigPath));
+
+        Path schemaConfigPath = configPath.resolve(BIZ_DIR).resolve("0").resolve(SCHEMAS_DIR).resolve(indexName + SCHEMAS_FILE_SUFFIX);
+        assertFalse(Files.exists(schemaConfigPath));
+
+        Path dataTablesPath = configPath.resolve(BIZ_DIR)
+            .resolve("0")
+            .resolve(DATA_TABLES_DIR)
+            .resolve(indexName + DATA_TABLES_FILE_SUFFIX);
+        assertFalse(Files.exists(dataTablesPath));
+
+        Path defaultBizPath = configPath.resolve(BIZ_DIR).resolve("0").resolve(DEFAULT_BIZ_CONFIG);
+        assertTrue(Files.exists(defaultBizPath));
+        String content = Files.readString(defaultBizPath);
+        ZoneBiz zoneBizNew = ZoneBiz.parse(content);
+        ZoneBiz expect = ZoneBiz.parse(
+            String.format(
+                Locale.ROOT,
+                "{\n"
+                    + "\t\"cluster_config\":{\n"
+                    + "\t\t\"hash_mode\":{\n"
+                    + "\t\t\t\"hash_field\":\"_id\",\n"
+                    + "\t\t\t\"hash_function\":\"HASH\"\n"
+                    + "\t\t},\n"
+                    + "\t\t\"query_config\":{\n"
+                    + "\t\t\t\"default_index\":\"title\",\n"
+                    + "\t\t\t\"default_operator\":\"AND\"\n"
+                    + "\t\t},\n"
+                    + "\t\t\"table_name\":\"in0\"\n"
+                    + "\t},\n"
+                    + "\t\"turing_options_config\":{\n"
+                    + "\t\t\"dependency_table\":[\"in0\"]\n"
+                    + "\t}\n"
+                    + "}"
+            )
+        );
+        assertEquals(expect, zoneBizNew);
     }
 }
