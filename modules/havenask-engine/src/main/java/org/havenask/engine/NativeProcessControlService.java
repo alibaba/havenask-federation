@@ -46,12 +46,12 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
     private static final String START_QRS_COMMAND = "cd %s;python %s/havenask/script/general_search_starter.py -i "
         + "%s -c %s -b /ha3_install -M in0 --role qrs --httpBindPort %d --arpcBindPort %d >> qrs.log 2>> qrs.error.log";
     private static final String UPDATE_SEARCHER_COMMAND = "cd %s;python %s/havenask/script/general_search_updater.py -i "
-        + "%s -c %s -M in0 --role searcher";
+        + "%s -c %s -M in0 --role searcher >> search.log 2>> search.error.log";
     private static final String UPDATE_QRS_COMMAND = "cd %s;python %s/havenask/script/general_search_updater.py -i "
-        + "%s -c %s -M in0 --role qrs";
+        + "%s -c %s -M in0 --role qrs >> qrs.log 2>> qrs.error.log";
     private static final String STOP_HAVENASK_COMMAND =
         "python /ha3_install/usr/local/lib/python/site-packages/ha_tools/local_search_stop.py"
-            + " -c /ha3_install/usr/local/etc/ha3/ha3_alog.conf";
+            + " -c /ha3_install/usr/local/etc/ha3/ha3_alog.conf >> search.log 2>> search.error.log";
     private static final String CHECK_HAVENASK_ALIVE_COMMAND =
         "ps aux | grep sap_server_d | grep 'roleType=%s' | grep -v grep | awk '{print $2}'";
     private static final String START_BS_JOB_COMMAND = "python %s/havenask/script/bs_job_starter.py %s %s %s %s ";
@@ -415,7 +415,7 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
     }
 
     public synchronized void updateIngestNodeTarget() {
-        if (isIngestNode) {
+        if (isIngestNode && running) {
             // 更新ingestnode qrs的target
             AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
                 try {
