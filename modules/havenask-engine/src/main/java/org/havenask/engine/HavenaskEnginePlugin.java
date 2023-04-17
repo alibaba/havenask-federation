@@ -152,7 +152,10 @@ public class HavenaskEnginePlugin extends Plugin implements EnginePlugin, Analys
             HAVENASK_ENGINE_ENABLED_SETTING,
             HavenaskEngineEnvironment.HAVENASK_PATH_DATA_SETTING,
             EngineSettings.ENGINE_TYPE_SETTING,
-            EngineSettings.HA3_FLOAT_MUL_BY10
+            EngineSettings.HA3_FLOAT_MUL_BY10,
+            EngineSettings.HAVENASK_REALTIME_ENABLE,
+            EngineSettings.HAVENASK_REALTIME_TOPIC_NAME,
+            EngineSettings.HAVENASK_REALTIME_BOOTSTRAP_SERVERS
         );
     }
 

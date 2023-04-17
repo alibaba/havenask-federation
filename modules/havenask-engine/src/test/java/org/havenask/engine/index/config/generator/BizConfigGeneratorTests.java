@@ -56,7 +56,6 @@ public class BizConfigGeneratorTests extends MapperServiceTestCase {
         MapperService mapperService = createMapperService(fieldMapping(b -> b.field("type", "keyword")));
         EngineConfig engineConfig = mock(EngineConfig.class);
         CodecService codecService = mock(CodecService.class);
-
         when(codecService.getMapperService()).thenReturn(mapperService);
         when(engineConfig.getShardId()).thenReturn(new ShardId(new Index(indexName, randomAlphaOfLength(5)), 0));
         when(engineConfig.getCodecService()).thenReturn(codecService);
@@ -111,7 +110,8 @@ public class BizConfigGeneratorTests extends MapperServiceTestCase {
                     + "\t\t\t\"build_total_memory\":5120,\n"
                     + "\t\t\t\"keep_version_count\":40\n"
                     + "\t\t}\n"
-                    + "\t}\n"
+                    + "\t},\n"
+                    + "\t\"realtime\":false\n"
                     + "}",
                 indexName,
                 indexName

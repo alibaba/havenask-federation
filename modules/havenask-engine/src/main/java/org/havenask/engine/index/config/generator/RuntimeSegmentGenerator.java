@@ -16,8 +16,11 @@ package org.havenask.engine.index.config.generator;
 
 import java.nio.file.Files;
 
+import org.havenask.common.settings.Settings;
 import org.havenask.engine.HavenaskEngineEnvironment;
 import org.havenask.engine.NativeProcessControlService;
+import org.havenask.engine.index.config.RealtimeInfo;
+import org.havenask.engine.index.engine.EngineSettings;
 
 /**
  * TODO 后续将该流程调整在shard目录创建\删除的流程中
@@ -38,22 +41,32 @@ public class RuntimeSegmentGenerator {
         this.nativeProcessControlService = nativeProcessControlService;
     }
 
-    public void generate() {
+    public void generate(Settings settings) {
         if (false == Files.exists(havenaskEngineEnvironment.getRuntimedataPath().resolve(indexName))) {
-            nativeProcessControlService.startBsJob(indexName);
+            boolean realTime = EngineSettings.HAVENASK_REALTIME_ENABLE.get(settings);
+            if (realTime) {
+                String topic = EngineSettings.HAVENASK_REALTIME_TOPIC_NAME.get(settings);
+                String bootstrapServers = EngineSettings.HAVENASK_REALTIME_BOOTSTRAP_SERVERS.get(settings);
+                RealtimeInfo realtimeInfo = new RealtimeInfo(indexName, topic, bootstrapServers);
+
+                nativeProcessControlService.startBsJob(indexName, realtimeInfo.toString());
+            } else {
+                nativeProcessControlService.startBsJob(indexName);
+            }
         }
     }
 
     public static void generateRuntimeSegment(
         HavenaskEngineEnvironment havenaskEngineEnvironment,
         NativeProcessControlService nativeProcessControlService,
-        String indexName
+        String indexName,
+        Settings settings
     ) {
         RuntimeSegmentGenerator runtimeSegmentGenerator = new RuntimeSegmentGenerator(
             havenaskEngineEnvironment,
             nativeProcessControlService,
             indexName
         );
-        runtimeSegmentGenerator.generate();
+        runtimeSegmentGenerator.generate(settings);
     }
 }
