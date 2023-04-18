@@ -33,6 +33,9 @@ RUN chmod 0775 config config/jvm.options.d data logs
 COPY config/havenask.yml config/log4j2.properties config/
 RUN chmod 0660 config/havenask.yml config/log4j2.properties
 
+# add opensearch-dashboard
+ADD "./packages/dashboards.tar.gz" "/usr/share/havenask/"
+
 ################################################################################
 # Build stage 1 (the actual Havenask image):
 #
