@@ -22,6 +22,7 @@ import java.util.concurrent.TimeUnit;
 import org.havenask.cluster.service.ClusterService;
 import org.havenask.common.settings.ClusterSettings;
 import org.havenask.common.settings.Settings;
+import org.havenask.discovery.DiscoveryModule;
 import org.havenask.env.Environment;
 import org.havenask.env.NodeEnvironment;
 import org.havenask.env.TestEnvironment;
@@ -30,6 +31,8 @@ import org.havenask.threadpool.TestThreadPool;
 import org.havenask.threadpool.ThreadPool;
 import org.junit.After;
 import org.junit.Before;
+
+import static org.havenask.discovery.DiscoveryModule.SINGLE_NODE_DISCOVERY_TYPE;
 
 public class NativeProcessControlServiceTests extends HavenaskTestCase {
     private NativeProcessControlService nativeProcessControlService;
@@ -43,6 +46,7 @@ public class NativeProcessControlServiceTests extends HavenaskTestCase {
         Settings settings = Settings.builder()
             .put(Environment.PATH_HOME_SETTING.getKey(), createTempDir().toString())
             .put(HavenaskEnginePlugin.HAVENASK_ENGINE_ENABLED_SETTING.getKey(), true)
+            .put(DiscoveryModule.DISCOVERY_TYPE_SETTING.getKey(), SINGLE_NODE_DISCOVERY_TYPE)
             .build();
         ClusterService clusterService = new ClusterService(
             settings,
