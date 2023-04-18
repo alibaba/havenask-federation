@@ -24,11 +24,16 @@ import org.havenask.common.io.PathUtils;
 import org.havenask.common.settings.Setting;
 import org.havenask.common.settings.Setting.Property;
 import org.havenask.common.settings.Settings;
+import org.havenask.core.internal.io.IOUtils;
 import org.havenask.env.Environment;
+import org.havenask.env.ShardLock;
+import org.havenask.index.Index;
+import org.havenask.index.IndexSettings;
+import org.havenask.plugins.NodeEnvironmentPlugin.CustomEnvironment;
 
 import static org.havenask.env.Environment.PATH_HOME_SETTING;
 
-public class HavenaskEngineEnvironment {
+public class HavenaskEngineEnvironment implements CustomEnvironment {
     public static final String DEFAULT_DATA_PATH = "data_havenask";
     public static final String HAVENASK_CONFIG_PATH = "config";
     public static final String HAVENASK_RUNTIMEDATA_PATH = "runtimedata";
@@ -108,5 +113,17 @@ public class HavenaskEngineEnvironment {
      */
     public Path getBsWorkPath() {
         return bsWorkPath;
+    }
+
+    @Override
+    public void deleteIndexDirectoryUnderLock(Index index, IndexSettings indexSettings) throws IOException {
+        Path indexDir = runtimedataPath.resolve(index.getName());
+        IOUtils.rm(indexDir);
+    }
+
+    @Override
+    public void deleteShardDirectoryUnderLock(ShardLock lock, IndexSettings indexSettings) throws IOException {
+        Path indexDir = runtimedataPath.resolve(lock.getShardId().getIndex().getName());
+        IOUtils.rm(indexDir);
     }
 }
