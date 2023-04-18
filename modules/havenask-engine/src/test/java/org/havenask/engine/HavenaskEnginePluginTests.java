@@ -18,37 +18,6 @@ import junit.framework.TestCase;
 import org.havenask.common.settings.Settings;
 import org.havenask.test.HavenaskTestCase;
 
-/**
- * public static final Setting<Boolean> HAVENASK_ENGINE_ENABLED_SETTING = Setting.boolSetting(
- *         "havenask.engine.enabled",
- *         false,
- *         new Setting.Validator<Boolean>() {
- *             @Override
- *             public void validate(Boolean value) {}
- *
- *             @Override
- *             public void validate(Boolean value, Map<Setting<?>, Object> settings) {
- *                 // DISCOVERY_TYPE_SETTING must be single-node when havenask engine is enabled
- *                 if (value) {
- *                     String discoveryType = (String) settings.get(DISCOVERY_TYPE_SETTING);
- *                     if (false == SINGLE_NODE_DISCOVERY_TYPE.equals(discoveryType)) {
- *                         throw new IllegalArgumentException("havenask engine can only be enabled when discovery
- *                         type is single-node");
- *                     }
- *                 }
- *             }
- *
- *             @Override
- *             public Iterator<Setting<?>> settings() {
- *                 List<Setting<?>> settings = List.of(DISCOVERY_TYPE_SETTING);
- *                 return settings.iterator();
- *             }
- *         },
- *         Property.NodeScope,
- *         Setting.Property.Final
- *     );
- */
-
 public class HavenaskEnginePluginTests extends HavenaskTestCase {
     // test HAVENASK_ENGINE_ENABLED_SETTING
     public void testHavenaskEngineEnabledSetting() {

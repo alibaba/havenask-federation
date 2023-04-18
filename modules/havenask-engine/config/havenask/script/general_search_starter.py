@@ -324,11 +324,11 @@ examples:
     def curl(self, address, method, request, curl_type='POST'):
         try:
             conn = httplib.HTTPConnection(address, timeout=3)
-            print "request "+method+":" + json.dumps(request)
+            #print "request "+method+":" + json.dumps(request)
             conn.request(curl_type, method, json.dumps(request))
             r = conn.getresponse()
             data = r.read()
-            print "response:" + data
+            #print "response:" + data
             retCode = 0
             if r.status != 200:
                 retCode = -1
@@ -369,7 +369,7 @@ examples:
             open(doneFile, 'a').close()
         return config
 
-    def _loadQrsTarget(self, timeout = 300):
+    def _loadQrsTarget(self, timeout = 30):
         target = {
             "service_info" : {
                 "cm2_config" : {
@@ -472,7 +472,7 @@ examples:
         log_time = datetime.strptime(timestamp, '%Y-%m-%d %H:%M:%S.%f')
         return (log_time - self.start_time).total_seconds() > 0
 
-    def _loadSearcherTarget(self, targetInfos, timeout = 300):
+    def _loadSearcherTarget(self, targetInfos, timeout = 30):
         self.readyZones = {}
         while timeout > 0:
             time.sleep(0.1)
