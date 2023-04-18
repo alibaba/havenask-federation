@@ -110,6 +110,10 @@ project.ext {
         from project.projectDir.toPath().resolve("src/docker/config")
       }
 
+      into('packages') {
+        from project.projectDir.toPath().resolve("src/docker/packages")
+      }
+
       from(project.projectDir.toPath().resolve("src/docker/Dockerfile")) {
         expand(expansions(architecture, base, local))
       }
