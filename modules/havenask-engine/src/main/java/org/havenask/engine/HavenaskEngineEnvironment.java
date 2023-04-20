@@ -55,6 +55,8 @@ public class HavenaskEngineEnvironment implements CustomEnvironment {
     private final Path tablePath;
     private final Path bizsPath;
 
+    private NativeProcessControlService nativeProcessControlService;
+
     public HavenaskEngineEnvironment(final Environment environment, final Settings settings) {
         this.environment = environment;
         final Path homeFile = PathUtils.get(PATH_HOME_SETTING.get(settings)).normalize();
@@ -115,15 +117,27 @@ public class HavenaskEngineEnvironment implements CustomEnvironment {
         return bsWorkPath;
     }
 
+    public void setNativeProcessControlService(NativeProcessControlService nativeProcessControlService) {
+        this.nativeProcessControlService = nativeProcessControlService;
+    }
+
     @Override
     public void deleteIndexDirectoryUnderLock(Index index, IndexSettings indexSettings) throws IOException {
         Path indexDir = runtimedataPath.resolve(index.getName());
         IOUtils.rm(indexDir);
+        if (nativeProcessControlService != null) {
+            nativeProcessControlService.updateDataNodeTarget();
+            nativeProcessControlService.updateIngestNodeTarget();
+        }
     }
 
     @Override
     public void deleteShardDirectoryUnderLock(ShardLock lock, IndexSettings indexSettings) throws IOException {
         Path indexDir = runtimedataPath.resolve(lock.getShardId().getIndex().getName());
         IOUtils.rm(indexDir);
+        if (nativeProcessControlService != null) {
+            nativeProcessControlService.updateDataNodeTarget();
+            nativeProcessControlService.updateIngestNodeTarget();
+        }
     }
 }
