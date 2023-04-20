@@ -47,7 +47,8 @@ public class RuntimeSegmentGenerator {
             if (realTime) {
                 String topic = EngineSettings.HAVENASK_REALTIME_TOPIC_NAME.get(settings);
                 String bootstrapServers = EngineSettings.HAVENASK_REALTIME_BOOTSTRAP_SERVERS.get(settings);
-                RealtimeInfo realtimeInfo = new RealtimeInfo(indexName, topic, bootstrapServers);
+                long kafkaStartTimestamp = EngineSettings.HAVENASK_REALTIME_KAFKA_START_TIMESTAMP.get(settings);
+                RealtimeInfo realtimeInfo = new RealtimeInfo(indexName, topic, bootstrapServers, kafkaStartTimestamp);
 
                 nativeProcessControlService.startBsJob(indexName, realtimeInfo.toString());
             } else {
