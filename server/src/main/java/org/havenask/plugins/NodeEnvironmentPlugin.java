@@ -40,5 +40,5 @@ public interface NodeEnvironmentPlugin {
         void deleteShardDirectoryUnderLock(ShardLock lock, IndexSettings indexSettings) throws IOException;
     }
 
-    CustomEnvironment newEnvironment(final Environment environment, final Settings settings);
+    CustomEnvironment newEnvironment(Environment environment, Settings settings);
 }
