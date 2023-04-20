@@ -116,9 +116,9 @@ public class EngineSettings {
         Property.Final
     );
 
-    // index.havenask.realtime.kafka_start_timestamp
+    // index.havenask.realtime.kafka_start_timestamp_us
     public static final Setting<Long> HAVENASK_REALTIME_KAFKA_START_TIMESTAMP = Setting.longSetting(
-        "index.havenask.realtime.kafka_start_timestamp",
+        "index.havenask.realtime.kafka_start_timestamp_us",
         0L,
         0L,
         Setting.Property.IndexScope,
