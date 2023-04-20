@@ -370,24 +370,7 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
     public void updateDataNodeTarget() {
         if (isDataNode && running) {
             // 更新datanode searcher的target
-            LOGGER.info("update searcher target, command: {}", updateSearcherCommand);
-            AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
-                try {
-                    Process process = Runtime.getRuntime().exec(new String[] { "sh", "-c", updateSearcherCommand });
-                    process.waitFor();
-                    if (process.exitValue() != 0) {
-                        try (InputStream inputStream = process.getInputStream()) {
-                            byte[] bytes = inputStream.readAllBytes();
-                            String result = new String(bytes, StandardCharsets.UTF_8);
-                            LOGGER.warn("searcher update target failed, exit value: {}, failed reason: {}", process.exitValue(), result);
-                        }
-                    }
-                    process.destroy();
-                } catch (Exception e) {
-                    LOGGER.warn("searcher update target unexpected failed", e);
-                }
-                return null;
-            });
+            runScript(updateSearcherCommand);
         }
     }
 
@@ -395,24 +378,7 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
         if (isDataNode) {
             // 启动bs job
             final String finalStartBsJobCommand = startBsJobCommand + " " + indexName + " '" + realtimeInfo + "'";
-            LOGGER.info("start bs job command: {}", finalStartBsJobCommand);
-            AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
-                try {
-                    Process process = Runtime.getRuntime().exec(new String[] { "sh", "-c", finalStartBsJobCommand });
-                    process.waitFor();
-                    if (process.exitValue() != 0) {
-                        try (InputStream inputStream = process.getInputStream()) {
-                            byte[] bytes = inputStream.readAllBytes();
-                            String result = new String(bytes, StandardCharsets.UTF_8);
-                            LOGGER.warn("bs job start failed, exit value: {}, failed reason: {}", process.exitValue(), result);
-                        }
-                    }
-                    process.destroy();
-                } catch (Exception e) {
-                    LOGGER.warn("start bs job unexpected failed", e);
-                }
-                return null;
-            });
+            runScript(finalStartBsJobCommand);
         }
     }
 
@@ -420,24 +386,7 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
         if (isDataNode) {
             // 启动bs job
             final String finalStartBsJobCommand = startBsJobCommand + " " + indexName;
-            LOGGER.info("start bs job command: {}", finalStartBsJobCommand);
-            AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
-                try {
-                    Process process = Runtime.getRuntime().exec(new String[] { "sh", "-c", finalStartBsJobCommand });
-                    process.waitFor();
-                    if (process.exitValue() != 0) {
-                        try (InputStream inputStream = process.getInputStream()) {
-                            byte[] bytes = inputStream.readAllBytes();
-                            String result = new String(bytes, StandardCharsets.UTF_8);
-                            LOGGER.warn("bs job start failed, exit value: {}, failed reason: {}", process.exitValue(), result);
-                        }
-                    }
-                    process.destroy();
-                } catch (Exception e) {
-                    LOGGER.warn("start bs job unexpected failed", e);
-                }
-                return null;
-            });
+            runScript(finalStartBsJobCommand);
         }
     }
 
@@ -445,23 +394,28 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
         if (isIngestNode && running) {
             // 更新ingestnode qrs的target
             LOGGER.info("update qrs target, command: {}", updateQrsCommand);
-            AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
-                try {
-                    Process process = Runtime.getRuntime().exec(new String[] { "sh", "-c", updateQrsCommand });
-                    process.waitFor();
-                    if (process.exitValue() != 0) {
-                        try (InputStream inputStream = process.getInputStream()) {
-                            byte[] bytes = inputStream.readAllBytes();
-                            String result = new String(bytes, StandardCharsets.UTF_8);
-                            LOGGER.warn("qrs update target failed, failed reason: {}", result);
-                        }
-                    }
-                    process.destroy();
-                } catch (Exception e) {
-                    LOGGER.warn("qrs update target unexpected failed", e);
-                }
-                return null;
-            });
+            runScript(updateQrsCommand);
         }
+    }
+
+    private void runScript(String command) {
+        AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
+            try {
+                LOGGER.info("run script, command: {}", command);
+                Process process = Runtime.getRuntime().exec(new String[] { "sh", "-c", command });
+                process.waitFor();
+                if (process.exitValue() != 0) {
+                    try (InputStream inputStream = process.getInputStream()) {
+                        byte[] bytes = inputStream.readAllBytes();
+                        String result = new String(bytes, StandardCharsets.UTF_8);
+                        LOGGER.warn("run script failed, exit value: {}, failed reason: {}", process.exitValue(), result);
+                    }
+                }
+                process.destroy();
+            } catch (Exception e) {
+                LOGGER.warn("run script unexpected failed", e);
+            }
+            return null;
+        });
     }
 }
