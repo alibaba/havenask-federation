@@ -25,7 +25,7 @@ public class RealtimeInfoTests extends HavenaskTestCase {
             "{\n"
                 + "\t\"bootstrap.servers\":\"localhost:9092\",\n"
                 + "\t\"data_table\":\"in0\",\n"
-                + "\t\"kafka_start_timestamp\":1000,\n"
+                + "\t\"kafka_start_timestamp\":\"1000\",\n"
                 + "\t\"module_name\":\"kafka\",\n"
                 + "\t\"module_path\":\"libbs_raw_doc_reader_plugin.so\",\n"
                 + "\t\"realtime_mode\":\"realtime_service_rawdoc_rt_build_mode\",\n"
