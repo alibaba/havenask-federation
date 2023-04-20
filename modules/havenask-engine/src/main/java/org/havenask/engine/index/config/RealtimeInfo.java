@@ -42,11 +42,13 @@ public class RealtimeInfo {
     public String bootstrap_servers;
     public String src_signature = "16113477091138423397";
     public String realtime_process_rawdoc = "true";
+    public String kafka_start_timestamp = "0";
 
-    public RealtimeInfo(String data_table, String topic_name, String bootstrap_servers) {
+    public RealtimeInfo(String data_table, String topic_name, String bootstrap_servers, long kafka_start_timestamp) {
         this.data_table = data_table;
         this.topic_name = topic_name;
         this.bootstrap_servers = bootstrap_servers;
+        this.kafka_start_timestamp = String.valueOf(kafka_start_timestamp);
     }
 
     @Override

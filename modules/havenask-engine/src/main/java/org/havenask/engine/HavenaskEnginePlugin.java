@@ -155,7 +155,8 @@ public class HavenaskEnginePlugin extends Plugin implements EnginePlugin, Analys
             EngineSettings.HA3_FLOAT_MUL_BY10,
             EngineSettings.HAVENASK_REALTIME_ENABLE,
             EngineSettings.HAVENASK_REALTIME_TOPIC_NAME,
-            EngineSettings.HAVENASK_REALTIME_BOOTSTRAP_SERVERS
+            EngineSettings.HAVENASK_REALTIME_BOOTSTRAP_SERVERS,
+            EngineSettings.HAVENASK_REALTIME_KAFKA_START_TIMESTAMP
         );
     }
 
