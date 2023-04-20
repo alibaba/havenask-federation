@@ -5,7 +5,7 @@ import json
 
 def executCmd(cmd):
     print cmd
-    os.system(cmd)
+    return os.system(cmd)
 
 if __name__ == '__main__':
     if len(sys.argv) < 6:
@@ -28,4 +28,5 @@ if __name__ == '__main__':
     cmd = "/ha3_install/usr/local/bin/bs startjob -c %s/bizs -n %s -j local -m full -d %s -w %s -i %s -p 1 --documentformat=ha3" % (config_path, index_name, data_path, final_work_path, runtime_path)
     if realtimeInfo:
         cmd += " --realtimeInfo='%s'" % realtimeInfo
-    executCmd(cmd)
+    code = executCmd(cmd)
+    sys.exit(code)
