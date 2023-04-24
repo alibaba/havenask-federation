@@ -106,7 +106,7 @@ examples:
         return True
     
 
-    def _loadQrsTarget(self, timeout = 30):
+    def _loadQrsTarget(self, timeout = 300):
         with open(os.path.join(self.workdir, "readyZones.json"), "r") as f:
             self.readyZones = json.load(f)
         # print(self.readyZones.values())
@@ -140,8 +140,8 @@ examples:
         arpcPort = portList[1]
         address = "%s:%d" %(self.ip, httpArpcPort)
         while timeout > 0:
-            time.sleep(1)
-            timeout -= 1
+            time.sleep(5)
+            timeout -= 5
             print('adress', address)
             retCode, out, err, _ = self.curl(address, "/HeartbeatService/heartbeat", targetRequest)
             if retCode != 0:
@@ -153,11 +153,11 @@ examples:
                 return True
         return timeout > 0
     
-    def _loadSearcherTarget(self, targetInfos, timeout = 30):
+    def _loadSearcherTarget(self, targetInfos, timeout = 300):
         self.readyZones = {}
         while timeout > 0:
-            time.sleep(1)
-            timeout -= 1
+            time.sleep(5)
+            timeout -= 5
             count = 0
             for targetInfo in targetInfos:
                 portList = self._getSearcherPortList(count)

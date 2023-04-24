@@ -369,7 +369,7 @@ examples:
             open(doneFile, 'a').close()
         return config
 
-    def _loadQrsTarget(self, timeout = 30):
+    def _loadQrsTarget(self, timeout = 300):
         target = {
             "service_info" : {
                 "cm2_config" : {
@@ -472,7 +472,7 @@ examples:
         log_time = datetime.strptime(timestamp, '%Y-%m-%d %H:%M:%S.%f')
         return (log_time - self.start_time).total_seconds() > 0
 
-    def _loadSearcherTarget(self, targetInfos, timeout = 30):
+    def _loadSearcherTarget(self, targetInfos, timeout = 300):
         self.readyZones = {}
         while timeout > 0:
             time.sleep(0.1)

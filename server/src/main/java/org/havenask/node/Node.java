@@ -43,6 +43,8 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.lucene.util.Constants;
 import org.apache.lucene.util.SetOnce;
+import org.havenask.plugins.NodeEnvironmentPlugin;
+import org.havenask.plugins.NodeEnvironmentPlugin.CustomEnvironment;
 import org.havenask.watcher.ResourceWatcherService;
 import org.havenask.Assertions;
 import org.havenask.Build;
@@ -377,7 +379,11 @@ public class Node implements Closeable {
              */
             this.environment = new Environment(settings, initialEnvironment.configFile(), Node.NODE_LOCAL_STORAGE_SETTING.get(settings));
             Environment.assertEquivalent(initialEnvironment, this.environment);
-            nodeEnvironment = new NodeEnvironment(tmpSettings, environment);
+            List<CustomEnvironment> customEnvironments = new ArrayList<>();
+            this.pluginsService.filterPlugins(NodeEnvironmentPlugin.class).forEach(p -> {
+                customEnvironments.add(p.newEnvironment(environment, settings));
+            });
+            nodeEnvironment = new NodeEnvironment(tmpSettings, environment, customEnvironments);
             logger.info("node name [{}], node ID [{}], cluster name [{}], roles {}",
                 NODE_NAME_SETTING.get(tmpSettings), nodeEnvironment.nodeId(), ClusterName.CLUSTER_NAME_SETTING.get(tmpSettings).value(),
                 DiscoveryNode.getRolesFromSettings(settings).stream()

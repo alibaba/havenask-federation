@@ -122,6 +122,7 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
         this.environment = environment;
         this.nodeEnvironment = nodeEnvironment;
         this.havenaskEngineEnvironment = havenaskEngineEnvironment;
+        havenaskEngineEnvironment.setNativeProcessControlService(this);
         this.searcherHttpPort = HAVENASK_SEARCHER_HTTP_PORT_SETTING.get(settings);
         this.searcherTcpPort = HAVENASK_SEARCHER_TCP_PORT_SETTING.get(settings);
         this.qrsHttpPort = HAVENASK_QRS_HTTP_PORT_SETTING.get(settings);
