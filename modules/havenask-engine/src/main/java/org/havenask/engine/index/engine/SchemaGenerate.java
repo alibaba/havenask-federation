@@ -21,6 +21,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -90,17 +91,27 @@ public class SchemaGenerate {
         Schema schema = new Schema();
         schema.table_name = table;
         if (mapperService == null) {
-            return schema;
+            return defaultSchema(table);
+        }
+
+        if (mapperService.hasNested()) {
+            throw new UnsupportedOperationException("nested field not support");
         }
 
         Set<String> addedFields = new HashSet<>();
         Set<String> analyzers = getAnalyzers();
+
         for (MappedFieldType field : mapperService.fieldTypes()) {
             String haFieldType = Ha3FieldType.get(field.typeName());
             String fieldName = field.name();
             if (haFieldType == null || fieldName.equals("CMD")) {
-                logger.warn("{}: invalid mapping type/name for field {}", table, field.name());
-                continue;
+                if (fieldName.startsWith("_")) {
+                    logger.debug("{}: no support meta mapping type/name for field {}", table, field.name());
+                    continue;
+                } else {
+                    // logger.warn("{}: no support mapping type/name for field {}", table, field.name());
+                    throw new UnsupportedOperationException("no support mapping type (" + field.typeName() + ") for field " + field.name());
+                }
             }
 
             // multi field index
@@ -197,5 +208,32 @@ public class SchemaGenerate {
             index.position_list_flag = 1;
             index.position_payload_flag = 1;
         }
+    }
+
+    /**
+     * default schema
+     *
+     * @param table
+     * @return
+     */
+    public Schema defaultSchema(String table) {
+        Schema schema = new Schema();
+        schema.table_name = table;
+        schema.attributes = List.of("_seq_no", "_id", "_version", "_primary_term");
+        schema.summarys.summary_fields = List.of("_routing", "_source", "_id");
+        schema.indexs = List.of(
+            new Schema.Index("_routing", "STRING", "_routing"),
+            new Schema.Index("_seq_no", "NUMBER", "_seq_no"),
+            new Schema.PRIMARYKEYIndex("_id", "_id")
+        );
+        schema.fields = List.of(
+            new Schema.FieldInfo("_routing", "STRING"),
+            new Schema.FieldInfo("_seq_no", "INT64"),
+            new Schema.FieldInfo("_source", "STRING"),
+            new Schema.FieldInfo("_id", "STRING"),
+            new Schema.FieldInfo("_version", "INT64"),
+            new Schema.FieldInfo("_primary_term", "INT64")
+        );
+        return schema;
     }
 }
