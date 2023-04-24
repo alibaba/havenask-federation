@@ -333,4 +333,86 @@ public class SchemaGenerateTests extends MapperServiceTestCase {
         );
         assertEquals("no support mapping type (geo_point) for field geo_point_field", e.getMessage());
     }
+
+    // test default schema
+    public void testDefaultSchema() throws IOException {
+        MapperService mapperService = null;
+        SchemaGenerate schemaGenerate = new SchemaGenerate();
+        IndexSettings indexSettings = new IndexSettings(indexMetadata, Settings.EMPTY);
+        Schema schema = schemaGenerate.getSchema(indexName, indexSettings, mapperService);
+        String actual = schema.toString();
+        String expect = String.format(
+            Locale.ROOT,
+            "{\n"
+                + "\t\"attributes\":[\n"
+                + "\t\t\"_seq_no\",\n"
+                + "\t\t\"_id\",\n"
+                + "\t\t\"_version\",\n"
+                + "\t\t\"_primary_term\"\n"
+                + "\t],\n"
+                + "\t\"fields\":[\n"
+                + "\t\t{\n"
+                + "\t\t\t\"binary_field\":false,\n"
+                + "\t\t\t\"field_name\":\"_routing\",\n"
+                + "\t\t\t\"field_type\":\"STRING\"\n"
+                + "\t\t},\n"
+                + "\t\t{\n"
+                + "\t\t\t\"binary_field\":false,\n"
+                + "\t\t\t\"field_name\":\"_seq_no\",\n"
+                + "\t\t\t\"field_type\":\"INT64\"\n"
+                + "\t\t},\n"
+                + "\t\t{\n"
+                + "\t\t\t\"binary_field\":false,\n"
+                + "\t\t\t\"field_name\":\"_source\",\n"
+                + "\t\t\t\"field_type\":\"STRING\"\n"
+                + "\t\t},\n"
+                + "\t\t{\n"
+                + "\t\t\t\"binary_field\":false,\n"
+                + "\t\t\t\"field_name\":\"_id\",\n"
+                + "\t\t\t\"field_type\":\"STRING\"\n"
+                + "\t\t},\n"
+                + "\t\t{\n"
+                + "\t\t\t\"binary_field\":false,\n"
+                + "\t\t\t\"field_name\":\"_version\",\n"
+                + "\t\t\t\"field_type\":\"INT64\"\n"
+                + "\t\t},\n"
+                + "\t\t{\n"
+                + "\t\t\t\"binary_field\":false,\n"
+                + "\t\t\t\"field_name\":\"_primary_term\",\n"
+                + "\t\t\t\"field_type\":\"INT64\"\n"
+                + "\t\t}\n"
+                + "\t],\n"
+                + "\t\"indexs\":[\n"
+                + "\t\t{\n"
+                + "\t\t\t\"index_fields\":\"_routing\",\n"
+                + "\t\t\t\"index_name\":\"_routing\",\n"
+                + "\t\t\t\"index_type\":\"STRING\"\n"
+                + "\t\t},\n"
+                + "\t\t{\n"
+                + "\t\t\t\"index_fields\":\"_seq_no\",\n"
+                + "\t\t\t\"index_name\":\"_seq_no\",\n"
+                + "\t\t\t\"index_type\":\"NUMBER\"\n"
+                + "\t\t},\n"
+                + "\t\t{\n"
+                + "\t\t\t\"has_primary_key_attribute\":true,\n"
+                + "\t\t\t\"index_fields\":\"_id\",\n"
+                + "\t\t\t\"index_name\":\"_id\",\n"
+                + "\t\t\t\"index_type\":\"PRIMARYKEY64\",\n"
+                + "\t\t\t\"is_primary_key_sorted\":false\n"
+                + "\t\t}\n"
+                + "\t],\n"
+                + "\t\"summarys\":{\n"
+                + "\t\t\"summary_fields\":[\n"
+                + "\t\t\t\"_routing\",\n"
+                + "\t\t\t\"_source\",\n"
+                + "\t\t\t\"_id\"\n"
+                + "\t\t]\n"
+                + "\t},\n"
+                + "\t\"table_name\":\"%s\",\n"
+                + "\t\"table_type\":\"normal\"\n"
+                + "}",
+            indexName
+        );
+        assertEquals(expect, actual);
+    }
 }
