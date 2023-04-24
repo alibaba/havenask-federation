@@ -95,10 +95,10 @@ public class RestCreateIndexAction extends BaseRestHandler {
         createIndexRequest.timeout(request.paramAsTime("timeout", createIndexRequest.timeout()));
         createIndexRequest.masterNodeTimeout(request.paramAsTime("master_timeout", createIndexRequest.masterNodeTimeout()));
 
+        String engine = createIndexRequest.settings().get("index.engine");
         String waitForActiveShards = request.param("wait_for_active_shards");
-        if (waitForActiveShards == null) {
+        if (waitForActiveShards == null && (engine != null && engine.equals("havenask"))) {
             createIndexRequest.waitForActiveShards(ActiveShardCount.NONE);
-
         } else {
             createIndexRequest.waitForActiveShards(ActiveShardCount.parseString(waitForActiveShards));
         }
