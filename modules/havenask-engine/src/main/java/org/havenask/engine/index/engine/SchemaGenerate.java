@@ -93,14 +93,25 @@ public class SchemaGenerate {
             return schema;
         }
 
+        if (mapperService.hasNested()) {
+            throw new UnsupportedOperationException("nested field not support");
+        }
+
         Set<String> addedFields = new HashSet<>();
         Set<String> analyzers = getAnalyzers();
+
         for (MappedFieldType field : mapperService.fieldTypes()) {
+            logger.info("field : {}", field.name());
             String haFieldType = Ha3FieldType.get(field.typeName());
             String fieldName = field.name();
             if (haFieldType == null || fieldName.equals("CMD")) {
-                logger.warn("{}: invalid mapping type/name for field {}", table, field.name());
-                continue;
+                if (fieldName.startsWith("_")) {
+                    logger.debug("{}: no support meta mapping type/name for field {}", table, field.name());
+                    continue;
+                } else {
+                    // logger.warn("{}: no support mapping type/name for field {}", table, field.name());
+                    throw new UnsupportedOperationException("no support mapping type (" + field.typeName() + ") for field " + field.name());
+                }
             }
 
             // multi field index
