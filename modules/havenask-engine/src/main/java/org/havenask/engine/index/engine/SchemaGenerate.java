@@ -102,7 +102,6 @@ public class SchemaGenerate {
         Set<String> analyzers = getAnalyzers();
 
         for (MappedFieldType field : mapperService.fieldTypes()) {
-            logger.info("field : {}", field.name());
             String haFieldType = Ha3FieldType.get(field.typeName());
             String fieldName = field.name();
             if (haFieldType == null || fieldName.equals("CMD")) {
