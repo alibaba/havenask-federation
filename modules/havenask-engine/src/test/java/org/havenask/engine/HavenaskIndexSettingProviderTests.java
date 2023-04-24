@@ -26,6 +26,9 @@ public class HavenaskIndexSettingProviderTests extends HavenaskTestCase {
         Settings settings = provider.getAdditionalIndexSettings("test", false, Settings.builder().put("index.engine", "havenask").build());
         int replicas = settings.getAsInt(SETTING_NUMBER_OF_REPLICAS, 2);
         assertEquals(0, replicas);
+        // assert mappingDynamic
+        boolean mappingDynamic = settings.getAsBoolean("index.mapper.dynamic", true);
+        assertEquals(false, mappingDynamic);
     }
 
     // test for havenask engine only support 0 replica
@@ -64,5 +67,20 @@ public class HavenaskIndexSettingProviderTests extends HavenaskTestCase {
         Settings settings = provider.getAdditionalIndexSettings("test", false, Settings.builder().build());
         int replicas = settings.getAsInt(SETTING_NUMBER_OF_REPLICAS, 2);
         assertEquals(2, replicas);
+    }
+
+    // test invalid mappingDynamic
+    public void testGetAdditionalIndexSettingsWithInvalidMappingDynamic() {
+        HavenaskIndexSettingProvider provider = new HavenaskIndexSettingProvider();
+        try {
+            provider.getAdditionalIndexSettings(
+                "test",
+                false,
+                Settings.builder().put("index.engine", "havenask").put("index.mapper.dynamic", true).build()
+            );
+            fail("should throw IllegalArgumentException");
+        } catch (IllegalArgumentException e) {
+            assertEquals("havenask engine only support mapping dynamic false", e.getMessage());
+        }
     }
 }
