@@ -16,8 +16,11 @@ package org.havenask.engine.index.engine;
 
 import java.io.IOException;
 import java.util.concurrent.CountDownLatch;
+import java.util.function.BiFunction;
+import java.util.function.Function;
 
 import org.apache.logging.log4j.message.ParameterizedMessage;
+import org.havenask.common.Nullable;
 import org.havenask.engine.HavenaskEngineEnvironment;
 import org.havenask.engine.NativeProcessControlService;
 import org.havenask.engine.index.config.generator.BizConfigGenerator;
@@ -25,6 +28,7 @@ import org.havenask.engine.index.config.generator.RuntimeSegmentGenerator;
 import org.havenask.engine.index.config.generator.TableConfigGenerator;
 import org.havenask.engine.rpc.HavenaskClient;
 import org.havenask.index.engine.EngineConfig;
+import org.havenask.index.engine.EngineException;
 import org.havenask.index.engine.InternalEngine;
 import org.havenask.index.shard.ShardId;
 
@@ -100,5 +104,64 @@ public class HavenaskEngine extends InternalEngine {
     private synchronized void inactiveTable() throws IOException {
         BizConfigGenerator.removeBiz(engineConfig, env.getConfigPath());
         TableConfigGenerator.removeTable(engineConfig, env.getConfigPath());
+    }
+
+    /**
+     * not support
+     */
+    @Override
+    public SearcherSupplier acquireSearcherSupplier(Function<Searcher, Searcher> wrapper, SearcherScope scope) throws EngineException {
+        throw new UnsupportedOperationException("havenask engine not support search operation");
+    }
+
+    /**
+     * not support
+     */
+    @Override
+    public GetResult get(Get get, BiFunction<String, SearcherScope, Searcher> searcherFactory) throws EngineException {
+        throw new UnsupportedOperationException("havenask engine not support get operation");
+    }
+
+    /**
+     * not support
+     */
+    @Override
+    public IndexResult index(Index index) throws IOException {
+        throw new UnsupportedOperationException("havenask engine not support index operation");
+    }
+
+    /**
+     * not support
+     */
+    public DeleteResult delete(Delete delete) throws IOException {
+        throw new UnsupportedOperationException("havenask engine not support delete operation");
+    }
+
+    /**
+     * not support
+     */
+    public NoOpResult noOp(NoOp noOp) throws IOException {
+        throw new UnsupportedOperationException("havenask engine not support noop operation");
+    }
+
+    /**
+     * not support
+     */
+    public CommitId flush(boolean force, boolean waitIfOngoing) throws EngineException {
+        throw new UnsupportedOperationException("havenask engine not support flush operation");
+    }
+
+    /**
+     * not support
+     */
+    public void forceMerge(
+        boolean flush,
+        int maxNumSegments,
+        boolean onlyExpungeDeletes,
+        boolean upgrade,
+        boolean upgradeOnlyAncientSegments,
+        @Nullable String forceMergeUUID
+    ) throws EngineException, IOException {
+        throw new UnsupportedOperationException("havenask engine not support forceMerge operation");
     }
 }
