@@ -19,11 +19,14 @@ import java.io.IOException;
 import okhttp3.HttpUrl;
 import okhttp3.Request;
 import okhttp3.Response;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.havenask.engine.rpc.QrsClient;
 import org.havenask.engine.rpc.QrsSqlRequest;
 import org.havenask.engine.rpc.QrsSqlResponse;
 
 public class QrsHttpClient extends HavenaskHttpClient implements QrsClient {
+    private static final Logger logger = LogManager.getLogger(QrsHttpClient.class);
     private static final String SQL_URL = "/sql";
 
     public QrsHttpClient(int port) {
@@ -39,6 +42,7 @@ public class QrsHttpClient extends HavenaskHttpClient implements QrsClient {
         }
         urlBuilder.addQueryParameter("query", query);
         String url = urlBuilder.build().toString();
+        logger.debug("execute sql: {}", url);
         Request request = new Request.Builder().url(url).build();
         Response response = client.newCall(request).execute();
         return new QrsSqlResponse(response.body().string(), response.code());
