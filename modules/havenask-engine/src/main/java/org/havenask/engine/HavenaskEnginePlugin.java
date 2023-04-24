@@ -54,6 +54,7 @@ import org.havenask.index.shard.IndexSettingProvider;
 import org.havenask.plugins.ActionPlugin;
 import org.havenask.plugins.AnalysisPlugin;
 import org.havenask.plugins.EnginePlugin;
+import org.havenask.plugins.NodeEnvironmentPlugin;
 import org.havenask.plugins.Plugin;
 import org.havenask.plugins.SearchPlugin;
 import org.havenask.repositories.RepositoriesService;
@@ -66,7 +67,13 @@ import org.havenask.watcher.ResourceWatcherService;
 import static org.havenask.discovery.DiscoveryModule.DISCOVERY_TYPE_SETTING;
 import static org.havenask.discovery.DiscoveryModule.SINGLE_NODE_DISCOVERY_TYPE;
 
-public class HavenaskEnginePlugin extends Plugin implements EnginePlugin, AnalysisPlugin, ActionPlugin, SearchPlugin {
+public class HavenaskEnginePlugin extends Plugin
+    implements
+        EnginePlugin,
+        AnalysisPlugin,
+        ActionPlugin,
+        SearchPlugin,
+        NodeEnvironmentPlugin {
     private static Logger logger = LogManager.getLogger(HavenaskEnginePlugin.class);
     private final SetOnce<HavenaskEngineEnvironment> havenaskEngineEnvironmentSetOnce = new SetOnce<>();
     private final SetOnce<NativeProcessControlService> nativeProcessControlServiceSetOnce = new SetOnce<>();
@@ -130,15 +137,12 @@ public class HavenaskEnginePlugin extends Plugin implements EnginePlugin, Analys
         IndexNameExpressionResolver indexNameExpressionResolver,
         Supplier<RepositoriesService> repositoriesServiceSupplier
     ) {
-        HavenaskEngineEnvironment havenaskEngineEnvironment = new HavenaskEngineEnvironment(environment, clusterService.getSettings());
-        havenaskEngineEnvironmentSetOnce.set(havenaskEngineEnvironment);
-
         NativeProcessControlService nativeProcessControlService = new NativeProcessControlService(
             clusterService,
             threadPool,
             environment,
             nodeEnvironment,
-            havenaskEngineEnvironment
+            havenaskEngineEnvironmentSetOnce.get()
         );
         nativeProcessControlServiceSetOnce.set(nativeProcessControlService);
         HavenaskClient havenaskClient = new HavenaskHttpClient(nativeProcessControlService.getSearcherHttpPort());
@@ -181,5 +185,12 @@ public class HavenaskEnginePlugin extends Plugin implements EnginePlugin, Analys
     @Override
     public Collection<IndexSettingProvider> getAdditionalIndexSettingProviders() {
         return Arrays.asList(new HavenaskIndexSettingProvider());
+    }
+
+    @Override
+    public CustomEnvironment newEnvironment(final Environment environment, final Settings settings) {
+        HavenaskEngineEnvironment havenaskEngineEnvironment = new HavenaskEngineEnvironment(environment, settings);
+        havenaskEngineEnvironmentSetOnce.set(havenaskEngineEnvironment);
+        return havenaskEngineEnvironment;
     }
 }

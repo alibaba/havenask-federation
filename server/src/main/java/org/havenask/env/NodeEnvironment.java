@@ -80,6 +80,7 @@ import org.havenask.index.store.FsDirectoryFactory;
 import org.havenask.monitor.fs.FsInfo;
 import org.havenask.monitor.fs.FsProbe;
 import org.havenask.monitor.jvm.JvmInfo;
+import org.havenask.plugins.NodeEnvironmentPlugin.CustomEnvironment;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -265,11 +266,17 @@ public final class NodeEnvironment  implements Closeable {
         }
     }
 
+    private List<CustomEnvironment> plugins;
+
+    public NodeEnvironment(Settings settings, Environment environment) throws IOException {
+        this(settings, environment, Collections.emptyList());
+    }
+
     /**
      * Setup the environment.
      * @param settings settings from havenask.yml
      */
-    public NodeEnvironment(Settings settings, Environment environment) throws IOException {
+    public NodeEnvironment(Settings settings, Environment environment, List<CustomEnvironment> plugins) throws IOException {
         if (!DiscoveryNode.nodeRequiresLocalStorage(settings)) {
             nodePaths = null;
             sharedDataPath = null;
@@ -348,6 +355,7 @@ public final class NodeEnvironment  implements Closeable {
             }
 
             this.nodeMetadata = loadNodeMetadata(settings, logger, nodePaths);
+            this.plugins = plugins;
             success = true;
         } finally {
             if (success == false) {
@@ -550,6 +558,11 @@ public final class NodeEnvironment  implements Closeable {
         }
         logger.trace("deleted shard {} directory, paths: [{}]", shardId, paths);
         assert assertPathsDoNotExist(paths);
+
+        for (CustomEnvironment plugin : plugins) {
+            logger.trace("deleting shard {} directory with plugin [{}]", shardId, plugin);
+            plugin.deleteShardDirectoryUnderLock(lock, indexSettings);
+        }
     }
 
     private static boolean assertPathsDoNotExist(final Path[] paths) {
@@ -622,6 +635,10 @@ public final class NodeEnvironment  implements Closeable {
             Path customLocation = resolveIndexCustomLocation(indexSettings.customDataPath(), index.getUUID());
             logger.trace("deleting custom index {} directory [{}]", index, customLocation);
             IOUtils.rm(customLocation);
+        }
+        for (CustomEnvironment plugin : plugins) {
+            logger.trace("deleting index {} directory with plugin [{}]", index, plugin);
+            plugin.deleteIndexDirectoryUnderLock(index, indexSettings);
         }
     }
 

@@ -100,8 +100,5 @@ public class HavenaskEngine extends InternalEngine {
     private synchronized void inactiveTable() throws IOException {
         BizConfigGenerator.removeBiz(engineConfig, env.getConfigPath());
         TableConfigGenerator.removeTable(engineConfig, env.getConfigPath());
-        // 更新配置表信息
-        nativeProcessControlService.updateDataNodeTarget();
-        nativeProcessControlService.updateIngestNodeTarget();
     }
 }
