@@ -102,8 +102,6 @@ public class RestCreateIndexAction extends BaseRestHandler {
         } else {
             createIndexRequest.waitForActiveShards(ActiveShardCount.parseString(waitForActiveShards));
         }
-
-        createIndexRequest.waitForActiveShards(ActiveShardCount.parseString(request.param("wait_for_active_shards")));
         return channel -> client.admin().indices().create(createIndexRequest, new RestToXContentListener<>(channel));
     }
 
