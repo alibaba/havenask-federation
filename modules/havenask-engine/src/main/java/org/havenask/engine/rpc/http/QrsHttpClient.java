@@ -33,10 +33,11 @@ public class QrsHttpClient extends HavenaskHttpClient implements QrsClient {
     @Override
     public QrsSqlResponse executeSql(QrsSqlRequest qrsSqlRequest) throws IOException {
         HttpUrl.Builder urlBuilder = HttpUrl.parse(url + SQL_URL).newBuilder();
-        urlBuilder.addQueryParameter("query", qrsSqlRequest.getSql());
+        String query = qrsSqlRequest.getSql();
         if (qrsSqlRequest.getKvpair() != null) {
-            urlBuilder.addQueryParameter("kvpair", qrsSqlRequest.getKvpair());
+            query += "&&kvpair=" + qrsSqlRequest.getKvpair();
         }
+        urlBuilder.addQueryParameter("query", query);
         String url = urlBuilder.build().toString();
         Request request = new Request.Builder().url(url).build();
         Response response = client.newCall(request).execute();
