@@ -28,6 +28,7 @@ import org.havenask.engine.rpc.QrsSqlResponse;
 public class QrsHttpClient extends HavenaskHttpClient implements QrsClient {
     private static final Logger logger = LogManager.getLogger(QrsHttpClient.class);
     private static final String SQL_URL = "/sql";
+    private static final String SQL_TABLE_INFO_URL = "/sqlClientInfo";
 
     public QrsHttpClient(int port) {
         super(port);
@@ -46,5 +47,14 @@ public class QrsHttpClient extends HavenaskHttpClient implements QrsClient {
         Request request = new Request.Builder().url(url).build();
         Response response = client.newCall(request).execute();
         return new QrsSqlResponse(response.body().string(), response.code());
+    }
+
+    @Override
+    public String executeSqlClientInfo() throws IOException {
+        HttpUrl.Builder urlBuilder = HttpUrl.parse(url + SQL_TABLE_INFO_URL).newBuilder();
+        String url = urlBuilder.build().toString();
+        Request request = new Request.Builder().url(url).build();
+        Response response = client.newCall(request).execute();
+        return response.body().string();
     }
 }
