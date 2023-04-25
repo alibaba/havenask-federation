@@ -39,6 +39,7 @@
 
 package org.havenask.plugins;
 
+import org.havenask.index.shard.IndexMappingProvider;
 import org.havenask.watcher.ResourceWatcherService;
 import org.havenask.bootstrap.BootstrapCheck;
 import org.havenask.client.Client;
@@ -256,6 +257,16 @@ public abstract class Plugin implements Closeable {
      * explicitly, but still allow the setting to be overridden by a template or creation request body.
      */
     public Collection<IndexSettingProvider> getAdditionalIndexSettingProviders() {
+        return Collections.emptyList();
+    }
+
+    /**
+     * An {@link IndexMappingProvider} allows hooking in to parts of an index
+     * lifecycle to provide explicit default mappings for newly created indices. Rather than changing
+     * the default values for an index-level mapping, these act as though the mapping has been set
+     * explicitly, but still allow the mapping to be overridden by a template or creation request body.
+     */
+    public Collection<IndexMappingProvider> getAdditionalIndexMappingProviders() {
         return Collections.emptyList();
     }
 }

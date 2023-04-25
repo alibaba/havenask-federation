@@ -90,6 +90,7 @@ import org.havenask.index.mapper.DocumentMapper;
 import org.havenask.index.mapper.MapperService;
 import org.havenask.index.mapper.MapperService.MergeReason;
 import org.havenask.index.query.QueryShardContext;
+import org.havenask.index.shard.IndexMappingProvider;
 import org.havenask.index.shard.IndexSettingProvider;
 import org.havenask.indices.IndexCreationException;
 import org.havenask.indices.IndicesService;
@@ -154,6 +155,7 @@ public class MetadataCreateIndexService {
     private final ShardLimitValidator shardLimitValidator;
     private final boolean forbidPrivateIndexSettings;
     private final Set<IndexSettingProvider> indexSettingProviders = new HashSet<>();
+    private final Set<IndexMappingProvider> indexMappingProviders = new HashSet<>();
 
     public MetadataCreateIndexService(
         final Settings settings,
@@ -194,6 +196,20 @@ public class MetadataCreateIndexService {
         }
         this.indexSettingProviders.add(provider);
     }
+
+    /**
+     * Add a provider to be invoked to get additional index mappings prior to an index being created
+     */
+    public void addAdditionalIndexMappingProvider(IndexMappingProvider provider) {
+        if (provider == null) {
+            throw new IllegalArgumentException("provider must not be null");
+        }
+        if (indexMappingProviders.contains(provider)) {
+            throw new IllegalArgumentException("provider already added");
+        }
+        this.indexMappingProviders.add(provider);
+    }
+
 
     /**
      * Validate the name for an index against some static rules and a cluster state.
@@ -427,7 +443,7 @@ public class MetadataCreateIndexService {
         // create the index here (on the master) to validate it can be created, as well as adding the mapping
         return indicesService.<ClusterState, Exception>withTempIndexService(temporaryIndexMeta, indexService -> {
             try {
-                updateIndexMappingsAndBuildSortOrder(indexService, request, mappings, sourceMetadata);
+                updateIndexMappingsAndBuildSortOrder(indexService, request, mappings, sourceMetadata, indexMappingProviders);
             } catch (Exception e) {
                 logger.log(silent ? Level.DEBUG : Level.INFO,
                     "failed on parsing mappings on index creation [{}]", request.index(), e);
@@ -986,12 +1002,21 @@ public class MetadataCreateIndexService {
         return blocksBuilder;
     }
 
-    private static void updateIndexMappingsAndBuildSortOrder(IndexService indexService,
-                                                             CreateIndexClusterStateUpdateRequest request,
-                                                             List<Map<String, Map<String, Object>>> mappings,
-                                                             @Nullable IndexMetadata sourceMetadata) throws IOException {
+    private static void updateIndexMappingsAndBuildSortOrder(
+        IndexService indexService,
+        CreateIndexClusterStateUpdateRequest request,
+        List<Map<String, Map<String, Object>>> mappings,
+        @Nullable IndexMetadata sourceMetadata,
+        Set<IndexMappingProvider> providers
+    ) throws IOException {
         MapperService mapperService = indexService.mapperService();
-        for (Map<String, Map<String, Object>> mapping : mappings) {
+        List<Map<String, Map<String, Object>>> mappingsToMerge = new ArrayList<>(mappings);
+        for (IndexMappingProvider provider : providers) {
+            Map<String, Object> mapping = provider.getAdditionalIndexMapping();
+            mappingsToMerge.add(singletonMap(MapperService.SINGLE_MAPPING_NAME, mapping));
+        }
+
+        for (Map<String, Map<String, Object>> mapping : mappingsToMerge) {
             if (!mapping.isEmpty()) {
                 assert mapping.size() == 1 : mapping;
                 Map.Entry<String, Map<String, Object>> entry = mapping.entrySet().iterator().next();

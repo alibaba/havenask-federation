@@ -1021,4 +1021,7 @@ public class MetadataCreateIndexServiceTests extends HavenaskTestCase {
             threadPool.shutdown();
         }
     }
+
+    // test AdditionalIndexMapping
+    
 }

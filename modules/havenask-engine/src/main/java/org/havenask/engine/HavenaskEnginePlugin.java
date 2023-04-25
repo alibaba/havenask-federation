@@ -16,6 +16,8 @@ package org.havenask.engine;
 
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -50,6 +52,7 @@ import org.havenask.env.Environment;
 import org.havenask.env.NodeEnvironment;
 import org.havenask.index.IndexSettings;
 import org.havenask.index.engine.EngineFactory;
+import org.havenask.index.shard.IndexMappingProvider;
 import org.havenask.index.shard.IndexSettingProvider;
 import org.havenask.plugins.ActionPlugin;
 import org.havenask.plugins.AnalysisPlugin;
@@ -185,6 +188,17 @@ public class HavenaskEnginePlugin extends Plugin
     @Override
     public Collection<IndexSettingProvider> getAdditionalIndexSettingProviders() {
         return Arrays.asList(new HavenaskIndexSettingProvider());
+    }
+
+    @Override
+    public Collection<IndexMappingProvider> getAdditionalIndexMappingProviders() {
+        return Arrays.asList(new IndexMappingProvider() {
+            public Map<String, Object> getAdditionalIndexMapping() {
+                Map<String, Object> mappings = new HashMap<>();
+                mappings.put("dynamic", false);
+                return mappings;
+            }
+        });
     }
 
     @Override
