@@ -21,6 +21,7 @@ import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.Locale;
 import java.util.Objects;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -84,6 +85,14 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
         Setting.Property.Final
     );
 
+    // add timeout setting
+    public static final Setting<TimeValue> HAVENASK_SCRIPT_TIMEOUT_SETTING = Setting.timeSetting(
+        "havenask.script.timeout",
+        TimeValue.timeValueSeconds(60),
+        Property.NodeScope,
+        Setting.Property.Final
+    );
+
     private final ClusterService clusterService;
     private final ThreadPool threadPool;
     private final boolean enabled;
@@ -96,6 +105,7 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
     private final int searcherTcpPort;
     private final int qrsHttpPort;
     private final int qrsTcpPort;
+    private TimeValue scriptTimeout;
 
     protected String startSearcherCommand;
     protected String updateSearcherCommand;
@@ -105,6 +115,7 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
     protected String startBsJobCommand;
     private ProcessControlTask processControlTask;
     private boolean running;
+
 
     public NativeProcessControlService(
         ClusterService clusterService,
@@ -173,6 +184,8 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
             havenaskEngineEnvironment.getBsWorkPath().toAbsolutePath(),
             havenaskEngineEnvironment.getRuntimedataPath().toAbsolutePath()
         );
+        this.scriptTimeout = HAVENASK_SCRIPT_TIMEOUT_SETTING.get(settings);
+        clusterService.getClusterSettings().addSettingsUpdateConsumer(HAVENASK_SCRIPT_TIMEOUT_SETTING, this::setScriptTimeout);
     }
 
     @Override
@@ -404,7 +417,12 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
             try {
                 LOGGER.info("run script, command: {}", command);
                 Process process = Runtime.getRuntime().exec(new String[] { "sh", "-c", command });
-                process.waitFor();
+                boolean timeout = process.waitFor(scriptTimeout.seconds(), TimeUnit.SECONDS);
+                if (false == timeout) {
+                    LOGGER.warn("run script timeout, command: {}", command);
+                    process.destroy();
+                    return null;
+                }
                 if (process.exitValue() != 0) {
                     try (InputStream inputStream = process.getInputStream()) {
                         byte[] bytes = inputStream.readAllBytes();
@@ -418,5 +436,9 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
             }
             return null;
         });
+    }
+
+    public void setScriptTimeout(TimeValue scriptTimeout) {
+        this.scriptTimeout = scriptTimeout;
     }
 }
