@@ -194,7 +194,7 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
         }
 
         if (enabled && (isDataNode || isIngestNode)) {
-            LOGGER.info("stop local searcher,qrs process");
+            LOGGER.info("stop local searcher, qrs process");
             AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
                 try {
                     Process process = Runtime.getRuntime().exec(new String[] { "sh", "-c", stopHavenaskCommand });
@@ -203,8 +203,10 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
                         try (InputStream inputStream = process.getInputStream()) {
                             byte[] bytes = inputStream.readAllBytes();
                             String result = new String(bytes, StandardCharsets.UTF_8);
-                            LOGGER.warn("stop searcher\\qrs failed, failed reason: {}", result);
+                            LOGGER.warn("stop searcher, qrs failed, failed reason: {}", result);
                         }
+                    } else {
+                        LOGGER.info("stop searcher, qrs success");
                     }
                     process.destroy();
                 } catch (Exception e) {
@@ -243,7 +245,7 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
 
             if (isDataNode) {
                 if (false == checkProcessAlive(SEARCHER_ROLE)) {
-                    LOGGER.info("current searcher process is not started, start searcher process");
+                    LOGGER.info("start searcher process...");
                     // 启动searcher
                     AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
                         try {
@@ -267,7 +269,7 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
 
             if (isIngestNode) {
                 if (false == checkProcessAlive(QRS_ROLE)) {
-                    LOGGER.info("current qrs process is not started, start qrs process");
+                    LOGGER.info("start qrs process...");
                     // 启动qrs
                     AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
                         try {
@@ -328,7 +330,7 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
                 byte[] bytes = inputStream.readAllBytes();
                 String result = new String(bytes, StandardCharsets.UTF_8);
                 if (result.trim().equals("")) {
-                    LOGGER.info("check script don't get the process [{}] pid, the process is not alive", role);
+                    LOGGER.info("[{}] pid not found, the process is not alive", role);
                     return false;
                 }
 
@@ -394,13 +396,12 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
     public synchronized void updateIngestNodeTarget() {
         if (isIngestNode && running) {
             // 更新ingestnode qrs的target
-            LOGGER.info("update qrs target, command: {}", updateQrsCommand);
             runScript(updateQrsCommand);
         }
     }
 
-    private void runScript(String command) {
-        AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
+    private boolean runScript(String command) {
+        return AccessController.doPrivileged((PrivilegedAction<Boolean>) () -> {
             try {
                 LOGGER.info("run script, command: {}", command);
                 Process process = Runtime.getRuntime().exec(new String[] { "sh", "-c", command });
@@ -409,14 +410,18 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
                     try (InputStream inputStream = process.getInputStream()) {
                         byte[] bytes = inputStream.readAllBytes();
                         String result = new String(bytes, StandardCharsets.UTF_8);
-                        LOGGER.warn("run script failed, exit value: {}, failed reason: {}", process.exitValue(), result);
+                        LOGGER.warn("run script {} failed, exit value: {}, failed reason: {}", command, process.exitValue(), result);
                     }
+                    return false;
+                } else {
+                    // logger success
+                    LOGGER.info("run script {} success", command);
+                    return true;
                 }
-                process.destroy();
             } catch (Exception e) {
-                LOGGER.warn("run script unexpected failed", e);
+                LOGGER.warn(() -> new ParameterizedMessage("run script {} unexpected failed", command), e);
             }
-            return null;
+            return false;
         });
     }
 }
