@@ -245,23 +245,7 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
                 if (false == checkProcessAlive(SEARCHER_ROLE)) {
                     LOGGER.info("current searcher process is not started, start searcher process");
                     // 启动searcher
-                    AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
-                        try {
-                            Process process = Runtime.getRuntime().exec(new String[] { "sh", "-c", startSearcherCommand });
-                            process.waitFor();
-                            if (process.exitValue() != 0) {
-                                try (InputStream inputStream = process.getInputStream()) {
-                                    byte[] bytes = inputStream.readAllBytes();
-                                    String result = new String(bytes, StandardCharsets.UTF_8);
-                                    LOGGER.warn("searcher start failed, exit value: {}, failed reason: {}", process.exitValue(), result);
-                                }
-                            }
-                            process.destroy();
-                        } catch (Exception e) {
-                            LOGGER.warn("start searcher process failed", e);
-                        }
-                        return null;
-                    });
+                    runScript(startSearcherCommand);
                 }
             }
 
@@ -269,23 +253,7 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
                 if (false == checkProcessAlive(QRS_ROLE)) {
                     LOGGER.info("current qrs process is not started, start qrs process");
                     // 启动qrs
-                    AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
-                        try {
-                            Process process = Runtime.getRuntime().exec(new String[] { "sh", "-c", startQrsCommand });
-                            process.waitFor();
-                            if (process.exitValue() != 0) {
-                                try (InputStream inputStream = process.getInputStream()) {
-                                    byte[] bytes = inputStream.readAllBytes();
-                                    String result = new String(bytes, StandardCharsets.UTF_8);
-                                    LOGGER.warn("qrs start failed, failed reason: {}", result);
-                                }
-                            }
-                            process.destroy();
-                        } catch (Exception e) {
-                            LOGGER.warn("start qrs process failed", e);
-                        }
-                        return null;
-                    });
+                    runScript(startQrsCommand);
                 }
             }
         }
