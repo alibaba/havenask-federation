@@ -1002,7 +1002,7 @@ public class MetadataCreateIndexService {
         return blocksBuilder;
     }
 
-    private static void updateIndexMappingsAndBuildSortOrder(
+    static void updateIndexMappingsAndBuildSortOrder(
         IndexService indexService,
         CreateIndexClusterStateUpdateRequest request,
         List<Map<String, Map<String, Object>>> mappings,
@@ -1010,11 +1010,12 @@ public class MetadataCreateIndexService {
         Set<IndexMappingProvider> providers
     ) throws IOException {
         MapperService mapperService = indexService.mapperService();
-        List<Map<String, Map<String, Object>>> mappingsToMerge = new ArrayList<>(mappings);
+        List<Map<String, Map<String, Object>>> mappingsToMerge = new ArrayList<>();
         for (IndexMappingProvider provider : providers) {
             Map<String, Object> mapping = provider.getAdditionalIndexMapping();
             mappingsToMerge.add(singletonMap(MapperService.SINGLE_MAPPING_NAME, mapping));
         }
+        mappingsToMerge.addAll(mappings);
 
         for (Map<String, Map<String, Object>> mapping : mappingsToMerge) {
             if (!mapping.isEmpty()) {
