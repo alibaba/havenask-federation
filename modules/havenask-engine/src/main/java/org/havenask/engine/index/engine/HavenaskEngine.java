@@ -147,13 +147,6 @@ public class HavenaskEngine extends InternalEngine {
     /**
      * not support
      */
-    public CommitId flush(boolean force, boolean waitIfOngoing) throws EngineException {
-        throw new UnsupportedOperationException("havenask engine not support flush operation");
-    }
-
-    /**
-     * not support
-     */
     public void forceMerge(
         boolean flush,
         int maxNumSegments,
