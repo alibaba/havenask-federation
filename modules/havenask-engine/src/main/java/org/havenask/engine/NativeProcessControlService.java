@@ -116,7 +116,6 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
     private ProcessControlTask processControlTask;
     private boolean running;
 
-
     public NativeProcessControlService(
         ClusterService clusterService,
         ThreadPool threadPool,
