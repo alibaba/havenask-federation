@@ -20,6 +20,7 @@ import java.util.Collection;
 import org.hamcrest.Matchers;
 import org.havenask.common.settings.Settings;
 import org.havenask.engine.HavenaskEnginePlugin;
+import org.havenask.engine.search.action.HavenaskSqlClientInfoAction.Request;
 import org.havenask.plugins.Plugin;
 import org.havenask.test.HavenaskIntegTestCase;
 import org.havenask.transport.nio.MockNioTransportPlugin;
@@ -55,4 +56,18 @@ public class SqlActionNoIngestIT extends HavenaskIntegTestCase {
             Matchers.equalTo("There are no ingest nodes in this cluster, unable to forward request to an ingest node.")
         );
     }
+
+    // test SqlClientInfoAction failed
+    public void testSqlClientInfoActionFailed() {
+        HavenaskSqlClientInfoAction.Request request = new Request();
+        IllegalStateException e = expectThrows(
+            IllegalStateException.class,
+            () -> client().execute(HavenaskSqlClientInfoAction.INSTANCE, request).actionGet()
+        );
+        assertThat(
+            e.getMessage(),
+            Matchers.equalTo("There are no ingest nodes in this cluster, unable to forward request to an ingest node.")
+        );
+    }
+
 }
