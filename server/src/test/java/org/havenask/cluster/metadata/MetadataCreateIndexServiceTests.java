@@ -1035,7 +1035,7 @@ public class MetadataCreateIndexServiceTests extends HavenaskSingleNodeTestCase 
         Map<String, Object> type = (Map<String, Object>)mapping.get("_doc");
         return new IndexMappingProvider() {
             @Override
-            public Map<String, Object> getAdditionalIndexMapping() {
+            public Map<String, Object> getAdditionalIndexMapping(Settings settings) {
                 return type;
             }
         };
@@ -1056,7 +1056,7 @@ public class MetadataCreateIndexServiceTests extends HavenaskSingleNodeTestCase 
             .endObject();
         IndexMappingProvider provider = getIndexMappingProvider(builder);
         MetadataCreateIndexService.updateIndexMappingsAndBuildSortOrder(indexService, new CreateIndexClusterStateUpdateRequest("cause", "test", "test"), Collections.emptyList(),
-            null, Collections.singleton(provider));
+            null, Settings.EMPTY, Collections.singleton(provider));
         assertEquals(Strings.toString(builder), indexService.mapperService().documentMapper().mappingSource().toString());
     }
 
@@ -1089,7 +1089,7 @@ public class MetadataCreateIndexServiceTests extends HavenaskSingleNodeTestCase 
         mapping.put("_doc", Collections.singletonMap("properties", properties));
         mappings.add(mapping);
         MetadataCreateIndexService.updateIndexMappingsAndBuildSortOrder(indexService, new CreateIndexClusterStateUpdateRequest("cause", "test", "test"), mappings,
-            null, Collections.singleton(provider));
+            null, Settings.EMPTY, Collections.singleton(provider));
         String expect = Strings.toString(XContentFactory.jsonBuilder()
             .startObject()
             .startObject("_doc")

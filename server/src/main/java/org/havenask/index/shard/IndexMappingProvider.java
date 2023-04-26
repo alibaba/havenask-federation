@@ -17,6 +17,8 @@ package org.havenask.index.shard;
 import java.util.Collections;
 import java.util.Map;
 
+import org.havenask.common.settings.Settings;
+
 /**
  * An {@link IndexMappingProvider} is a provider for index level mappings that can be set
  */
@@ -25,7 +27,7 @@ public interface IndexMappingProvider {
      * Returns explicitly set default index mappings for the given index. This should not
      * return null.
      */
-    default Map<String, Object> getAdditionalIndexMapping() {
+    default Map<String, Object> getAdditionalIndexMapping(Settings settings) {
         return Collections.emptyMap();
     }
 }
