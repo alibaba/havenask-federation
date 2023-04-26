@@ -12,26 +12,20 @@
  *
  */
 
-package org.havenask.engine.rpc;
+package org.havenask.index.shard;
 
-import java.io.IOException;
+import java.util.Collections;
+import java.util.Map;
 
-public interface QrsClient extends HavenaskClient {
-
+/**
+ * An {@link IndexMappingProvider} is a provider for index level mappings that can be set
+ */
+public interface IndexMappingProvider {
     /**
-     * Execute havenask sql
-     *
-     * @param request havenask sql request
-     * @return havenask sql response
-     * @throws IOException
+     * Returns explicitly set default index mappings for the given index. This should not
+     * return null.
      */
-    QrsSqlResponse executeSql(QrsSqlRequest request) throws IOException;
-
-    /**
-     * Execute havenask sql client info api
-     *
-     * @return havenask sql client info response
-     * @throws IOException
-     */
-    String executeSqlClientInfo() throws IOException;
+    default Map<String, Object> getAdditionalIndexMapping() {
+        return Collections.emptyMap();
+    }
 }

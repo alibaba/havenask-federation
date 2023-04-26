@@ -16,6 +16,7 @@ package org.havenask.engine;
 
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -44,12 +45,16 @@ import org.havenask.engine.index.engine.HavenaskEngine;
 import org.havenask.engine.rpc.HavenaskClient;
 import org.havenask.engine.rpc.http.HavenaskHttpClient;
 import org.havenask.engine.search.action.HavenaskSqlAction;
+import org.havenask.engine.search.action.HavenaskSqlClientInfoAction;
 import org.havenask.engine.search.action.TransportHavenaskSqlAction;
+import org.havenask.engine.search.action.TransportHavenaskSqlClientInfoAction;
 import org.havenask.engine.search.rest.RestHavenaskSqlAction;
+import org.havenask.engine.search.rest.RestHavenaskSqlClientInfoAction;
 import org.havenask.env.Environment;
 import org.havenask.env.NodeEnvironment;
 import org.havenask.index.IndexSettings;
 import org.havenask.index.engine.EngineFactory;
+import org.havenask.index.shard.IndexMappingProvider;
 import org.havenask.index.shard.IndexSettingProvider;
 import org.havenask.plugins.ActionPlugin;
 import org.havenask.plugins.AnalysisPlugin;
@@ -161,13 +166,20 @@ public class HavenaskEnginePlugin extends Plugin
             EngineSettings.HAVENASK_REALTIME_TOPIC_NAME,
             EngineSettings.HAVENASK_REALTIME_BOOTSTRAP_SERVERS,
             EngineSettings.HAVENASK_REALTIME_KAFKA_START_TIMESTAMP,
-            NativeProcessControlService.HAVENASK_SCRIPT_TIMEOUT_SETTING
+            NativeProcessControlService.HAVENASK_SCRIPT_TIMEOUT_SETTING,
+            NativeProcessControlService.HAVENASK_SEARCHER_HTTP_PORT_SETTING,
+            NativeProcessControlService.HAVENASK_SEARCHER_TCP_PORT_SETTING,
+            NativeProcessControlService.HAVENASK_QRS_HTTP_PORT_SETTING,
+            NativeProcessControlService.HAVENASK_QRS_TCP_PORT_SETTING
         );
     }
 
     @Override
     public List<ActionHandler<? extends ActionRequest, ? extends ActionResponse>> getActions() {
-        return Arrays.asList(new ActionHandler<>(HavenaskSqlAction.INSTANCE, TransportHavenaskSqlAction.class));
+        return Arrays.asList(
+            new ActionHandler<>(HavenaskSqlAction.INSTANCE, TransportHavenaskSqlAction.class),
+            new ActionHandler<>(HavenaskSqlClientInfoAction.INSTANCE, TransportHavenaskSqlClientInfoAction.class)
+        );
     }
 
     @Override
@@ -180,12 +192,23 @@ public class HavenaskEnginePlugin extends Plugin
         IndexNameExpressionResolver indexNameExpressionResolver,
         Supplier<DiscoveryNodes> nodesInCluster
     ) {
-        return Arrays.asList(new RestHavenaskSqlAction());
+        return Arrays.asList(new RestHavenaskSqlAction(), new RestHavenaskSqlClientInfoAction());
     }
 
     @Override
     public Collection<IndexSettingProvider> getAdditionalIndexSettingProviders() {
         return Arrays.asList(new HavenaskIndexSettingProvider());
+    }
+
+    @Override
+    public Collection<IndexMappingProvider> getAdditionalIndexMappingProviders() {
+        return Arrays.asList(new IndexMappingProvider() {
+            public Map<String, Object> getAdditionalIndexMapping() {
+                Map<String, Object> mappings = new HashMap<>();
+                mappings.put("dynamic", false);
+                return mappings;
+            }
+        });
     }
 
     @Override

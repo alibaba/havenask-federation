@@ -19,7 +19,6 @@ import org.havenask.engine.index.engine.EngineSettings;
 import org.havenask.index.shard.IndexSettingProvider;
 
 import static org.havenask.cluster.metadata.IndexMetadata.SETTING_NUMBER_OF_REPLICAS;
-import static org.havenask.index.mapper.MapperService.INDEX_MAPPER_DYNAMIC_SETTING;
 
 public class HavenaskIndexSettingProvider implements IndexSettingProvider {
     public Settings getAdditionalIndexSettings(String indexName, boolean isDataStreamIndex, Settings templateAndRequestSettings) {
@@ -28,11 +27,7 @@ public class HavenaskIndexSettingProvider implements IndexSettingProvider {
             if (replica != 0) {
                 throw new IllegalArgumentException("havenask engine only support 0 replica");
             }
-            boolean mappingDynamic = templateAndRequestSettings.getAsBoolean(INDEX_MAPPER_DYNAMIC_SETTING.getKey(), false);
-            if (mappingDynamic) {
-                throw new IllegalArgumentException("havenask engine only support mapping dynamic false");
-            }
-            return Settings.builder().put(SETTING_NUMBER_OF_REPLICAS, 0).put(INDEX_MAPPER_DYNAMIC_SETTING.getKey(), false).build();
+            return Settings.builder().put(SETTING_NUMBER_OF_REPLICAS, 0).build();
         } else {
             return Settings.EMPTY;
         }
