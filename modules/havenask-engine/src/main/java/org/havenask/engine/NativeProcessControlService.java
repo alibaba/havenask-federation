@@ -21,6 +21,7 @@ import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.Locale;
 import java.util.Objects;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -84,6 +85,14 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
         Setting.Property.Final
     );
 
+    // add timeout setting
+    public static final Setting<TimeValue> HAVENASK_SCRIPT_TIMEOUT_SETTING = Setting.timeSetting(
+        "havenask.script.timeout",
+        TimeValue.timeValueSeconds(60),
+        Property.NodeScope,
+        Setting.Property.Final
+    );
+
     private final ClusterService clusterService;
     private final ThreadPool threadPool;
     private final boolean enabled;
@@ -96,6 +105,7 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
     private final int searcherTcpPort;
     private final int qrsHttpPort;
     private final int qrsTcpPort;
+    private TimeValue scriptTimeout;
 
     protected String startSearcherCommand;
     protected String updateSearcherCommand;
@@ -105,6 +115,7 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
     protected String startBsJobCommand;
     private ProcessControlTask processControlTask;
     private boolean running;
+
 
     public NativeProcessControlService(
         ClusterService clusterService,
@@ -173,6 +184,8 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
             havenaskEngineEnvironment.getBsWorkPath().toAbsolutePath(),
             havenaskEngineEnvironment.getRuntimedataPath().toAbsolutePath()
         );
+        this.scriptTimeout = HAVENASK_SCRIPT_TIMEOUT_SETTING.get(settings);
+        clusterService.getClusterSettings().addSettingsUpdateConsumer(HAVENASK_SCRIPT_TIMEOUT_SETTING, this::setScriptTimeout);
     }
 
     @Override
@@ -194,7 +207,7 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
         }
 
         if (enabled && (isDataNode || isIngestNode)) {
-            LOGGER.info("stop local searcher,qrs process");
+            LOGGER.info("stop local searcher, qrs process");
             AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
                 try {
                     Process process = Runtime.getRuntime().exec(new String[] { "sh", "-c", stopHavenaskCommand });
@@ -203,8 +216,10 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
                         try (InputStream inputStream = process.getInputStream()) {
                             byte[] bytes = inputStream.readAllBytes();
                             String result = new String(bytes, StandardCharsets.UTF_8);
-                            LOGGER.warn("stop searcher\\qrs failed, failed reason: {}", result);
+                            LOGGER.warn("stop searcher, qrs failed, failed reason: {}", result);
                         }
+                    } else {
+                        LOGGER.info("stop searcher, qrs success");
                     }
                     process.destroy();
                 } catch (Exception e) {
@@ -243,49 +258,17 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
 
             if (isDataNode) {
                 if (false == checkProcessAlive(SEARCHER_ROLE)) {
-                    LOGGER.info("current searcher process is not started, start searcher process");
+                    LOGGER.info("start searcher process...");
                     // 启动searcher
-                    AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
-                        try {
-                            Process process = Runtime.getRuntime().exec(new String[] { "sh", "-c", startSearcherCommand });
-                            process.waitFor();
-                            if (process.exitValue() != 0) {
-                                try (InputStream inputStream = process.getInputStream()) {
-                                    byte[] bytes = inputStream.readAllBytes();
-                                    String result = new String(bytes, StandardCharsets.UTF_8);
-                                    LOGGER.warn("searcher start failed, exit value: {}, failed reason: {}", process.exitValue(), result);
-                                }
-                            }
-                            process.destroy();
-                        } catch (Exception e) {
-                            LOGGER.warn("start searcher process failed", e);
-                        }
-                        return null;
-                    });
+                    runScript(startSearcherCommand);
                 }
             }
 
             if (isIngestNode) {
                 if (false == checkProcessAlive(QRS_ROLE)) {
-                    LOGGER.info("current qrs process is not started, start qrs process");
+                    LOGGER.info("start qrs process...");
                     // 启动qrs
-                    AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
-                        try {
-                            Process process = Runtime.getRuntime().exec(new String[] { "sh", "-c", startQrsCommand });
-                            process.waitFor();
-                            if (process.exitValue() != 0) {
-                                try (InputStream inputStream = process.getInputStream()) {
-                                    byte[] bytes = inputStream.readAllBytes();
-                                    String result = new String(bytes, StandardCharsets.UTF_8);
-                                    LOGGER.warn("qrs start failed, failed reason: {}", result);
-                                }
-                            }
-                            process.destroy();
-                        } catch (Exception e) {
-                            LOGGER.warn("start qrs process failed", e);
-                        }
-                        return null;
-                    });
+                    runScript(startQrsCommand);
                 }
             }
         }
@@ -328,7 +311,7 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
                 byte[] bytes = inputStream.readAllBytes();
                 String result = new String(bytes, StandardCharsets.UTF_8);
                 if (result.trim().equals("")) {
-                    LOGGER.info("check script don't get the process [{}] pid, the process is not alive", role);
+                    LOGGER.info("[{}] pid not found, the process is not alive", role);
                     return false;
                 }
 
@@ -394,29 +377,41 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
     public synchronized void updateIngestNodeTarget() {
         if (isIngestNode && running) {
             // 更新ingestnode qrs的target
-            LOGGER.info("update qrs target, command: {}", updateQrsCommand);
             runScript(updateQrsCommand);
         }
     }
 
-    private void runScript(String command) {
-        AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
+    private boolean runScript(String command) {
+        return AccessController.doPrivileged((PrivilegedAction<Boolean>) () -> {
             try {
                 LOGGER.info("run script, command: {}", command);
                 Process process = Runtime.getRuntime().exec(new String[] { "sh", "-c", command });
-                process.waitFor();
+                boolean timeout = process.waitFor(scriptTimeout.seconds(), TimeUnit.SECONDS);
+                if (false == timeout) {
+                    LOGGER.warn("run script timeout, command: {}", command);
+                    process.destroy();
+                    return null;
+                }
                 if (process.exitValue() != 0) {
                     try (InputStream inputStream = process.getInputStream()) {
                         byte[] bytes = inputStream.readAllBytes();
                         String result = new String(bytes, StandardCharsets.UTF_8);
-                        LOGGER.warn("run script failed, exit value: {}, failed reason: {}", process.exitValue(), result);
+                        LOGGER.warn("run script {} failed, exit value: {}, failed reason: {}", command, process.exitValue(), result);
                     }
+                    return false;
+                } else {
+                    // logger success
+                    LOGGER.info("run script {} success", command);
+                    return true;
                 }
-                process.destroy();
             } catch (Exception e) {
-                LOGGER.warn("run script unexpected failed", e);
+                LOGGER.warn(() -> new ParameterizedMessage("run script {} unexpected failed", command), e);
             }
-            return null;
+            return false;
         });
+    }
+
+    public void setScriptTimeout(TimeValue scriptTimeout) {
+        this.scriptTimeout = scriptTimeout;
     }
 }

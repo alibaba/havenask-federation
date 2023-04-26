@@ -23,6 +23,8 @@ import org.havenask.engine.rpc.QrsClient;
 import org.havenask.engine.rpc.QrsSqlRequest;
 import org.havenask.engine.rpc.QrsSqlResponse;
 
+import static org.hamcrest.CoreMatchers.containsString;
+
 @ThreadLeakFilters(filters = { OkHttpThreadLeakFilter.class })
 public class QrsHttpClientIT extends HavenaskITTestCase {
 
@@ -33,5 +35,11 @@ public class QrsHttpClientIT extends HavenaskITTestCase {
         QrsSqlResponse response = client.executeSql(request);
         assertEquals(200, response.getResultCode());
         assertEquals("sql result", response.getResult());
+    }
+
+    public void testSqlClientInfo() throws IOException {
+        QrsClient client = new QrsHttpClient(49200);
+        String result = client.executeSqlClientInfo();
+        assertThat(result, containsString("error_message"));
     }
 }
