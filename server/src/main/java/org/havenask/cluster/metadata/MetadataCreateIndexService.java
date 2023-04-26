@@ -443,7 +443,7 @@ public class MetadataCreateIndexService {
         // create the index here (on the master) to validate it can be created, as well as adding the mapping
         return indicesService.<ClusterState, Exception>withTempIndexService(temporaryIndexMeta, indexService -> {
             try {
-                updateIndexMappingsAndBuildSortOrder(indexService, request, mappings, sourceMetadata, indexMappingProviders);
+                updateIndexMappingsAndBuildSortOrder(indexService, request, mappings, sourceMetadata, temporaryIndexMeta.getSettings(), indexMappingProviders);
             } catch (Exception e) {
                 logger.log(silent ? Level.DEBUG : Level.INFO,
                     "failed on parsing mappings on index creation [{}]", request.index(), e);
@@ -1007,13 +1007,16 @@ public class MetadataCreateIndexService {
         CreateIndexClusterStateUpdateRequest request,
         List<Map<String, Map<String, Object>>> mappings,
         @Nullable IndexMetadata sourceMetadata,
+        Settings indexSettings,
         Set<IndexMappingProvider> providers
     ) throws IOException {
         MapperService mapperService = indexService.mapperService();
         List<Map<String, Map<String, Object>>> mappingsToMerge = new ArrayList<>();
         for (IndexMappingProvider provider : providers) {
-            Map<String, Object> mapping = provider.getAdditionalIndexMapping();
-            mappingsToMerge.add(singletonMap(MapperService.SINGLE_MAPPING_NAME, mapping));
+            Map<String, Object> mapping = provider.getAdditionalIndexMapping(indexSettings);
+            if (mapping.size() > 0) {
+                mappingsToMerge.add(singletonMap(MapperService.SINGLE_MAPPING_NAME, mapping));
+            }
         }
         mappingsToMerge.addAll(mappings);
 
