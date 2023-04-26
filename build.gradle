@@ -482,7 +482,8 @@ allprojects {
 
     if (!project.path.startsWith(":modules")
             && !project.path.startsWith(":plugins")
-            && !project.path.startsWith(":server")) {
+            && !project.path.startsWith(":server")
+            && !project.path.startsWith(":distribution:docker")) {
       checkPart3.configure { dependsOn 'check' }
     }
   }
