@@ -61,28 +61,28 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
         "havenask.searcher.http.port",
         39200,
         Property.NodeScope,
-        Setting.Property.Final
+        Property.Final
     );
 
     public static final Setting<Integer> HAVENASK_SEARCHER_TCP_PORT_SETTING = Setting.intSetting(
         "havenask.searcher.tcp.port",
         39300,
         Property.NodeScope,
-        Setting.Property.Final
+        Property.Final
     );
 
     public static final Setting<Integer> HAVENASK_QRS_HTTP_PORT_SETTING = Setting.intSetting(
         "havenask.qrs.http.port",
         49200,
         Property.NodeScope,
-        Setting.Property.Final
+        Property.Final
     );
 
     public static final Setting<Integer> HAVENASK_QRS_TCP_PORT_SETTING = Setting.intSetting(
         "havenask.qrs.tcp.port",
         49300,
         Property.NodeScope,
-        Setting.Property.Final
+        Property.Final
     );
 
     // add timeout setting
@@ -90,7 +90,7 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
         "havenask.script.timeout",
         TimeValue.timeValueSeconds(60),
         Property.NodeScope,
-        Setting.Property.Final
+        Property.Dynamic
     );
 
     private final ClusterService clusterService;
