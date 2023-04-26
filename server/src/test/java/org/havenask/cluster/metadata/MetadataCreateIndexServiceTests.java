@@ -41,6 +41,14 @@ package org.havenask.cluster.metadata;
 
 import com.carrotsearch.hppc.cursors.ObjectObjectCursor;
 import org.hamcrest.Matchers;
+import org.havenask.common.bytes.BytesArray;
+import org.havenask.common.xcontent.XContent;
+import org.havenask.common.xcontent.XContentBuilder;
+import org.havenask.common.xcontent.XContentHelper;
+import org.havenask.common.xcontent.XContentType;
+import org.havenask.index.IndexService;
+import org.havenask.index.shard.IndexMappingProvider;
+import org.havenask.test.HavenaskSingleNodeTestCase;
 import org.junit.Before;
 import org.havenask.ExceptionsHelper;
 import org.havenask.LegacyESVersion;
@@ -85,7 +93,6 @@ import org.havenask.indices.SystemIndexDescriptor;
 import org.havenask.indices.SystemIndices;
 import org.havenask.snapshots.EmptySnapshotsInfoService;
 import org.havenask.test.ClusterServiceUtils;
-import org.havenask.test.HavenaskTestCase;
 import org.havenask.test.VersionUtils;
 import org.havenask.test.gateway.TestGatewayAllocator;
 import org.havenask.threadpool.TestThreadPool;
@@ -139,7 +146,7 @@ import static org.havenask.cluster.metadata.MetadataCreateIndexService.parseV1Ma
 import static org.havenask.cluster.metadata.MetadataCreateIndexService.resolveAndValidateAliases;
 import static org.havenask.indices.ShardLimitValidatorTests.createTestShardLimitService;
 
-public class MetadataCreateIndexServiceTests extends HavenaskTestCase {
+public class MetadataCreateIndexServiceTests extends HavenaskSingleNodeTestCase {
 
     private AliasValidator aliasValidator;
     private CreateIndexClusterStateUpdateRequest request;
@@ -1021,4 +1028,83 @@ public class MetadataCreateIndexServiceTests extends HavenaskTestCase {
             threadPool.shutdown();
         }
     }
+
+    private IndexMappingProvider getIndexMappingProvider(XContentBuilder xContentBuilder) {
+        String mappings = Strings.toString(xContentBuilder);
+        Map<String, Object> mapping = XContentHelper.convertToMap(XContentType.JSON.xContent(), mappings, true);
+        Map<String, Object> type = (Map<String, Object>)mapping.get("_doc");
+        return new IndexMappingProvider() {
+            @Override
+            public Map<String, Object> getAdditionalIndexMapping() {
+                return type;
+            }
+        };
+    }
+
+    public void testAdditionalIndexMapping() throws IOException {
+        IndexService indexService = createIndex("test");
+        XContentBuilder builder = XContentFactory.jsonBuilder()
+            .startObject()
+            .startObject("_doc")
+            .field("dynamic", "strict")
+            .startObject("properties")
+            .startObject("field")
+            .field("type", "keyword")
+            .endObject()
+            .endObject()
+            .endObject()
+            .endObject();
+        IndexMappingProvider provider = getIndexMappingProvider(builder);
+        MetadataCreateIndexService.updateIndexMappingsAndBuildSortOrder(indexService, new CreateIndexClusterStateUpdateRequest("cause", "test", "test"), Collections.emptyList(),
+            null, Collections.singleton(provider));
+        assertEquals(Strings.toString(builder), indexService.mapperService().documentMapper().mappingSource().toString());
+    }
+
+    // test additional mappings are merged with existing mappings
+    public void testAdditionalIndexMappingMerge() throws IOException {
+        IndexService indexService = createIndex("test");
+        XContentBuilder builder = XContentFactory.jsonBuilder()
+            .startObject()
+            .startObject("_doc")
+            .field("dynamic", "strict")
+            .startObject("properties")
+            .startObject("field")
+            .field("type", "keyword")
+            .endObject()
+            .startObject("field2")
+            .field("type", "keyword")
+            .endObject()
+            .endObject()
+            .endObject()
+            .endObject();
+        IndexMappingProvider provider = getIndexMappingProvider(builder);
+
+        List<Map<String, Map<String, Object>>> mappings = new ArrayList<>();
+        Map<String, Map<String, Object>> mapping = new HashMap<>();
+
+        Map<String, Object> properties = new HashMap<>();
+        Map<String, Object> field = new HashMap<>();
+        field.put("type", "text");
+        properties.put("field", field);
+        mapping.put("_doc", Collections.singletonMap("properties", properties));
+        mappings.add(mapping);
+        MetadataCreateIndexService.updateIndexMappingsAndBuildSortOrder(indexService, new CreateIndexClusterStateUpdateRequest("cause", "test", "test"), mappings,
+            null, Collections.singleton(provider));
+        String expect = Strings.toString(XContentFactory.jsonBuilder()
+            .startObject()
+            .startObject("_doc")
+            .field("dynamic", "strict")
+            .startObject("properties")
+            .startObject("field")
+            .field("type", "text")
+            .endObject()
+            .startObject("field2")
+            .field("type", "keyword")
+            .endObject()
+            .endObject()
+            .endObject()
+            .endObject());
+        assertEquals(expect, indexService.mapperService().documentMapper().mappingSource().toString());
+    }
+
 }
