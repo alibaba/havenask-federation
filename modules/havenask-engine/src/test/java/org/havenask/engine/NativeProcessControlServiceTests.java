@@ -17,10 +17,13 @@ package org.havenask.engine;
 import java.io.IOException;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 import org.havenask.cluster.service.ClusterService;
 import org.havenask.common.settings.ClusterSettings;
+import org.havenask.common.settings.Setting;
 import org.havenask.common.settings.Settings;
 import org.havenask.discovery.DiscoveryModule;
 import org.havenask.env.Environment;
@@ -48,11 +51,9 @@ public class NativeProcessControlServiceTests extends HavenaskTestCase {
             .put(HavenaskEnginePlugin.HAVENASK_ENGINE_ENABLED_SETTING.getKey(), true)
             .put(DiscoveryModule.DISCOVERY_TYPE_SETTING.getKey(), SINGLE_NODE_DISCOVERY_TYPE)
             .build();
-        ClusterService clusterService = new ClusterService(
-            settings,
-            new ClusterSettings(settings, ClusterSettings.BUILT_IN_CLUSTER_SETTINGS),
-            threadPool
-        );
+        Set<Setting<?>> buildInSettings = new HashSet<>(ClusterSettings.BUILT_IN_CLUSTER_SETTINGS);
+        buildInSettings.add(NativeProcessControlService.HAVENASK_SCRIPT_TIMEOUT_SETTING);
+        ClusterService clusterService = new ClusterService(settings, new ClusterSettings(settings, buildInSettings), threadPool);
 
         Environment environment = TestEnvironment.newEnvironment(settings);
         NodeEnvironment nodeEnvironment = new NodeEnvironment(settings, environment);
