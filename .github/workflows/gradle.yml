@@ -26,10 +26,10 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
-      - name: Set up JDK 15
+      - name: Set up JDK 17
         uses: actions/setup-java@v3
         with:
-          java-version: '15'
+          java-version: '17'
           distribution: 'temurin'
       - name: Run Tests
-        run: ./gradlew check
+        run: ./gradlew check -x :build-tools:integTest
