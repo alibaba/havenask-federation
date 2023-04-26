@@ -166,6 +166,7 @@ public class HavenaskEnginePlugin extends Plugin
             EngineSettings.HAVENASK_REALTIME_TOPIC_NAME,
             EngineSettings.HAVENASK_REALTIME_BOOTSTRAP_SERVERS,
             EngineSettings.HAVENASK_REALTIME_KAFKA_START_TIMESTAMP,
+            NativeProcessControlService.HAVENASK_SCRIPT_TIMEOUT_SETTING,
             NativeProcessControlService.HAVENASK_SEARCHER_HTTP_PORT_SETTING,
             NativeProcessControlService.HAVENASK_SEARCHER_TCP_PORT_SETTING,
             NativeProcessControlService.HAVENASK_QRS_HTTP_PORT_SETTING,
