@@ -15,6 +15,8 @@
 package org.havenask.engine.index.engine;
 
 import java.io.IOException;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
@@ -95,7 +97,9 @@ public class HavenaskEngine extends InternalEngine {
         props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
         props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
         Thread.currentThread().setContextClassLoader(null);
-        return new KafkaProducer<>(props);
+        return AccessController.doPrivileged((PrivilegedAction<KafkaProducer<String, String>>) () -> {
+            return new KafkaProducer<>(props);
+        });
     }
 
     /**
@@ -107,7 +111,9 @@ public class HavenaskEngine extends InternalEngine {
     static int getKafkaPartition(Settings settings, String kafkaTopic) {
         Map<String, Object> props = new HashMap<>();
         props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, EngineSettings.HAVENASK_REALTIME_BOOTSTRAP_SERVERS.get(settings));
-        AdminClient adminClient = KafkaAdminClient.create(props);
+        AdminClient adminClient = AccessController.doPrivileged((PrivilegedAction<AdminClient>) () -> {
+            return KafkaAdminClient.create(props);
+        });
 
         DescribeTopicsResult result = adminClient.describeTopics(Arrays.asList(kafkaTopic));
         Map<String, TopicDescription> topicDescriptionMap = null;
@@ -226,19 +232,19 @@ public class HavenaskEngine extends InternalEngine {
         StringBuffer message = new StringBuffer();
         switch (type) {
             case INDEX:
-                message.append("CMD=add\\x1F\\n");
+                message.append("CMD=add" + 0x1F + "\n");
                 break;
             case DELETE:
-                message.append("CMD=delete\\x1F\\n");
+                message.append("CMD=delete" + 0x1F + "\n");
                 break;
             default:
                 throw new IllegalArgumentException("invalid operation type!");
         }
 
         for (Map.Entry<String, String> entry : haDoc.entrySet()) {
-            message.append(entry.getKey()).append("=").append(entry.getValue()).append("\\x1F\\n");
+            message.append(entry.getKey()).append("=").append(entry.getValue()).append(0x1F + "\n");
         }
-        message.append("\\x1E\\n");
+        message.append(0x1E + "\n");
         long hashId = HashAlgorithm.getHashId(id);
         long partition = HashAlgorithm.getPartitionId(hashId, topicPartition);
 
