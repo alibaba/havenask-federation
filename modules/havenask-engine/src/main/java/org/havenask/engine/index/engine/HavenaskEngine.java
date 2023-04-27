@@ -90,13 +90,6 @@ public class HavenaskEngine extends InternalEngine {
     private KafkaProducer<String, String> initKafkaProducer(Settings settings) {
         Map<String, Object> props = new HashMap<>();
         props.put("bootstrap.servers", EngineSettings.HAVENASK_REALTIME_BOOTSTRAP_SERVERS.get(settings));
-        props.put("acks", settings.get("acks"));
-        props.put("retries", settings.get("retries"));
-        props.put("batch.size", settings.get("batch.size"));
-        props.put("linger.ms", settings.get("linger.ms"));
-        props.put("buffer.memory", settings.get("buffer.memory"));
-        props.put("key.serializer", settings.get("key.serializer"));
-        props.put("value.serializer", settings.get("value.serializer"));
         return new KafkaProducer<>(props);
     }
 
