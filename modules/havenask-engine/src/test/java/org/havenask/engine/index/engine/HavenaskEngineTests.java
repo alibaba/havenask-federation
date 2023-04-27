@@ -17,14 +17,19 @@ package org.havenask.engine.index.engine;
 import java.io.IOException;
 import java.util.Map;
 
+import com.carrotsearch.randomizedtesting.annotations.ThreadLeakFilters;
+import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
+import org.havenask.common.settings.Settings;
 import org.havenask.index.engine.Engine.Operation;
 import org.havenask.index.engine.EngineTestCase;
 import org.havenask.index.mapper.ParsedDocument;
 
 import static org.havenask.engine.index.engine.HavenaskEngine.buildProducerRecord;
+import static org.havenask.engine.index.engine.HavenaskEngine.initKafkaProducer;
 import static org.havenask.engine.index.engine.HavenaskEngine.toHaIndex;
 
+@ThreadLeakFilters(filters = { KafkaThreadLeakFilter.class })
 public class HavenaskEngineTests extends EngineTestCase {
 
     // test toHaIndex
@@ -81,5 +86,12 @@ public class HavenaskEngineTests extends EngineTestCase {
         );
         assertEquals(record.topic(), "topicName");
         assertEquals(record.partition(), Integer.valueOf(0));
+    }
+
+    // test initKafkaProducer
+    public void testInitKafkaProducer() {
+        Settings settings = Settings.builder().put(EngineSettings.HAVENASK_REALTIME_BOOTSTRAP_SERVERS.getKey(), "127.0.0.1:9092").build();
+        KafkaProducer<String, String> producer = initKafkaProducer(settings);
+        assertNotNull(producer);
     }
 }
