@@ -23,6 +23,7 @@ dependencies {
   api 'org.apache.commons:commons-lang3:3.4'
   implementation 'com.squareup.okhttp3:okhttp:3.6.0'
   implementation 'com.squareup.okio:okio:1.11.0'
+  implementation group: 'org.apache.kafka', name: 'kafka-clients', version: '2.8.0'
 }
 
 bundlePlugin {
@@ -89,7 +90,38 @@ tasks.named("thirdPartyAudit").configure {
           "retrofit2.Converter",
           "retrofit2.Converter\$Factory",
           "retrofit2.Retrofit",
-          "springfox.documentation.spring.web.json.Json"
+          "springfox.documentation.spring.web.json.Json",
+          "com.fasterxml.jackson.databind.JsonNode",
+          "com.fasterxml.jackson.databind.ObjectMapper",
+          "com.fasterxml.jackson.databind.node.ArrayNode",
+          "com.fasterxml.jackson.databind.node.BinaryNode",
+          "com.fasterxml.jackson.databind.node.BooleanNode",
+          "com.fasterxml.jackson.databind.node.DoubleNode",
+          "com.fasterxml.jackson.databind.node.IntNode",
+          "com.fasterxml.jackson.databind.node.JsonNodeFactory",
+          "com.fasterxml.jackson.databind.node.JsonNodeType",
+          "com.fasterxml.jackson.databind.node.LongNode",
+          "com.fasterxml.jackson.databind.node.NullNode",
+          "com.fasterxml.jackson.databind.node.ObjectNode",
+          "com.fasterxml.jackson.databind.node.ShortNode",
+          "com.fasterxml.jackson.databind.node.TextNode",
+          "com.github.luben.zstd.RecyclingBufferPool",
+          "com.github.luben.zstd.ZstdInputStreamNoFinalizer",
+          "com.github.luben.zstd.ZstdOutputStreamNoFinalizer",
+          "net.jpountz.lz4.LZ4Compressor",
+          "net.jpountz.lz4.LZ4Factory",
+          "net.jpountz.lz4.LZ4SafeDecompressor",
+          "net.jpountz.util.SafeUtils",
+          "net.jpountz.xxhash.XXHash32",
+          "net.jpountz.xxhash.XXHashFactory",
+          "org.slf4j.Logger",
+          "org.slf4j.LoggerFactory",
+          "org.slf4j.Marker",
+          "org.slf4j.helpers.FormattingTuple",
+          "org.slf4j.helpers.MessageFormatter",
+          "org.slf4j.spi.LocationAwareLogger",
+          "org.xerial.snappy.SnappyInputStream",
+          "org.xerial.snappy.SnappyOutputStream"
   )
 }
 
