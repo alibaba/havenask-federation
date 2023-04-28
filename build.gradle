@@ -468,23 +468,9 @@ allprojects {
   }
 
   def checkPart1 = tasks.register('checkPart1')
-  def checkPart2 = tasks.register('checkPart2')
-  def checkPart3 = tasks.register('checkPart3')
   plugins.withId('lifecycle-base') {
-    if (project.path.startsWith(":server")) {
+    if (!project.path.startsWith(":distribution")) {
       checkPart1.configure { dependsOn 'check' }
-    }
-
-    if (project.path.startsWith(":modules")
-            || project.path.startsWith(":plugins")) {
-      checkPart2.configure { dependsOn 'check' }
-    }
-
-    if (!project.path.startsWith(":modules")
-            && !project.path.startsWith(":plugins")
-            && !project.path.startsWith(":server")
-            && !project.path.startsWith(":distribution:docker")) {
-      checkPart3.configure { dependsOn 'check' }
     }
   }
 }

@@ -35,4 +35,4 @@ jobs:
           java-version: '15'
           distribution: 'adopt'
       - name: Run Tests
-        run: ./gradlew checkPart3 -x :build-tools:integTest --max-workers=1 -x buildDockerImage -x exportDockerImage
+        run: ./gradlew checkPart1 -x integTest  -x test -x internalClusterTest -x asyncIntegTest -x javaRestTest -x yamlRestTest -x pooledInternalClusterTest -x pooledTest

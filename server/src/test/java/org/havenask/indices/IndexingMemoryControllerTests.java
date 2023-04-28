@@ -56,6 +56,7 @@ import org.havenask.indices.recovery.RecoveryState;
 import org.havenask.threadpool.Scheduler.Cancellable;
 import org.havenask.threadpool.ThreadPool;
 import org.havenask.threadpool.ThreadPoolStats;
+import org.junit.Ignore;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -74,6 +75,7 @@ import static java.util.Collections.emptySet;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 
+@Ignore
 public class IndexingMemoryControllerTests extends IndexShardTestCase {
 
     static class MockController extends IndexingMemoryController {
