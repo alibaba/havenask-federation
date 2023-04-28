@@ -469,7 +469,7 @@ allprojects {
 
   def checkPart1 = tasks.register('checkPart1')
   plugins.withId('lifecycle-base') {
-    if (!project.path.startsWith(":distribution")) {
+    if (!project.path.startsWith(":distribution") && !project.path.startsWith(":plugins")) {
       checkPart1.configure { dependsOn 'check' }
     }
   }
