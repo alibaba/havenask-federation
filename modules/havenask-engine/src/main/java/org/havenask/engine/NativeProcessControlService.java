@@ -190,6 +190,9 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
     @Override
     protected void doStart() {
         if (enabled && processControlTask == null) {
+            // 先进行一次进程状态的检查和启动,再添加到定时任务
+            checkAndStartProcess();
+
             processControlTask = new ProcessControlTask(threadPool, TimeValue.timeValueSeconds(5));
             processControlTask.rescheduleIfNecessary();
             running = true;
@@ -255,21 +258,7 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
                 return;
             }
 
-            if (isDataNode) {
-                if (false == checkProcessAlive(SEARCHER_ROLE)) {
-                    LOGGER.info("start searcher process...");
-                    // 启动searcher
-                    runScript(startSearcherCommand);
-                }
-            }
-
-            if (isIngestNode) {
-                if (false == checkProcessAlive(QRS_ROLE)) {
-                    LOGGER.info("start qrs process...");
-                    // 启动qrs
-                    runScript(startQrsCommand);
-                }
-            }
+            checkAndStartProcess();
         }
 
         @Override
@@ -280,6 +269,24 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
         @Override
         public String toString() {
             return "process_control_task";
+        }
+    }
+
+    private void checkAndStartProcess() {
+        if (isDataNode) {
+            if (false == checkProcessAlive(SEARCHER_ROLE)) {
+                LOGGER.info("start searcher process...");
+                // 启动searcher
+                runScript(startSearcherCommand);
+            }
+        }
+
+        if (isIngestNode) {
+            if (false == checkProcessAlive(QRS_ROLE)) {
+                LOGGER.info("start qrs process...");
+                // 启动qrs
+                runScript(startQrsCommand);
+            }
         }
     }
 
