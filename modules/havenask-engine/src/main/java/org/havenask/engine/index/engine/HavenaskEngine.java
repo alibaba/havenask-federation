@@ -14,6 +14,7 @@
 
 package org.havenask.engine.index.engine;
 
+import java.io.FilePermission;
 import java.io.IOException;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
@@ -23,6 +24,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.CountDownLatch;
+
+import javax.management.MBeanTrustPermission;
 
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.DescribeTopicsResult;
@@ -99,7 +102,7 @@ public class HavenaskEngine extends InternalEngine {
         Thread.currentThread().setContextClassLoader(null);
         return AccessController.doPrivileged((PrivilegedAction<KafkaProducer<String, String>>) () -> {
             return new KafkaProducer<>(props);
-        });
+        }, AccessController.getContext(), new MBeanTrustPermission("register"));
     }
 
     /**
@@ -232,19 +235,19 @@ public class HavenaskEngine extends InternalEngine {
         StringBuffer message = new StringBuffer();
         switch (type) {
             case INDEX:
-                message.append("CMD=add" + 0x1F + "\n");
+                message.append("CMD=add\u001F\n");
                 break;
             case DELETE:
-                message.append("CMD=delete" + 0x1F + "\n");
+                message.append("CMD=delete\u001F\n");
                 break;
             default:
                 throw new IllegalArgumentException("invalid operation type!");
         }
 
         for (Map.Entry<String, String> entry : haDoc.entrySet()) {
-            message.append(entry.getKey()).append("=").append(entry.getValue()).append(0x1F + "\n");
+            message.append(entry.getKey()).append("=").append(entry.getValue()).append("\u001F\n");
         }
-        message.append(0x1E + "\n");
+        message.append("\u001E\n");
         long hashId = HashAlgorithm.getHashId(id);
         long partition = HashAlgorithm.getPartitionId(hashId, topicPartition);
 

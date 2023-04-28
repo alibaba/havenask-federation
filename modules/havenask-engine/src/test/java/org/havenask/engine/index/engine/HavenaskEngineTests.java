@@ -58,50 +58,20 @@ public class HavenaskEngineTests extends EngineTestCase {
         assertEquals(haDoc.get("value"), "test");
     }
 
-    static ProducerRecord<String, String> buildProducerRecord(
-        String id,
-        Operation.TYPE type,
-        String topicName,
-        int topicPartition,
-        Map<String, String> haDoc
-    ) {
-        StringBuffer message = new StringBuffer();
-        switch (type) {
-            case INDEX:
-                message.append("CMD=add" + 0x1F + "\n");
-                break;
-            case DELETE:
-                message.append("CMD=delete" + 0x1F + "\n");
-                break;
-            default:
-                throw new IllegalArgumentException("invalid operation type!");
-        }
-
-        for (Map.Entry<String, String> entry : haDoc.entrySet()) {
-            message.append(entry.getKey()).append("=").append(entry.getValue()).append(0x1F + "\n");
-        }
-        message.append(0x1E + "\n");
-        long hashId = HashAlgorithm.getHashId(id);
-        long partition = HashAlgorithm.getPartitionId(hashId, topicPartition);
-
-        return new ProducerRecord<>(topicName, (int) partition, id, message.toString());
-    }
-
     // test buildProducerRecord
     public void testBuildProducerRecord() throws IOException {
         ParsedDocument parsedDocument = createParsedDoc("id", "routing");
         Map<String, String> haDoc = toHaIndex(parsedDocument);
         ProducerRecord<String, String> record = buildProducerRecord("id", Operation.TYPE.INDEX, "topicName", 1, haDoc);
         assertEquals(record.key(), "id");
-        assertEquals(record.value(), "CMD=add" + 0x1F + "\n" +
-            "_routing=routing" + 0x1F + "\n" +
-            "_seq_no=-2" + 0x1F + "\n" +
-            "_source={ \"value\" : \"test\" }" + 0x1F + "\n" +
-            "_id=id" + 0x1F + "\n" +
-            "value=test" + 0x1F + "\n" +
-            "_version=0" + 0x1F + "\n" +
-            "_primary_term=0" + 0x1F + "\n" +
-            0x1E + "\n");
+        assertEquals(record.value(), "CMD=add\u001F\n" +
+            "_routing=routing\u001F\n" +
+            "_seq_no=-2\u001F\n" +
+            "_source={ \"value\" : \"test\" }\u001F\n" +
+            "_id=id\u001F\n" +
+            "value=test\u001F\n" +
+            "_version=0\u001F\n" +
+            "_primary_term=0\u001F\n\u001E\n");
         assertEquals(record.topic(), "topicName");
         assertEquals(record.partition(), Integer.valueOf(0));
     }
@@ -112,15 +82,14 @@ public class HavenaskEngineTests extends EngineTestCase {
         Map<String, String> haDoc = toHaIndex(parsedDocument);
         ProducerRecord<String, String> record = buildProducerRecord("id", Operation.TYPE.DELETE, "topicName", 1, haDoc);
         assertEquals(record.key(), "id");
-        assertEquals(record.value(), "CMD=delete" + 0x1F + "\n" +
-            "_routing=routing" + 0x1F + "\n" +
-            "_seq_no=-2" + 0x1F + "\n" +
-            "_source={ \"value\" : \"test\" }" + 0x1F + "\n" +
-            "_id=id" + 0x1F + "\n" +
-            "value=test" + 0x1F + "\n" +
-            "_version=0" + 0x1F + "\n" +
-            "_primary_term=0" + 0x1F + "\n" +
-            0x1E + "\n");
+        assertEquals(record.value(), "CMD=delete\u001F\n" +
+            "_routing=routing\u001F\n" +
+            "_seq_no=-2\u001F\n" +
+            "_source={ \"value\" : \"test\" }\u001F\n" +
+            "_id=id\u001F\n" +
+            "value=test\u001F\n" +
+            "_version=0\u001F\n" +
+            "_primary_term=0\u001F\n\u001E\n");
         assertEquals(record.topic(), "topicName");
         assertEquals(record.partition(), Integer.valueOf(0));
     }
