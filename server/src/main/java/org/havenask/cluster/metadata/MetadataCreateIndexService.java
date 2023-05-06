@@ -443,7 +443,14 @@ public class MetadataCreateIndexService {
         // create the index here (on the master) to validate it can be created, as well as adding the mapping
         return indicesService.<ClusterState, Exception>withTempIndexService(temporaryIndexMeta, indexService -> {
             try {
-                updateIndexMappingsAndBuildSortOrder(indexService, request, mappings, sourceMetadata, temporaryIndexMeta.getSettings(), indexMappingProviders);
+                updateIndexMappingsAndBuildSortOrder(
+                    indexService,
+                    request,
+                    mappings,
+                    sourceMetadata,
+                    temporaryIndexMeta.getSettings(),
+                    indexMappingProviders
+                );
             } catch (Exception e) {
                 logger.log(silent ? Level.DEBUG : Level.INFO,
                     "failed on parsing mappings on index creation [{}]", request.index(), e);
