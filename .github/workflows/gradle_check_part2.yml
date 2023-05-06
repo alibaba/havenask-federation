@@ -35,4 +35,4 @@ jobs:
           java-version: '15'
           distribution: 'adopt'
       - name: Run Tests
-        run: ./gradlew checkPart2 -x :build-tools:integTest --max-workers=1
+        run: ./gradlew check -p modules/havenask-engine
