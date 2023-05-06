@@ -389,7 +389,7 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
                 if (false == timeout) {
                     LOGGER.warn("run script timeout, command: {}", command);
                     process.destroy();
-                    return null;
+                    return false;
                 }
                 if (process.exitValue() != 0) {
                     try (InputStream inputStream = process.getInputStream()) {
