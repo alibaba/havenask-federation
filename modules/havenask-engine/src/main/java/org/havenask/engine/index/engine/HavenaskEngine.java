@@ -75,7 +75,7 @@ public class HavenaskEngine extends InternalEngine {
      * 加载数据表
      * TODO 注意加锁,防止并发更新冲突
      *
-     * @throws IOException
+     * @throws IOException TODO
      */
     private void activeTable() throws IOException {
         BizConfigGenerator.generateBiz(engineConfig, env.getConfigPath());
@@ -95,7 +95,7 @@ public class HavenaskEngine extends InternalEngine {
     /**
      * 卸载数据表
      *
-     * @throws IOException
+     * @throws IOException TODO
      */
     private synchronized void inactiveTable() throws IOException {
         BizConfigGenerator.removeBiz(engineConfig, env.getConfigPath());
