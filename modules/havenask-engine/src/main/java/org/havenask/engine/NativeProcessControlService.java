@@ -190,8 +190,8 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
     @Override
     protected void doStart() {
         if (enabled && processControlTask == null) {
-            // 先进行一次进程状态的检查和启动,再添加到定时任务
-            checkAndStartProcess();
+            // 启动searcher和qrs进程
+            startProcess();
 
             processControlTask = new ProcessControlTask(threadPool, TimeValue.timeValueSeconds(5));
             processControlTask.rescheduleIfNecessary();
@@ -258,7 +258,21 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
                 return;
             }
 
-            checkAndStartProcess();
+            if (isDataNode) {
+                if (false == checkProcessAlive(SEARCHER_ROLE)) {
+                    LOGGER.info("start searcher process...");
+                    // 启动searcher
+                    runScript(startSearcherCommand);
+                }
+            }
+
+            if (isIngestNode) {
+                if (false == checkProcessAlive(QRS_ROLE)) {
+                    LOGGER.info("start qrs process...");
+                    // 启动qrs
+                    runScript(startQrsCommand);
+                }
+            }
         }
 
         @Override
@@ -272,18 +286,21 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
         }
     }
 
-    private void checkAndStartProcess() {
+    /**
+     * 启动searcher\qrs进程
+     */
+    private void startProcess() {
         if (isDataNode) {
-            if (false == checkProcessAlive(SEARCHER_ROLE)) {
-                LOGGER.info("start searcher process...");
+            LOGGER.info("start searcher process...");
+            while (false == checkProcessAlive(SEARCHER_ROLE)) {
                 // 启动searcher
                 runScript(startSearcherCommand);
             }
         }
 
         if (isIngestNode) {
-            if (false == checkProcessAlive(QRS_ROLE)) {
-                LOGGER.info("start qrs process...");
+            LOGGER.info("start qrs process...");
+            while (false == checkProcessAlive(QRS_ROLE)) {
                 // 启动qrs
                 runScript(startQrsCommand);
             }
