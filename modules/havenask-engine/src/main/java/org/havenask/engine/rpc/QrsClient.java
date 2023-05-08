@@ -23,7 +23,7 @@ public interface QrsClient extends HavenaskClient {
      *
      * @param request havenask sql request
      * @return havenask sql response
-     * @throws IOException
+     * @throws IOException TODO
      */
     QrsSqlResponse executeSql(QrsSqlRequest request) throws IOException;
 
@@ -31,7 +31,7 @@ public interface QrsClient extends HavenaskClient {
      * Execute havenask sql client info api
      *
      * @return havenask sql client info response
-     * @throws IOException
+     * @throws IOException TODO
      */
     String executeSqlClientInfo() throws IOException;
 }

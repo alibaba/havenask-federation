@@ -213,8 +213,8 @@ public class SchemaGenerate {
     /**
      * default schema
      *
-     * @param table
-     * @return
+     * @param table table name in schema
+     * @return schema
      */
     public Schema defaultSchema(String table) {
         Schema schema = new Schema();
