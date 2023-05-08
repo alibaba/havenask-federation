@@ -140,24 +140,23 @@ examples:
         arpcPort = portList[1]
         address = "%s:%d" %(self.ip, httpArpcPort)
         while timeout > 0:
-            time.sleep(5)
-            timeout -= 5
-            print('adress', address)
             retCode, out, err, _ = self.curl(address, "/HeartbeatService/heartbeat", targetRequest)
             if retCode != 0:
                 print "set qrs target %s failed." % targetStr
+                time.sleep(5)
+                timeout -= 5
                 continue
             response = json.loads(out)
             if response["signature"] == requestSig:
                 print "qrs is ready for search, http port %s, arpc port %s" % (httpArpcPort, arpcPort)
                 return True
+            time.sleep(5)
+            timeout -= 5
         return timeout > 0
     
     def _loadSearcherTarget(self, targetInfos, timeout = 300):
         self.readyZones = {}
         while timeout > 0:
-            time.sleep(5)
-            timeout -= 5
             count = 0
             for targetInfo in targetInfos:
                 portList = self._getSearcherPortList(count)
@@ -212,6 +211,8 @@ examples:
                         json.dump(self.readyZones, f)
                     return True
 
+            time.sleep(5)
+            timeout -= 5
         return timeout > 0
 
 if __name__ == '__main__':
