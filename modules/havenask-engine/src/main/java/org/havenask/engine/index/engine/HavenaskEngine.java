@@ -14,7 +14,6 @@
 
 package org.havenask.engine.index.engine;
 
-import java.io.FilePermission;
 import java.io.IOException;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
@@ -100,9 +99,11 @@ public class HavenaskEngine extends InternalEngine {
         props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
         props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
         Thread.currentThread().setContextClassLoader(null);
-        return AccessController.doPrivileged((PrivilegedAction<KafkaProducer<String, String>>) () -> {
-            return new KafkaProducer<>(props);
-        }, AccessController.getContext(), new MBeanTrustPermission("register"));
+        return AccessController.doPrivileged(
+            (PrivilegedAction<KafkaProducer<String, String>>) () -> { return new KafkaProducer<>(props); },
+            AccessController.getContext(),
+            new MBeanTrustPermission("register")
+        );
     }
 
     /**
@@ -114,9 +115,9 @@ public class HavenaskEngine extends InternalEngine {
     static int getKafkaPartition(Settings settings, String kafkaTopic) {
         Map<String, Object> props = new HashMap<>();
         props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, EngineSettings.HAVENASK_REALTIME_BOOTSTRAP_SERVERS.get(settings));
-        AdminClient adminClient = AccessController.doPrivileged((PrivilegedAction<AdminClient>) () -> {
-            return KafkaAdminClient.create(props);
-        });
+        AdminClient adminClient = AccessController.doPrivileged(
+            (PrivilegedAction<AdminClient>) () -> { return KafkaAdminClient.create(props); }
+        );
 
         DescribeTopicsResult result = adminClient.describeTopics(Arrays.asList(kafkaTopic));
         Map<String, TopicDescription> topicDescriptionMap = null;

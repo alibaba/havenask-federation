@@ -129,6 +129,10 @@ tasks.named('forbiddenApisMain').configure {
 sourceCompatibility = JavaVersion.VERSION_11
 targetCompatibility = JavaVersion.VERSION_11
 
+test {
+  systemProperty 'tests.security.manager', 'false'
+}
+
 internalClusterTest {
   systemProperty 'tests.security.manager', 'false'
 }

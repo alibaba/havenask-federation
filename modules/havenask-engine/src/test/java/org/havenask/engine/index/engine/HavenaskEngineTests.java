@@ -64,14 +64,17 @@ public class HavenaskEngineTests extends EngineTestCase {
         Map<String, String> haDoc = toHaIndex(parsedDocument);
         ProducerRecord<String, String> record = buildProducerRecord("id", Operation.TYPE.INDEX, "topicName", 1, haDoc);
         assertEquals(record.key(), "id");
-        assertEquals(record.value(), "CMD=add\u001F\n" +
-            "_routing=routing\u001F\n" +
-            "_seq_no=-2\u001F\n" +
-            "_source={ \"value\" : \"test\" }\u001F\n" +
-            "_id=id\u001F\n" +
-            "value=test\u001F\n" +
-            "_version=0\u001F\n" +
-            "_primary_term=0\u001F\n\u001E\n");
+        assertEquals(
+            record.value(),
+            "CMD=add\u001F\n"
+                + "_routing=routing\u001F\n"
+                + "_seq_no=-2\u001F\n"
+                + "_source={ \"value\" : \"test\" }\u001F\n"
+                + "_id=id\u001F\n"
+                + "value=test\u001F\n"
+                + "_version=0\u001F\n"
+                + "_primary_term=0\u001F\n\u001E\n"
+        );
         assertEquals(record.topic(), "topicName");
         assertEquals(record.partition(), Integer.valueOf(0));
     }
@@ -82,18 +85,20 @@ public class HavenaskEngineTests extends EngineTestCase {
         Map<String, String> haDoc = toHaIndex(parsedDocument);
         ProducerRecord<String, String> record = buildProducerRecord("id", Operation.TYPE.DELETE, "topicName", 1, haDoc);
         assertEquals(record.key(), "id");
-        assertEquals(record.value(), "CMD=delete\u001F\n" +
-            "_routing=routing\u001F\n" +
-            "_seq_no=-2\u001F\n" +
-            "_source={ \"value\" : \"test\" }\u001F\n" +
-            "_id=id\u001F\n" +
-            "value=test\u001F\n" +
-            "_version=0\u001F\n" +
-            "_primary_term=0\u001F\n\u001E\n");
+        assertEquals(
+            record.value(),
+            "CMD=delete\u001F\n"
+                + "_routing=routing\u001F\n"
+                + "_seq_no=-2\u001F\n"
+                + "_source={ \"value\" : \"test\" }\u001F\n"
+                + "_id=id\u001F\n"
+                + "value=test\u001F\n"
+                + "_version=0\u001F\n"
+                + "_primary_term=0\u001F\n\u001E\n"
+        );
         assertEquals(record.topic(), "topicName");
         assertEquals(record.partition(), Integer.valueOf(0));
     }
-
 
     // test initKafkaProducer
     public void testInitKafkaProducer() {
