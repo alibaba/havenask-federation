@@ -408,12 +408,13 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
         return AccessController.doPrivileged((PrivilegedAction<Boolean>) () -> {
             try {
                 LOGGER.info("run script, command: {}", command);
+                long start = System.currentTimeMillis();
                 Process process = Runtime.getRuntime().exec(new String[] { "sh", "-c", command });
                 boolean timeout = process.waitFor(scriptTimeout.seconds(), TimeUnit.SECONDS);
                 if (false == timeout) {
                     LOGGER.warn("run script timeout, command: {}", command);
                     process.destroy();
-                    return null;
+                    return false;
                 }
                 if (process.exitValue() != 0) {
                     try (InputStream inputStream = process.getInputStream()) {
@@ -424,7 +425,7 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
                     return false;
                 } else {
                     // logger success
-                    LOGGER.info("run script {} success", command);
+                    LOGGER.info("run script success, cost [{}ms], command: [{}]", System.currentTimeMillis() - start, command);
                     return true;
                 }
             } catch (Exception e) {
