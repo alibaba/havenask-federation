@@ -137,11 +137,6 @@ public class HavenaskEngineEnvironment implements CustomEnvironment {
 
     @Override
     public void deleteShardDirectoryUnderLock(ShardLock lock, IndexSettings indexSettings) throws IOException {
-        Path indexDir = runtimedataPath.resolve(lock.getShardId().getIndex().getName());
-        IOUtils.rm(indexDir);
-        if (nativeProcessControlService != null) {
-            nativeProcessControlService.updateDataNodeTarget();
-            nativeProcessControlService.updateIngestNodeTarget();
-        }
+        // TODO 删除shard先不做处理,在删除index的时候处理,后续支持多shard后再处理
     }
 }
