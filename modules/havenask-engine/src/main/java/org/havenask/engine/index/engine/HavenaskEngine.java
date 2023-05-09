@@ -24,7 +24,6 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.CountDownLatch;
 import java.util.function.BiFunction;
-import java.util.function.Function;
 
 import javax.management.MBeanTrustPermission;
 
