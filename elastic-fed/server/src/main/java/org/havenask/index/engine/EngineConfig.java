@@ -73,7 +73,7 @@ import java.util.function.Supplier;
  * Once {@link Engine} has been created with this object, changes to this
  * object will affect the {@link Engine} instance.
  */
-public class EngineConfig {
+public final class EngineConfig {
     private final ShardId shardId;
     private final IndexSettings indexSettings;
     private final ByteSizeValue indexingBufferSize;
@@ -241,17 +241,7 @@ public class EngineConfig {
     public Codec getCodec() {
         return codecService.codec(codecName);
     }
-
-    /**
-     * Returns the {@link CodecService} used in the engines
-     * <p>
-     *     Note: this settings is only read on startup.
-     * </p>
-     */
-    public CodecService getCodecService() {
-        return codecService;
-    }
-
+    
     /**
      * Returns a thread-pool mainly used to get estimated time stamps from
      * {@link org.havenask.threadpool.ThreadPool#relativeTimeInMillis()} and to schedule
