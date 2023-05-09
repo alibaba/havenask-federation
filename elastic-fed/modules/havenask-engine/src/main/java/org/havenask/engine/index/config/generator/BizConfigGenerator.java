@@ -23,6 +23,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import org.havenask.common.Nullable;
 import org.havenask.engine.index.config.BizConfig;
 import org.havenask.engine.index.config.DataTable;
 import org.havenask.engine.index.config.Processor.ProcessorChainConfig;
@@ -30,7 +31,8 @@ import org.havenask.engine.index.config.Schema;
 import org.havenask.engine.index.config.ZoneBiz;
 import org.havenask.engine.index.engine.SchemaGenerate;
 import org.havenask.engine.util.VersionUtils;
-import org.havenask.index.engine.EngineConfig;
+import org.havenask.index.IndexSettings;
+import org.havenask.index.mapper.MapperService;
 
 public class BizConfigGenerator {
 
@@ -44,22 +46,30 @@ public class BizConfigGenerator {
     public static final String DATA_TABLES_FILE_SUFFIX = "_table.json";
     public static final String DEFAULT_BIZ_CONFIG = "zones/general/default_biz.json";
     private final Path configPath;
-    private final EngineConfig engineConfig;
     private final String indexName;
+    private final IndexSettings indexSettings;
+    private final MapperService mapperService;
 
-    public BizConfigGenerator(EngineConfig engineConfig, Path configPath) {
-        this.engineConfig = engineConfig;
-        this.indexName = engineConfig.getShardId().getIndexName();
+    public BizConfigGenerator(
+        String indexName,
+        @Nullable IndexSettings indexSettings,
+        @Nullable MapperService mapperService,
+        Path configPath
+    ) {
+        this.indexName = indexName;
+        this.indexSettings = indexSettings;
+        this.mapperService = mapperService;
         this.configPath = configPath.resolve(BIZ_DIR);
     }
 
-    public static void generateBiz(EngineConfig engineConfig, Path configPath) throws IOException {
-        BizConfigGenerator bizConfigGenerator = new BizConfigGenerator(engineConfig, configPath);
+    public static void generateBiz(String indexName, IndexSettings indexSettings, MapperService mapperService, Path configPath)
+        throws IOException {
+        BizConfigGenerator bizConfigGenerator = new BizConfigGenerator(indexName, indexSettings, mapperService, configPath);
         bizConfigGenerator.generate();
     }
 
-    public static void removeBiz(EngineConfig engineConfig, Path configPath) throws IOException {
-        BizConfigGenerator bizConfigGenerator = new BizConfigGenerator(engineConfig, configPath);
+    public static void removeBiz(String indexName, Path configPath) throws IOException {
+        BizConfigGenerator bizConfigGenerator = new BizConfigGenerator(indexName, null, null, configPath);
         bizConfigGenerator.remove();
     }
 
@@ -134,7 +144,7 @@ public class BizConfigGenerator {
 
     private void generateSchema(String version) throws IOException {
         SchemaGenerate schemaGenerate = new SchemaGenerate();
-        Schema schema = schemaGenerate.getSchema(engineConfig);
+        Schema schema = schemaGenerate.getSchema(indexName, indexSettings, mapperService);
         Path schemaPath = configPath.resolve(version).resolve(SCHEMAS_DIR).resolve(indexName + SCHEMAS_FILE_SUFFIX);
         Files.write(
             schemaPath,

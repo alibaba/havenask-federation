@@ -25,13 +25,9 @@ import org.havenask.Version;
 import org.havenask.cluster.metadata.IndexMetadata;
 import org.havenask.common.settings.Settings;
 import org.havenask.engine.index.config.ZoneBiz;
-import org.havenask.index.Index;
 import org.havenask.index.IndexSettings;
-import org.havenask.index.codec.CodecService;
-import org.havenask.index.engine.EngineConfig;
 import org.havenask.index.mapper.MapperService;
 import org.havenask.index.mapper.MapperServiceTestCase;
-import org.havenask.index.shard.ShardId;
 
 import static org.havenask.engine.index.config.generator.BizConfigGenerator.BIZ_DIR;
 import static org.havenask.engine.index.config.generator.BizConfigGenerator.CLUSTER_DIR;
@@ -41,8 +37,6 @@ import static org.havenask.engine.index.config.generator.BizConfigGenerator.DATA
 import static org.havenask.engine.index.config.generator.BizConfigGenerator.DEFAULT_BIZ_CONFIG;
 import static org.havenask.engine.index.config.generator.BizConfigGenerator.SCHEMAS_DIR;
 import static org.havenask.engine.index.config.generator.BizConfigGenerator.SCHEMAS_FILE_SUFFIX;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 public class BizConfigGeneratorTests extends MapperServiceTestCase {
     public void testBasic() throws IOException {
@@ -54,12 +48,6 @@ public class BizConfigGeneratorTests extends MapperServiceTestCase {
             .build();
         IndexSettings settings = new IndexSettings(build, Settings.EMPTY);
         MapperService mapperService = createMapperService(fieldMapping(b -> b.field("type", "keyword")));
-        EngineConfig engineConfig = mock(EngineConfig.class);
-        CodecService codecService = mock(CodecService.class);
-        when(codecService.getMapperService()).thenReturn(mapperService);
-        when(engineConfig.getShardId()).thenReturn(new ShardId(new Index(indexName, randomAlphaOfLength(5)), 0));
-        when(engineConfig.getCodecService()).thenReturn(codecService);
-        when(engineConfig.getIndexSettings()).thenReturn(settings);
         Path configPath = createTempDir();
         Files.createDirectories(configPath.resolve(BIZ_DIR).resolve("0").resolve(CLUSTER_DIR));
         Files.createDirectories(configPath.resolve(BIZ_DIR).resolve("0").resolve(SCHEMAS_DIR));
@@ -71,7 +59,7 @@ public class BizConfigGeneratorTests extends MapperServiceTestCase {
             zoneBiz.toString().getBytes(StandardCharsets.UTF_8),
             StandardOpenOption.CREATE
         );
-        BizConfigGenerator bizConfigGenerator = new BizConfigGenerator(engineConfig, configPath);
+        BizConfigGenerator bizConfigGenerator = new BizConfigGenerator(indexName, settings, mapperService, configPath);
         bizConfigGenerator.generate();
 
         {
