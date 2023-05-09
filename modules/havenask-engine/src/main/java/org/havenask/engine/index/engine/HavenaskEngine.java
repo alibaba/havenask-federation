@@ -23,6 +23,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.CountDownLatch;
+import java.util.function.BiFunction;
+import java.util.function.Function;
 
 import javax.management.MBeanTrustPermission;
 
@@ -38,6 +40,7 @@ import org.apache.logging.log4j.message.ParameterizedMessage;
 import org.apache.lucene.index.IndexableField;
 import org.apache.lucene.util.BytesRef;
 import org.havenask.HavenaskException;
+import org.havenask.common.Nullable;
 import org.havenask.common.settings.Settings;
 import org.havenask.engine.HavenaskEngineEnvironment;
 import org.havenask.engine.NativeProcessControlService;
@@ -46,6 +49,7 @@ import org.havenask.engine.index.config.generator.RuntimeSegmentGenerator;
 import org.havenask.engine.index.config.generator.TableConfigGenerator;
 import org.havenask.engine.rpc.HavenaskClient;
 import org.havenask.index.engine.EngineConfig;
+import org.havenask.index.engine.EngineException;
 import org.havenask.index.engine.InternalEngine;
 import org.havenask.index.mapper.IdFieldMapper;
 import org.havenask.index.mapper.ParseContext;
@@ -286,5 +290,35 @@ public class HavenaskEngine extends InternalEngine {
             throw new HavenaskException("havenask realtime delete exception", e);
         }
         return new DeleteResult(delete.version(), delete.primaryTerm(), delete.seqNo(), true);
+    }
+
+    /**
+     * not support
+     */
+    @Override
+    public SearcherSupplier acquireSearcherSupplier(Function<Searcher, Searcher> wrapper, SearcherScope scope) throws EngineException {
+        throw new UnsupportedOperationException("havenask engine not support search operation");
+    }
+
+    /**
+     * not support
+     */
+    @Override
+    public GetResult get(Get get, BiFunction<String, SearcherScope, Searcher> searcherFactory) throws EngineException {
+        throw new UnsupportedOperationException("havenask engine not support get operation");
+    }
+
+    /**
+     * do nothing
+     */
+    public void forceMerge(
+        boolean flush,
+        int maxNumSegments,
+        boolean onlyExpungeDeletes,
+        boolean upgrade,
+        boolean upgradeOnlyAncientSegments,
+        @Nullable String forceMergeUUID
+    ) throws EngineException {
+        // do nothing
     }
 }
