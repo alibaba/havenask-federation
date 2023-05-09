@@ -296,14 +296,6 @@ public class HavenaskEngine extends InternalEngine {
      * not support
      */
     @Override
-    public SearcherSupplier acquireSearcherSupplier(Function<Searcher, Searcher> wrapper, SearcherScope scope) throws EngineException {
-        throw new UnsupportedOperationException("havenask engine not support search operation");
-    }
-
-    /**
-     * not support
-     */
-    @Override
     public GetResult get(Get get, BiFunction<String, SearcherScope, Searcher> searcherFactory) throws EngineException {
         throw new UnsupportedOperationException("havenask engine not support get operation");
     }
