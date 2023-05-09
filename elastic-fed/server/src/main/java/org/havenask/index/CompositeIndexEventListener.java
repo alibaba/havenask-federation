@@ -192,6 +192,18 @@ final class CompositeIndexEventListener implements IndexEventListener {
     }
 
     @Override
+    public void afterIndexMappingUpdate(IndexService indexService) {
+        for (IndexEventListener listener : listeners) {
+            try {
+                listener.afterIndexMappingUpdate(indexService);
+            } catch (Exception e) {
+                logger.warn("failed to invoke after index mapping update callback", e);
+                throw e;
+            }
+        }
+    }
+
+    @Override
     public void beforeIndexShardCreated(ShardId shardId, Settings indexSettings) {
         for (IndexEventListener listener : listeners) {
             try {
