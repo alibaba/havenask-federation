@@ -32,7 +32,7 @@ public class HavenaskIndexEventListener implements IndexEventListener {
     }
 
     @Override
-    public void afterIndexCreated(IndexService indexService) {
+    public void afterIndexMappingUpdate(IndexService indexService) {
         try {
             BizConfigGenerator.generateBiz(
                 indexService.index().getName(),

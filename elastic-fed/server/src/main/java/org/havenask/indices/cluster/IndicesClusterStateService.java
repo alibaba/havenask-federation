@@ -510,6 +510,8 @@ public class IndicesClusterStateService extends AbstractLifecycleComponent imple
                             indexMetadata.getIndexUUID(), state.nodes().getLocalNodeId())
                     );
                 }
+                IndexService realIndexService = (IndexService) indexService;
+                realIndexService.getIndexEventListener().afterIndexMappingUpdate(realIndexService);
             } catch (Exception e) {
                 final String failShardReason;
                 if (indexService == null) {

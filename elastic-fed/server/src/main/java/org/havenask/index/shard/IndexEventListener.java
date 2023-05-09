@@ -127,6 +127,13 @@ public interface IndexEventListener {
     }
 
     /**
+     * Called after the index mapping has been updated.
+     */
+    default void afterIndexMappingUpdate(IndexService indexService) {
+
+    }
+
+    /**
      * Called before the index get closed.
      *
      * @param indexService The index service

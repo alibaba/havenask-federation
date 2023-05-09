@@ -241,7 +241,7 @@ public final class EngineConfig {
     public Codec getCodec() {
         return codecService.codec(codecName);
     }
-    
+
     /**
      * Returns a thread-pool mainly used to get estimated time stamps from
      * {@link org.havenask.threadpool.ThreadPool#relativeTimeInMillis()} and to schedule
