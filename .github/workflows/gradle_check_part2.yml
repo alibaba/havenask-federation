@@ -35,4 +35,4 @@ jobs:
           java-version: '15'
           distribution: 'adopt'
       - name: Run Tests
-        run: ./gradlew check -p modules/havenask-engine
+        run: cd elastic-fed; ./gradlew check -p modules/havenask-engine

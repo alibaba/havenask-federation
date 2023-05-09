@@ -35,4 +35,4 @@ jobs:
           java-version: '15'
           distribution: 'adopt'
       - name: Run Tests
-        run: ./gradlew test -p server
+        run: cd elastic-fed; ./gradlew test -p server
