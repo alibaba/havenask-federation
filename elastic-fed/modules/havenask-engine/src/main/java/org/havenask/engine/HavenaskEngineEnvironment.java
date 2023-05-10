@@ -130,8 +130,7 @@ public class HavenaskEngineEnvironment implements CustomEnvironment {
         Path indexDir = runtimedataPath.resolve(index.getName());
         IOUtils.rm(indexDir);
         if (nativeProcessControlService != null) {
-            nativeProcessControlService.updateDataNodeTarget();
-            nativeProcessControlService.updateIngestNodeTarget();
+            nativeProcessControlService.asyncUpdateTarget();
         }
     }
 
