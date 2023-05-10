@@ -1044,7 +1044,6 @@ public class MetadataCreateIndexServiceTests extends HavenaskSingleNodeTestCase 
                     throw new UnsupportedOperationException("nested field not support");
                 }
             }
-
         };
     }
 

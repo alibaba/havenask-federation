@@ -219,7 +219,7 @@ public class HavenaskEnginePlugin extends Plugin
 
     @Override
     public List<ExecutorBuilder<?>> getExecutorBuilders(Settings settings) {
-        return Collections.singletonList(executorBuilder());
+        return Arrays.asList(executorBuilder());
     }
 
     private static ExecutorBuilder<?> executorBuilder() {
