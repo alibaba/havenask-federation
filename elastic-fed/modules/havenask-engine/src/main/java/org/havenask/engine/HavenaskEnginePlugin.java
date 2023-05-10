@@ -40,6 +40,7 @@ import org.havenask.common.settings.Setting;
 import org.havenask.common.settings.Setting.Property;
 import org.havenask.common.settings.Settings;
 import org.havenask.common.settings.SettingsFilter;
+import org.havenask.common.unit.TimeValue;
 import org.havenask.common.xcontent.NamedXContentRegistry;
 import org.havenask.engine.index.HavenaskIndexEventListener;
 import org.havenask.engine.index.engine.EngineSettings;
@@ -69,6 +70,8 @@ import org.havenask.repositories.RepositoriesService;
 import org.havenask.rest.RestController;
 import org.havenask.rest.RestHandler;
 import org.havenask.script.ScriptService;
+import org.havenask.threadpool.ExecutorBuilder;
+import org.havenask.threadpool.ScalingExecutorBuilder;
 import org.havenask.threadpool.ThreadPool;
 import org.havenask.watcher.ResourceWatcherService;
 
@@ -87,6 +90,7 @@ public class HavenaskEnginePlugin extends Plugin
     private final SetOnce<NativeProcessControlService> nativeProcessControlServiceSetOnce = new SetOnce<>();
     private final SetOnce<HavenaskClient> searcherClientSetOnce = new SetOnce<>();
 
+    public static final String HAVENASK_THREAD_POOL_NAME = "havenask";
     public static final Setting<Boolean> HAVENASK_ENGINE_ENABLED_SETTING = Setting.boolSetting(
         "havenask.engine.enabled",
         false,
@@ -223,6 +227,15 @@ public class HavenaskEnginePlugin extends Plugin
         HavenaskEngineEnvironment havenaskEngineEnvironment = new HavenaskEngineEnvironment(environment, settings);
         havenaskEngineEnvironmentSetOnce.set(havenaskEngineEnvironment);
         return havenaskEngineEnvironment;
+    }
+
+    @Override
+    public List<ExecutorBuilder<?>> getExecutorBuilders(Settings settings) {
+        return Collections.singletonList(executorBuilder());
+    }
+
+    private static ExecutorBuilder<?> executorBuilder() {
+        return new ScalingExecutorBuilder(HAVENASK_THREAD_POOL_NAME, 0, 128, TimeValue.timeValueSeconds(30L));
     }
 
     @Override
