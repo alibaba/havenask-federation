@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.Set;
 
 import org.havenask.common.Nullable;
+import org.havenask.common.settings.Settings;
 import org.havenask.engine.index.config.BizConfig;
 import org.havenask.engine.index.config.DataTable;
 import org.havenask.engine.index.config.Processor.ProcessorChainConfig;
@@ -47,12 +48,12 @@ public class BizConfigGenerator {
     public static final String DEFAULT_BIZ_CONFIG = "zones/general/default_biz.json";
     private final Path configPath;
     private final String indexName;
-    private final IndexSettings indexSettings;
+    private final Settings indexSettings;
     private final MapperService mapperService;
 
     public BizConfigGenerator(
         String indexName,
-        @Nullable IndexSettings indexSettings,
+        Settings indexSettings,
         @Nullable MapperService mapperService,
         Path configPath
     ) {
@@ -62,7 +63,7 @@ public class BizConfigGenerator {
         this.configPath = configPath.resolve(BIZ_DIR);
     }
 
-    public static void generateBiz(String indexName, IndexSettings indexSettings, MapperService mapperService, Path configPath)
+    public static void generateBiz(String indexName, Settings indexSettings, MapperService mapperService, Path configPath)
         throws IOException {
         BizConfigGenerator bizConfigGenerator = new BizConfigGenerator(indexName, indexSettings, mapperService, configPath);
         bizConfigGenerator.generate();

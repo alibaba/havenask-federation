@@ -22,6 +22,7 @@ import java.nio.file.StandardOpenOption;
 import java.util.List;
 
 import org.havenask.common.Nullable;
+import org.havenask.common.settings.Settings;
 import org.havenask.engine.index.config.BizConfig;
 import org.havenask.engine.index.config.DataTable;
 import org.havenask.engine.index.config.Processor.ProcessorChainConfig;
@@ -42,12 +43,12 @@ public class TableConfigGenerator {
     public static final String DATA_TABLES_FILE_SUFFIX = "_table.json";
     private final Path configPath;
     private final String indexName;
-    private final IndexSettings indexSettings;
+    private final Settings indexSettings;
     private final MapperService mapperService;
 
     public TableConfigGenerator(
         String indexName,
-        @Nullable IndexSettings indexSettings,
+        Settings indexSettings,
         @Nullable MapperService mapperService,
         Path configPath
     ) {
@@ -57,7 +58,7 @@ public class TableConfigGenerator {
         this.configPath = configPath.resolve(TABLE_DIR);
     }
 
-    public static void generateTable(String indexName, IndexSettings indexSettings, MapperService mapperService, Path configPath)
+    public static void generateTable(String indexName, Settings indexSettings, MapperService mapperService, Path configPath)
         throws IOException {
         TableConfigGenerator tableConfigGenerator = new TableConfigGenerator(indexName, indexSettings, mapperService, configPath);
         tableConfigGenerator.generate();
@@ -93,7 +94,7 @@ public class TableConfigGenerator {
         BizConfig bizConfig = new BizConfig();
         bizConfig.cluster_config.cluster_name = indexName;
         bizConfig.cluster_config.table_name = indexName;
-        bizConfig.realtime = EngineSettings.HAVENASK_REALTIME_ENABLE.get(indexSettings.getSettings());
+        bizConfig.realtime = EngineSettings.HAVENASK_REALTIME_ENABLE.get(indexSettings);
         Path clusterConfigPath = configPath.resolve(version).resolve(CLUSTER_DIR).resolve(indexName + CLUSTER_FILE_SUFFIX);
         Files.write(
             clusterConfigPath,
