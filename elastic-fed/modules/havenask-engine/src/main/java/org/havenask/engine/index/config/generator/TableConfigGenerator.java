@@ -30,7 +30,6 @@ import org.havenask.engine.index.config.Schema;
 import org.havenask.engine.index.engine.EngineSettings;
 import org.havenask.engine.index.engine.SchemaGenerate;
 import org.havenask.engine.util.VersionUtils;
-import org.havenask.index.IndexSettings;
 import org.havenask.index.mapper.MapperService;
 
 public class TableConfigGenerator {
@@ -46,12 +45,7 @@ public class TableConfigGenerator {
     private final Settings indexSettings;
     private final MapperService mapperService;
 
-    public TableConfigGenerator(
-        String indexName,
-        Settings indexSettings,
-        @Nullable MapperService mapperService,
-        Path configPath
-    ) {
+    public TableConfigGenerator(String indexName, Settings indexSettings, @Nullable MapperService mapperService, Path configPath) {
         this.indexName = indexName;
         this.indexSettings = indexSettings;
         this.mapperService = mapperService;
