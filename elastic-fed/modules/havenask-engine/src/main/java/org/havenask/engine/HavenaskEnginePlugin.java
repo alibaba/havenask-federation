@@ -42,6 +42,7 @@ import org.havenask.common.settings.Settings;
 import org.havenask.common.settings.SettingsFilter;
 import org.havenask.common.unit.TimeValue;
 import org.havenask.common.xcontent.NamedXContentRegistry;
+import org.havenask.engine.index.HavenaskIndexEventListener;
 import org.havenask.engine.index.engine.EngineSettings;
 import org.havenask.engine.index.engine.HavenaskEngine;
 import org.havenask.engine.rpc.HavenaskClient;
@@ -54,6 +55,7 @@ import org.havenask.engine.search.rest.RestHavenaskSqlAction;
 import org.havenask.engine.search.rest.RestHavenaskSqlClientInfoAction;
 import org.havenask.env.Environment;
 import org.havenask.env.NodeEnvironment;
+import org.havenask.index.IndexModule;
 import org.havenask.index.IndexSettings;
 import org.havenask.index.engine.EngineFactory;
 import org.havenask.index.shard.IndexMappingProvider;
@@ -234,7 +236,14 @@ public class HavenaskEnginePlugin extends Plugin
         return Collections.singletonList(executorBuilder());
     }
 
-    public static ExecutorBuilder<?> executorBuilder() {
+    private static ExecutorBuilder<?> executorBuilder() {
         return new ScalingExecutorBuilder(HAVENASK_THREAD_POOL_NAME, 0, 128, TimeValue.timeValueSeconds(30L));
+    }
+
+    @Override
+    public void onIndexModule(IndexModule indexModule) {
+        if (EngineSettings.isHavenaskEngine(indexModule.getSettings())) {
+            indexModule.addIndexEventListener(new HavenaskIndexEventListener(havenaskEngineEnvironmentSetOnce.get()));
+        }
     }
 }

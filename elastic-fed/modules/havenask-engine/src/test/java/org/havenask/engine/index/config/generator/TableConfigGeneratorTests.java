@@ -22,13 +22,9 @@ import java.util.Locale;
 import org.havenask.Version;
 import org.havenask.cluster.metadata.IndexMetadata;
 import org.havenask.common.settings.Settings;
-import org.havenask.index.Index;
 import org.havenask.index.IndexSettings;
-import org.havenask.index.codec.CodecService;
-import org.havenask.index.engine.EngineConfig;
 import org.havenask.index.mapper.MapperService;
 import org.havenask.index.mapper.MapperServiceTestCase;
-import org.havenask.index.shard.ShardId;
 
 import static org.havenask.engine.index.config.generator.BizConfigGenerator.DATA_TABLES_DIR;
 import static org.havenask.engine.index.config.generator.BizConfigGenerator.DATA_TABLES_FILE_SUFFIX;
@@ -37,8 +33,6 @@ import static org.havenask.engine.index.config.generator.BizConfigGenerator.SCHE
 import static org.havenask.engine.index.config.generator.TableConfigGenerator.CLUSTER_DIR;
 import static org.havenask.engine.index.config.generator.TableConfigGenerator.CLUSTER_FILE_SUFFIX;
 import static org.havenask.engine.index.config.generator.TableConfigGenerator.TABLE_DIR;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 public class TableConfigGeneratorTests extends MapperServiceTestCase {
     public void testBasic() throws IOException {
@@ -50,17 +44,11 @@ public class TableConfigGeneratorTests extends MapperServiceTestCase {
             .build();
         IndexSettings settings = new IndexSettings(build, Settings.EMPTY);
         MapperService mapperService = createMapperService(fieldMapping(b -> b.field("type", "keyword")));
-        EngineConfig engineConfig = mock(EngineConfig.class);
-        CodecService codecService = mock(CodecService.class);
-        when(codecService.getMapperService()).thenReturn(mapperService);
-        when(engineConfig.getShardId()).thenReturn(new ShardId(new Index(indexName, randomAlphaOfLength(5)), 0));
-        when(engineConfig.getCodecService()).thenReturn(codecService);
-        when(engineConfig.getIndexSettings()).thenReturn(settings);
         Path configPath = createTempDir();
         Files.createDirectories(configPath.resolve(TABLE_DIR).resolve("0").resolve(CLUSTER_DIR));
         Files.createDirectories(configPath.resolve(TABLE_DIR).resolve("0").resolve(SCHEMAS_DIR));
         Files.createDirectories(configPath.resolve(TABLE_DIR).resolve("0").resolve(DATA_TABLES_DIR));
-        TableConfigGenerator tableConfigGenerator = new TableConfigGenerator(engineConfig, configPath);
+        TableConfigGenerator tableConfigGenerator = new TableConfigGenerator(indexName, settings, mapperService, configPath);
         tableConfigGenerator.generate();
 
         {

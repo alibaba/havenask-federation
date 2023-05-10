@@ -33,7 +33,6 @@ import org.havenask.common.io.Streams;
 import org.havenask.engine.index.config.Analyzers;
 import org.havenask.engine.index.config.Schema;
 import org.havenask.index.IndexSettings;
-import org.havenask.index.engine.EngineConfig;
 import org.havenask.index.mapper.IdFieldMapper;
 import org.havenask.index.mapper.MappedFieldType;
 import org.havenask.index.mapper.MapperService;
@@ -77,14 +76,6 @@ public class SchemaGenerate {
     );
 
     Logger logger = LogManager.getLogger(SchemaGenerate.class);
-
-    public Schema getSchema(EngineConfig engineConfig) throws IOException {
-        return getSchema(
-            engineConfig.getShardId().getIndexName(),
-            engineConfig.getIndexSettings(),
-            engineConfig.getCodecService().getMapperService()
-        );
-    }
 
     // generate index schema from mapping
     public Schema getSchema(String table, IndexSettings indexSettings, MapperService mapperService) throws IOException {
