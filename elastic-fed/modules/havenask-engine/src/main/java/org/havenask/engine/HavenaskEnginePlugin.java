@@ -40,6 +40,7 @@ import org.havenask.common.settings.Setting;
 import org.havenask.common.settings.Setting.Property;
 import org.havenask.common.settings.Settings;
 import org.havenask.common.settings.SettingsFilter;
+import org.havenask.common.unit.TimeValue;
 import org.havenask.common.xcontent.NamedXContentRegistry;
 import org.havenask.engine.index.engine.EngineSettings;
 import org.havenask.engine.index.engine.HavenaskEngine;
@@ -67,6 +68,8 @@ import org.havenask.repositories.RepositoriesService;
 import org.havenask.rest.RestController;
 import org.havenask.rest.RestHandler;
 import org.havenask.script.ScriptService;
+import org.havenask.threadpool.ExecutorBuilder;
+import org.havenask.threadpool.ScalingExecutorBuilder;
 import org.havenask.threadpool.ThreadPool;
 import org.havenask.watcher.ResourceWatcherService;
 
@@ -75,16 +78,17 @@ import static org.havenask.discovery.DiscoveryModule.SINGLE_NODE_DISCOVERY_TYPE;
 
 public class HavenaskEnginePlugin extends Plugin
     implements
-        EnginePlugin,
-        AnalysisPlugin,
-        ActionPlugin,
-        SearchPlugin,
-        NodeEnvironmentPlugin {
+    EnginePlugin,
+    AnalysisPlugin,
+    ActionPlugin,
+    SearchPlugin,
+    NodeEnvironmentPlugin {
     private static Logger logger = LogManager.getLogger(HavenaskEnginePlugin.class);
     private final SetOnce<HavenaskEngineEnvironment> havenaskEngineEnvironmentSetOnce = new SetOnce<>();
     private final SetOnce<NativeProcessControlService> nativeProcessControlServiceSetOnce = new SetOnce<>();
     private final SetOnce<HavenaskClient> searcherClientSetOnce = new SetOnce<>();
 
+    public static final String HAVENASK_THREAD_POOL_NAME = "havenask";
     public static final Setting<Boolean> HAVENASK_ENGINE_ENABLED_SETTING = Setting.boolSetting(
         "havenask.engine.enabled",
         false,
@@ -96,9 +100,10 @@ public class HavenaskEnginePlugin extends Plugin
             public void validate(Boolean value, Map<Setting<?>, Object> settings) {
                 // DISCOVERY_TYPE_SETTING must be single-node when havenask engine is enabled
                 if (value) {
-                    String discoveryType = (String) settings.get(DISCOVERY_TYPE_SETTING);
+                    String discoveryType = (String)settings.get(DISCOVERY_TYPE_SETTING);
                     if (false == SINGLE_NODE_DISCOVERY_TYPE.equals(discoveryType)) {
-                        throw new IllegalArgumentException("havenask engine can only be enabled when discovery type is single-node");
+                        throw new IllegalArgumentException(
+                            "havenask engine can only be enabled when discovery type is single-node");
                     }
                 }
             }
@@ -153,7 +158,8 @@ public class HavenaskEnginePlugin extends Plugin
         nativeProcessControlServiceSetOnce.set(nativeProcessControlService);
         HavenaskClient havenaskClient = new HavenaskHttpClient(nativeProcessControlService.getSearcherHttpPort());
         searcherClientSetOnce.set(havenaskClient);
-        return Arrays.asList(nativeProcessControlServiceSetOnce.get(), havenaskEngineEnvironmentSetOnce.get(), searcherClientSetOnce.get());
+        return Arrays.asList(nativeProcessControlServiceSetOnce.get(), havenaskEngineEnvironmentSetOnce.get(),
+            searcherClientSetOnce.get());
     }
 
     @Override
@@ -221,5 +227,14 @@ public class HavenaskEnginePlugin extends Plugin
         HavenaskEngineEnvironment havenaskEngineEnvironment = new HavenaskEngineEnvironment(environment, settings);
         havenaskEngineEnvironmentSetOnce.set(havenaskEngineEnvironment);
         return havenaskEngineEnvironment;
+    }
+
+    @Override
+    public List<ExecutorBuilder<?>> getExecutorBuilders(Settings settings) {
+        return Collections.singletonList(executorBuilder());
+    }
+
+    public static ExecutorBuilder<?> executorBuilder() {
+        return new ScalingExecutorBuilder(HAVENASK_THREAD_POOL_NAME, 0, 128, TimeValue.timeValueSeconds(30L));
     }
 }
