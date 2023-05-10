@@ -18,6 +18,8 @@ import java.util.Collections;
 import java.util.Map;
 
 import org.havenask.common.settings.Settings;
+import org.havenask.index.IndexSettings;
+import org.havenask.index.mapper.MapperService;
 
 /**
  * An {@link IndexMappingProvider} is a provider for index level mappings that can be set
@@ -29,5 +31,14 @@ public interface IndexMappingProvider {
      */
     default Map<String, Object> getAdditionalIndexMapping(Settings settings) {
         return Collections.emptyMap();
+    }
+
+    /**
+     * validate the index mapping
+     * throw {@link UnsupportedOperationException} if the index mapping is not valid
+     */
+    default void validateIndexMapping(String table, Settings indexSettings, MapperService mapperService)
+        throws UnsupportedOperationException {
+
     }
 }
