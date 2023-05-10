@@ -1030,7 +1030,7 @@ public class MetadataCreateIndexServiceTests extends HavenaskSingleNodeTestCase 
     private IndexMappingProvider getIndexMappingProvider(XContentBuilder xContentBuilder) {
         String mappings = Strings.toString(xContentBuilder);
         Map<String, Object> mapping = XContentHelper.convertToMap(XContentType.JSON.xContent(), mappings, true);
-        Map<String, Object> type = (Map<String, Object>) mapping.get("_doc");
+        Map<String, Object> type = (Map<String, Object>)mapping.get("_doc");
         return new IndexMappingProvider() {
             @Override
             public Map<String, Object> getAdditionalIndexMapping(Settings settings) {
@@ -1038,7 +1038,8 @@ public class MetadataCreateIndexServiceTests extends HavenaskSingleNodeTestCase 
             }
 
             @Override
-            public void validateIndexMapping(String table, Settings indexSettings, MapperService mapperService) throws UnsupportedOperationException {
+            public void validateIndexMapping(String table, Settings indexSettings, MapperService mapperService)
+                throws UnsupportedOperationException {
                 if (mapperService.hasNested()) {
                     throw new UnsupportedOperationException("nested field not support");
                 }
@@ -1152,14 +1153,15 @@ public class MetadataCreateIndexServiceTests extends HavenaskSingleNodeTestCase 
         IndexMappingProvider provider = getIndexMappingProvider(builder);
 
         // except UnsupportedOperationException
-        UnsupportedOperationException e = expectThrows(UnsupportedOperationException.class, () -> MetadataCreateIndexService.updateIndexMappingsAndBuildSortOrder(
-            indexService,
-            new CreateIndexClusterStateUpdateRequest("cause", "test", "test"),
-            Collections.emptyList(),
-            null,
-            Settings.EMPTY,
-            Collections.singleton(provider)
-        ));
+        UnsupportedOperationException e = expectThrows(UnsupportedOperationException.class,
+            () -> MetadataCreateIndexService.updateIndexMappingsAndBuildSortOrder(
+                indexService,
+                new CreateIndexClusterStateUpdateRequest("cause", "test", "test"),
+                Collections.emptyList(),
+                null,
+                Settings.EMPTY,
+                Collections.singleton(provider)
+            ));
         assertEquals("nested field not support", e.getMessage());
     }
 }

@@ -18,7 +18,6 @@ import java.util.Collections;
 import java.util.Map;
 
 import org.havenask.common.settings.Settings;
-import org.havenask.index.IndexSettings;
 import org.havenask.index.mapper.MapperService;
 
 /**
