@@ -41,6 +41,7 @@ import org.havenask.common.settings.Setting.Property;
 import org.havenask.common.settings.Settings;
 import org.havenask.common.settings.SettingsFilter;
 import org.havenask.common.xcontent.NamedXContentRegistry;
+import org.havenask.engine.index.HavenaskIndexEventListener;
 import org.havenask.engine.index.engine.EngineSettings;
 import org.havenask.engine.index.engine.HavenaskEngine;
 import org.havenask.engine.rpc.HavenaskClient;
@@ -53,6 +54,7 @@ import org.havenask.engine.search.rest.RestHavenaskSqlAction;
 import org.havenask.engine.search.rest.RestHavenaskSqlClientInfoAction;
 import org.havenask.env.Environment;
 import org.havenask.env.NodeEnvironment;
+import org.havenask.index.IndexModule;
 import org.havenask.index.IndexSettings;
 import org.havenask.index.engine.EngineFactory;
 import org.havenask.index.shard.IndexMappingProvider;
@@ -221,5 +223,12 @@ public class HavenaskEnginePlugin extends Plugin
         HavenaskEngineEnvironment havenaskEngineEnvironment = new HavenaskEngineEnvironment(environment, settings);
         havenaskEngineEnvironmentSetOnce.set(havenaskEngineEnvironment);
         return havenaskEngineEnvironment;
+    }
+
+    @Override
+    public void onIndexModule(IndexModule indexModule) {
+        if (EngineSettings.isHavenaskEngine(indexModule.getSettings())) {
+            indexModule.addIndexEventListener(new HavenaskIndexEventListener(havenaskEngineEnvironmentSetOnce.get()));
+        }
     }
 }

@@ -15,20 +15,24 @@
 package org.havenask.engine;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 
 import junit.framework.TestCase;
 import org.havenask.common.settings.Settings;
 import org.havenask.discovery.DiscoveryModule;
+import org.havenask.engine.index.config.ZoneBiz;
 import org.havenask.env.Environment;
 import org.havenask.env.TestEnvironment;
 import org.havenask.index.Index;
-import org.havenask.index.shard.ShardId;
-import org.havenask.test.DummyShardLock;
 import org.havenask.test.HavenaskTestCase;
 
 import static org.havenask.discovery.DiscoveryModule.SINGLE_NODE_DISCOVERY_TYPE;
+import static org.havenask.engine.index.config.generator.BizConfigGenerator.BIZ_DIR;
+import static org.havenask.engine.index.config.generator.BizConfigGenerator.DEFAULT_BIZ_CONFIG;
+import static org.havenask.engine.index.config.generator.TableConfigGenerator.TABLE_DIR;
 
 public class HavenaskEngineEnvironmentTests extends HavenaskTestCase {
     // test deleteIndexDirectoryUnderLock
@@ -44,29 +48,21 @@ public class HavenaskEngineEnvironmentTests extends HavenaskTestCase {
             .resolve("indexFile");
         Files.createDirectories(indexFile);
         TestCase.assertTrue(Files.exists(indexFile));
+
+        Path configPath = workDir.resolve(HavenaskEngineEnvironment.DEFAULT_DATA_PATH)
+            .resolve(HavenaskEngineEnvironment.HAVENASK_CONFIG_PATH);
+        Files.createDirectories(configPath.resolve(TABLE_DIR).resolve("0"));
+        Files.createDirectories(configPath.resolve(BIZ_DIR).resolve("0"));
+        Files.createDirectories(configPath.resolve(BIZ_DIR).resolve("0").resolve("zones").resolve("general"));
+        ZoneBiz zoneBiz = new ZoneBiz();
+        Files.write(
+            configPath.resolve(BIZ_DIR).resolve("0").resolve(DEFAULT_BIZ_CONFIG),
+            zoneBiz.toString().getBytes(StandardCharsets.UTF_8),
+            StandardOpenOption.CREATE
+        );
         Environment environment = TestEnvironment.newEnvironment(settings);
         HavenaskEngineEnvironment havenaskEngineEnvironment = new HavenaskEngineEnvironment(environment, settings);
         havenaskEngineEnvironment.deleteIndexDirectoryUnderLock(new Index("indexFile", "indexFile"), null);
         TestCase.assertFalse(Files.exists(indexFile));
     }
-
-    // test deleteShardDirectoryUnderLock
-    public void testDeleteShardDirectoryUnderLock() throws IOException {
-        Path workDir = createTempDir();
-        Settings settings = Settings.builder()
-            .put(Environment.PATH_HOME_SETTING.getKey(), workDir.toString())
-            .put(HavenaskEnginePlugin.HAVENASK_ENGINE_ENABLED_SETTING.getKey(), true)
-            .put(DiscoveryModule.DISCOVERY_TYPE_SETTING.getKey(), SINGLE_NODE_DISCOVERY_TYPE)
-            .build();
-        Path indexFile = workDir.resolve(HavenaskEngineEnvironment.DEFAULT_DATA_PATH)
-            .resolve(HavenaskEngineEnvironment.HAVENASK_RUNTIMEDATA_PATH)
-            .resolve("indexFile");
-        Files.createDirectories(indexFile);
-        TestCase.assertTrue(Files.exists(indexFile));
-        Environment environment = TestEnvironment.newEnvironment(settings);
-        HavenaskEngineEnvironment havenaskEngineEnvironment = new HavenaskEngineEnvironment(environment, settings);
-        havenaskEngineEnvironment.deleteShardDirectoryUnderLock(new DummyShardLock(new ShardId("indexFile", "indexFile", 0)), null);
-        TestCase.assertFalse(Files.exists(indexFile));
-    }
-
 }

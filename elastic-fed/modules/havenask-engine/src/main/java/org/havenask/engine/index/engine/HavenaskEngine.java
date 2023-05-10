@@ -22,7 +22,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.concurrent.CountDownLatch;
 import java.util.function.BiFunction;
 
 import javax.management.MBeanTrustPermission;
@@ -43,9 +42,7 @@ import org.havenask.common.Nullable;
 import org.havenask.common.settings.Settings;
 import org.havenask.engine.HavenaskEngineEnvironment;
 import org.havenask.engine.NativeProcessControlService;
-import org.havenask.engine.index.config.generator.BizConfigGenerator;
 import org.havenask.engine.index.config.generator.RuntimeSegmentGenerator;
-import org.havenask.engine.index.config.generator.TableConfigGenerator;
 import org.havenask.engine.rpc.HavenaskClient;
 import org.havenask.index.engine.EngineConfig;
 import org.havenask.index.engine.EngineException;
@@ -90,7 +87,6 @@ public class HavenaskEngine extends InternalEngine {
         try {
             activeTable();
         } catch (IOException e) {
-            // TODO
             logger.error(() -> new ParameterizedMessage("shard [{}] activeTable exception", engineConfig.getShardId()), e);
             throw new HavenaskException("activeTable exception", e);
         }
@@ -110,8 +106,9 @@ public class HavenaskEngine extends InternalEngine {
     }
 
     /**
-     *  获取kafka topic partition数量
-     * @param settings settings
+     * 获取kafka topic partition数量
+     *
+     * @param settings   settings
      * @param kafkaTopic kafkaTopic name
      * @return
      */
@@ -134,29 +131,12 @@ public class HavenaskEngine extends InternalEngine {
     }
 
     /**
-     * TODO 如何像es一样,解决在关闭engine时,不影响正在进行的查询请求
-     * TODO 解决关闭节点时,会对每个shard执行inactiveTable操作的问题
-     */
-    @Override
-    protected final void closeNoLock(String reason, CountDownLatch closedLatch) {
-        super.closeNoLock(reason, closedLatch);
-        try {
-            inactiveTable();
-        } catch (IOException e) {
-            // TODO
-            logger.error(() -> new ParameterizedMessage("shard [{}] inactiveTable exception", engineConfig.getShardId()), e);
-        }
-    }
-
-    /**
      * 加载数据表
      * TODO 注意加锁,防止并发更新冲突
      *
      * @throws IOException TODO
      */
     private void activeTable() throws IOException {
-        BizConfigGenerator.generateBiz(engineConfig, env.getConfigPath());
-        TableConfigGenerator.generateTable(engineConfig, env.getConfigPath());
         // 初始化segment信息
         RuntimeSegmentGenerator.generateRuntimeSegment(
             env,
@@ -167,16 +147,6 @@ public class HavenaskEngine extends InternalEngine {
         // 更新配置表信息
         nativeProcessControlService.updateDataNodeTarget();
         nativeProcessControlService.updateIngestNodeTarget();
-    }
-
-    /**
-     * 卸载数据表
-     *
-     * @throws IOException TODO
-     */
-    private synchronized void inactiveTable() throws IOException {
-        BizConfigGenerator.removeBiz(engineConfig, env.getConfigPath());
-        TableConfigGenerator.removeTable(engineConfig, env.getConfigPath());
     }
 
     /**
