@@ -20,6 +20,8 @@ import org.havenask.gradle.info.BuildParams
 import org.jetbrains.gradle.ext.Remote
 import org.jetbrains.gradle.ext.JUnit
 
+import java.nio.file.Files
+
 buildscript {
   repositories {
     maven {
@@ -48,10 +50,18 @@ if (System.getProperty('idea.active') == 'true') {
     description = 'Configures the appropriate JVM for Gradle'
 
     doLast {
-      modifyXml('.idea/gradle.xml') { xml ->
-        def gradleSettings = xml.component.find { it.'@name' == 'GradleSettings' }.option[0].GradleProjectSettings
-        // Remove configured JVM option to force IntelliJ to use the project JDK for Gradle
-        gradleSettings.option.findAll { it.'@name' == 'gradleJvm' }.each { it.parent().remove(it) }
+      if (Files.exists(project.file('.idea/gradle.xml').toPath())) {
+        modifyXml('.idea/gradle.xml') { xml ->
+          def gradleSettings = xml.component.find { it.'@name' == 'GradleSettings' }.option[0].GradleProjectSettings
+          // Remove configured JVM option to force IntelliJ to use the project JDK for Gradle
+          gradleSettings.option.findAll { it.'@name' == 'gradleJvm' }.each { it.parent().remove(it) }
+        }
+      } else if (Files.exists(project.file('../.idea/gradle.xml').toPath())) {
+        modifyXml('../.idea/gradle.xml') { xml ->
+          def gradleSettings = xml.component.find { it.'@name' == 'GradleSettings' }.option[0].GradleProjectSettings
+          // Remove configured JVM option to force IntelliJ to use the project JDK for Gradle
+          gradleSettings.option.findAll { it.'@name' == 'gradleJvm' }.each { it.parent().remove(it) }
+        }
       }
     }
   }
