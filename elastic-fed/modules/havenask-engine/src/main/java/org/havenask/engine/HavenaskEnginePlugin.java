@@ -80,11 +80,11 @@ import static org.havenask.discovery.DiscoveryModule.SINGLE_NODE_DISCOVERY_TYPE;
 
 public class HavenaskEnginePlugin extends Plugin
     implements
-    EnginePlugin,
-    AnalysisPlugin,
-    ActionPlugin,
-    SearchPlugin,
-    NodeEnvironmentPlugin {
+        EnginePlugin,
+        AnalysisPlugin,
+        ActionPlugin,
+        SearchPlugin,
+        NodeEnvironmentPlugin {
     private static Logger logger = LogManager.getLogger(HavenaskEnginePlugin.class);
     private final SetOnce<HavenaskEngineEnvironment> havenaskEngineEnvironmentSetOnce = new SetOnce<>();
     private final SetOnce<NativeProcessControlService> nativeProcessControlServiceSetOnce = new SetOnce<>();
@@ -102,10 +102,9 @@ public class HavenaskEnginePlugin extends Plugin
             public void validate(Boolean value, Map<Setting<?>, Object> settings) {
                 // DISCOVERY_TYPE_SETTING must be single-node when havenask engine is enabled
                 if (value) {
-                    String discoveryType = (String)settings.get(DISCOVERY_TYPE_SETTING);
+                    String discoveryType = (String) settings.get(DISCOVERY_TYPE_SETTING);
                     if (false == SINGLE_NODE_DISCOVERY_TYPE.equals(discoveryType)) {
-                        throw new IllegalArgumentException(
-                            "havenask engine can only be enabled when discovery type is single-node");
+                        throw new IllegalArgumentException("havenask engine can only be enabled when discovery type is single-node");
                     }
                 }
             }
@@ -160,8 +159,7 @@ public class HavenaskEnginePlugin extends Plugin
         nativeProcessControlServiceSetOnce.set(nativeProcessControlService);
         HavenaskClient havenaskClient = new HavenaskHttpClient(nativeProcessControlService.getSearcherHttpPort());
         searcherClientSetOnce.set(havenaskClient);
-        return Arrays.asList(nativeProcessControlServiceSetOnce.get(), havenaskEngineEnvironmentSetOnce.get(),
-            searcherClientSetOnce.get());
+        return Arrays.asList(nativeProcessControlServiceSetOnce.get(), havenaskEngineEnvironmentSetOnce.get(), searcherClientSetOnce.get());
     }
 
     @Override
