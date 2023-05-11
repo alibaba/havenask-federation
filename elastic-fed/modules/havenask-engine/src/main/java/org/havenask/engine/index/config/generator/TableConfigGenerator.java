@@ -27,7 +27,6 @@ import org.havenask.engine.index.config.DataTable;
 import org.havenask.engine.index.config.Processor.ProcessorChainConfig;
 import org.havenask.engine.index.config.Schema;
 import org.havenask.engine.index.engine.EngineSettings;
-import org.havenask.engine.index.engine.SchemaGenerate;
 import org.havenask.engine.util.VersionUtils;
 import org.havenask.index.IndexSettings;
 import org.havenask.index.mapper.MapperService;
@@ -104,8 +103,8 @@ public class TableConfigGenerator {
     }
 
     private void generateSchema(String version) throws IOException {
-        SchemaGenerate schemaGenerate = new SchemaGenerate();
-        Schema schema = schemaGenerate.getSchema(indexName, indexSettings, mapperService);
+        SchemaGenerator schemaGenerator = new SchemaGenerator();
+        Schema schema = schemaGenerator.getSchema(indexName, indexSettings, mapperService);
         Path schemaPath = configPath.resolve(version).resolve(SCHEMAS_DIR).resolve(indexName + SCHEMAS_FILE_SUFFIX);
         Files.write(
             schemaPath,

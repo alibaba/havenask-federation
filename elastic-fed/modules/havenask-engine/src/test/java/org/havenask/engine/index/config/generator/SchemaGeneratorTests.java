@@ -12,7 +12,21 @@
  *
  */
 
-package org.havenask.engine.index.engine;
+/*
+ * Copyright (c) 2021, Alibaba Group;
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *
+ */
+
+package org.havenask.engine.index.config.generator;
 
 import java.io.IOException;
 import java.util.Locale;
@@ -21,11 +35,12 @@ import org.havenask.Version;
 import org.havenask.cluster.metadata.IndexMetadata;
 import org.havenask.common.settings.Settings;
 import org.havenask.engine.index.config.Schema;
+import org.havenask.engine.index.config.generator.SchemaGenerator;
 import org.havenask.index.IndexSettings;
 import org.havenask.index.mapper.MapperService;
 import org.havenask.index.mapper.MapperServiceTestCase;
 
-public class SchemaGenerateTests extends MapperServiceTestCase {
+public class SchemaGeneratorTests extends MapperServiceTestCase {
     private String indexName = randomAlphaOfLength(5);
     private IndexMetadata indexMetadata = IndexMetadata.builder(indexName)
         .settings(Settings.builder().put(IndexMetadata.SETTING_VERSION_CREATED, Version.CURRENT))
@@ -113,9 +128,9 @@ public class SchemaGenerateTests extends MapperServiceTestCase {
                 b.endObject();
             }
         }));
-        SchemaGenerate schemaGenerate = new SchemaGenerate();
+        SchemaGenerator schemaGenerator = new SchemaGenerator();
         IndexSettings indexSettings = new IndexSettings(indexMetadata, Settings.EMPTY);
-        Schema schema = schemaGenerate.getSchema(indexName, indexSettings, mapperService);
+        Schema schema = schemaGenerator.getSchema(indexName, indexSettings, mapperService);
         String actual = schema.toString();
         String expect = String.format(
             Locale.ROOT,
@@ -304,12 +319,12 @@ public class SchemaGenerateTests extends MapperServiceTestCase {
                 b.endObject();
             }
         }));
-        SchemaGenerate schemaGenerate = new SchemaGenerate();
+        SchemaGenerator schemaGenerator = new SchemaGenerator();
         IndexSettings indexSettings = new IndexSettings(indexMetadata, Settings.EMPTY);
         // java.lang.UnsupportedOperationException: nested field not support
         UnsupportedOperationException e = expectThrows(
             UnsupportedOperationException.class,
-            () -> schemaGenerate.getSchema(indexName, indexSettings, mapperService)
+            () -> schemaGenerator.getSchema(indexName, indexSettings, mapperService)
         );
         assertEquals("nested field not support", e.getMessage());
     }
@@ -324,12 +339,12 @@ public class SchemaGenerateTests extends MapperServiceTestCase {
                 b.endObject();
             }
         }));
-        SchemaGenerate schemaGenerate = new SchemaGenerate();
+        SchemaGenerator schemaGenerator = new SchemaGenerator();
         IndexSettings indexSettings = new IndexSettings(indexMetadata, Settings.EMPTY);
         // java.lang.UnsupportedOperationException: geo_point field not support
         UnsupportedOperationException e = expectThrows(
             UnsupportedOperationException.class,
-            () -> schemaGenerate.getSchema(indexName, indexSettings, mapperService)
+            () -> schemaGenerator.getSchema(indexName, indexSettings, mapperService)
         );
         assertEquals("no support mapping type (geo_point) for field geo_point_field", e.getMessage());
     }
@@ -337,9 +352,9 @@ public class SchemaGenerateTests extends MapperServiceTestCase {
     // test default schema
     public void testDefaultSchema() throws IOException {
         MapperService mapperService = null;
-        SchemaGenerate schemaGenerate = new SchemaGenerate();
+        SchemaGenerator schemaGenerator = new SchemaGenerator();
         IndexSettings indexSettings = new IndexSettings(indexMetadata, Settings.EMPTY);
-        Schema schema = schemaGenerate.getSchema(indexName, indexSettings, mapperService);
+        Schema schema = schemaGenerator.getSchema(indexName, indexSettings, mapperService);
         String actual = schema.toString();
         String expect = String.format(
             Locale.ROOT,
