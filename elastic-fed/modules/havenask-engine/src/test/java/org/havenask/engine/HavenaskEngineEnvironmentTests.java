@@ -21,12 +21,17 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 
 import junit.framework.TestCase;
+import org.havenask.Version;
+import org.havenask.cluster.metadata.IndexMetadata;
 import org.havenask.common.settings.Settings;
 import org.havenask.discovery.DiscoveryModule;
 import org.havenask.engine.index.config.ZoneBiz;
+import org.havenask.engine.index.engine.EngineSettings;
 import org.havenask.env.Environment;
 import org.havenask.env.TestEnvironment;
 import org.havenask.index.Index;
+import org.havenask.index.IndexSettings;
+import org.havenask.index.engine.EngineConfig;
 import org.havenask.test.HavenaskTestCase;
 
 import static org.havenask.discovery.DiscoveryModule.SINGLE_NODE_DISCOVERY_TYPE;
@@ -41,6 +46,7 @@ public class HavenaskEngineEnvironmentTests extends HavenaskTestCase {
         Settings settings = Settings.builder()
             .put(Environment.PATH_HOME_SETTING.getKey(), workDir.toString())
             .put(HavenaskEnginePlugin.HAVENASK_ENGINE_ENABLED_SETTING.getKey(), true)
+            .put(EngineSettings.ENGINE_TYPE_SETTING.getKey(), EngineSettings.ENGINE_HAVENASK)
             .put(DiscoveryModule.DISCOVERY_TYPE_SETTING.getKey(), SINGLE_NODE_DISCOVERY_TYPE)
             .build();
         Path indexFile = workDir.resolve(HavenaskEngineEnvironment.DEFAULT_DATA_PATH)
@@ -62,7 +68,12 @@ public class HavenaskEngineEnvironmentTests extends HavenaskTestCase {
         );
         Environment environment = TestEnvironment.newEnvironment(settings);
         HavenaskEngineEnvironment havenaskEngineEnvironment = new HavenaskEngineEnvironment(environment, settings);
-        havenaskEngineEnvironment.deleteIndexDirectoryUnderLock(new Index("indexFile", "indexFile"), null);
+        IndexMetadata build = IndexMetadata.builder(randomAlphaOfLength(5))
+            .settings(Settings.builder().put(IndexMetadata.SETTING_VERSION_CREATED, Version.CURRENT).put(settings))
+            .numberOfShards(1)
+            .numberOfReplicas(0)
+            .build();
+        havenaskEngineEnvironment.deleteIndexDirectoryUnderLock(new Index("indexFile", "indexFile"), new IndexSettings(build, Settings.EMPTY));
         TestCase.assertFalse(Files.exists(indexFile));
     }
 }
