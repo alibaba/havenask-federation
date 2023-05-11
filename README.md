@@ -21,8 +21,81 @@ Havenask-federation承担三种角色：master、data、coordinate，其中data�
 
 
 # 使用说明
+## 获取镜像
 
-目前项目正在开发迭代中，具体进展可以关注项目issue：[https://github.com/alibaba/havenask-federation/issues](https://github.com/alibaba/havenask-federation/issues)
+目前fed还未发布release镜像，所以需要通过编译获得。
+
+编译依赖：
+
+*   jdk15
+
+*   docker
+
+
+编译方式：
+
+    cd elastic-fed
+    ./gradlew buildDockerImage -p distribution/docker
+
+编译过程先是打包fed安装包，再制作镜像，制作镜像第一次执行会去拉取havenask runtime的镜像，这个镜像有8GB左右，所以命令执行时间比较长，命令执行成功后，会生成一个havenask-fed:test的镜像。
+
+## 启动容器
+
+项目附带了启动命令：
+
+    cd elastic-fed/script
+    ./create_container.sh <CONTAINER_NAME> havenask-fed:test
+
+这样就启动了一个容器，假设启动一个名为test的容器，示例命令：./create\_container.sh test havenask-fed:test
+
+容器启动后，进入容器命令：
+
+    ./<CONTAINER_NAME>/sshme
+
+## 启动fed
+
+进入容器后，在根目录下执行：
+
+    ./bin/havenask
+
+就能启动fed进程，如果要以daemon模式启动，命令为：
+
+    ./bin/havenask -d
+
+容器附带了一个opensearch-dashbards可以用作可视化操作fed，启动方式为：
+
+     cd dashboards/bin/
+     ./opensearch-dashboards
+
+## 访问fed
+
+fed启动后，默认端口是9200，假设在本地访问，访问示例如下：
+
+    curl 127.0.0.1:9200
+    {
+      "name" : "l57e02076.sqa.nu8",
+      "cluster_name" : "docker-cluster",
+      "cluster_uuid" : "clGgz853S3W6mSaWLCeyCQ",
+      "version" : {
+        "distribution" : "havenask",
+        "number" : "1.0.0-SNAPSHOT",
+        "build_type" : "docker",
+        "build_hash" : "unknown",
+        "build_date" : "2023-05-10T08:05:27.627696220Z",
+        "build_snapshot" : true,
+        "lucene_version" : "8.7.0",
+        "minimum_wire_compatibility_version" : "6.8.0",
+        "minimum_index_compatibility_version" : "6.0.0-beta1"
+      },
+      "tagline" : "The Havenask Federation Project"
+    }
+
+可以通过opensearch-dashboards，在dev\_tools中访问fed
+
+    http://127.0.0.1:5601/app/dev_tools#/console
+
+## 更多功能
+更多内容请参见：[快速开始](https://github.com/alibaba/havenask-federation/wiki/%E5%BF%AB%E9%80%9F%E5%BC%80%E5%A7%8B)
 
 # 联系我们
 官方技术交流钉钉群：
