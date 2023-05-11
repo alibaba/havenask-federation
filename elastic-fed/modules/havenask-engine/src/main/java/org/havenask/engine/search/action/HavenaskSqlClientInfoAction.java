@@ -15,6 +15,8 @@
 package org.havenask.engine.search.action;
 
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Objects;
 
 import org.havenask.action.ActionRequest;
@@ -58,15 +60,15 @@ public class HavenaskSqlClientInfoAction extends ActionType<Response> {
     public static class Response extends ActionResponse implements ToXContentObject {
         private final String errorMessage;
         private final int errorCode;
-        private final String result;
+        private final Map<String, Object> result;
 
         public Response(String errorMessage, int errorCode) {
             this.errorMessage = errorMessage;
             this.errorCode = errorCode;
-            this.result = null;
+            this.result = new HashMap<>();
         }
 
-        public Response(String result) {
+        public Response(Map<String, Object> result) {
             this.result = result;
             this.errorCode = 0;
             this.errorMessage = "";
@@ -80,21 +82,21 @@ public class HavenaskSqlClientInfoAction extends ActionType<Response> {
             return errorCode;
         }
 
-        public String getResult() {
+        public Map<String, Object> getResult() {
             return result;
         }
 
         public Response(StreamInput in) throws IOException {
             errorMessage = in.readOptionalString();
             errorCode = in.readInt();
-            result = in.readOptionalString();
+            result = in.readMap();
         }
 
         @Override
         public void writeTo(StreamOutput out) throws IOException {
             out.writeOptionalString(errorMessage);
             out.writeInt(errorCode);
-            out.writeOptionalString(result);
+            out.writeMap(result);
         }
 
         @Override
@@ -104,9 +106,7 @@ public class HavenaskSqlClientInfoAction extends ActionType<Response> {
                 builder.field("error_message", errorMessage);
             }
             builder.field("error_code", errorCode);
-            if (Objects.nonNull(result)) {
-                builder.field("result", result);
-            }
+            builder.field("result", result);
             builder.endObject();
             return builder;
         }
