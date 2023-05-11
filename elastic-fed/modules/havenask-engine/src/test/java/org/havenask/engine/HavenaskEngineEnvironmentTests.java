@@ -31,7 +31,6 @@ import org.havenask.env.Environment;
 import org.havenask.env.TestEnvironment;
 import org.havenask.index.Index;
 import org.havenask.index.IndexSettings;
-import org.havenask.index.engine.EngineConfig;
 import org.havenask.test.HavenaskTestCase;
 
 import static org.havenask.discovery.DiscoveryModule.SINGLE_NODE_DISCOVERY_TYPE;
@@ -73,7 +72,8 @@ public class HavenaskEngineEnvironmentTests extends HavenaskTestCase {
             .numberOfShards(1)
             .numberOfReplicas(0)
             .build();
-        havenaskEngineEnvironment.deleteIndexDirectoryUnderLock(new Index("indexFile", "indexFile"), new IndexSettings(build, Settings.EMPTY));
+        havenaskEngineEnvironment.deleteIndexDirectoryUnderLock(new Index("indexFile", "indexFile"),
+            new IndexSettings(build, Settings.EMPTY));
         TestCase.assertFalse(Files.exists(indexFile));
     }
 }
