@@ -21,6 +21,7 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.lucene.util.LuceneTestCase.AwaitsFix;
 import org.havenask.cluster.service.ClusterService;
 import org.havenask.common.settings.ClusterSettings;
 import org.havenask.common.settings.Setting;
@@ -37,6 +38,7 @@ import org.junit.Before;
 
 import static org.havenask.discovery.DiscoveryModule.SINGLE_NODE_DISCOVERY_TYPE;
 
+@AwaitsFix(bugUrl = "https://github.com/alibaba/havenask-federation/issues/78")
 public class NativeProcessControlServiceTests extends HavenaskTestCase {
     private NativeProcessControlService nativeProcessControlService;
     private ThreadPool threadPool;
