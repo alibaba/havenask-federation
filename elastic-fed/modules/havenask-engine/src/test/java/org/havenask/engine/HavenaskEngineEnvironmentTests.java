@@ -72,8 +72,10 @@ public class HavenaskEngineEnvironmentTests extends HavenaskTestCase {
             .numberOfShards(1)
             .numberOfReplicas(0)
             .build();
-        havenaskEngineEnvironment.deleteIndexDirectoryUnderLock(new Index("indexFile", "indexFile"),
-            new IndexSettings(build, Settings.EMPTY));
+        havenaskEngineEnvironment.deleteIndexDirectoryUnderLock(
+            new Index("indexFile", "indexFile"),
+            new IndexSettings(build, Settings.EMPTY)
+        );
         TestCase.assertFalse(Files.exists(indexFile));
     }
 }
