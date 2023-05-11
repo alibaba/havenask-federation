@@ -35,7 +35,6 @@ import org.havenask.Version;
 import org.havenask.cluster.metadata.IndexMetadata;
 import org.havenask.common.settings.Settings;
 import org.havenask.engine.index.config.Schema;
-import org.havenask.engine.index.config.generator.SchemaGenerator;
 import org.havenask.index.IndexSettings;
 import org.havenask.index.mapper.MapperService;
 import org.havenask.index.mapper.MapperServiceTestCase;
