@@ -28,16 +28,14 @@ Havenask-federation承担三种角色：master、data、coordinate，其中data�
 编译依赖：
 
 *   jdk15
-
 *   docker
-
 
 编译方式：
 
     cd elastic-fed
     ./gradlew buildDockerImage -p distribution/docker
 
-编译过程先是打包fed安装包，再制作镜像，制作镜像第一次执行会去拉取havenask runtime的镜像，这个镜像有8GB左右，所以命令执行时间比较长，命令执行成功后，会生成一个havenask-fed:test的镜像。
+编译过程先是打包fed安装包，再制作镜像，制作镜像第一次执行会去拉取havenask runtime的镜像，这个镜像有8GB左右，所以命令执行时间比较长，命令执行成功后，会生成一个havenask-fed:test的镜像。
 
 ## 启动容器
 
@@ -46,7 +44,9 @@ Havenask-federation承担三种角色：master、data、coordinate，其中data�
     cd elastic-fed/script
     ./create_container.sh <CONTAINER_NAME> havenask-fed:test
 
-这样就启动了一个容器，假设启动一个名为test的容器，示例命令：./create\_container.sh test havenask-fed:test
+这样就启动了一个容器，假设启动一个名为test的容器，示例命令：
+
+    ./create\_container.sh test havenask-fed:test
 
 容器启动后，进入容器命令：
 
