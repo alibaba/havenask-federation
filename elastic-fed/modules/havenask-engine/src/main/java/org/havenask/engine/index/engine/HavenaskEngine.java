@@ -75,13 +75,15 @@ public class HavenaskEngine extends InternalEngine {
         this.env = env;
         this.nativeProcessControlService = nativeProcessControlService;
         this.shardId = engineConfig.getShardId();
-        this.realTimeEnable = EngineSettings.HAVENASK_REALTIME_ENABLE.get(engineConfig.getIndexSettings().getSettings());
+        this.realTimeEnable = EngineSettings.HAVENASK_REALTIME_ENABLE.get(
+            engineConfig.getIndexSettings().getSettings());
         this.kafkaTopic = realTimeEnable
             ? EngineSettings.HAVENASK_REALTIME_TOPIC_NAME.get(engineConfig.getIndexSettings().getSettings())
             : null;
         try {
             this.producer = realTimeEnable ? initKafkaProducer(engineConfig.getIndexSettings().getSettings()) : null;
-            this.kafkaPartition = realTimeEnable ? getKafkaPartition(engineConfig.getIndexSettings().getSettings(), kafkaTopic) : -1;
+            this.kafkaPartition = realTimeEnable ? getKafkaPartition(engineConfig.getIndexSettings().getSettings(),
+                kafkaTopic) : -1;
         } catch (Exception e) {
             if (realTimeEnable && producer != null) {
                 producer.close();
@@ -94,19 +96,23 @@ public class HavenaskEngine extends InternalEngine {
         // try {
         //
         // } catch (IOException e) {
-        // logger.error(() -> new ParameterizedMessage("shard [{}] activeTable exception", engineConfig.getShardId()), e);
+        // logger.error(() -> new ParameterizedMessage("shard [{}] activeTable exception", engineConfig.getShardId())
+        // , e);
         // throw new HavenaskException("activeTable exception", e);
         // }
     }
 
     static KafkaProducer<String, String> initKafkaProducer(Settings settings) {
         Map<String, Object> props = new HashMap<>();
-        props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, EngineSettings.HAVENASK_REALTIME_BOOTSTRAP_SERVERS.get(settings));
+        props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG,
+            EngineSettings.HAVENASK_REALTIME_BOOTSTRAP_SERVERS.get(settings));
         props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
         props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
         Thread.currentThread().setContextClassLoader(null);
         return AccessController.doPrivileged(
-            (PrivilegedAction<KafkaProducer<String, String>>) () -> { return new KafkaProducer<>(props); },
+            (PrivilegedAction<KafkaProducer<String, String>>)() -> {
+                return new KafkaProducer<>(props);
+            },
             AccessController.getContext(),
             new MBeanTrustPermission("register")
         );
@@ -130,20 +136,22 @@ public class HavenaskEngine extends InternalEngine {
      */
     static int getKafkaPartition(Settings settings, String kafkaTopic) {
         Map<String, Object> props = new HashMap<>();
-        props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, EngineSettings.HAVENASK_REALTIME_BOOTSTRAP_SERVERS.get(settings));
-        AdminClient adminClient = AccessController.doPrivileged(
-            (PrivilegedAction<AdminClient>) () -> { return KafkaAdminClient.create(props); }
-        );
+        props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG,
+            EngineSettings.HAVENASK_REALTIME_BOOTSTRAP_SERVERS.get(settings));
+        try (AdminClient adminClient = AccessController.doPrivileged(
+            (PrivilegedAction<AdminClient>)() -> KafkaAdminClient.create(props)
+        )) {
+            DescribeTopicsResult result = adminClient.describeTopics(Arrays.asList(kafkaTopic));
+            Map<String, TopicDescription> topicDescriptionMap = null;
+            try {
+                topicDescriptionMap = result.all().get();
+            } catch (Exception e) {
+                throw new HavenaskException("get kafka partition exception", e);
+            }
+            TopicDescription topicDescription = topicDescriptionMap.get(kafkaTopic);
 
-        DescribeTopicsResult result = adminClient.describeTopics(Arrays.asList(kafkaTopic));
-        Map<String, TopicDescription> topicDescriptionMap = null;
-        try {
-            topicDescriptionMap = result.all().get();
-        } catch (Exception e) {
-            throw new HavenaskException("get kafka partition exception", e);
+            return topicDescription.partitions().size();
         }
-        TopicDescription topicDescription = topicDescriptionMap.get(kafkaTopic);
-        return topicDescription.partitions().size();
     }
 
     /**
@@ -241,7 +249,7 @@ public class HavenaskEngine extends InternalEngine {
         long hashId = HashAlgorithm.getHashId(id);
         long partition = HashAlgorithm.getPartitionId(hashId, topicPartition);
 
-        return new ProducerRecord<>(topicName, (int) partition, id, message.toString());
+        return new ProducerRecord<>(topicName, (int)partition, id, message.toString());
     }
 
     @Override
@@ -251,7 +259,8 @@ public class HavenaskEngine extends InternalEngine {
         }
 
         Map<String, String> haDoc = toHaIndex(index.parsedDoc());
-        ProducerRecord<String, String> record = buildProducerRecord(index.id(), index.operationType(), kafkaTopic, kafkaPartition, haDoc);
+        ProducerRecord<String, String> record = buildProducerRecord(index.id(), index.operationType(), kafkaTopic,
+            kafkaPartition, haDoc);
         try {
             producer.send(record).get();
         } catch (Exception e) {
@@ -268,7 +277,8 @@ public class HavenaskEngine extends InternalEngine {
 
         Map<String, String> haDoc = new HashMap<>();
         haDoc.put(IdFieldMapper.NAME, delete.id());
-        ProducerRecord<String, String> record = buildProducerRecord(delete.id(), delete.operationType(), kafkaTopic, kafkaPartition, haDoc);
+        ProducerRecord<String, String> record = buildProducerRecord(delete.id(), delete.operationType(), kafkaTopic,
+            kafkaPartition, haDoc);
         try {
             producer.send(record).get();
         } catch (Exception e) {
