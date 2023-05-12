@@ -60,9 +60,9 @@ public class HavenaskEngine extends InternalEngine {
     private final NativeProcessControlService nativeProcessControlService;
     private final ShardId shardId;
     private final boolean realTimeEnable;
-    private final KafkaProducer<String, String> producer;
     private final String kafkaTopic;
     private final int kafkaPartition;
+    private KafkaProducer<String, String> producer = null;
 
     public HavenaskEngine(
         EngineConfig engineConfig,
@@ -83,6 +83,9 @@ public class HavenaskEngine extends InternalEngine {
             this.producer = realTimeEnable ? initKafkaProducer(engineConfig.getIndexSettings().getSettings()) : null;
             this.kafkaPartition = realTimeEnable ? getKafkaPartition(engineConfig.getIndexSettings().getSettings(), kafkaTopic) : -1;
         } catch (Exception e) {
+            if (realTimeEnable && producer != null) {
+                producer.close();
+            }
             throw new IOException("init kafka producer exception", e);
         }
 
