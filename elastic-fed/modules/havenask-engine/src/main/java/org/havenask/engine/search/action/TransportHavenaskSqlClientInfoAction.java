@@ -24,7 +24,6 @@ import org.havenask.action.ingest.IngestActionForwarder;
 import org.havenask.action.support.ActionFilters;
 import org.havenask.action.support.HandledTransportAction;
 import org.havenask.cluster.service.ClusterService;
-import org.havenask.common.Strings;
 import org.havenask.common.inject.Inject;
 import org.havenask.common.xcontent.XContentHelper;
 import org.havenask.common.xcontent.json.JsonXContent;
@@ -33,6 +32,7 @@ import org.havenask.engine.rpc.QrsClient;
 import org.havenask.engine.rpc.http.QrsHttpClient;
 import org.havenask.engine.search.action.HavenaskSqlClientInfoAction.Request;
 import org.havenask.engine.search.action.HavenaskSqlClientInfoAction.Response;
+import org.havenask.rest.RestStatus;
 import org.havenask.tasks.Task;
 import org.havenask.threadpool.ThreadPool.Names;
 import org.havenask.transport.TransportService;
@@ -95,10 +95,15 @@ public class TransportHavenaskSqlClientInfoAction extends HandledTransportAction
                 defaultGeneralTables.remove("in0");
                 defaultGeneralTables.remove("in0_summary_");
             }
-            listener.onResponse(new HavenaskSqlClientInfoAction.Response(Strings.toString(JsonXContent.contentBuilder().map(result))));
+            listener.onResponse(new HavenaskSqlClientInfoAction.Response(result));
         } catch (IOException e) {
             logger.warn("execute sql client info api failed", e);
-            listener.onResponse(new HavenaskSqlClientInfoAction.Response("execute sql client info api failed:" + e));
+            listener.onResponse(
+                new HavenaskSqlClientInfoAction.Response(
+                    "execute sql client info api failed:" + e.getMessage(),
+                    RestStatus.INTERNAL_SERVER_ERROR.getStatus()
+                )
+            );
         }
     }
 }
