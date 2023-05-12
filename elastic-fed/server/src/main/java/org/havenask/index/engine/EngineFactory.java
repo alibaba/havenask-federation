@@ -38,12 +38,14 @@
 
 package org.havenask.index.engine;
 
+import java.io.IOException;
+
 /**
  * Simple Engine Factory
  */
 @FunctionalInterface
 public interface EngineFactory {
 
-    Engine newReadWriteEngine(EngineConfig config);
+    Engine newReadWriteEngine(EngineConfig config) throws IOException;
 
 }

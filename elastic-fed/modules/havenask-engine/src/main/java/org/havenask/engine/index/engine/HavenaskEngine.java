@@ -34,7 +34,6 @@ import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.serialization.StringSerializer;
-import org.apache.logging.log4j.message.ParameterizedMessage;
 import org.apache.lucene.index.IndexableField;
 import org.apache.lucene.util.BytesRef;
 import org.havenask.HavenaskException;
@@ -70,26 +69,31 @@ public class HavenaskEngine extends InternalEngine {
         HavenaskClient havenaskClient,
         HavenaskEngineEnvironment env,
         NativeProcessControlService nativeProcessControlService
-    ) {
+    ) throws IOException {
         super(engineConfig);
         this.havenaskClient = havenaskClient;
         this.env = env;
         this.nativeProcessControlService = nativeProcessControlService;
         this.shardId = engineConfig.getShardId();
         this.realTimeEnable = EngineSettings.HAVENASK_REALTIME_ENABLE.get(engineConfig.getIndexSettings().getSettings());
-        this.producer = realTimeEnable ? initKafkaProducer(engineConfig.getIndexSettings().getSettings()) : null;
         this.kafkaTopic = realTimeEnable
             ? EngineSettings.HAVENASK_REALTIME_TOPIC_NAME.get(engineConfig.getIndexSettings().getSettings())
             : null;
-        this.kafkaPartition = realTimeEnable ? getKafkaPartition(engineConfig.getIndexSettings().getSettings(), kafkaTopic) : -1;
+        try {
+            this.producer = realTimeEnable ? initKafkaProducer(engineConfig.getIndexSettings().getSettings()) : null;
+            this.kafkaPartition = realTimeEnable ? getKafkaPartition(engineConfig.getIndexSettings().getSettings(), kafkaTopic) : -1;
+        } catch (Exception e) {
+            throw new IOException("init kafka producer exception", e);
+        }
 
         // 加载配置表
-        try {
-            activeTable();
-        } catch (IOException e) {
-            logger.error(() -> new ParameterizedMessage("shard [{}] activeTable exception", engineConfig.getShardId()), e);
-            throw new HavenaskException("activeTable exception", e);
-        }
+        activeTable();
+        // try {
+        //
+        // } catch (IOException e) {
+        // logger.error(() -> new ParameterizedMessage("shard [{}] activeTable exception", engineConfig.getShardId()), e);
+        // throw new HavenaskException("activeTable exception", e);
+        // }
     }
 
     static KafkaProducer<String, String> initKafkaProducer(Settings settings) {
@@ -108,6 +112,7 @@ public class HavenaskEngine extends InternalEngine {
     @Override
     public void close() throws IOException {
         super.close();
+        logger.info("[{}] close havenask engine", shardId);
         if (realTimeEnable && producer != null) {
             producer.close();
         }
