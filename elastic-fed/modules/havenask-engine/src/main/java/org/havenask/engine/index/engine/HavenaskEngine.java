@@ -105,6 +105,14 @@ public class HavenaskEngine extends InternalEngine {
         );
     }
 
+    @Override
+    public void close() throws IOException {
+        super.close();
+        if (realTimeEnable && producer != null) {
+            producer.close();
+        }
+    }
+
     /**
      * 获取kafka topic partition数量
      *
