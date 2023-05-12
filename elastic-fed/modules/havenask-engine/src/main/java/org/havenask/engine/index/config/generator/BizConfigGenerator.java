@@ -24,13 +24,13 @@ import java.util.List;
 import java.util.Set;
 
 import org.havenask.common.Nullable;
+import org.havenask.common.settings.Settings;
 import org.havenask.engine.index.config.BizConfig;
 import org.havenask.engine.index.config.DataTable;
 import org.havenask.engine.index.config.Processor.ProcessorChainConfig;
 import org.havenask.engine.index.config.Schema;
 import org.havenask.engine.index.config.ZoneBiz;
 import org.havenask.engine.util.VersionUtils;
-import org.havenask.index.IndexSettings;
 import org.havenask.index.mapper.MapperService;
 
 public class BizConfigGenerator {
@@ -46,22 +46,17 @@ public class BizConfigGenerator {
     public static final String DEFAULT_BIZ_CONFIG = "zones/general/default_biz.json";
     private final Path configPath;
     private final String indexName;
-    private final IndexSettings indexSettings;
+    private final Settings indexSettings;
     private final MapperService mapperService;
 
-    public BizConfigGenerator(
-        String indexName,
-        @Nullable IndexSettings indexSettings,
-        @Nullable MapperService mapperService,
-        Path configPath
-    ) {
+    public BizConfigGenerator(String indexName, Settings indexSettings, @Nullable MapperService mapperService, Path configPath) {
         this.indexName = indexName;
         this.indexSettings = indexSettings;
         this.mapperService = mapperService;
         this.configPath = configPath.resolve(BIZ_DIR);
     }
 
-    public static void generateBiz(String indexName, IndexSettings indexSettings, MapperService mapperService, Path configPath)
+    public static void generateBiz(String indexName, Settings indexSettings, MapperService mapperService, Path configPath)
         throws IOException {
         BizConfigGenerator bizConfigGenerator = new BizConfigGenerator(indexName, indexSettings, mapperService, configPath);
         bizConfigGenerator.generate();

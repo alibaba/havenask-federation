@@ -31,21 +31,13 @@ package org.havenask.engine.index.config.generator;
 import java.io.IOException;
 import java.util.Locale;
 
-import org.havenask.Version;
-import org.havenask.cluster.metadata.IndexMetadata;
 import org.havenask.common.settings.Settings;
 import org.havenask.engine.index.config.Schema;
-import org.havenask.index.IndexSettings;
 import org.havenask.index.mapper.MapperService;
 import org.havenask.index.mapper.MapperServiceTestCase;
 
 public class SchemaGeneratorTests extends MapperServiceTestCase {
     private String indexName = randomAlphaOfLength(5);
-    private IndexMetadata indexMetadata = IndexMetadata.builder(indexName)
-        .settings(Settings.builder().put(IndexMetadata.SETTING_VERSION_CREATED, Version.CURRENT))
-        .numberOfShards(1)
-        .numberOfReplicas(0)
-        .build();
 
     public void testSchemaGenerate() throws IOException {
         MapperService mapperService = createMapperService(mapping(b -> {
@@ -128,8 +120,7 @@ public class SchemaGeneratorTests extends MapperServiceTestCase {
             }
         }));
         SchemaGenerator schemaGenerator = new SchemaGenerator();
-        IndexSettings indexSettings = new IndexSettings(indexMetadata, Settings.EMPTY);
-        Schema schema = schemaGenerator.getSchema(indexName, indexSettings, mapperService);
+        Schema schema = schemaGenerator.getSchema(indexName, Settings.EMPTY, mapperService);
         String actual = schema.toString();
         String expect = String.format(
             Locale.ROOT,
@@ -319,11 +310,10 @@ public class SchemaGeneratorTests extends MapperServiceTestCase {
             }
         }));
         SchemaGenerator schemaGenerator = new SchemaGenerator();
-        IndexSettings indexSettings = new IndexSettings(indexMetadata, Settings.EMPTY);
         // java.lang.UnsupportedOperationException: nested field not support
         UnsupportedOperationException e = expectThrows(
             UnsupportedOperationException.class,
-            () -> schemaGenerator.getSchema(indexName, indexSettings, mapperService)
+            () -> schemaGenerator.getSchema(indexName, Settings.EMPTY, mapperService)
         );
         assertEquals("nested field not support", e.getMessage());
     }
@@ -339,11 +329,10 @@ public class SchemaGeneratorTests extends MapperServiceTestCase {
             }
         }));
         SchemaGenerator schemaGenerator = new SchemaGenerator();
-        IndexSettings indexSettings = new IndexSettings(indexMetadata, Settings.EMPTY);
         // java.lang.UnsupportedOperationException: geo_point field not support
         UnsupportedOperationException e = expectThrows(
             UnsupportedOperationException.class,
-            () -> schemaGenerator.getSchema(indexName, indexSettings, mapperService)
+            () -> schemaGenerator.getSchema(indexName, Settings.EMPTY, mapperService)
         );
         assertEquals("no support mapping type (geo_point) for field geo_point_field", e.getMessage());
     }
@@ -352,8 +341,7 @@ public class SchemaGeneratorTests extends MapperServiceTestCase {
     public void testDefaultSchema() throws IOException {
         MapperService mapperService = null;
         SchemaGenerator schemaGenerator = new SchemaGenerator();
-        IndexSettings indexSettings = new IndexSettings(indexMetadata, Settings.EMPTY);
-        Schema schema = schemaGenerator.getSchema(indexName, indexSettings, mapperService);
+        Schema schema = schemaGenerator.getSchema(indexName, Settings.EMPTY, mapperService);
         String actual = schema.toString();
         String expect = String.format(
             Locale.ROOT,
