@@ -390,14 +390,20 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
         }
     }
 
-    public void updateDataNodeTarget() {
+    /**
+     * 更新 searcher target
+     */
+    public synchronized void updateDataNodeTarget() {
         if (isDataNode && running) {
             // 更新datanode searcher的target
             runScript(updateSearcherCommand);
         }
     }
 
-    public void updateIngestNodeTarget() {
+    /**
+     * 更新 qrs target
+     */
+    public synchronized void updateIngestNodeTarget() {
         if (isIngestNode && running) {
             // 更新ingestnode qrs的target
             runScript(updateQrsCommand);
@@ -410,13 +416,18 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
     public void asyncUpdateTarget() {
         if (running && (isDataNode || isIngestNode)) {
             threadPool.executor(HavenaskEnginePlugin.HAVENASK_THREAD_POOL_NAME).execute(() -> {
-                if (isDataNode) {
-                    // 更新datanode searcher的target
-                    runScript(updateSearcherCommand);
-                }
-                if (isIngestNode) {
-                    // 更新ingestnode qrs的target
-                    runScript(updateQrsCommand);
+                synchronized (this) {
+                    if (false == running) {
+                        return;
+                    }
+                    if (isDataNode) {
+                        // 更新datanode searcher的target
+                        runScript(updateSearcherCommand);
+                    }
+                    if (isIngestNode) {
+                        // 更新ingestnode qrs的target
+                        runScript(updateQrsCommand);
+                    }
                 }
             });
         }
