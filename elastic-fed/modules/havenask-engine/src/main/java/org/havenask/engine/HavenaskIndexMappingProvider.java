@@ -19,8 +19,8 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.havenask.common.settings.Settings;
+import org.havenask.engine.index.config.generator.SchemaGenerator;
 import org.havenask.engine.index.engine.EngineSettings;
-import org.havenask.engine.index.engine.SchemaGenerate;
 import org.havenask.index.mapper.MapperService;
 import org.havenask.index.shard.IndexMappingProvider;
 
@@ -41,7 +41,7 @@ public class HavenaskIndexMappingProvider implements IndexMappingProvider {
     public void validateIndexMapping(String table, Settings indexSettings, MapperService mapperService)
         throws UnsupportedOperationException {
         if (EngineSettings.isHavenaskEngine(indexSettings)) {
-            SchemaGenerate generate = new SchemaGenerate();
+            SchemaGenerator generate = new SchemaGenerator();
             // validate the index mapping
             generate.getSchema(table, indexSettings, mapperService);
         }

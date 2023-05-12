@@ -12,7 +12,21 @@
  *
  */
 
-package org.havenask.engine.index.engine;
+/*
+ * Copyright (c) 2021, Alibaba Group;
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *
+ */
+
+package org.havenask.engine.index.config.generator;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -33,12 +47,13 @@ import org.havenask.common.io.Streams;
 import org.havenask.common.settings.Settings;
 import org.havenask.engine.index.config.Analyzers;
 import org.havenask.engine.index.config.Schema;
+import org.havenask.engine.index.engine.EngineSettings;
 import org.havenask.index.mapper.IdFieldMapper;
 import org.havenask.index.mapper.MappedFieldType;
 import org.havenask.index.mapper.MapperService;
 import org.havenask.index.mapper.TextSearchInfo;
 
-public class SchemaGenerate {
+public class SchemaGenerator {
     // have deprecated fields or not support now.
     public static final Set<String> ExcludeFields = Set.of("_field_names", "index", "_type", "_uid", "_parent");
 
@@ -77,7 +92,7 @@ public class SchemaGenerate {
         Map.entry("date", "UINT64")
     );
 
-    Logger logger = LogManager.getLogger(SchemaGenerate.class);
+    Logger logger = LogManager.getLogger(SchemaGenerator.class);
 
     // generate index schema from mapping
     public Schema getSchema(String table, Settings indexSettings, MapperService mapperService) {
