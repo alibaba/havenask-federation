@@ -16,8 +16,6 @@ package org.havenask.engine;
 
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -209,17 +207,7 @@ public class HavenaskEnginePlugin extends Plugin
 
     @Override
     public Collection<IndexMappingProvider> getAdditionalIndexMappingProviders() {
-        return Arrays.asList(new IndexMappingProvider() {
-            public Map<String, Object> getAdditionalIndexMapping(Settings settings) {
-                if (EngineSettings.isHavenaskEngine(settings)) {
-                    Map<String, Object> mappings = new HashMap<>();
-                    mappings.put("dynamic", false);
-                    return mappings;
-                } else {
-                    return Collections.emptyMap();
-                }
-            }
-        });
+        return Arrays.asList(new HavenaskIndexMappingProvider());
     }
 
     @Override
@@ -231,7 +219,7 @@ public class HavenaskEnginePlugin extends Plugin
 
     @Override
     public List<ExecutorBuilder<?>> getExecutorBuilders(Settings settings) {
-        return Collections.singletonList(executorBuilder());
+        return Arrays.asList(executorBuilder());
     }
 
     private static ExecutorBuilder<?> executorBuilder() {

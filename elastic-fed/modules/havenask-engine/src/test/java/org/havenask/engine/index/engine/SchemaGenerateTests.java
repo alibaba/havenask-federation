@@ -21,7 +21,6 @@ import org.havenask.Version;
 import org.havenask.cluster.metadata.IndexMetadata;
 import org.havenask.common.settings.Settings;
 import org.havenask.engine.index.config.Schema;
-import org.havenask.index.IndexSettings;
 import org.havenask.index.mapper.MapperService;
 import org.havenask.index.mapper.MapperServiceTestCase;
 
@@ -114,8 +113,7 @@ public class SchemaGenerateTests extends MapperServiceTestCase {
             }
         }));
         SchemaGenerate schemaGenerate = new SchemaGenerate();
-        IndexSettings indexSettings = new IndexSettings(indexMetadata, Settings.EMPTY);
-        Schema schema = schemaGenerate.getSchema(indexName, indexSettings, mapperService);
+        Schema schema = schemaGenerate.getSchema(indexName, Settings.EMPTY, mapperService);
         String actual = schema.toString();
         String expect = String.format(
             Locale.ROOT,
@@ -305,11 +303,10 @@ public class SchemaGenerateTests extends MapperServiceTestCase {
             }
         }));
         SchemaGenerate schemaGenerate = new SchemaGenerate();
-        IndexSettings indexSettings = new IndexSettings(indexMetadata, Settings.EMPTY);
         // java.lang.UnsupportedOperationException: nested field not support
         UnsupportedOperationException e = expectThrows(
             UnsupportedOperationException.class,
-            () -> schemaGenerate.getSchema(indexName, indexSettings, mapperService)
+            () -> schemaGenerate.getSchema(indexName, Settings.EMPTY, mapperService)
         );
         assertEquals("nested field not support", e.getMessage());
     }
@@ -325,11 +322,10 @@ public class SchemaGenerateTests extends MapperServiceTestCase {
             }
         }));
         SchemaGenerate schemaGenerate = new SchemaGenerate();
-        IndexSettings indexSettings = new IndexSettings(indexMetadata, Settings.EMPTY);
         // java.lang.UnsupportedOperationException: geo_point field not support
         UnsupportedOperationException e = expectThrows(
             UnsupportedOperationException.class,
-            () -> schemaGenerate.getSchema(indexName, indexSettings, mapperService)
+            () -> schemaGenerate.getSchema(indexName, Settings.EMPTY, mapperService)
         );
         assertEquals("no support mapping type (geo_point) for field geo_point_field", e.getMessage());
     }
@@ -338,8 +334,7 @@ public class SchemaGenerateTests extends MapperServiceTestCase {
     public void testDefaultSchema() throws IOException {
         MapperService mapperService = null;
         SchemaGenerate schemaGenerate = new SchemaGenerate();
-        IndexSettings indexSettings = new IndexSettings(indexMetadata, Settings.EMPTY);
-        Schema schema = schemaGenerate.getSchema(indexName, indexSettings, mapperService);
+        Schema schema = schemaGenerate.getSchema(indexName, Settings.EMPTY, mapperService);
         String actual = schema.toString();
         String expect = String.format(
             Locale.ROOT,

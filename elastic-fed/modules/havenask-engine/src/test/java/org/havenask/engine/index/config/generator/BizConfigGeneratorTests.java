@@ -21,11 +21,8 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.Locale;
 
-import org.havenask.Version;
-import org.havenask.cluster.metadata.IndexMetadata;
 import org.havenask.common.settings.Settings;
 import org.havenask.engine.index.config.ZoneBiz;
-import org.havenask.index.IndexSettings;
 import org.havenask.index.mapper.MapperService;
 import org.havenask.index.mapper.MapperServiceTestCase;
 
@@ -41,12 +38,6 @@ import static org.havenask.engine.index.config.generator.BizConfigGenerator.SCHE
 public class BizConfigGeneratorTests extends MapperServiceTestCase {
     public void testBasic() throws IOException {
         String indexName = randomAlphaOfLength(5);
-        IndexMetadata build = IndexMetadata.builder(indexName)
-            .settings(Settings.builder().put(IndexMetadata.SETTING_VERSION_CREATED, Version.CURRENT))
-            .numberOfShards(1)
-            .numberOfReplicas(0)
-            .build();
-        IndexSettings settings = new IndexSettings(build, Settings.EMPTY);
         MapperService mapperService = createMapperService(fieldMapping(b -> b.field("type", "keyword")));
         Path configPath = createTempDir();
         Files.createDirectories(configPath.resolve(BIZ_DIR).resolve("0").resolve(CLUSTER_DIR));
@@ -59,7 +50,7 @@ public class BizConfigGeneratorTests extends MapperServiceTestCase {
             zoneBiz.toString().getBytes(StandardCharsets.UTF_8),
             StandardOpenOption.CREATE
         );
-        BizConfigGenerator bizConfigGenerator = new BizConfigGenerator(indexName, settings, mapperService, configPath);
+        BizConfigGenerator bizConfigGenerator = new BizConfigGenerator(indexName, Settings.EMPTY, mapperService, configPath);
         bizConfigGenerator.generate();
 
         {

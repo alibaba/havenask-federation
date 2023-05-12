@@ -30,9 +30,9 @@ import com.alibaba.fastjson.JSON;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.havenask.common.io.Streams;
+import org.havenask.common.settings.Settings;
 import org.havenask.engine.index.config.Analyzers;
 import org.havenask.engine.index.config.Schema;
-import org.havenask.index.IndexSettings;
 import org.havenask.index.mapper.IdFieldMapper;
 import org.havenask.index.mapper.MappedFieldType;
 import org.havenask.index.mapper.MapperService;
@@ -44,7 +44,7 @@ public class SchemaGenerate {
 
     Set<String> analyzers = null;
 
-    private Set<String> getAnalyzers() throws IOException {
+    private Set<String> getAnalyzers() {
         if (analyzers != null) {
             return analyzers;
         }
@@ -53,6 +53,8 @@ public class SchemaGenerate {
             Analyzers analyzers = JSON.parseObject(analyzerText, Analyzers.class);
             this.analyzers = Collections.unmodifiableSet(analyzers.analyzers.keySet());
             return this.analyzers;
+        } catch (IOException e) {
+            return Collections.emptySet();
         }
     }
 
@@ -78,7 +80,7 @@ public class SchemaGenerate {
     Logger logger = LogManager.getLogger(SchemaGenerate.class);
 
     // generate index schema from mapping
-    public Schema getSchema(String table, IndexSettings indexSettings, MapperService mapperService) throws IOException {
+    public Schema getSchema(String table, Settings indexSettings, MapperService mapperService) {
         Schema schema = new Schema();
         schema.table_name = table;
         if (mapperService == null) {
@@ -178,7 +180,7 @@ public class SchemaGenerate {
         }
 
         // extra schema process
-        Integer floatToLong = EngineSettings.HA3_FLOAT_MUL_BY10.get(indexSettings.getSettings());
+        Integer floatToLong = EngineSettings.HA3_FLOAT_MUL_BY10.get(indexSettings);
         if (floatToLong != null && floatToLong > 0) {
             schema.floatToLongMul = (long) Math.pow(10, floatToLong);
             schema.maxFloatLong = Long.MAX_VALUE / schema.floatToLongMul;

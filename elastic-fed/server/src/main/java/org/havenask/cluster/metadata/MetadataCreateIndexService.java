@@ -1045,6 +1045,10 @@ public class MetadataCreateIndexService {
         if (request.dataStreamName() != null) {
             MetadataCreateDataStreamService.validateTimestampFieldMapping(mapperService);
         }
+
+        for (IndexMappingProvider provider : providers) {
+            provider.validateIndexMapping(indexService.index().getName(), indexSettings, mapperService);
+        }
     }
 
     private static void validateActiveShardCount(ActiveShardCount waitForActiveShards, IndexMetadata indexMetadata) {

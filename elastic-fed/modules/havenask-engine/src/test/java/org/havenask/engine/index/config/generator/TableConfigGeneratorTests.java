@@ -19,10 +19,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Locale;
 
-import org.havenask.Version;
-import org.havenask.cluster.metadata.IndexMetadata;
 import org.havenask.common.settings.Settings;
-import org.havenask.index.IndexSettings;
 import org.havenask.index.mapper.MapperService;
 import org.havenask.index.mapper.MapperServiceTestCase;
 
@@ -37,18 +34,12 @@ import static org.havenask.engine.index.config.generator.TableConfigGenerator.TA
 public class TableConfigGeneratorTests extends MapperServiceTestCase {
     public void testBasic() throws IOException {
         String indexName = randomAlphaOfLength(5);
-        IndexMetadata build = IndexMetadata.builder(indexName)
-            .settings(Settings.builder().put(IndexMetadata.SETTING_VERSION_CREATED, Version.CURRENT))
-            .numberOfShards(1)
-            .numberOfReplicas(0)
-            .build();
-        IndexSettings settings = new IndexSettings(build, Settings.EMPTY);
         MapperService mapperService = createMapperService(fieldMapping(b -> b.field("type", "keyword")));
         Path configPath = createTempDir();
         Files.createDirectories(configPath.resolve(TABLE_DIR).resolve("0").resolve(CLUSTER_DIR));
         Files.createDirectories(configPath.resolve(TABLE_DIR).resolve("0").resolve(SCHEMAS_DIR));
         Files.createDirectories(configPath.resolve(TABLE_DIR).resolve("0").resolve(DATA_TABLES_DIR));
-        TableConfigGenerator tableConfigGenerator = new TableConfigGenerator(indexName, settings, mapperService, configPath);
+        TableConfigGenerator tableConfigGenerator = new TableConfigGenerator(indexName, Settings.EMPTY, mapperService, configPath);
         tableConfigGenerator.generate();
 
         {

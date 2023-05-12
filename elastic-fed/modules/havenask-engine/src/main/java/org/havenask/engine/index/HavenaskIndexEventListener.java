@@ -36,13 +36,13 @@ public class HavenaskIndexEventListener implements IndexEventListener {
         try {
             BizConfigGenerator.generateBiz(
                 indexService.index().getName(),
-                indexService.getIndexSettings(),
+                indexService.getIndexSettings().getSettings(),
                 indexService.mapperService(),
                 env.getConfigPath()
             );
             TableConfigGenerator.generateTable(
                 indexService.index().getName(),
-                indexService.getIndexSettings(),
+                indexService.getIndexSettings().getSettings(),
                 indexService.mapperService(),
                 env.getConfigPath()
             );
