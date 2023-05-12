@@ -27,6 +27,7 @@ import org.havenask.common.settings.Settings;
 import org.havenask.core.internal.io.IOUtils;
 import org.havenask.engine.index.config.generator.BizConfigGenerator;
 import org.havenask.engine.index.config.generator.TableConfigGenerator;
+import org.havenask.engine.index.engine.EngineSettings;
 import org.havenask.env.Environment;
 import org.havenask.env.ShardLock;
 import org.havenask.index.Index;
@@ -125,6 +126,9 @@ public class HavenaskEngineEnvironment implements CustomEnvironment {
 
     @Override
     public void deleteIndexDirectoryUnderLock(Index index, IndexSettings indexSettings) throws IOException {
+        if (EngineSettings.isHavenaskEngine(indexSettings.getSettings()) == false) {
+            return;
+        }
         BizConfigGenerator.removeBiz(index.getName(), configPath);
         TableConfigGenerator.removeTable(index.getName(), configPath);
         Path indexDir = runtimedataPath.resolve(index.getName());
