@@ -38,7 +38,6 @@
 
 package org.havenask.index.engine;
 
-import java.io.IOException;
 
 /**
  * Simple Engine Factory

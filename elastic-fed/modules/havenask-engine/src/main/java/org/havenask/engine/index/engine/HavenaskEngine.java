@@ -88,7 +88,7 @@ public class HavenaskEngine extends InternalEngine {
                 producer.close();
             }
             failEngine("init kafka producer failed", e);
-            return;
+            throw new EngineException(shardId, "init kafka producer failed", e);
         }
 
         // 加载配置表
@@ -97,6 +97,7 @@ public class HavenaskEngine extends InternalEngine {
         } catch (IOException e) {
             logger.error(() -> new ParameterizedMessage("shard [{}] activeTable exception", engineConfig.getShardId()), e);
             failEngine("active havenask table failed", e);
+            throw new EngineException(shardId, "active havenask table failed", e);
         }
     }
 
