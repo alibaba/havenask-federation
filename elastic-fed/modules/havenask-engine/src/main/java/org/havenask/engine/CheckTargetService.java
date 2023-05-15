@@ -18,6 +18,7 @@ import java.io.IOException;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -121,16 +122,24 @@ public class CheckTargetService extends AbstractLifecycleComponent {
                     }
                 });
 
-                HavenaskSqlClientInfoAction.Response sqlInfoResponse = client.execute(HavenaskSqlClientInfoAction.INSTANCE, new HavenaskSqlClientInfoAction.Request()).actionGet();
+                HavenaskSqlClientInfoAction.Response sqlInfoResponse = client.execute(
+                    HavenaskSqlClientInfoAction.INSTANCE, new HavenaskSqlClientInfoAction.Request()).actionGet();
                 Map<String, Object> result = sqlInfoResponse.getResult();
-                if ( result != null && result.get("default") != null
-                    && ((Map<String, Object>) (result.get("default"))).get("general") != null
-                    && ((Map<String, Object>) ((Map<String, Object>) result.get("default")).get("general")).get("tables") != null) {
-                    Map<String, Object> tables = (Map<String, Object>) ((Map<String, Object>) ((Map<String, Object>) result.get("default")).get("general")).get("tables");
-                    Set<String> tablesSet = tables.keySet();
+                if (result != null && result.get("default") != null
+                    && ((Map<String, Object>)(result.get("default"))).get("general") != null
+                    && ((Map<String, Object>)((Map<String, Object>)result.get("default")).get("general")).get("tables")
+                    != null) {
+                    Map<String, Object> tables
+                        = (Map<String, Object>)((Map<String, Object>)((Map<String, Object>)result.get("default")).get(
+                        "general")).get("tables");
+                    Set<String> tablesSet = tables.keySet().stream().filter(key -> false == key.endsWith("_summary_"))
+                        .collect(
+                            Collectors.toSet());
                     if (false == havenaskIndices.equals(tablesSet)) {
                         // qrs记录的数据表跟元数据不一致, 更新searcher/qrs的target
-                        LOGGER.info("havenask indices not equal to qrs tables, update target, indices:{}, havenask tables:{}", havenaskIndices, tablesSet);
+                        LOGGER.info(
+                            "havenask indices not equal to qrs tables, update target, indices:{}, havenask tables:{}",
+                            havenaskIndices, tablesSet);
                         nativeProcessControlService.updateDataNodeTarget();
                         nativeProcessControlService.updateIngestNodeTarget();
                     }
