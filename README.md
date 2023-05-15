@@ -46,7 +46,7 @@ Havenask-federation承担三种角色：master、data、coordinate，其中data�
 
 这样就启动了一个容器，假设启动一个名为test的容器，示例命令：
 
-    ./create\_container.sh test havenask-fed:test
+    ./create_container.sh test havenask-fed:test
 
 容器启动后，进入容器命令：
 
