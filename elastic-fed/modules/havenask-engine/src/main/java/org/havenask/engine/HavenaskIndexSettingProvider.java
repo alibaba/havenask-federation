@@ -23,11 +23,19 @@ import static org.havenask.cluster.metadata.IndexMetadata.SETTING_NUMBER_OF_REPL
 public class HavenaskIndexSettingProvider implements IndexSettingProvider {
     public Settings getAdditionalIndexSettings(String indexName, boolean isDataStreamIndex, Settings templateAndRequestSettings) {
         if (EngineSettings.isHavenaskEngine(templateAndRequestSettings)) {
+            Settings.Builder builder = Settings.builder();
             int replica = templateAndRequestSettings.getAsInt(SETTING_NUMBER_OF_REPLICAS, 0);
             if (replica != 0) {
                 throw new IllegalArgumentException("havenask engine only support 0 replica");
             }
-            return Settings.builder().put(SETTING_NUMBER_OF_REPLICAS, 0).build();
+            builder.put(SETTING_NUMBER_OF_REPLICAS, 0);
+
+            // 如果开启了realtime模式,则默认消费kafka的最新数据
+            boolean realTime = EngineSettings.HAVENASK_REALTIME_ENABLE.get(templateAndRequestSettings);
+            if (realTime && false == templateAndRequestSettings.hasValue(EngineSettings.HAVENASK_REALTIME_KAFKA_START_TIMESTAMP.getKey())) {
+                builder.put(EngineSettings.HAVENASK_REALTIME_KAFKA_START_TIMESTAMP.getKey(), System.currentTimeMillis() * 1000);
+            }
+            return builder.build();
         } else {
             return Settings.EMPTY;
         }
