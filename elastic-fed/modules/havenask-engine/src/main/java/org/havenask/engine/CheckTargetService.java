@@ -99,6 +99,7 @@ public class CheckTargetService extends AbstractLifecycleComponent {
         }
 
         @Override
+        @SuppressWarnings("unchecked")
         protected void runInternal() {
             if (false == running) {
                 return;
