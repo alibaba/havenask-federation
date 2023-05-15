@@ -54,7 +54,7 @@ public class NativeProcessControlServiceTests extends HavenaskTestCase {
             .put(DiscoveryModule.DISCOVERY_TYPE_SETTING.getKey(), SINGLE_NODE_DISCOVERY_TYPE)
             .build();
         Set<Setting<?>> buildInSettings = new HashSet<>(ClusterSettings.BUILT_IN_CLUSTER_SETTINGS);
-        buildInSettings.add(NativeProcessControlService.HAVENASK_SCRIPT_TIMEOUT_SETTING);
+        buildInSettings.add(NativeProcessControlService.HAVENASK_COMMAND_TIMEOUT_SETTING);
         ClusterService clusterService = new ClusterService(settings, new ClusterSettings(settings, buildInSettings), threadPool);
 
         Environment environment = TestEnvironment.newEnvironment(settings);

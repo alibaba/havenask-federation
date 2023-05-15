@@ -42,20 +42,20 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
     private static final Logger LOGGER = LogManager.getLogger(NativeProcessControlService.class);
     public static final String SEARCHER_ROLE = "searcher";
     public static final String QRS_ROLE = "qrs";
-    private static final String START_SEARCHER_COMMAND = "cd %s;python %s/havenask/script/general_search_starter.py -i "
+    private static final String START_SEARCHER_COMMAND = "cd %s;python %s/havenask/command/general_search_starter.py -i "
         + "%s -c %s -b /ha3_install -M in0 --role searcher --httpBindPort %d --arpcBindPort %d >> search.log 2>> search.error.log";
-    private static final String START_QRS_COMMAND = "cd %s;python %s/havenask/script/general_search_starter.py -i "
+    private static final String START_QRS_COMMAND = "cd %s;python %s/havenask/command/general_search_starter.py -i "
         + "%s -c %s -b /ha3_install -M in0 --role qrs --httpBindPort %d --arpcBindPort %d >> qrs.log 2>> qrs.error.log";
-    private static final String UPDATE_SEARCHER_COMMAND = "cd %s;python %s/havenask/script/general_search_updater.py -i "
+    private static final String UPDATE_SEARCHER_COMMAND = "cd %s;python %s/havenask/command/general_search_updater.py -i "
         + "%s -c %s -M in0 --role searcher >> search.log 2>> search.error.log";
-    private static final String UPDATE_QRS_COMMAND = "cd %s;python %s/havenask/script/general_search_updater.py -i "
+    private static final String UPDATE_QRS_COMMAND = "cd %s;python %s/havenask/command/general_search_updater.py -i "
         + "%s -c %s -M in0 --role qrs >> qrs.log 2>> qrs.error.log";
     private static final String STOP_HAVENASK_COMMAND =
         "python /ha3_install/usr/local/lib/python/site-packages/ha_tools/local_search_stop.py"
             + " -c /ha3_install/usr/local/etc/ha3/ha3_alog.conf >> search.log 2>> search.error.log";
     private static final String CHECK_HAVENASK_ALIVE_COMMAND =
         "ps aux | grep sap_server_d | grep 'roleType=%s' | grep -v grep | awk '{print $2}'";
-    private static final String START_BS_JOB_COMMAND = "python %s/havenask/script/bs_job_starter.py %s %s %s %s ";
+    private static final String START_BS_JOB_COMMAND = "python %s/havenask/command/bs_job_starter.py %s %s %s %s ";
 
     public static final Setting<Integer> HAVENASK_SEARCHER_HTTP_PORT_SETTING = Setting.intSetting(
         "havenask.searcher.http.port",
@@ -86,8 +86,8 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
     );
 
     // add timeout setting
-    public static final Setting<TimeValue> HAVENASK_SCRIPT_TIMEOUT_SETTING = Setting.timeSetting(
-        "havenask.script.timeout",
+    public static final Setting<TimeValue> HAVENASK_COMMAND_TIMEOUT_SETTING = Setting.timeSetting(
+        "havenask.command.timeout",
         TimeValue.timeValueSeconds(60),
         Property.NodeScope,
         Property.Dynamic
@@ -105,7 +105,7 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
     private final int searcherTcpPort;
     private final int qrsHttpPort;
     private final int qrsTcpPort;
-    private TimeValue scriptTimeout;
+    private TimeValue commandTimeout;
 
     protected String startSearcherCommand;
     protected String updateSearcherCommand;
@@ -183,8 +183,8 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
             havenaskEngineEnvironment.getBsWorkPath().toAbsolutePath(),
             havenaskEngineEnvironment.getRuntimedataPath().toAbsolutePath()
         );
-        this.scriptTimeout = HAVENASK_SCRIPT_TIMEOUT_SETTING.get(settings);
-        clusterService.getClusterSettings().addSettingsUpdateConsumer(HAVENASK_SCRIPT_TIMEOUT_SETTING, this::setScriptTimeout);
+        this.commandTimeout = HAVENASK_COMMAND_TIMEOUT_SETTING.get(settings);
+        clusterService.getClusterSettings().addSettingsUpdateConsumer(HAVENASK_COMMAND_TIMEOUT_SETTING, this::setCommandTimeout);
     }
 
     @Override
@@ -262,7 +262,7 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
                 if (false == checkProcessAlive(SEARCHER_ROLE)) {
                     LOGGER.info("start searcher process...");
                     // 启动searcher
-                    runScript(startSearcherCommand);
+                    runCommand(startSearcherCommand);
                 }
             }
 
@@ -270,7 +270,7 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
                 if (false == checkProcessAlive(QRS_ROLE)) {
                     LOGGER.info("start qrs process...");
                     // 启动qrs
-                    runScript(startQrsCommand);
+                    runCommand(startQrsCommand);
                 }
             }
         }
@@ -294,7 +294,7 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
             LOGGER.info("start searcher process...");
             while (false == checkProcessAlive(SEARCHER_ROLE)) {
                 // 启动searcher
-                runScript(startSearcherCommand);
+                runCommand(startSearcherCommand);
             }
         }
 
@@ -302,7 +302,7 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
             LOGGER.info("start qrs process...");
             while (false == checkProcessAlive(QRS_ROLE)) {
                 // 启动qrs
-                runScript(startQrsCommand);
+                runCommand(startQrsCommand);
             }
         }
     }
@@ -321,12 +321,12 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
                 try {
                     return Runtime.getRuntime().exec(new String[] { "sh", "-c", command });
                 } catch (IOException e) {
-                    LOGGER.warn(() -> new ParameterizedMessage("run check script error, command [{}]", command), e);
+                    LOGGER.warn(() -> new ParameterizedMessage("run check command error, command [{}]", command), e);
                     return null;
                 }
             });
             if (process == null) {
-                LOGGER.warn("run check script error, the process is null, don't know the process [{}] status", role);
+                LOGGER.warn("run check command error, the process is null, don't know the process [{}] status", role);
                 return true;
             }
 
@@ -342,16 +342,16 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
                     if (Integer.valueOf(result.trim()) > 0) {
                         return true;
                     } else {
-                        LOGGER.warn("check script get the process [{}] pid error, check result is [{}]", role, result);
+                        LOGGER.warn("check command get the process [{}] pid error, check result is [{}]", role, result);
                         return false;
                     }
                 } catch (NumberFormatException e) {
-                    LOGGER.warn("check script get the process [{}] result format error, check result is [{}]", role, result);
+                    LOGGER.warn("check command get the process [{}] result format error, check result is [{}]", role, result);
                     return false;
                 }
             }
         } catch (IOException e) {
-            LOGGER.warn(() -> new ParameterizedMessage("check script get the process [{}] input error", role), e);
+            LOGGER.warn(() -> new ParameterizedMessage("check command get the process [{}] input error", role), e);
         } finally {
             if (process != null) {
                 process.destroy();
@@ -378,7 +378,7 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
         if (isDataNode) {
             // 启动bs job
             final String finalStartBsJobCommand = startBsJobCommand + " " + indexName + " '" + realtimeInfo + "'";
-            runScript(finalStartBsJobCommand);
+            runCommand(finalStartBsJobCommand);
         }
     }
 
@@ -386,7 +386,7 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
         if (isDataNode) {
             // 启动bs job
             final String finalStartBsJobCommand = startBsJobCommand + " " + indexName;
-            runScript(finalStartBsJobCommand);
+            runCommand(finalStartBsJobCommand);
         }
     }
 
@@ -396,7 +396,7 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
     public synchronized void updateDataNodeTarget() {
         if (isDataNode && running) {
             // 更新datanode searcher的target
-            runScript(updateSearcherCommand);
+            runCommand(updateSearcherCommand);
         }
     }
 
@@ -406,7 +406,7 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
     public synchronized void updateIngestNodeTarget() {
         if (isIngestNode && running) {
             // 更新ingestnode qrs的target
-            runScript(updateQrsCommand);
+            runCommand(updateQrsCommand);
         }
     }
 
@@ -422,26 +422,26 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
                     }
                     if (isDataNode) {
                         // 更新datanode searcher的target
-                        runScript(updateSearcherCommand);
+                        runCommand(updateSearcherCommand);
                     }
                     if (isIngestNode) {
                         // 更新ingestnode qrs的target
-                        runScript(updateQrsCommand);
+                        runCommand(updateQrsCommand);
                     }
                 }
             });
         }
     }
 
-    private boolean runScript(String command) {
+    private boolean runCommand(String command) {
         return AccessController.doPrivileged((PrivilegedAction<Boolean>) () -> {
             try {
-                LOGGER.info("run script, command: {}", command);
+                LOGGER.debug("run command: {}", command);
                 long start = System.currentTimeMillis();
                 Process process = Runtime.getRuntime().exec(new String[] { "sh", "-c", command });
-                boolean timeout = process.waitFor(scriptTimeout.seconds(), TimeUnit.SECONDS);
+                boolean timeout = process.waitFor(commandTimeout.seconds(), TimeUnit.SECONDS);
                 if (false == timeout) {
-                    LOGGER.warn("run script timeout, command: {}", command);
+                    LOGGER.warn("run command timeout, command: {}", command);
                     process.destroy();
                     return false;
                 }
@@ -449,22 +449,26 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
                     try (InputStream inputStream = process.getInputStream()) {
                         byte[] bytes = inputStream.readAllBytes();
                         String result = new String(bytes, StandardCharsets.UTF_8);
-                        LOGGER.warn("run script {} failed, exit value: {}, failed reason: {}", command, process.exitValue(), result);
+                        LOGGER.warn("run command {} failed, exit value: {}, failed reason: {}", command, process.exitValue(), result);
                     }
                     return false;
                 } else {
                     // logger success
-                    LOGGER.info("run script success, cost [{}ms], command: [{}]", System.currentTimeMillis() - start, command);
+                    LOGGER.info(
+                        "run command success, cost [{}], command: [{}]",
+                        TimeValue.timeValueMillis(System.currentTimeMillis() - start),
+                        command
+                    );
                     return true;
                 }
             } catch (Exception e) {
-                LOGGER.warn(() -> new ParameterizedMessage("run script {} unexpected failed", command), e);
+                LOGGER.warn(() -> new ParameterizedMessage("run command {} unexpected failed", command), e);
             }
             return false;
         });
     }
 
-    public void setScriptTimeout(TimeValue scriptTimeout) {
-        this.scriptTimeout = scriptTimeout;
+    public void setCommandTimeout(TimeValue commandTimeout) {
+        this.commandTimeout = commandTimeout;
     }
 }
