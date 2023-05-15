@@ -61,9 +61,9 @@ public class HavenaskEngine extends InternalEngine {
     private final NativeProcessControlService nativeProcessControlService;
     private final ShardId shardId;
     private final boolean realTimeEnable;
-    private final KafkaProducer<String, String> producer;
     private final String kafkaTopic;
-    private final int kafkaPartition;
+    private int kafkaPartition;
+    private KafkaProducer<String, String> producer = null;
 
     public HavenaskEngine(
         EngineConfig engineConfig,
@@ -77,18 +77,27 @@ public class HavenaskEngine extends InternalEngine {
         this.nativeProcessControlService = nativeProcessControlService;
         this.shardId = engineConfig.getShardId();
         this.realTimeEnable = EngineSettings.HAVENASK_REALTIME_ENABLE.get(engineConfig.getIndexSettings().getSettings());
-        this.producer = realTimeEnable ? initKafkaProducer(engineConfig.getIndexSettings().getSettings()) : null;
         this.kafkaTopic = realTimeEnable
             ? EngineSettings.HAVENASK_REALTIME_TOPIC_NAME.get(engineConfig.getIndexSettings().getSettings())
             : null;
-        this.kafkaPartition = realTimeEnable ? getKafkaPartition(engineConfig.getIndexSettings().getSettings(), kafkaTopic) : -1;
+        try {
+            this.producer = realTimeEnable ? initKafkaProducer(engineConfig.getIndexSettings().getSettings()) : null;
+            this.kafkaPartition = realTimeEnable ? getKafkaPartition(engineConfig.getIndexSettings().getSettings(), kafkaTopic) : -1;
+        } catch (Exception e) {
+            if (realTimeEnable && producer != null) {
+                producer.close();
+            }
+            failEngine("init kafka producer failed", e);
+            throw new EngineException(shardId, "init kafka producer failed", e);
+        }
 
         // 加载配置表
         try {
             activeTable();
         } catch (IOException e) {
             logger.error(() -> new ParameterizedMessage("shard [{}] activeTable exception", engineConfig.getShardId()), e);
-            throw new HavenaskException("activeTable exception", e);
+            failEngine("active havenask table failed", e);
+            throw new EngineException(shardId, "active havenask table failed", e);
         }
     }
 
@@ -105,6 +114,15 @@ public class HavenaskEngine extends InternalEngine {
         );
     }
 
+    @Override
+    public void close() throws IOException {
+        super.close();
+        logger.info("[{}] close havenask engine", shardId);
+        if (realTimeEnable && producer != null) {
+            producer.close();
+        }
+    }
+
     /**
      * 获取kafka topic partition数量
      *
@@ -115,19 +133,20 @@ public class HavenaskEngine extends InternalEngine {
     static int getKafkaPartition(Settings settings, String kafkaTopic) {
         Map<String, Object> props = new HashMap<>();
         props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, EngineSettings.HAVENASK_REALTIME_BOOTSTRAP_SERVERS.get(settings));
-        AdminClient adminClient = AccessController.doPrivileged(
-            (PrivilegedAction<AdminClient>) () -> { return KafkaAdminClient.create(props); }
-        );
+        try (
+            AdminClient adminClient = AccessController.doPrivileged((PrivilegedAction<AdminClient>) () -> KafkaAdminClient.create(props))
+        ) {
+            DescribeTopicsResult result = adminClient.describeTopics(Arrays.asList(kafkaTopic));
+            Map<String, TopicDescription> topicDescriptionMap = null;
+            try {
+                topicDescriptionMap = result.all().get();
+            } catch (Exception e) {
+                throw new HavenaskException("get kafka partition exception", e);
+            }
+            TopicDescription topicDescription = topicDescriptionMap.get(kafkaTopic);
 
-        DescribeTopicsResult result = adminClient.describeTopics(Arrays.asList(kafkaTopic));
-        Map<String, TopicDescription> topicDescriptionMap = null;
-        try {
-            topicDescriptionMap = result.all().get();
-        } catch (Exception e) {
-            throw new HavenaskException("get kafka partition exception", e);
+            return topicDescription.partitions().size();
         }
-        TopicDescription topicDescription = topicDescriptionMap.get(kafkaTopic);
-        return topicDescription.partitions().size();
     }
 
     /**
