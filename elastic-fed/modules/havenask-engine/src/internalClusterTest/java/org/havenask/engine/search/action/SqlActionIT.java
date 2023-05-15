@@ -16,11 +16,15 @@ package org.havenask.engine.search.action;
 
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.Map;
 
 import com.carrotsearch.randomizedtesting.annotations.ThreadLeakFilters;
 import org.havenask.OkHttpThreadLeakFilter;
 import org.havenask.common.SuppressForbidden;
 import org.havenask.common.settings.Settings;
+import org.havenask.common.xcontent.XContentHelper;
+import org.havenask.common.xcontent.json.JsonXContent;
 import org.havenask.engine.HavenaskEnginePlugin;
 import org.havenask.engine.HavenaskITTestCase;
 import org.havenask.engine.search.action.HavenaskSqlClientInfoAction.Request;
@@ -74,7 +78,8 @@ public class SqlActionIT extends HavenaskITTestCase {
         HavenaskSqlClientInfoAction.Response response = client().execute(HavenaskSqlClientInfoAction.INSTANCE, request).actionGet();
         if (response.getErrorCode() == 0) {
             assertEquals("", response.getErrorMessage());
-            assertEquals(
+            Map<String, Object> exceptResult = XContentHelper.convertToMap(
+                JsonXContent.jsonXContent,
                 "{\"default\":{\"general\":{\"tables\":{\"test2\":{\"catalog_name\":\"default\","
                     + "\"database_name\":\"general\",\"version\":1,\"content\":{\"valid\":true,"
                     + "\"join_info\":{\"valid\":true,\"table_name\":\"\",\"join_field\":\"\"},\"sub_tables\":[],"
@@ -332,12 +337,13 @@ public class SqlActionIT extends HavenaskITTestCase {
                     + "(array|float)UDXF_MULTIGATHER(array|float)[array|float]\",\"(array|double)UDXF_MULTIGATHER"
                     + "(array|double)[array|double]\",\"(array|string)UDXF_MULTIGATHER(array|string)[array|string]\"]}}},"
                     + "\"__default\":{\"tables\":{},\"functions\":{}}}}",
-                response.getResult()
+                true
             );
+            assertEquals(exceptResult, response.getResult());
         } else {
             assertEquals(400, response.getErrorCode());
             assertEquals("execute failed", response.getErrorMessage());
-            assertEquals(null, response.getResult());
+            assertEquals(Collections.emptyMap(), response.getResult());
         }
     }
 }

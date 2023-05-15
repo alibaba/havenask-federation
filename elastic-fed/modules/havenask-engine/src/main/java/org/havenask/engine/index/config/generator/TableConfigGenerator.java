@@ -22,14 +22,13 @@ import java.nio.file.StandardOpenOption;
 import java.util.List;
 
 import org.havenask.common.Nullable;
+import org.havenask.common.settings.Settings;
 import org.havenask.engine.index.config.BizConfig;
 import org.havenask.engine.index.config.DataTable;
 import org.havenask.engine.index.config.Processor.ProcessorChainConfig;
 import org.havenask.engine.index.config.Schema;
 import org.havenask.engine.index.engine.EngineSettings;
-import org.havenask.engine.index.engine.SchemaGenerate;
 import org.havenask.engine.util.VersionUtils;
-import org.havenask.index.IndexSettings;
 import org.havenask.index.mapper.MapperService;
 
 public class TableConfigGenerator {
@@ -42,22 +41,17 @@ public class TableConfigGenerator {
     public static final String DATA_TABLES_FILE_SUFFIX = "_table.json";
     private final Path configPath;
     private final String indexName;
-    private final IndexSettings indexSettings;
+    private final Settings indexSettings;
     private final MapperService mapperService;
 
-    public TableConfigGenerator(
-        String indexName,
-        @Nullable IndexSettings indexSettings,
-        @Nullable MapperService mapperService,
-        Path configPath
-    ) {
+    public TableConfigGenerator(String indexName, Settings indexSettings, @Nullable MapperService mapperService, Path configPath) {
         this.indexName = indexName;
         this.indexSettings = indexSettings;
         this.mapperService = mapperService;
         this.configPath = configPath.resolve(TABLE_DIR);
     }
 
-    public static void generateTable(String indexName, IndexSettings indexSettings, MapperService mapperService, Path configPath)
+    public static void generateTable(String indexName, Settings indexSettings, MapperService mapperService, Path configPath)
         throws IOException {
         TableConfigGenerator tableConfigGenerator = new TableConfigGenerator(indexName, indexSettings, mapperService, configPath);
         tableConfigGenerator.generate();
@@ -93,7 +87,7 @@ public class TableConfigGenerator {
         BizConfig bizConfig = new BizConfig();
         bizConfig.cluster_config.cluster_name = indexName;
         bizConfig.cluster_config.table_name = indexName;
-        bizConfig.realtime = EngineSettings.HAVENASK_REALTIME_ENABLE.get(indexSettings.getSettings());
+        bizConfig.realtime = EngineSettings.HAVENASK_REALTIME_ENABLE.get(indexSettings);
         Path clusterConfigPath = configPath.resolve(version).resolve(CLUSTER_DIR).resolve(indexName + CLUSTER_FILE_SUFFIX);
         Files.write(
             clusterConfigPath,
@@ -104,8 +98,8 @@ public class TableConfigGenerator {
     }
 
     private void generateSchema(String version) throws IOException {
-        SchemaGenerate schemaGenerate = new SchemaGenerate();
-        Schema schema = schemaGenerate.getSchema(indexName, indexSettings, mapperService);
+        SchemaGenerator schemaGenerator = new SchemaGenerator();
+        Schema schema = schemaGenerator.getSchema(indexName, indexSettings, mapperService);
         Path schemaPath = configPath.resolve(version).resolve(SCHEMAS_DIR).resolve(indexName + SCHEMAS_FILE_SUFFIX);
         Files.write(
             schemaPath,

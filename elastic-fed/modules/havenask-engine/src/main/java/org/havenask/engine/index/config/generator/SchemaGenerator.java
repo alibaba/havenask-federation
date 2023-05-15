@@ -12,7 +12,21 @@
  *
  */
 
-package org.havenask.engine.index.engine;
+/*
+ * Copyright (c) 2021, Alibaba Group;
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *
+ */
+
+package org.havenask.engine.index.config.generator;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -30,21 +44,22 @@ import com.alibaba.fastjson.JSON;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.havenask.common.io.Streams;
+import org.havenask.common.settings.Settings;
 import org.havenask.engine.index.config.Analyzers;
 import org.havenask.engine.index.config.Schema;
-import org.havenask.index.IndexSettings;
+import org.havenask.engine.index.engine.EngineSettings;
 import org.havenask.index.mapper.IdFieldMapper;
 import org.havenask.index.mapper.MappedFieldType;
 import org.havenask.index.mapper.MapperService;
 import org.havenask.index.mapper.TextSearchInfo;
 
-public class SchemaGenerate {
+public class SchemaGenerator {
     // have deprecated fields or not support now.
     public static final Set<String> ExcludeFields = Set.of("_field_names", "index", "_type", "_uid", "_parent");
 
     Set<String> analyzers = null;
 
-    private Set<String> getAnalyzers() throws IOException {
+    private Set<String> getAnalyzers() {
         if (analyzers != null) {
             return analyzers;
         }
@@ -53,6 +68,8 @@ public class SchemaGenerate {
             Analyzers analyzers = JSON.parseObject(analyzerText, Analyzers.class);
             this.analyzers = Collections.unmodifiableSet(analyzers.analyzers.keySet());
             return this.analyzers;
+        } catch (IOException e) {
+            return Collections.emptySet();
         }
     }
 
@@ -75,10 +92,10 @@ public class SchemaGenerate {
         Map.entry("date", "UINT64")
     );
 
-    Logger logger = LogManager.getLogger(SchemaGenerate.class);
+    Logger logger = LogManager.getLogger(SchemaGenerator.class);
 
     // generate index schema from mapping
-    public Schema getSchema(String table, IndexSettings indexSettings, MapperService mapperService) throws IOException {
+    public Schema getSchema(String table, Settings indexSettings, MapperService mapperService) {
         Schema schema = new Schema();
         schema.table_name = table;
         if (mapperService == null) {
@@ -178,7 +195,7 @@ public class SchemaGenerate {
         }
 
         // extra schema process
-        Integer floatToLong = EngineSettings.HA3_FLOAT_MUL_BY10.get(indexSettings.getSettings());
+        Integer floatToLong = EngineSettings.HA3_FLOAT_MUL_BY10.get(indexSettings);
         if (floatToLong != null && floatToLong > 0) {
             schema.floatToLongMul = (long) Math.pow(10, floatToLong);
             schema.maxFloatLong = Long.MAX_VALUE / schema.floatToLongMul;
