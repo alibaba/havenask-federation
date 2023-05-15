@@ -86,6 +86,7 @@ public class HavenaskEnginePlugin extends Plugin
     private static Logger logger = LogManager.getLogger(HavenaskEnginePlugin.class);
     private final SetOnce<HavenaskEngineEnvironment> havenaskEngineEnvironmentSetOnce = new SetOnce<>();
     private final SetOnce<NativeProcessControlService> nativeProcessControlServiceSetOnce = new SetOnce<>();
+    private final SetOnce<CheckTargetService> checkTargetServiceSetOnce = new SetOnce<>();
     private final SetOnce<HavenaskClient> searcherClientSetOnce = new SetOnce<>();
 
     public static final String HAVENASK_THREAD_POOL_NAME = "havenask";
@@ -157,7 +158,14 @@ public class HavenaskEnginePlugin extends Plugin
         nativeProcessControlServiceSetOnce.set(nativeProcessControlService);
         HavenaskClient havenaskClient = new HavenaskHttpClient(nativeProcessControlService.getSearcherHttpPort());
         searcherClientSetOnce.set(havenaskClient);
-        return Arrays.asList(nativeProcessControlServiceSetOnce.get(), havenaskEngineEnvironmentSetOnce.get(), searcherClientSetOnce.get());
+        CheckTargetService checkTargetService = new CheckTargetService(
+            clusterService,
+            threadPool,
+            client,
+            nativeProcessControlService
+        );
+        checkTargetServiceSetOnce.set(checkTargetService);
+        return Arrays.asList(nativeProcessControlServiceSetOnce.get(), havenaskEngineEnvironmentSetOnce.get(), searcherClientSetOnce.get(), checkTargetServiceSetOnce.get());
     }
 
     @Override
