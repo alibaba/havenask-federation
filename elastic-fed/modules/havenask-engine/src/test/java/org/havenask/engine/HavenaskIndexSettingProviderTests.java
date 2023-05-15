@@ -72,12 +72,14 @@ public class HavenaskIndexSettingProviderTests extends HavenaskTestCase {
         Settings settings = provider.getAdditionalIndexSettings(
             "test",
             false,
-            Settings.builder().put("index.engine", "havenask")
+            Settings.builder()
+                .put("index.engine", "havenask")
                 .put("index.havenask.realtime.enable", true)
                 .put("index.havenask.realtime.topic_name", randomAlphaOfLength(5))
-                .put("index.havenask.realtime.bootstrap.servers", randomAlphaOfLength(5)).build()
+                .put("index.havenask.realtime.bootstrap.servers", randomAlphaOfLength(5))
+                .build()
         );
-        long timestamp = settings.getAsLong("index.havenask.realtime.kafka_start_timestamp_us", 0l);
+        long timestamp = settings.getAsLong("index.havenask.realtime.kafka_start_timestamp_us", 0L);
         assertTrue(timestamp > 0);
     }
 
@@ -88,13 +90,15 @@ public class HavenaskIndexSettingProviderTests extends HavenaskTestCase {
         Settings settings = provider.getAdditionalIndexSettings(
             "test",
             false,
-            Settings.builder().put("index.engine", "havenask")
+            Settings.builder()
+                .put("index.engine", "havenask")
                 .put("index.havenask.realtime.enable", true)
                 .put("index.havenask.realtime.topic_name", randomAlphaOfLength(5))
                 .put("index.havenask.realtime.bootstrap.servers", randomAlphaOfLength(5))
-                .put("index.havenask.realtime.kafka_start_timestamp_us", timestamp).build()
+                .put("index.havenask.realtime.kafka_start_timestamp_us", timestamp)
+                .build()
         );
-        long timestamp2 = settings.getAsLong("index.havenask.realtime.kafka_start_timestamp_us", 0l);
-        assertEquals(0l, timestamp2);
+        long timestamp2 = settings.getAsLong("index.havenask.realtime.kafka_start_timestamp_us", 0L);
+        assertEquals(0L, timestamp2);
     }
 }
