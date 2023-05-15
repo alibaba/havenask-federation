@@ -38,6 +38,7 @@
 
 package org.havenask.index.engine;
 
+
 /**
  * Simple Engine Factory
  */
