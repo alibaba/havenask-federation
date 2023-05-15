@@ -62,7 +62,7 @@ public class HavenaskEngine extends InternalEngine {
     private final ShardId shardId;
     private final boolean realTimeEnable;
     private final String kafkaTopic;
-    private final int kafkaPartition;
+    private int kafkaPartition;
     private KafkaProducer<String, String> producer = null;
 
     public HavenaskEngine(
@@ -89,7 +89,8 @@ public class HavenaskEngine extends InternalEngine {
             if (realTimeEnable && producer != null) {
                 producer.close();
             }
-            throw new HavenaskException("init kafka producer exception", e);
+            failEngine("init kafka producer failed", e);
+            return;
         }
 
         // 加载配置表
@@ -98,7 +99,7 @@ public class HavenaskEngine extends InternalEngine {
         } catch (IOException e) {
             logger.error(() -> new ParameterizedMessage("shard [{}] activeTable exception", engineConfig.getShardId())
                 , e);
-            throw new HavenaskException("activeTable exception", e);
+            failEngine("active havenask table failed", e);
         }
     }
 
