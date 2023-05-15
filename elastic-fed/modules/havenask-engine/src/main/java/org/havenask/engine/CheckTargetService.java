@@ -16,6 +16,7 @@ package org.havenask.engine;
 
 import java.io.IOException;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 
 import org.apache.logging.log4j.LogManager;
@@ -107,7 +108,7 @@ public class CheckTargetService extends AbstractLifecycleComponent {
             ClusterState clusterState = clusterService.state();
 
             if (isDataNode) {
-                nativeProcessControlService.updateDataNodeTarget();
+                // TODO 根据target心跳结果和数据表,判断是否要更新searcher的target
             }
 
             if (isIngestNode) {
@@ -120,8 +121,20 @@ public class CheckTargetService extends AbstractLifecycleComponent {
                 });
 
                 HavenaskSqlClientInfoAction.Response sqlInfoResponse = client.execute(HavenaskSqlClientInfoAction.INSTANCE, new HavenaskSqlClientInfoAction.Request()).actionGet();
-                // TODO check table and index
-                nativeProcessControlService.updateIngestNodeTarget();
+                Map<String, Object> result = sqlInfoResponse.getResult();
+                if ( result != null && result.get("default") != null
+                    && ((Map<String, Object>) (result.get("default"))).get("general") != null
+                    && ((Map<String, Object>) ((Map<String, Object>) result.get("default")).get("general")).get("tables") != null) {
+                    Map<String, Object> tables = (Map<String, Object>) ((Map<String, Object>) ((Map<String, Object>) result.get("default")).get("general")).get("tables");
+                    Set<String> tablesSet = tables.keySet();
+                    if (false == havenaskIndices.equals(tablesSet)) {
+                        // qrs记录的数据表跟元数据不一致, 更新searcher/qrs的target
+                        LOGGER.info("havenask indices not equal to qrs tables, update target, indices:{}, havenask tables:{}", havenaskIndices, tablesSet);
+                        nativeProcessControlService.updateDataNodeTarget();
+                        nativeProcessControlService.updateIngestNodeTarget();
+                    }
+
+                }
             }
         }
     }
