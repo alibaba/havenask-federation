@@ -52,8 +52,12 @@ public class CheckTargetService extends AbstractLifecycleComponent {
     private CheckTask checkTask;
     private boolean running;
 
-    public CheckTargetService(ClusterService clusterService, ThreadPool threadPool, Client client,
-        NativeProcessControlService nativeProcessControlService) {
+    public CheckTargetService(
+        ClusterService clusterService,
+        ThreadPool threadPool,
+        Client client,
+        NativeProcessControlService nativeProcessControlService
+    ) {
         this.clusterService = clusterService;
         this.threadPool = threadPool;
         this.client = client;
@@ -68,7 +72,7 @@ public class CheckTargetService extends AbstractLifecycleComponent {
     @Override
     protected void doStart() {
         if (enabled && checkTask == null) {
-            checkTask = new CheckTask(threadPool, TimeValue.timeValueSeconds(10));
+            checkTask = new CheckTask(threadPool, TimeValue.timeValueSeconds(30));
             checkTask.rescheduleIfNecessary();
             running = true;
         }
@@ -89,8 +93,7 @@ public class CheckTargetService extends AbstractLifecycleComponent {
 
     class CheckTask extends AbstractAsyncTask {
 
-        protected CheckTask(ThreadPool threadPool,
-            TimeValue interval) {
+        protected CheckTask(ThreadPool threadPool, TimeValue interval) {
             super(LOGGER, threadPool, interval, true);
         }
 
@@ -123,23 +126,27 @@ public class CheckTargetService extends AbstractLifecycleComponent {
                 });
 
                 HavenaskSqlClientInfoAction.Response sqlInfoResponse = client.execute(
-                    HavenaskSqlClientInfoAction.INSTANCE, new HavenaskSqlClientInfoAction.Request()).actionGet();
+                    HavenaskSqlClientInfoAction.INSTANCE,
+                    new HavenaskSqlClientInfoAction.Request()
+                ).actionGet();
                 Map<String, Object> result = sqlInfoResponse.getResult();
-                if (result != null && result.get("default") != null
-                    && ((Map<String, Object>)(result.get("default"))).get("general") != null
-                    && ((Map<String, Object>)((Map<String, Object>)result.get("default")).get("general")).get("tables")
-                    != null) {
-                    Map<String, Object> tables
-                        = (Map<String, Object>)((Map<String, Object>)((Map<String, Object>)result.get("default")).get(
-                        "general")).get("tables");
-                    Set<String> tablesSet = tables.keySet().stream().filter(key -> false == key.endsWith("_summary_"))
-                        .collect(
-                            Collectors.toSet());
+                if (result != null
+                    && result.get("default") != null
+                    && ((Map<String, Object>) (result.get("default"))).get("general") != null
+                    && ((Map<String, Object>) ((Map<String, Object>) result.get("default")).get("general")).get("tables") != null) {
+                    Map<String, Object> tables = (Map<String, Object>) ((Map<String, Object>) ((Map<String, Object>) result.get("default"))
+                        .get("general")).get("tables");
+                    Set<String> tablesSet = tables.keySet()
+                        .stream()
+                        .filter(key -> false == key.endsWith("_summary_"))
+                        .collect(Collectors.toSet());
                     if (false == havenaskIndices.equals(tablesSet)) {
                         // qrs记录的数据表跟元数据不一致, 更新searcher/qrs的target
                         LOGGER.info(
-                            "havenask indices not equal to qrs tables, update target, indices:{}, havenask tables:{}",
-                            havenaskIndices, tablesSet);
+                            "havenask indices not equal to qrs tables, update target, havenask indices:{}, qrs tables:{}",
+                            havenaskIndices,
+                            tablesSet
+                        );
                         nativeProcessControlService.updateDataNodeTarget();
                         nativeProcessControlService.updateIngestNodeTarget();
                     }

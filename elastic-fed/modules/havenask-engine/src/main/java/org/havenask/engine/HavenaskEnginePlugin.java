@@ -158,14 +158,14 @@ public class HavenaskEnginePlugin extends Plugin
         nativeProcessControlServiceSetOnce.set(nativeProcessControlService);
         HavenaskClient havenaskClient = new HavenaskHttpClient(nativeProcessControlService.getSearcherHttpPort());
         searcherClientSetOnce.set(havenaskClient);
-        CheckTargetService checkTargetService = new CheckTargetService(
-            clusterService,
-            threadPool,
-            client,
-            nativeProcessControlService
-        );
+        CheckTargetService checkTargetService = new CheckTargetService(clusterService, threadPool, client, nativeProcessControlService);
         checkTargetServiceSetOnce.set(checkTargetService);
-        return Arrays.asList(nativeProcessControlServiceSetOnce.get(), havenaskEngineEnvironmentSetOnce.get(), searcherClientSetOnce.get(), checkTargetServiceSetOnce.get());
+        return Arrays.asList(
+            nativeProcessControlServiceSetOnce.get(),
+            havenaskEngineEnvironmentSetOnce.get(),
+            searcherClientSetOnce.get(),
+            checkTargetServiceSetOnce.get()
+        );
     }
 
     @Override
