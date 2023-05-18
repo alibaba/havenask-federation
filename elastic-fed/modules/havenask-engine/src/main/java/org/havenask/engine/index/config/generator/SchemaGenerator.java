@@ -151,7 +151,7 @@ public class SchemaGenerator {
                     } else {
                         logger.warn("analyzer " + field.indexAnalyzer().name() + ", use default");
                         // TODO support es analyzers
-                        fieldInfo.analyzer = "taobao_analyzer";
+                        fieldInfo.analyzer = "simple_analyzer";
                     }
                 }
                 schema.fields.add(fieldInfo);
