@@ -99,6 +99,52 @@ public class Schema {
         public Integer term_frequency_flag;
     }
 
+    /**
+     * {
+     *             "index_name": "embedding_index",
+     *             "index_type":"CUSTOMIZED",
+     *             "index_fields":[
+     *                 {
+     *                     "boost":1,
+     *                     "field_name":"DUP_pk"
+     *                 },
+     *                 {
+     *                     "boost":1,
+     *                     "field_name":"DUP_embedding"
+     *                 }
+     *             ],
+     *             "indexer":"aitheta_indexer",
+     *             "parameters":{
+     *                 "use_linear_threshold":"10000",
+     *                 "build_metric_type":"l2",
+     *                 "search_metric_type":"ip",
+     *                 "use_dynamic_params":"1",
+     *                 "dimension":"1024",
+     *                 "index_type":"hc"
+     *             }
+     *         }
+     */
+    public static class VectorIndex extends Index {
+        private String indexer = "aitheta_indexer";
+        private List<Field> index_fields;
+        private Map<String, String> parameters;
+
+        public VectorIndex(String index_name, List<Field> index_fields, Map<String, String> parameters) {
+            super(index_name, "CUSTOMIZED", index_name);
+            this.index_fields = index_fields;
+            this.parameters = parameters;
+        }
+    }
+
+    public static class Field {
+        public int boost = 1;
+        public String field_name;
+
+        public Field(String field_name) {
+            this.field_name = field_name;
+        }
+    }
+
     public static class PRIMARYKEYIndex extends Index {
         public PRIMARYKEYIndex() {
             index_type = "PRIMARYKEY64";

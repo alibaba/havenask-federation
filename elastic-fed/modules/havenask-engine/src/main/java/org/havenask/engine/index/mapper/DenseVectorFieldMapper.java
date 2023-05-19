@@ -70,14 +70,14 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
         private final Parameter<String> similarity = Parameter.stringParam(
             "similarity",
             false,
-            m -> toType(m).similarity,
+            m -> toType(m).similarity.name(),
             "l2_norm"
         );
 
         private final Parameter<String> algorithm = Parameter.stringParam(
             "algorithm",
             false,
-            m -> toType(m).algorithm,
+            m -> toType(m).algorithm.name(),
             "hnsw"
         );
 
@@ -107,14 +107,63 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
 
         @Override
         public DenseVectorFieldMapper build(BuilderContext context) {
-            DenseVectorFieldType fieldType = new DenseVectorFieldType(name, meta.getValue());
+            DenseVectorFieldType fieldType = new DenseVectorFieldType(name, meta.getValue(), dimension.get(),
+                Algorithm.fromString(algorithm.get()), Similarity.fromString(similarity.get()), indexOptions.get());
             return new DenseVectorFieldMapper(name, fieldType, multiFieldsBuilder.build(this, context), copyTo.build(),
-                new Explicit<>(false, false),
-                dimension.get(), algorithm.get(), similarity.get(), indexOptions.get());
+                new Explicit<>(false, false));
         }
     }
 
-    private abstract static class IndexOptions implements ToXContent {
+    public enum Algorithm {
+        HNSW("hnsw"),
+        LINEAR("linear"),
+        HC("hc");
+
+        private final String value;
+
+        Algorithm(String value) {
+            this.value = value;
+        }
+
+        public String getValue() {
+            return value;
+        }
+
+        public static Algorithm fromString(String value) {
+            for (Algorithm algorithm : Algorithm.values()) {
+                if (algorithm.getValue().equalsIgnoreCase(value)) {
+                    return algorithm;
+                }
+            }
+            throw new IllegalArgumentException("No algorithm matches " + value);
+        }
+    }
+
+    public enum Similarity {
+        L2_NORM("l2_norm"),
+        DOT_PRODUCT("dot_product");
+
+        private final String value;
+
+        Similarity(String value) {
+            this.value = value;
+        }
+
+        public String getValue() {
+            return value;
+        }
+
+        public static Similarity fromString(String value) {
+            for (Similarity similarity : Similarity.values()) {
+                if (similarity.getValue().equalsIgnoreCase(value)) {
+                    return similarity;
+                }
+            }
+            throw new IllegalArgumentException("No similarity matches " + value);
+        }
+    }
+
+    public abstract static class IndexOptions implements ToXContent {
         final String type;
 
         IndexOptions(String type) {
@@ -137,16 +186,16 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
      * }
      */
     public static class HCIndexOptions extends IndexOptions {
-        private final Integer numInLevel1;
-        private final Integer numInLevel2;
-        private final Integer leafCentroidNum;
-        private final Integer trainSampleCount;
-        private final Float trainSampleRatio;
-        private final Integer scanNumInLevel1;
-        private final Integer scanNumInLevel2;
-        private final Integer maxScanNum;
-        private final Integer useLinearThreshold;
-        private final Integer useDynamicParams;
+        public final Integer numInLevel1;
+        public final Integer numInLevel2;
+        public final Integer leafCentroidNum;
+        public final Integer trainSampleCount;
+        public final Float trainSampleRatio;
+        public final Integer scanNumInLevel1;
+        public final Integer scanNumInLevel2;
+        public final Integer maxScanNum;
+        public final Integer useLinearThreshold;
+        public final Integer useDynamicParams;
 
         static IndexOptions parseIndexOptions(Map<String, ?> indexOptionsMap) {
             Integer numInLevel1 = XContentMapValues.nodeIntegerValue(
@@ -167,6 +216,8 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
                 indexOptionsMap.get("proxima.hc.searcher.max_scan_num"));
             Integer useLinearThreshold = XContentMapValues.nodeIntegerValue(
                 indexOptionsMap.get("use_linear_threshold"));
+
+            // TODO vaild value
             Integer useDynamicParams = XContentMapValues.nodeIntegerValue(indexOptionsMap.get("use_dynamic_params"));
             return new HCIndexOptions(numInLevel1, numInLevel2, leafCentroidNum, trainSampleCount, trainSampleRatio,
                 scanNumInLevel1, scanNumInLevel2, maxScanNum, useLinearThreshold, useDynamicParams);
@@ -260,15 +311,15 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
      * }
      */
     public static class HnswIndexOptions extends IndexOptions {
-        private final Integer maxDocCnt;
-        private final Integer maxScanNum;
-        private final Integer memoryQuota;
-        private final Integer efConstruction;
-        private final Integer maxLevel;
-        private final Integer scalingFactor;
-        private final Integer upperNeighborCnt;
-        private final Integer ef;
-        private final Integer maxScanCnt;
+        public final Integer maxDocCnt;
+        public final Integer maxScanNum;
+        public final Integer memoryQuota;
+        public final Integer efConstruction;
+        public final Integer maxLevel;
+        public final Integer scalingFactor;
+        public final Integer upperNeighborCnt;
+        public final Integer ef;
+        public final Integer maxScanCnt;
 
         static IndexOptions parseIndexOptions(Map<String, ?> indexOptionsMap) {
             Integer maxDocCnt = XContentMapValues.nodeIntegerValue(
@@ -288,6 +339,8 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
             Integer ef = XContentMapValues.nodeIntegerValue(indexOptionsMap.get("proxima.hnsw.searcher.ef"));
             Integer maxScanCnt = XContentMapValues.nodeIntegerValue(
                 indexOptionsMap.get("proxima.hnsw.searcher.max_scan_cnt"));
+
+            // TODO vaild value
             return new HnswIndexOptions(maxDocCnt, maxScanNum, memoryQuota, efConstruction, maxLevel, scalingFactor,
                 upperNeighborCnt, ef, maxScanCnt);
         }
@@ -394,23 +447,19 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
     }
 
     private final int dims;
-    private final String algorithm;
-    private final String similarity;
+    private final Algorithm algorithm;
+    private final Similarity similarity;
     private final IndexOptions indexOptions;
 
     private DenseVectorFieldMapper(String simpleName, DenseVectorFieldType mappedFieldType,
         MultiFields multiFields,
         CopyTo copyTo,
-        Explicit<Boolean> ignoreMalformed,
-        int dims,
-        String algorithm,
-        String similarity,
-        IndexOptions indexOptions) {
+        Explicit<Boolean> ignoreMalformed) {
         super(simpleName, mappedFieldType, multiFields, copyTo);
-        this.dims = dims;
-        this.algorithm = algorithm;
-        this.similarity = similarity;
-        this.indexOptions = indexOptions;
+        this.dims = mappedFieldType.dims;
+        this.algorithm = mappedFieldType.algorithm;
+        this.similarity = mappedFieldType.similarity;
+        this.indexOptions = mappedFieldType.indexOptions;
     }
 
     @Override
@@ -456,8 +505,34 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
 
     public static class DenseVectorFieldType extends MappedFieldType {
 
-        public DenseVectorFieldType(String name, Map<String, String> meta) {
+        private final int dims;
+        private final Algorithm algorithm;
+        private final Similarity similarity;
+        private final IndexOptions indexOptions;
+
+        public DenseVectorFieldType(String name, Map<String, String> meta, int dims, Algorithm algorithm,
+            Similarity similarity, IndexOptions indexOptions) {
             super(name, false, false, false, TextSearchInfo.NONE, meta);
+            this.dims = dims;
+            this.algorithm = algorithm;
+            this.similarity = similarity;
+            this.indexOptions = indexOptions;
+        }
+
+        public int getDims() {
+            return dims;
+        }
+
+        public Algorithm getAlgorithm() {
+            return algorithm;
+        }
+
+        public Similarity getSimilarity() {
+            return similarity;
+        }
+
+        public IndexOptions getIndexOptions() {
+            return indexOptions;
         }
 
         @Override
@@ -479,5 +554,16 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
     @Override
     public ParametrizedFieldMapper.Builder getMergeBuilder() {
         return new DenseVectorFieldMapper.Builder(simpleName()).init(this);
+    }
+
+    public static class TypeParser implements FieldMapper.TypeParser {
+
+        @Override
+        public Builder parse(String name, Map<String, Object> node, ParserContext parserContext) throws MapperParsingException {
+            Builder builder = new Builder(name);
+            builder.parse(name, parserContext, node);
+            // add vaildation
+            return builder;
+        }
     }
 }
