@@ -150,7 +150,7 @@ public class SchemaGenerator {
                 parameter.put("search_metric_type", vectorField.getSimilarity().name());
 
                 IndexOptions indexOptions = vectorField.getIndexOptions();
-                if (vectorField.getAlgorithm() == Algorithm.HNSW) {
+                if (indexOptions.type == Algorithm.HNSW) {
                     parameter.put("index_type", "graph");
                     parameter.put("proxima.graph.common.graph_type", "hnsw");
                     HnswIndexOptions hnswIndexOptions = (HnswIndexOptions) indexOptions;
@@ -181,7 +181,7 @@ public class SchemaGenerator {
                     if (hnswIndexOptions.maxScanCnt != null) {
                         parameter.put("proxima.hnsw.searcher.max_scan_cnt", String.valueOf(hnswIndexOptions.maxScanCnt));
                     }
-                } else if (vectorField.getAlgorithm() == Algorithm.HC) {
+                } else if (indexOptions.type == Algorithm.HC) {
                     parameter.put("index_type", "hc");
                     HCIndexOptions hcIndexOptions = (HCIndexOptions) indexOptions;
                     if (hcIndexOptions.numInLevel1 != null) {

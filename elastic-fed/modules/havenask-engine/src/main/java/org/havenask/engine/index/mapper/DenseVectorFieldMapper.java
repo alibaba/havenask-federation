@@ -74,18 +74,11 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
             "l2_norm"
         );
 
-        private final Parameter<String> algorithm = Parameter.stringParam(
-            "algorithm",
-            false,
-            m -> toType(m).algorithm.name(),
-            "hnsw"
-        );
-
         private final Parameter<IndexOptions> indexOptions = new Parameter<>(
             "index_options",
             false,
-            () -> null,
-            (n, c, o) -> o == null ? null : parseIndexOptions(n, o),
+            () -> new IndexOptions(Algorithm.HNSW),
+            (n, c, o) -> o == null ? null : parseIndexOptions(o),
             m -> toType(m).indexOptions
         );
 
@@ -102,13 +95,13 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
 
         @Override
         protected List<Parameter<?>> getParameters() {
-            return Arrays.asList(dimension, similarity, algorithm, indexOptions);
+            return Arrays.asList(dimension, similarity, indexOptions, meta);
         }
 
         @Override
         public DenseVectorFieldMapper build(BuilderContext context) {
             DenseVectorFieldType fieldType = new DenseVectorFieldType(name, meta.getValue(), dimension.get(),
-                Algorithm.fromString(algorithm.get()), Similarity.fromString(similarity.get()), indexOptions.get());
+                Similarity.fromString(similarity.get()), indexOptions.get());
             return new DenseVectorFieldMapper(name, fieldType, multiFieldsBuilder.build(this, context), copyTo.build(),
                 new Explicit<>(false, false));
         }
@@ -163,11 +156,19 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
         }
     }
 
-    public abstract static class IndexOptions implements ToXContent {
-        final String type;
+    public static class IndexOptions implements ToXContent {
+        public final Algorithm type;
 
-        IndexOptions(String type) {
+        IndexOptions(Algorithm type) {
             this.type = type;
+        }
+
+        @Override
+        public XContentBuilder toXContent(XContentBuilder builder, Params params) throws IOException {
+            builder.startObject();
+            builder.field("type", type.name());
+            builder.endObject();
+            return builder;
         }
     }
 
@@ -198,27 +199,28 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
         public final Integer useDynamicParams;
 
         static IndexOptions parseIndexOptions(Map<String, ?> indexOptionsMap) {
-            Integer numInLevel1 = XContentMapValues.nodeIntegerValue(
-                indexOptionsMap.get("proxima.hc.builder.num_in_level_1"));
-            Integer numInLevel2 = XContentMapValues.nodeIntegerValue(
-                indexOptionsMap.get("proxima.hc.builder.num_in_level_2"));
-            Integer leafCentroidNum = XContentMapValues.nodeIntegerValue(
-                indexOptionsMap.get("proxima.hc.common.leaf_centroid_num"));
-            Integer trainSampleCount = XContentMapValues.nodeIntegerValue(
-                indexOptionsMap.get("proxima.general.builder.train_sample_count"));
-            Float trainSampleRatio = XContentMapValues.nodeFloatValue(
-                indexOptionsMap.get("proxima.general.builder.train_sample_ratio"));
-            Integer scanNumInLevel1 = XContentMapValues.nodeIntegerValue(
-                indexOptionsMap.get("proxima.hc.searcher.scan_num_in_level_1"));
-            Integer scanNumInLevel2 = XContentMapValues.nodeIntegerValue(
-                indexOptionsMap.get("proxima.hc.searcher.scan_num_in_level_2"));
-            Integer maxScanNum = XContentMapValues.nodeIntegerValue(
-                indexOptionsMap.get("proxima.hc.searcher.max_scan_num"));
-            Integer useLinearThreshold = XContentMapValues.nodeIntegerValue(
-                indexOptionsMap.get("use_linear_threshold"));
+            Object numInLevel1Node = indexOptionsMap.remove("proxima.hc.builder.num_in_level_1");
+            Integer numInLevel1 = numInLevel1Node != null ? XContentMapValues.nodeIntegerValue(numInLevel1Node) : null;
+            Object numInLevel2Node = indexOptionsMap.remove("proxima.hc.builder.num_in_level_2");
+            Integer numInLevel2 = numInLevel2Node != null ? XContentMapValues.nodeIntegerValue(numInLevel2Node) : null;
+            Object leafCentroidNumNode = indexOptionsMap.remove("proxima.hc.common.leaf_centroid_num");
+            Integer leafCentroidNum = leafCentroidNumNode != null ? XContentMapValues.nodeIntegerValue(leafCentroidNumNode) : null;
+            Object trainSampleCountNode = indexOptionsMap.remove("proxima.general.builder.train_sample_count");
+            Integer trainSampleCount = trainSampleCountNode != null ? XContentMapValues.nodeIntegerValue(trainSampleCountNode) : null;
+            Object trainSampleRatioNode = indexOptionsMap.remove("proxima.general.builder.train_sample_ratio");
+            Float trainSampleRatio = trainSampleRatioNode != null ? XContentMapValues.nodeFloatValue(trainSampleRatioNode) : null;
+            Object scanNumInLevel1Node = indexOptionsMap.remove("proxima.hc.searcher.scan_num_in_level_1");
+            Integer scanNumInLevel1 = scanNumInLevel1Node != null ? XContentMapValues.nodeIntegerValue(scanNumInLevel1Node) : null;
+            Object scanNumInLevel2Node = indexOptionsMap.remove("proxima.hc.searcher.scan_num_in_level_2");
+            Integer scanNumInLevel2 = scanNumInLevel2Node != null ? XContentMapValues.nodeIntegerValue(scanNumInLevel2Node) : null;
+            Object maxScanNumNode = indexOptionsMap.remove("proxima.hc.searcher.max_scan_num");
+            Integer maxScanNum = maxScanNumNode != null ? XContentMapValues.nodeIntegerValue(maxScanNumNode) : null;
+            Object useLinearThresholdNode = indexOptionsMap.remove("use_linear_threshold");
+            Integer useLinearThreshold = useLinearThresholdNode != null ? XContentMapValues.nodeIntegerValue(useLinearThresholdNode) : null;
+            Object useDynamicParamsNode = indexOptionsMap.remove("use_dynamic_params");
+            Integer useDynamicParams = useDynamicParamsNode != null ? XContentMapValues.nodeIntegerValue(useDynamicParamsNode) : null;
 
             // TODO vaild value
-            Integer useDynamicParams = XContentMapValues.nodeIntegerValue(indexOptionsMap.get("use_dynamic_params"));
             return new HCIndexOptions(numInLevel1, numInLevel2, leafCentroidNum, trainSampleCount, trainSampleRatio,
                 scanNumInLevel1, scanNumInLevel2, maxScanNum, useLinearThreshold, useDynamicParams);
         }
@@ -227,7 +229,7 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
             Integer trainSampleCount,
             Float trainSampleRatio, Integer scanNumInLevel1, Integer scanNumInLevel2, Integer maxScanNum,
             Integer useLinearThreshold, Integer useDynamicParams) {
-            super("proxima_hc");
+            super(Algorithm.HC);
             this.numInLevel1 = numInLevel1;
             this.numInLevel2 = numInLevel2;
             this.leafCentroidNum = leafCentroidNum;
@@ -243,17 +245,37 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
         @Override
         public XContentBuilder toXContent(XContentBuilder builder, Params params) throws IOException {
             builder.startObject();
-            builder.field("type", type);
-            builder.field("proxima.hc.builder.num_in_level_1", numInLevel1);
-            builder.field("proxima.hc.builder.num_in_level_2", numInLevel2);
-            builder.field("proxima.hc.common.leaf_centroid_num", leafCentroidNum);
-            builder.field("proxima.general.builder.train_sample_count", trainSampleCount);
-            builder.field("proxima.general.builder.train_sample_ratio", trainSampleRatio);
-            builder.field("proxima.hc.searcher.scan_num_in_level_1", scanNumInLevel1);
-            builder.field("proxima.hc.searcher.scan_num_in_level_2", scanNumInLevel2);
-            builder.field("proxima.hc.searcher.max_scan_num", maxScanNum);
-            builder.field("use_linear_threshold", useLinearThreshold);
-            builder.field("use_dynamic_params", useDynamicParams);
+            builder.field("type", type.name());
+            if (numInLevel1 != null) {
+                builder.field("proxima.hc.builder.num_in_level_1", numInLevel1);
+            }
+            if (numInLevel2 != null) {
+                builder.field("proxima.hc.builder.num_in_level_2", numInLevel2);
+            }
+            if (leafCentroidNum != null) {
+                builder.field("proxima.hc.common.leaf_centroid_num", leafCentroidNum);
+            }
+            if (trainSampleCount != null) {
+                builder.field("proxima.general.builder.train_sample_count", trainSampleCount);
+            }
+            if (trainSampleRatio != null) {
+                builder.field("proxima.general.builder.train_sample_ratio", trainSampleRatio);
+            }
+            if (scanNumInLevel1 != null) {
+                builder.field("proxima.hc.searcher.scan_num_in_level_1", scanNumInLevel1);
+            }
+            if (scanNumInLevel2 != null) {
+                builder.field("proxima.hc.searcher.scan_num_in_level_2", scanNumInLevel2);
+            }
+            if (maxScanNum != null) {
+                builder.field("proxima.hc.searcher.max_scan_num", maxScanNum);
+            }
+            if (useLinearThreshold != null) {
+                builder.field("use_linear_threshold", useLinearThreshold);
+            }
+            if (useDynamicParams != null) {
+                builder.field("use_dynamic_params", useDynamicParams);
+            }
             builder.endObject();
             return builder;
         }
@@ -322,23 +344,27 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
         public final Integer maxScanCnt;
 
         static IndexOptions parseIndexOptions(Map<String, ?> indexOptionsMap) {
-            Integer maxDocCnt = XContentMapValues.nodeIntegerValue(
-                indexOptionsMap.get("proxima.graph.common.max_doc_cnt"));
-            Integer maxScanNum = XContentMapValues.nodeIntegerValue(
-                indexOptionsMap.get("proxima.graph.common.max_scan_num"));
-            Integer memoryQuota = XContentMapValues.nodeIntegerValue(
-                indexOptionsMap.get("proxima.general.builder.memory_quota"));
-            Integer efConstruction = XContentMapValues.nodeIntegerValue(
-                indexOptionsMap.get("proxima.hnsw.builder.efconstruction"));
-            Integer maxLevel = XContentMapValues.nodeIntegerValue(
-                indexOptionsMap.get("proxima.hnsw.builder.max_level"));
-            Integer scalingFactor = XContentMapValues.nodeIntegerValue(
-                indexOptionsMap.get("proxima.hnsw.builder.scaling_factor"));
-            Integer upperNeighborCnt = XContentMapValues.nodeIntegerValue(
-                indexOptionsMap.get("proxima.hnsw.builder.upper_neighbor_cnt"));
-            Integer ef = XContentMapValues.nodeIntegerValue(indexOptionsMap.get("proxima.hnsw.searcher.ef"));
-            Integer maxScanCnt = XContentMapValues.nodeIntegerValue(
-                indexOptionsMap.get("proxima.hnsw.searcher.max_scan_cnt"));
+            Object maxDocCntNode = indexOptionsMap.remove("proxima.graph.common.max_doc_cnt");
+            Integer maxDocCnt = maxDocCntNode != null ? XContentMapValues.nodeIntegerValue(maxDocCntNode) : null;
+            Object maxScanNumNode = indexOptionsMap.remove("proxima.graph.common.max_scan_num");
+            Integer maxScanNum = maxScanNumNode != null ? XContentMapValues.nodeIntegerValue(maxScanNumNode) : null;
+            Object memoryQuotaNode = indexOptionsMap.remove("proxima.general.builder.memory_quota");
+            Integer memoryQuota = memoryQuotaNode != null ? XContentMapValues.nodeIntegerValue(memoryQuotaNode) : null;
+            Object efConstructionNode = indexOptionsMap.remove("proxima.hnsw.builder.efconstruction");
+            Integer efConstruction = efConstructionNode != null ? XContentMapValues.nodeIntegerValue(efConstructionNode)
+                : null;
+            Object maxLevelNode = indexOptionsMap.remove("proxima.hnsw.builder.max_level");
+            Integer maxLevel = maxLevelNode != null ? XContentMapValues.nodeIntegerValue(maxLevelNode) : null;
+            Object scalingFactorNode = indexOptionsMap.remove("proxima.hnsw.builder.scaling_factor");
+            Integer scalingFactor = scalingFactorNode != null ? XContentMapValues.nodeIntegerValue(scalingFactorNode)
+                : null;
+            Object upperNeighborCntNode = indexOptionsMap.remove("proxima.hnsw.builder.upper_neighbor_cnt");
+            Integer upperNeighborCnt = upperNeighborCntNode != null ? XContentMapValues.nodeIntegerValue(
+                upperNeighborCntNode) : null;
+            Object efNode = indexOptionsMap.remove("proxima.hnsw.searcher.ef");
+            Integer ef = efNode != null ? XContentMapValues.nodeIntegerValue(efNode) : null;
+            Object maxScanCntNode = indexOptionsMap.remove("proxima.hnsw.searcher.max_scan_cnt");
+            Integer maxScanCnt = maxScanCntNode != null ? XContentMapValues.nodeIntegerValue(maxScanCntNode) : null;
 
             // TODO vaild value
             return new HnswIndexOptions(maxDocCnt, maxScanNum, memoryQuota, efConstruction, maxLevel, scalingFactor,
@@ -348,7 +374,7 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
         private HnswIndexOptions(Integer maxDocCnt, Integer maxScanNum, Integer memoryQuota, Integer efConstruction,
             Integer maxLevel,
             Integer scalingFactor, Integer upperNeighborCnt, Integer ef, Integer maxScanCnt) {
-            super("hnsw");
+            super(Algorithm.HNSW);
             this.maxDocCnt = maxDocCnt;
             this.maxScanNum = maxScanNum;
             this.memoryQuota = memoryQuota;
@@ -363,7 +389,7 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
         @Override
         public XContentBuilder toXContent(XContentBuilder builder, Params params) throws IOException {
             builder.startObject();
-            builder.field("type", type);
+            builder.field("type", type.name());
             if (maxDocCnt != null) {
                 builder.field("proxima.graph.common.max_doc_cnt", maxDocCnt);
             }
@@ -428,26 +454,24 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
         }
     }
 
-    private static IndexOptions parseIndexOptions(String fieldName, Object propNode) {
+    private static IndexOptions parseIndexOptions(Object propNode) {
         @SuppressWarnings("unchecked")
         Map<String, ?> indexOptionsMap = (Map<String, ?>)propNode;
         Object typeNode = indexOptionsMap.remove("type");
         if (typeNode == null) {
             throw new MapperParsingException("[index_options] requires field [type] to be configured");
         }
-        String type = XContentMapValues.nodeStringValue(typeNode);
-        if (type.equals("hnsw")) {
-            return HnswIndexOptions.parseIndexOptions(indexOptionsMap);
-        } else if (type.equals("hc")) {
+        Algorithm type = Algorithm.fromString(XContentMapValues.nodeStringValue(typeNode));
+        if (type == Algorithm.HC) {
             return HCIndexOptions.parseIndexOptions(indexOptionsMap);
+        } else if (type == Algorithm.HNSW) {
+            return HnswIndexOptions.parseIndexOptions(indexOptionsMap);
         } else {
-            throw new MapperParsingException(
-                "Unknown vector index options type [" + type + "] for field [" + fieldName + "]");
+            return new IndexOptions(type);
         }
     }
 
     private final int dims;
-    private final Algorithm algorithm;
     private final Similarity similarity;
     private final IndexOptions indexOptions;
 
@@ -457,7 +481,6 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
         Explicit<Boolean> ignoreMalformed) {
         super(simpleName, mappedFieldType, multiFields, copyTo);
         this.dims = mappedFieldType.dims;
-        this.algorithm = mappedFieldType.algorithm;
         this.similarity = mappedFieldType.similarity;
         this.indexOptions = mappedFieldType.indexOptions;
     }
@@ -506,25 +529,19 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
     public static class DenseVectorFieldType extends MappedFieldType {
 
         private final int dims;
-        private final Algorithm algorithm;
         private final Similarity similarity;
         private final IndexOptions indexOptions;
 
-        public DenseVectorFieldType(String name, Map<String, String> meta, int dims, Algorithm algorithm,
+        public DenseVectorFieldType(String name, Map<String, String> meta, int dims,
             Similarity similarity, IndexOptions indexOptions) {
             super(name, false, false, false, TextSearchInfo.NONE, meta);
             this.dims = dims;
-            this.algorithm = algorithm;
             this.similarity = similarity;
             this.indexOptions = indexOptions;
         }
 
         public int getDims() {
             return dims;
-        }
-
-        public Algorithm getAlgorithm() {
-            return algorithm;
         }
 
         public Similarity getSimilarity() {
@@ -559,7 +576,8 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
     public static class TypeParser implements FieldMapper.TypeParser {
 
         @Override
-        public Builder parse(String name, Map<String, Object> node, ParserContext parserContext) throws MapperParsingException {
+        public Builder parse(String name, Map<String, Object> node, ParserContext parserContext)
+            throws MapperParsingException {
             Builder builder = new Builder(name);
             builder.parse(name, parserContext, node);
             // add vaildation
