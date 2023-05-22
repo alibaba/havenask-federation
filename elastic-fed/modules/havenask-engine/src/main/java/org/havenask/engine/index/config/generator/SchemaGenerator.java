@@ -49,6 +49,7 @@ import org.havenask.common.io.Streams;
 import org.havenask.common.settings.Settings;
 import org.havenask.engine.index.config.Analyzers;
 import org.havenask.engine.index.config.Schema;
+import org.havenask.engine.index.config.Schema.FieldInfo;
 import org.havenask.engine.index.config.Schema.VectorIndex;
 import org.havenask.engine.index.engine.EngineSettings;
 import org.havenask.engine.index.mapper.DenseVectorFieldMapper.Algorithm;
@@ -81,6 +82,9 @@ public class SchemaGenerator {
         }
     }
 
+    public static final String DUP_ID = "DUP_id";
+    public static final String DUP_PREFIX = "DUP_";
+
     Map<String, String> Ha3FieldType = Map.ofEntries(
         Map.entry("keyword", "STRING"),
         Map.entry("text", "TEXT"),
@@ -98,7 +102,7 @@ public class SchemaGenerator {
         Map.entry("byte", "INT8"),
         Map.entry("boolean", "STRING"),
         Map.entry("date", "UINT64"),
-        Map.entry("dense_vector", "RAW")
+        Map.entry("dense_vector", "STRING")
     );
 
     Logger logger = LogManager.getLogger(SchemaGenerator.class);
@@ -118,6 +122,7 @@ public class SchemaGenerator {
         Set<String> addedFields = new HashSet<>();
         Set<String> analyzers = getAnalyzers();
 
+        boolean hasVectorField = false;
         for (MappedFieldType field : mapperService.fieldTypes()) {
             String haFieldType = Ha3FieldType.get(field.typeName());
             String fieldName = field.name();
@@ -141,6 +146,7 @@ public class SchemaGenerator {
 
             // deal vector index
             if (field instanceof DenseVectorFieldType) {
+                hasVectorField = true;
                 DenseVectorFieldType vectorField = (DenseVectorFieldType) field;
                 indexVectorField(vectorField, fieldName, schema, haFieldType);
                 continue;
@@ -204,6 +210,10 @@ public class SchemaGenerator {
             }
         }
 
+        if (hasVectorField) {
+            schema.fields.add(new FieldInfo(DUP_ID, "RAW"));
+        }
+
         // missing pre-defined fields
         if (!addedFields.contains("_primary_term")) {
             schema.attributes.add("_primary_term");
@@ -223,7 +233,10 @@ public class SchemaGenerator {
 
     private void indexVectorField(DenseVectorFieldType vectorField, String fieldName, Schema schema, String haFieldType) {
         schema.fields.add(new Schema.FieldInfo(fieldName, haFieldType));
-        List<Schema.Field> indexFields = Arrays.asList(new Schema.Field(IdFieldMapper.NAME), new Schema.Field(fieldName));
+        String dupFieldName = DUP_PREFIX + fieldName;
+        schema.fields.add(new Schema.FieldInfo(dupFieldName, "RAW"));
+        schema.getDupFields().add(fieldName);
+        List<Schema.Field> indexFields = Arrays.asList(new Schema.Field(DUP_ID), new Schema.Field(dupFieldName));
         Map<String, String> parameter = new LinkedHashMap<>();
         parameter.put("dimension", String.valueOf(vectorField.getDims()));
         parameter.put("build_metric_type", vectorField.getSimilarity().getAlias());

@@ -34,6 +34,8 @@ public class Schema {
     public String table_name;
     public String table_type = "normal";
 
+    private transient List<String> dupFields = new LinkedList<>();
+
     public transient String rawSchema;
     // origin field process parameters
     // copyTo field will copy the origin field and write the copied ones(such as multiFields, etc.)
@@ -189,6 +191,10 @@ public class Schema {
 
     public boolean hasRawSchema() {
         return !Strings.isNullOrEmpty(rawSchema);
+    }
+
+    public List<String> getDupFields() {
+        return dupFields;
     }
 
     @Override
