@@ -122,7 +122,6 @@ public class SchemaGenerator {
         Set<String> addedFields = new HashSet<>();
         Set<String> analyzers = getAnalyzers();
 
-        boolean hasVectorField = false;
         for (MappedFieldType field : mapperService.fieldTypes()) {
             String haFieldType = Ha3FieldType.get(field.typeName());
             String fieldName = field.name();
@@ -146,7 +145,6 @@ public class SchemaGenerator {
 
             // deal vector index
             if (field instanceof DenseVectorFieldType) {
-                hasVectorField = true;
                 DenseVectorFieldType vectorField = (DenseVectorFieldType) field;
                 indexVectorField(vectorField, fieldName, schema, haFieldType);
                 continue;
@@ -210,8 +208,11 @@ public class SchemaGenerator {
             }
         }
 
-        if (hasVectorField) {
+        if (schema.getDupFields().size() > 0) {
             schema.fields.add(new FieldInfo(DUP_ID, "RAW"));
+            schema.getDupFields().forEach((field) -> {
+                schema.fields.add(new FieldInfo(DUP_PREFIX + field, "RAW"));
+            });
         }
 
         // missing pre-defined fields
@@ -234,7 +235,6 @@ public class SchemaGenerator {
     private void indexVectorField(DenseVectorFieldType vectorField, String fieldName, Schema schema, String haFieldType) {
         schema.fields.add(new Schema.FieldInfo(fieldName, haFieldType));
         String dupFieldName = DUP_PREFIX + fieldName;
-        schema.fields.add(new Schema.FieldInfo(dupFieldName, "RAW"));
         schema.getDupFields().add(fieldName);
         List<Schema.Field> indexFields = Arrays.asList(new Schema.Field(DUP_ID), new Schema.Field(dupFieldName));
         Map<String, String> parameter = new LinkedHashMap<>();
