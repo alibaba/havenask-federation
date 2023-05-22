@@ -17,6 +17,7 @@ package org.havenask.engine.index.mapper;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -77,7 +78,7 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
         private final Parameter<IndexOptions> indexOptions = new Parameter<>(
             "index_options",
             false,
-            () -> new IndexOptions(Algorithm.HNSW),
+            () -> HnswIndexOptions.parseIndexOptions(Collections.emptyMap()),
             (n, c, o) -> o == null ? null : parseIndexOptions(o),
             m -> toType(m).indexOptions
         );
@@ -133,17 +134,23 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
     }
 
     public enum Similarity {
-        L2_NORM("l2_norm"),
-        DOT_PRODUCT("dot_product");
+        L2_NORM("l2_norm", "l2"),
+        DOT_PRODUCT("dot_product", "ip");
 
         private final String value;
+        private final String alias;
 
-        Similarity(String value) {
+        Similarity(String value, String alias) {
             this.value = value;
+            this.alias = alias;
         }
 
         public String getValue() {
             return value;
+        }
+
+        public String getAlias() {
+            return alias;
         }
 
         public static Similarity fromString(String value) {
@@ -219,6 +226,8 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
             Integer useLinearThreshold = useLinearThresholdNode != null ? XContentMapValues.nodeIntegerValue(useLinearThresholdNode) : null;
             Object useDynamicParamsNode = indexOptionsMap.remove("use_dynamic_params");
             Integer useDynamicParams = useDynamicParamsNode != null ? XContentMapValues.nodeIntegerValue(useDynamicParamsNode) : null;
+
+            // TODO 参数校验
 
             // TODO vaild value
             return new HCIndexOptions(numInLevel1, numInLevel2, leafCentroidNum, trainSampleCount, trainSampleRatio,
@@ -486,6 +495,11 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
     }
 
     @Override
+    public boolean parsesArrayValue() {
+        return true;
+    }
+
+    @Override
     protected void parseCreateField(ParseContext context) throws IOException {
         String simpleName = simpleName();
         String fieldName = name();
@@ -519,6 +533,10 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
         VectorField point = new VectorField(fieldName, array, fieldType);
         context.doc().add(point);
         context.path().remove();
+    }
+
+    public DenseVectorFieldMapper clone() {
+        return (DenseVectorFieldMapper) super.clone();
     }
 
     @Override

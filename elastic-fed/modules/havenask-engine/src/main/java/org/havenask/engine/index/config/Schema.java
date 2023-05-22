@@ -78,18 +78,15 @@ public class Schema {
         public String analyzer;
     }
 
-    public static class Index {
+    public static abstract class Index {
         public String index_name;
         public String index_type;
-        @JSONField(name = "index_fields")
-        public String index_field;
 
         public Index() {}
 
-        public Index(String index_name, String index_type, String index_field) {
+        public Index(String index_name, String index_type) {
             this.index_name = index_name;
             this.index_type = index_type;
-            this.index_field = index_field;
         }
 
         public Integer doc_payload_flag;
@@ -97,6 +94,18 @@ public class Schema {
         public Integer position_payload_flag;
         public Integer position_list_flag;
         public Integer term_frequency_flag;
+    }
+
+    public static class NormalIndex extends Index {
+        @JSONField(name = "index_fields")
+        public String index_field;
+
+        public NormalIndex() {}
+
+        public NormalIndex(String index_name, String index_type, String index_field) {
+            super(index_name, index_type);
+            this.index_field = index_field;
+        }
     }
 
     /**
@@ -125,12 +134,14 @@ public class Schema {
      *         }
      */
     public static class VectorIndex extends Index {
-        private String indexer = "aitheta_indexer";
-        private List<Field> index_fields;
-        private Map<String, String> parameters;
+        public String indexer = "aitheta_indexer";
+
+        @JSONField(name = "index_fields")
+        public List<Field> index_fields;
+        public Map<String, String> parameters;
 
         public VectorIndex(String index_name, List<Field> index_fields, Map<String, String> parameters) {
-            super(index_name, "CUSTOMIZED", index_name);
+            super(index_name, "CUSTOMIZED");
             this.index_fields = index_fields;
             this.parameters = parameters;
         }
@@ -145,7 +156,7 @@ public class Schema {
         }
     }
 
-    public static class PRIMARYKEYIndex extends Index {
+    public static class PRIMARYKEYIndex extends NormalIndex {
         public PRIMARYKEYIndex() {
             index_type = "PRIMARYKEY64";
         }
