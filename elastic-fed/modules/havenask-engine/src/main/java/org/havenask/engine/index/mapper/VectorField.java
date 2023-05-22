@@ -23,7 +23,9 @@ import java.io.ObjectOutputStream;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.index.IndexableFieldType;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.SuppressForbidden;
 
+@SuppressForbidden(reason = "We need to use serialization to convert the vector to byte array")
 public class VectorField extends Field {
 
     public <T> VectorField(String name, T value, IndexableFieldType type) {
@@ -37,8 +39,10 @@ public class VectorField extends Field {
 
     public static <T> byte[] toByte(T values) throws Exception {
         byte[] bytes;
-        try (ByteArrayOutputStream byteStream = new ByteArrayOutputStream();
-             ObjectOutputStream objectStream = new ObjectOutputStream(byteStream)) {
+        try (
+            ByteArrayOutputStream byteStream = new ByteArrayOutputStream();
+            ObjectOutputStream objectStream = new ObjectOutputStream(byteStream)
+        ) {
             objectStream.writeObject(values);
             bytes = byteStream.toByteArray();
         }
@@ -46,8 +50,10 @@ public class VectorField extends Field {
     }
 
     public static Object readValue(byte[] value) throws IOException {
-        try (ByteArrayInputStream byteStream = new ByteArrayInputStream(value);
-             ObjectInputStream objectStream = new ObjectInputStream(byteStream)) {
+        try (
+            ByteArrayInputStream byteStream = new ByteArrayInputStream(value);
+            ObjectInputStream objectStream = new ObjectInputStream(byteStream)
+        ) {
             return objectStream.readObject();
         } catch (ClassNotFoundException e) {
             throw new RuntimeException(e);

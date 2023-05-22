@@ -78,7 +78,7 @@ public class Schema {
         public String analyzer;
     }
 
-    public static abstract class Index {
+    public abstract static class Index {
         public String index_name;
         public String index_type;
 
@@ -110,28 +110,28 @@ public class Schema {
 
     /**
      * {
-     *             "index_name": "embedding_index",
-     *             "index_type":"CUSTOMIZED",
-     *             "index_fields":[
-     *                 {
-     *                     "boost":1,
-     *                     "field_name":"DUP_pk"
-     *                 },
-     *                 {
-     *                     "boost":1,
-     *                     "field_name":"DUP_embedding"
-     *                 }
-     *             ],
-     *             "indexer":"aitheta_indexer",
-     *             "parameters":{
-     *                 "use_linear_threshold":"10000",
-     *                 "build_metric_type":"l2",
-     *                 "search_metric_type":"ip",
-     *                 "use_dynamic_params":"1",
-     *                 "dimension":"1024",
-     *                 "index_type":"hc"
-     *             }
-     *         }
+     * "index_name": "embedding_index",
+     * "index_type":"CUSTOMIZED",
+     * "index_fields":[
+     * {
+     * "boost":1,
+     * "field_name":"DUP_pk"
+     * },
+     * {
+     * "boost":1,
+     * "field_name":"DUP_embedding"
+     * }
+     * ],
+     * "indexer":"aitheta_indexer",
+     * "parameters":{
+     * "use_linear_threshold":"10000",
+     * "build_metric_type":"l2",
+     * "search_metric_type":"ip",
+     * "use_dynamic_params":"1",
+     * "dimension":"1024",
+     * "index_type":"hc"
+     * }
+     * }
      */
     public static class VectorIndex extends Index {
         public String indexer = "aitheta_indexer";

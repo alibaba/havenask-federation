@@ -87,7 +87,7 @@ public class HavenaskEnginePlugin extends Plugin
         ActionPlugin,
         SearchPlugin,
         NodeEnvironmentPlugin,
-    MapperPlugin {
+        MapperPlugin {
     private static Logger logger = LogManager.getLogger(HavenaskEnginePlugin.class);
     private final SetOnce<HavenaskEngineEnvironment> havenaskEngineEnvironmentSetOnce = new SetOnce<>();
     private final SetOnce<NativeProcessControlService> nativeProcessControlServiceSetOnce = new SetOnce<>();
