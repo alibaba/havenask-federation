@@ -17,7 +17,7 @@ package org.havenask.engine.rpc;
 import org.havenask.test.HavenaskTestCase;
 
 public class TargetInfoTests extends HavenaskTestCase {
-    public void testParse() {
+    public void testParseSearcher() {
         String targetStr = "{\n"
             + "\t\"app_info\":{\n"
             + "\t\t\"config_path\":\"\",\n"
@@ -204,4 +204,32 @@ public class TargetInfoTests extends HavenaskTestCase {
         assertEquals(targetStr, targetToStr);
     }
 
+    public void testParseQrs() {
+        String targetStr = "{\n"
+            + "\t\"app_info\":{\n"
+            + "\t\t\"config_path\":\"\",\n"
+            + "\t\t\"keep_count\":20\n"
+            + "\t},\n"
+            + "\t\"biz_info\":{\n"
+            + "\t\t\"default\":{\n"
+            + "\t\t\t\"config_path\":\"/usr/share/havenask/data_havenask/config/bizs/0\",\n"
+            + "\t\t\t\"custom_biz_info\":{},\n"
+            + "\t\t\t\"keep_count\":5\n"
+            + "\t\t}\n"
+            + "\t},\n"
+            + "\t\"custom_app_info\":{},\n"
+            + "\t\"service_info\":{\n"
+            + "\t\t\"cm2\":{\n"
+            + "\t\t\t\"topo_info\":\"ha3.general.default:1:0:1457961441:100:2400309353:-1:true|ha3.general"
+            + ".para_search_2:1:0:1457961441:100:2400309353:-1:true|ha3.general"
+            + ".para_search_4:1:0:1457961441:100:2400309353:-1:true|\"\n"
+            + "\t\t}\n"
+            + "\t},\n"
+            + "\t\"table_info\":{}\n"
+            + "}";
+
+        TargetInfo targetInfo = TargetInfo.parse(targetStr);
+        String targetToStr = targetInfo.toString();
+        assertEquals(targetStr, targetToStr);
+    }
 }
