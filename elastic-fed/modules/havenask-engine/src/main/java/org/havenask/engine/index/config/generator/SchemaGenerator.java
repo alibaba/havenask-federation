@@ -210,9 +210,7 @@ public class SchemaGenerator {
 
         if (schema.getDupFields().size() > 0) {
             schema.fields.add(new FieldInfo(DUP_ID, "RAW"));
-            schema.getDupFields().forEach((field) -> {
-                schema.fields.add(new FieldInfo(DUP_PREFIX + field, "RAW"));
-            });
+            schema.getDupFields().forEach((field) -> { schema.fields.add(new FieldInfo(DUP_PREFIX + field, "RAW")); });
         }
 
         // missing pre-defined fields

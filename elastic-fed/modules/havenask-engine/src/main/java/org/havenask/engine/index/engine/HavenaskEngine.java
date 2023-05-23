@@ -43,7 +43,6 @@ import org.havenask.common.settings.Settings;
 import org.havenask.engine.HavenaskEngineEnvironment;
 import org.havenask.engine.NativeProcessControlService;
 import org.havenask.engine.index.config.generator.RuntimeSegmentGenerator;
-import org.havenask.engine.index.mapper.DenseVectorFieldMapper.DenseVectorFieldType;
 import org.havenask.engine.index.mapper.VectorField;
 import org.havenask.engine.rpc.HavenaskClient;
 import org.havenask.index.engine.EngineConfig;
@@ -209,14 +208,16 @@ public class HavenaskEngine extends InternalEngine {
             } else if (field.name().equals(SourceFieldMapper.NAME)) {
                 String src = binaryVal.utf8ToString();
                 haDoc.put(field.name(), src);
-            } else if (field instanceof VectorField)  {
-                VectorField vectorField = (VectorField)field;
-                float[] array = (float[])VectorField.readValue(vectorField.binaryValue().bytes);
+            } else if (field instanceof VectorField) {
+                VectorField vectorField = (VectorField) field;
+                float[] array = (float[]) VectorField.readValue(vectorField.binaryValue().bytes);
                 int iMax = array.length - 1;
                 StringBuilder b = new StringBuilder();
-                for (int i = 0; ; i++) {
+                for (int i = 0;; i++) {
                     b.append(array[i]);
-                    if (i == iMax) {break;}
+                    if (i == iMax) {
+                        break;
+                    }
                     b.append(",");
                 }
                 haDoc.put(field.name(), b.toString());
