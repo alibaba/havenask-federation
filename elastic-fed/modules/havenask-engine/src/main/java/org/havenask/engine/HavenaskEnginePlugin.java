@@ -16,6 +16,7 @@ package org.havenask.engine;
 
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -43,6 +44,7 @@ import org.havenask.common.xcontent.NamedXContentRegistry;
 import org.havenask.engine.index.HavenaskIndexEventListener;
 import org.havenask.engine.index.engine.EngineSettings;
 import org.havenask.engine.index.engine.HavenaskEngine;
+import org.havenask.engine.index.mapper.DenseVectorFieldMapper;
 import org.havenask.engine.rpc.HavenaskClient;
 import org.havenask.engine.rpc.http.HavenaskHttpClient;
 import org.havenask.engine.search.action.HavenaskSqlAction;
@@ -56,11 +58,13 @@ import org.havenask.env.NodeEnvironment;
 import org.havenask.index.IndexModule;
 import org.havenask.index.IndexSettings;
 import org.havenask.index.engine.EngineFactory;
+import org.havenask.index.mapper.Mapper;
 import org.havenask.index.shard.IndexMappingProvider;
 import org.havenask.index.shard.IndexSettingProvider;
 import org.havenask.plugins.ActionPlugin;
 import org.havenask.plugins.AnalysisPlugin;
 import org.havenask.plugins.EnginePlugin;
+import org.havenask.plugins.MapperPlugin;
 import org.havenask.plugins.NodeEnvironmentPlugin;
 import org.havenask.plugins.Plugin;
 import org.havenask.plugins.SearchPlugin;
@@ -82,10 +86,12 @@ public class HavenaskEnginePlugin extends Plugin
         AnalysisPlugin,
         ActionPlugin,
         SearchPlugin,
-        NodeEnvironmentPlugin {
+        NodeEnvironmentPlugin,
+        MapperPlugin {
     private static Logger logger = LogManager.getLogger(HavenaskEnginePlugin.class);
     private final SetOnce<HavenaskEngineEnvironment> havenaskEngineEnvironmentSetOnce = new SetOnce<>();
     private final SetOnce<NativeProcessControlService> nativeProcessControlServiceSetOnce = new SetOnce<>();
+    private final SetOnce<CheckTargetService> checkTargetServiceSetOnce = new SetOnce<>();
     private final SetOnce<HavenaskClient> searcherClientSetOnce = new SetOnce<>();
 
     public static final String HAVENASK_THREAD_POOL_NAME = "havenask";
@@ -157,7 +163,14 @@ public class HavenaskEnginePlugin extends Plugin
         nativeProcessControlServiceSetOnce.set(nativeProcessControlService);
         HavenaskClient havenaskClient = new HavenaskHttpClient(nativeProcessControlService.getSearcherHttpPort());
         searcherClientSetOnce.set(havenaskClient);
-        return Arrays.asList(nativeProcessControlServiceSetOnce.get(), havenaskEngineEnvironmentSetOnce.get(), searcherClientSetOnce.get());
+        CheckTargetService checkTargetService = new CheckTargetService(clusterService, threadPool, client, nativeProcessControlService);
+        checkTargetServiceSetOnce.set(checkTargetService);
+        return Arrays.asList(
+            nativeProcessControlServiceSetOnce.get(),
+            havenaskEngineEnvironmentSetOnce.get(),
+            searcherClientSetOnce.get(),
+            checkTargetServiceSetOnce.get()
+        );
     }
 
     @Override
@@ -231,5 +244,10 @@ public class HavenaskEnginePlugin extends Plugin
         if (EngineSettings.isHavenaskEngine(indexModule.getSettings())) {
             indexModule.addIndexEventListener(new HavenaskIndexEventListener(havenaskEngineEnvironmentSetOnce.get()));
         }
+    }
+
+    @Override
+    public Map<String, Mapper.TypeParser> getMappers() {
+        return Collections.singletonMap(DenseVectorFieldMapper.CONTENT_TYPE, new DenseVectorFieldMapper.TypeParser());
     }
 }

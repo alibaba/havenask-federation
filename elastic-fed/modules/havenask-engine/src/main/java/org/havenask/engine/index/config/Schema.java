@@ -34,6 +34,8 @@ public class Schema {
     public String table_name;
     public String table_type = "normal";
 
+    private transient List<String> dupFields = new LinkedList<>();
+
     public transient String rawSchema;
     // origin field process parameters
     // copyTo field will copy the origin field and write the copied ones(such as multiFields, etc.)
@@ -78,18 +80,15 @@ public class Schema {
         public String analyzer;
     }
 
-    public static class Index {
+    public abstract static class Index {
         public String index_name;
         public String index_type;
-        @JSONField(name = "index_fields")
-        public String index_field;
 
         public Index() {}
 
-        public Index(String index_name, String index_type, String index_field) {
+        public Index(String index_name, String index_type) {
             this.index_name = index_name;
             this.index_type = index_type;
-            this.index_field = index_field;
         }
 
         public Integer doc_payload_flag;
@@ -99,7 +98,67 @@ public class Schema {
         public Integer term_frequency_flag;
     }
 
-    public static class PRIMARYKEYIndex extends Index {
+    public static class NormalIndex extends Index {
+        @JSONField(name = "index_fields")
+        public String index_field;
+
+        public NormalIndex() {}
+
+        public NormalIndex(String index_name, String index_type, String index_field) {
+            super(index_name, index_type);
+            this.index_field = index_field;
+        }
+    }
+
+    /**
+     * {
+     * "index_name": "embedding_index",
+     * "index_type":"CUSTOMIZED",
+     * "index_fields":[
+     * {
+     * "boost":1,
+     * "field_name":"DUP_pk"
+     * },
+     * {
+     * "boost":1,
+     * "field_name":"DUP_embedding"
+     * }
+     * ],
+     * "indexer":"aitheta_indexer",
+     * "parameters":{
+     * "use_linear_threshold":"10000",
+     * "build_metric_type":"l2",
+     * "search_metric_type":"ip",
+     * "use_dynamic_params":"1",
+     * "dimension":"1024",
+     * "index_type":"hc"
+     * }
+     * }
+     */
+    public static class VectorIndex extends Index {
+        public String indexer = "aitheta_indexer";
+
+        @JSONField(name = "index_fields")
+        public List<Field> index_fields;
+        public Map<String, String> parameters;
+
+        public VectorIndex(String index_name, List<Field> index_fields, Map<String, String> parameters) {
+            super(index_name, "CUSTOMIZED");
+            this.index_fields = index_fields;
+            this.parameters = parameters;
+        }
+    }
+
+    public static class Field {
+        public int boost = 1;
+        public String field_name;
+
+        public Field(String field_name) {
+            this.field_name = field_name;
+        }
+    }
+
+    public static class PRIMARYKEYIndex extends NormalIndex {
         public PRIMARYKEYIndex() {
             index_type = "PRIMARYKEY64";
         }
@@ -132,6 +191,10 @@ public class Schema {
 
     public boolean hasRawSchema() {
         return !Strings.isNullOrEmpty(rawSchema);
+    }
+
+    public List<String> getDupFields() {
+        return dupFields;
     }
 
     @Override

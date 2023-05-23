@@ -32,8 +32,10 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -47,7 +49,14 @@ import org.havenask.common.io.Streams;
 import org.havenask.common.settings.Settings;
 import org.havenask.engine.index.config.Analyzers;
 import org.havenask.engine.index.config.Schema;
+import org.havenask.engine.index.config.Schema.FieldInfo;
+import org.havenask.engine.index.config.Schema.VectorIndex;
 import org.havenask.engine.index.engine.EngineSettings;
+import org.havenask.engine.index.mapper.DenseVectorFieldMapper.Algorithm;
+import org.havenask.engine.index.mapper.DenseVectorFieldMapper.DenseVectorFieldType;
+import org.havenask.engine.index.mapper.DenseVectorFieldMapper.HCIndexOptions;
+import org.havenask.engine.index.mapper.DenseVectorFieldMapper.HnswIndexOptions;
+import org.havenask.engine.index.mapper.DenseVectorFieldMapper.IndexOptions;
 import org.havenask.index.mapper.IdFieldMapper;
 import org.havenask.index.mapper.MappedFieldType;
 import org.havenask.index.mapper.MapperService;
@@ -73,6 +82,9 @@ public class SchemaGenerator {
         }
     }
 
+    public static final String DUP_ID = "DUP_id";
+    public static final String DUP_PREFIX = "DUP_";
+
     Map<String, String> Ha3FieldType = Map.ofEntries(
         Map.entry("keyword", "STRING"),
         Map.entry("text", "TEXT"),
@@ -89,7 +101,8 @@ public class SchemaGenerator {
         Map.entry("short", "INT16"),
         Map.entry("byte", "INT8"),
         Map.entry("boolean", "STRING"),
-        Map.entry("date", "UINT64")
+        Map.entry("date", "UINT64"),
+        Map.entry("dense_vector", "STRING")
     );
 
     Logger logger = LogManager.getLogger(SchemaGenerator.class);
@@ -130,6 +143,13 @@ public class SchemaGenerator {
                 fieldName = Schema.encodeFieldWithDot(fieldName);
             }
 
+            // deal vector index
+            if (field instanceof DenseVectorFieldType) {
+                DenseVectorFieldType vectorField = (DenseVectorFieldType) field;
+                indexVectorField(vectorField, fieldName, schema, haFieldType);
+                continue;
+            }
+
             addedFields.add(fieldName);
             if (ExcludeFields.contains(fieldName)) {
                 continue;
@@ -163,18 +183,18 @@ public class SchemaGenerator {
                 if (fieldName.equals(IdFieldMapper.NAME)) {
                     index = new Schema.PRIMARYKEYIndex(indexName, fieldName);
                 } else if (field.typeName().equals("date")) {
-                    index = new Schema.Index(indexName, "DATE", fieldName);
+                    index = new Schema.NormalIndex(indexName, "DATE", fieldName);
                 } else if (haFieldType.equals("TEXT")) { // TODO defualt pack index
-                    index = new Schema.Index(indexName, "TEXT", fieldName);
+                    index = new Schema.NormalIndex(indexName, "TEXT", fieldName);
                     indexOptions(index, field.getTextSearchInfo());
                 } else if (haFieldType.equals("STRING")) {
-                    index = new Schema.Index(indexName, "STRING", fieldName);
+                    index = new Schema.NormalIndex(indexName, "STRING", fieldName);
                     indexOptions(index, field.getTextSearchInfo());
                 } else if (haFieldType.equals("INT8")
                     || haFieldType.equals("INT16")
                     || haFieldType.equals("INTEGER")
                     || haFieldType.equals("INT64")) {
-                        index = new Schema.Index(indexName, "NUMBER", fieldName);
+                        index = new Schema.NormalIndex(indexName, "NUMBER", fieldName);
                         indexOptions(index, field.getTextSearchInfo());
                     } else if (haFieldType.equals("DOUBLE") || haFieldType.equals("FLOAT")) {
                         // not support
@@ -186,6 +206,11 @@ public class SchemaGenerator {
 
                 schema.indexs.add(index);
             }
+        }
+
+        if (schema.getDupFields().size() > 0) {
+            schema.fields.add(new FieldInfo(DUP_ID, "RAW"));
+            schema.getDupFields().forEach((field) -> { schema.fields.add(new FieldInfo(DUP_PREFIX + field, "RAW")); });
         }
 
         // missing pre-defined fields
@@ -203,6 +228,89 @@ public class SchemaGenerator {
         }
 
         return schema;
+    }
+
+    private void indexVectorField(DenseVectorFieldType vectorField, String fieldName, Schema schema, String haFieldType) {
+        schema.fields.add(new Schema.FieldInfo(fieldName, haFieldType));
+        String dupFieldName = DUP_PREFIX + fieldName;
+        schema.getDupFields().add(fieldName);
+        List<Schema.Field> indexFields = Arrays.asList(new Schema.Field(DUP_ID), new Schema.Field(dupFieldName));
+        Map<String, String> parameter = new LinkedHashMap<>();
+        parameter.put("dimension", String.valueOf(vectorField.getDims()));
+        parameter.put("build_metric_type", vectorField.getSimilarity().getAlias());
+        parameter.put("search_metric_type", vectorField.getSimilarity().getAlias());
+
+        IndexOptions indexOptions = vectorField.getIndexOptions();
+        if (indexOptions.type == Algorithm.HNSW) {
+            parameter.put("index_type", "graph");
+            parameter.put("proxima.graph.common.graph_type", "hnsw");
+            HnswIndexOptions hnswIndexOptions = (HnswIndexOptions) indexOptions;
+            if (hnswIndexOptions.maxDocCnt != null) {
+                parameter.put("proxima.graph.common.max_doc_cnt", String.valueOf(hnswIndexOptions.maxDocCnt));
+            }
+            if (hnswIndexOptions.maxScanNum != null) {
+                parameter.put("proxima.graph.common.max_scan_num", String.valueOf(hnswIndexOptions.maxScanNum));
+            }
+            if (hnswIndexOptions.memoryQuota != null) {
+                parameter.put("proxima.general.builder.memory_quota", String.valueOf(hnswIndexOptions.memoryQuota));
+            }
+            if (hnswIndexOptions.efConstruction != null) {
+                parameter.put("proxima.hnsw.builder.efconstruction", String.valueOf(hnswIndexOptions.efConstruction));
+            }
+            if (hnswIndexOptions.maxLevel != null) {
+                parameter.put("proxima.hnsw.builder.max_level", String.valueOf(hnswIndexOptions.maxLevel));
+            }
+            if (hnswIndexOptions.scalingFactor != null) {
+                parameter.put("proxima.hnsw.builder.scaling_factor", String.valueOf(hnswIndexOptions.scalingFactor));
+            }
+            if (hnswIndexOptions.upperNeighborCnt != null) {
+                parameter.put("proxima.hnsw.builder.upper_neighbor_cnt", String.valueOf(hnswIndexOptions.upperNeighborCnt));
+            }
+            if (hnswIndexOptions.ef != null) {
+                parameter.put("proxima.hnsw.searcher.ef", String.valueOf(hnswIndexOptions.ef));
+            }
+            if (hnswIndexOptions.maxScanCnt != null) {
+                parameter.put("proxima.hnsw.searcher.max_scan_cnt", String.valueOf(hnswIndexOptions.maxScanCnt));
+            }
+        } else if (indexOptions.type == Algorithm.HC) {
+            parameter.put("index_type", "hc");
+            HCIndexOptions hcIndexOptions = (HCIndexOptions) indexOptions;
+            if (hcIndexOptions.numInLevel1 != null) {
+                parameter.put("proxima.hc.builder.num_in_level_1", String.valueOf(hcIndexOptions.numInLevel1));
+            }
+            if (hcIndexOptions.numInLevel2 != null) {
+                parameter.put("proxima.hc.builder.num_in_level_2", String.valueOf(hcIndexOptions.numInLevel2));
+            }
+            if (hcIndexOptions.leafCentroidNum != null) {
+                parameter.put("proxima.hc.common.leaf_centroid_num", String.valueOf(hcIndexOptions.leafCentroidNum));
+            }
+            if (hcIndexOptions.trainSampleCount != null) {
+                parameter.put("proxima.hc.builder.train_sample_count", String.valueOf(hcIndexOptions.trainSampleCount));
+            }
+            if (hcIndexOptions.trainSampleRatio != null) {
+                parameter.put("proxima.hc.builder.train_sample_ratio", String.valueOf(hcIndexOptions.trainSampleRatio));
+            }
+            if (hcIndexOptions.scanNumInLevel1 != null) {
+                parameter.put("proxima.hc.builder.scan_num_in_level_1", String.valueOf(hcIndexOptions.scanNumInLevel1));
+            }
+            if (hcIndexOptions.scanNumInLevel2 != null) {
+                parameter.put("proxima.hc.builder.scan_num_in_level_2", String.valueOf(hcIndexOptions.scanNumInLevel2));
+            }
+            if (hcIndexOptions.maxScanNum != null) {
+                parameter.put("proxima.hc.searcher.max_scan_num", String.valueOf(hcIndexOptions.maxScanNum));
+            }
+            if (hcIndexOptions.useLinearThreshold != null) {
+                parameter.put("use_linear_threshold", String.valueOf(hcIndexOptions.useLinearThreshold));
+            }
+            if (hcIndexOptions.useDynamicParams != null) {
+                parameter.put("use_dynamic_params", String.valueOf(hcIndexOptions.useDynamicParams));
+            }
+
+        } else {
+            parameter.put("index_type", "linear");
+        }
+        VectorIndex vectorIndex = new Schema.VectorIndex(fieldName, indexFields, parameter);
+        schema.indexs.add(vectorIndex);
     }
 
     // TODO: understand these flags.
@@ -230,8 +338,8 @@ public class SchemaGenerator {
         schema.attributes = List.of("_seq_no", "_id", "_version", "_primary_term");
         schema.summarys.summary_fields = List.of("_routing", "_source", "_id");
         schema.indexs = List.of(
-            new Schema.Index("_routing", "STRING", "_routing"),
-            new Schema.Index("_seq_no", "NUMBER", "_seq_no"),
+            new Schema.NormalIndex("_routing", "STRING", "_routing"),
+            new Schema.NormalIndex("_seq_no", "NUMBER", "_seq_no"),
             new Schema.PRIMARYKEYIndex("_id", "_id")
         );
         schema.fields = List.of(

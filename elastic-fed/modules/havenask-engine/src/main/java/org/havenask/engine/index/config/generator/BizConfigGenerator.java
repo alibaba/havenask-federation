@@ -19,6 +19,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -27,10 +28,12 @@ import org.havenask.common.Nullable;
 import org.havenask.common.settings.Settings;
 import org.havenask.engine.index.config.BizConfig;
 import org.havenask.engine.index.config.DataTable;
+import org.havenask.engine.index.config.Processor.ProcessChain;
 import org.havenask.engine.index.config.Processor.ProcessorChainConfig;
 import org.havenask.engine.index.config.Schema;
 import org.havenask.engine.index.config.ZoneBiz;
 import org.havenask.engine.util.VersionUtils;
+import org.havenask.index.mapper.IdFieldMapper;
 import org.havenask.index.mapper.MapperService;
 
 public class BizConfigGenerator {
@@ -71,9 +74,9 @@ public class BizConfigGenerator {
         long lastVersion = VersionUtils.getMaxVersion(configPath, 0);
         String strVersion = String.valueOf(lastVersion);
         generateClusterConfig(strVersion);
-        generateSchema(strVersion);
+        Schema schema = generateSchema(strVersion);
         generateDefaultBizConfig(strVersion);
-        generateDataTable(strVersion);
+        generateDataTable(schema, strVersion);
     }
 
     public void remove() throws IOException {
@@ -136,7 +139,7 @@ public class BizConfigGenerator {
         );
     }
 
-    private void generateSchema(String version) throws IOException {
+    private Schema generateSchema(String version) throws IOException {
         SchemaGenerator schemaGenerator = new SchemaGenerator();
         Schema schema = schemaGenerator.getSchema(indexName, indexSettings, mapperService);
         Path schemaPath = configPath.resolve(version).resolve(SCHEMAS_DIR).resolve(indexName + SCHEMAS_FILE_SUFFIX);
@@ -146,12 +149,21 @@ public class BizConfigGenerator {
             StandardOpenOption.CREATE,
             StandardOpenOption.TRUNCATE_EXISTING
         );
+        return schema;
     }
 
-    private void generateDataTable(String version) throws IOException {
+    private void generateDataTable(Schema schema, String version) throws IOException {
         DataTable dataTable = new DataTable();
         ProcessorChainConfig processorChainConfig = new ProcessorChainConfig();
         processorChainConfig.clusters = List.of(indexName);
+        if (schema != null && schema.getDupFields().size() > 0) {
+            ProcessChain processChain = new ProcessChain();
+            processChain.class_name = "DupFieldProcessor";
+            processChain.parameters = new HashMap<>();
+            processChain.parameters.put(SchemaGenerator.DUP_ID, IdFieldMapper.NAME);
+            schema.getDupFields().forEach((field) -> { processChain.parameters.put(SchemaGenerator.DUP_PREFIX + field, field); });
+            processorChainConfig.document_processor_chain.add(processChain);
+        }
         dataTable.processor_chain_config = List.of(processorChainConfig);
         Path dataTablePath = configPath.resolve(version).resolve(DATA_TABLES_DIR).resolve(indexName + DATA_TABLES_FILE_SUFFIX);
         Files.write(
