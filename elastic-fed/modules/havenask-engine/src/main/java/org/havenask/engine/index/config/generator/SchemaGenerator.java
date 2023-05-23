@@ -210,7 +210,6 @@ public class SchemaGenerator {
 
         if (schema.getDupFields().size() > 0) {
             schema.fields.add(new FieldInfo(DUP_ID, "RAW"));
-            schema.attributes.add(DUP_ID);
             schema.getDupFields().forEach((field) -> {
                 schema.fields.add(new FieldInfo(DUP_PREFIX + field, "RAW"));
             });
@@ -236,8 +235,6 @@ public class SchemaGenerator {
     private void indexVectorField(DenseVectorFieldType vectorField, String fieldName, Schema schema, String haFieldType) {
         schema.fields.add(new Schema.FieldInfo(fieldName, haFieldType));
         String dupFieldName = DUP_PREFIX + fieldName;
-        schema.attributes.add(fieldName);
-        schema.attributes.add(dupFieldName);
         schema.getDupFields().add(fieldName);
         List<Schema.Field> indexFields = Arrays.asList(new Schema.Field(DUP_ID), new Schema.Field(dupFieldName));
         Map<String, String> parameter = new LinkedHashMap<>();
