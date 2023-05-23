@@ -155,6 +155,8 @@ examples:
         if not os.path.exists(self.configPath):
            defaultConfigPath = sys.path[0] + "/config.tar.gz"
            os.system("mkdir %s && tar -zxvf %s --strip-components 1 -C %s" % (self.configPath, defaultConfigPath, self.configPath))
+           os.system("cp /ha3_install/usr/local/lib64/libaitheta_indexer.so %s/bizs/0/plugins/" % (self.configPath))
+           os.system("cp /ha3_install/usr/local/lib64/libaitheta_indexer.so %s/table/0/plugins/" % (self.configPath))
         if not os.path.exists(self.indexPath):
            defaultIndexPath = sys.path[0] + "/runtimedata.tar.gz"
            os.system("mkdir %s && tar -zxvf %s --strip-components 1 -C %s" % (self.indexPath, defaultIndexPath, self.indexPath))

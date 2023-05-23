@@ -25,7 +25,11 @@ public class Processor {
     public static class ProcessorChainConfig {
         public List<String> clusters = new ArrayList<>();
         public List<Module> modules = new ArrayList<>();
-        public List<ProcessChain> document_processor_chain = List.of(new ProcessChain());
+        public List<ProcessChain> document_processor_chain = new ArrayList<>() {
+            {
+                add(new ProcessChain());
+            }
+        };
     }
 
     public static Processor getEmptyProcessor() {
