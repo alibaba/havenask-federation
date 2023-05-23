@@ -76,7 +76,6 @@ public class Schema {
 
         public String field_name;
         public String field_type;
-        public boolean binary_field;
         public String analyzer;
     }
 
