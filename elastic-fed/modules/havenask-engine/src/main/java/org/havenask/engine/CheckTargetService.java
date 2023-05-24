@@ -117,11 +117,9 @@ public class CheckTargetService extends AbstractLifecycleComponent {
                 return;
             }
 
-            // TODO check cluster state and searcher\qrs target
             ClusterState clusterState = clusterService.state();
 
             if (isDataNode) {
-                // TODO 根据target心跳结果和数据表,判断是否要更新searcher的target
                 try {
                     HeartbeatTargetResponse heartbeatTargetResponse = searcherClient.getHeartbeatTarget();
                     if (heartbeatTargetResponse.getCustomInfo() == null) {
@@ -150,7 +148,6 @@ public class CheckTargetService extends AbstractLifecycleComponent {
                     });
 
                     if (false == searcherTables.equals(havenaskIndices)) {
-                        // logger info
                         LOGGER.info(
                             "havenask searcher heartbeat target is not equal to data node, update searcher target, "
                                 + "searcher tables: {}, data node indices: {}",
@@ -162,7 +159,7 @@ public class CheckTargetService extends AbstractLifecycleComponent {
                         nativeProcessControlService.updateIngestNodeTarget();
                     }
 
-                    // TODO check table status
+                    // TODO 如果有failed的index, searcher正常加载后, shard状态无法恢复成started
                 } catch (Exception e) {
                     LOGGER.warn("havenask check searcher heartbeat target failed", e);
                 }
