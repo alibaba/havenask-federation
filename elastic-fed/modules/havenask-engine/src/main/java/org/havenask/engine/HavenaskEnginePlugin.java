@@ -47,6 +47,7 @@ import org.havenask.engine.index.engine.HavenaskEngine;
 import org.havenask.engine.index.mapper.DenseVectorFieldMapper;
 import org.havenask.engine.rpc.HavenaskClient;
 import org.havenask.engine.rpc.http.HavenaskHttpClient;
+import org.havenask.engine.rpc.http.SearcherHttpClient;
 import org.havenask.engine.search.action.HavenaskSqlAction;
 import org.havenask.engine.search.action.HavenaskSqlClientInfoAction;
 import org.havenask.engine.search.action.TransportHavenaskSqlAction;
@@ -161,9 +162,9 @@ public class HavenaskEnginePlugin extends Plugin
             havenaskEngineEnvironmentSetOnce.get()
         );
         nativeProcessControlServiceSetOnce.set(nativeProcessControlService);
-        HavenaskClient havenaskClient = new HavenaskHttpClient(nativeProcessControlService.getSearcherHttpPort());
+        HavenaskClient havenaskClient = new SearcherHttpClient(nativeProcessControlService.getSearcherHttpPort());
         searcherClientSetOnce.set(havenaskClient);
-        CheckTargetService checkTargetService = new CheckTargetService(clusterService, threadPool, client, nativeProcessControlService);
+        CheckTargetService checkTargetService = new CheckTargetService(clusterService, threadPool, client, nativeProcessControlService, havenaskClient);
         checkTargetServiceSetOnce.set(checkTargetService);
         return Arrays.asList(
             nativeProcessControlServiceSetOnce.get(),
