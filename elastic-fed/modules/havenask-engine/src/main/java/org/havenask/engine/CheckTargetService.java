@@ -129,8 +129,7 @@ public class CheckTargetService extends AbstractLifecycleComponent {
                     Set<String> searcherTables = new HashSet<>(targetInfo.table_info.keySet());
                     searcherTables.remove("in0");
 
-                    RoutingNode localRoutingNode = clusterState.getRoutingNodes().node(
-                        clusterState.nodes().getLocalNodeId());
+                    RoutingNode localRoutingNode = clusterState.getRoutingNodes().node(clusterState.nodes().getLocalNodeId());
                     if (localRoutingNode == null) {
                         return;
                     }
@@ -181,11 +180,9 @@ public class CheckTargetService extends AbstractLifecycleComponent {
                 Map<String, Object> result = sqlInfoResponse.getResult();
                 if (result != null
                     && result.get("default") != null
-                    && ((Map<String, Object>)(result.get("default"))).get("general") != null
-                    && ((Map<String, Object>)((Map<String, Object>)result.get("default")).get("general")).get("tables")
-                    != null) {
-                    Map<String, Object> tables
-                        = (Map<String, Object>)((Map<String, Object>)((Map<String, Object>)result.get("default"))
+                    && ((Map<String, Object>) (result.get("default"))).get("general") != null
+                    && ((Map<String, Object>) ((Map<String, Object>) result.get("default")).get("general")).get("tables") != null) {
+                    Map<String, Object> tables = (Map<String, Object>) ((Map<String, Object>) ((Map<String, Object>) result.get("default"))
                         .get("general")).get("tables");
                     Set<String> tablesSet = tables.keySet()
                         .stream()
@@ -194,8 +191,7 @@ public class CheckTargetService extends AbstractLifecycleComponent {
                     if (false == havenaskIndices.equals(tablesSet)) {
                         // qrs记录的数据表跟元数据不一致, 更新searcher/qrs的target
                         LOGGER.info(
-                            "havenask indices not equal to qrs tables, update target, havenask indices:{}, qrs "
-                                + "tables:{}",
+                            "havenask indices not equal to qrs tables, update target, havenask indices:{}, qrs " + "tables:{}",
                             havenaskIndices,
                             tablesSet
                         );
