@@ -21,8 +21,6 @@ import org.havenask.common.xcontent.ToXContentObject;
 import org.havenask.common.xcontent.XContentBuilder;
 import org.havenask.common.xcontent.XContentParser;
 import org.havenask.common.xcontent.XContentParser.Token;
-import org.havenask.engine.index.config.TargetInfo;
-import org.havenask.engine.index.config.TargetInfo.ServiceInfo;
 
 import static org.havenask.common.xcontent.XContentParserUtils.ensureExpectedToken;
 
@@ -32,10 +30,10 @@ public class HeartbeatTargetResponse implements ToXContentObject {
     private static final ParseField SERVICE_INFO_FIELD = new ParseField("serviceInfo");
 
     private final TargetInfo customInfo;
-    private final ServiceInfo serviceInfo;
-    private final TargetInfo signature;
+    private final String serviceInfo;
+    private final String signature;
 
-    public HeartbeatTargetResponse(TargetInfo customInfo, ServiceInfo serviceInfo, TargetInfo signature) {
+    public HeartbeatTargetResponse(TargetInfo customInfo, String serviceInfo, String signature) {
         this.customInfo = customInfo;
         this.serviceInfo = serviceInfo;
         this.signature = signature;
@@ -45,11 +43,11 @@ public class HeartbeatTargetResponse implements ToXContentObject {
         return customInfo;
     }
 
-    public ServiceInfo getServiceInfo() {
+    public String getServiceInfo() {
         return serviceInfo;
     }
 
-    public TargetInfo getSignature() {
+    public String getSignature() {
         return signature;
     }
 
@@ -58,18 +56,19 @@ public class HeartbeatTargetResponse implements ToXContentObject {
         parser.nextToken();
         String currentFieldName = parser.currentName();
         TargetInfo customInfo = null;
-        ServiceInfo serviceInfo = null;
-        TargetInfo signature = null;
+        String serviceInfo = null;
+        String signature = null;
         for (Token token = parser.nextToken(); token != Token.END_OBJECT; token = parser.nextToken()) {
             if (token == Token.FIELD_NAME) {
                 currentFieldName = parser.currentName();
-            } else if (token == Token.START_OBJECT) {
+            } else if (token == Token.VALUE_STRING) {
                 if (CUSTOM_INFO_FIELD.match(currentFieldName, parser.getDeprecationHandler())) {
-                    customInfo = TargetInfo.fromXContent(parser);
+                    String customInfoStr = parser.text();
+                    customInfo = TargetInfo.parse(customInfoStr);
                 } else if (SERVICE_INFO_FIELD.match(currentFieldName, parser.getDeprecationHandler())) {
-                    serviceInfo = ServiceInfo.fromXContent(parser);
+                    serviceInfo = parser.text();
                 } else if (SIGNATURE_FIELD.match(currentFieldName, parser.getDeprecationHandler())) {
-                    signature = TargetInfo.fromXContent(parser);
+                    signature = parser.text();
                 } else {
                     parser.skipChildren();
                 }
@@ -83,9 +82,15 @@ public class HeartbeatTargetResponse implements ToXContentObject {
     @Override
     public XContentBuilder toXContent(XContentBuilder builder, Params params) throws IOException {
         builder.startObject();
-        builder.field(CUSTOM_INFO_FIELD.getPreferredName(), customInfo);
-        builder.field(SERVICE_INFO_FIELD.getPreferredName(), serviceInfo);
-        builder.field(SIGNATURE_FIELD.getPreferredName(), signature);
+        if (customInfo != null) {
+            builder.field(CUSTOM_INFO_FIELD.getPreferredName(), customInfo.toString());
+        }
+        if (serviceInfo != null) {
+            builder.field(SERVICE_INFO_FIELD.getPreferredName(), serviceInfo);
+        }
+        if (signature != null) {
+            builder.field(SIGNATURE_FIELD.getPreferredName(), signature);
+        }
         builder.endObject();
         return builder;
     }

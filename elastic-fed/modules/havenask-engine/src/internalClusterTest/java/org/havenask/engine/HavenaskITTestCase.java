@@ -26,19 +26,20 @@ import org.junit.Before;
 
 @SuppressForbidden(reason = "use a http server")
 public abstract class HavenaskITTestCase extends HavenaskIntegTestCase {
-    protected HttpServer server;
+    protected HttpServer qrsServer;
+    protected HttpServer searcherServer;
 
     @Before
     public void setup() throws IOException {
-        server = HttpServer.create(new InetSocketAddress(49200), 0);
-        server.createContext("/sql", exchange -> {
+        qrsServer = HttpServer.create(new InetSocketAddress(49200), 0);
+        qrsServer.createContext("/sql", exchange -> {
             exchange.sendResponseHeaders(200, 0);
             String response = "sql result";
             OutputStream os = exchange.getResponseBody();
             os.write(response.getBytes());
             os.close();
         });
-        server.createContext("/sqlClientInfo", exchange -> {
+        qrsServer.createContext("/sqlClientInfo", exchange -> {
             exchange.sendResponseHeaders(200, 0);
             String response;
             if (randomBoolean()) {
@@ -345,15 +346,151 @@ public abstract class HavenaskITTestCase extends HavenaskIntegTestCase {
             os.write(response.getBytes());
             os.close();
         });
-        server.start();
+        qrsServer.createContext("/HeartbeatService/heartbeat", exchange -> {
+            exchange.sendResponseHeaders(200, 0);
+            String response = "{\n"
+                + "\"customInfo\":\n"
+                + "  \"{\\n\\\"app_info\\\":\\n  {\\n  \\\"config_path\\\":\\n    \\\"\\\",\\n  "
+                + "\\\"keep_count\\\":\\n    20\\n  },\\n\\\"biz_info\\\":\\n  {\\n  \\\"default\\\":\\n    {\\n    "
+                + "\\\"config_path\\\":\\n      \\\"\\\\\\/usr\\\\\\/share\\\\\\/havenask\\\\\\/data_havenask"
+                + "\\\\\\/config\\\\\\/bizs\\\\\\/0\\\",\\n    \\\"custom_biz_info\\\":\\n      {\\n      },\\n    "
+                + "\\\"keep_count\\\":\\n      5\\n    }\\n  },\\n\\\"custom_app_info\\\":\\n  {\\n  },"
+                + "\\n\\\"service_info\\\":\\n  {\\n  \\\"cm2\\\":\\n    {\\n    \\\"topo_info\\\":\\n      \\\"ha3"
+                + ".general.default:1:0:1457961441:100:2400309353:-1:true|ha3.general"
+                + ".para_search_2:1:0:1457961441:100:2400309353:-1:true|ha3.general"
+                + ".para_search_4:1:0:1457961441:100:2400309353:-1:true|\\\"\\n    }\\n  },\\n\\\"table_info\\\":\\n "
+                + " {\\n  }\\n}\",\n"
+                + "\"serviceInfo\":\n"
+                + "  \"{\\n\\\"cm2\\\":\\n  {\\n  \\\"topo_info\\\":\\n    \\\"ha3.general"
+                + ".default:1:0:1457961441:100:2400309353:-1:true|ha3.general"
+                + ".para_search_2:1:0:1457961441:100:2400309353:-1:true|ha3.general"
+                + ".para_search_4:1:0:1457961441:100:2400309353:-1:true|\\\"\\n  }\\n}\",\n"
+                + "\"signature\":\n"
+                + "  \"{\\\"table_info\\\": {}, \\\"biz_info\\\": {\\\"default\\\": {\\\"config_path\\\": "
+                + "\\\"\\/usr\\/share\\/havenask\\/data_havenask\\/config\\/bizs\\/0\\\"}}, \\\"service_info\\\": "
+                + "{\\\"zone_name\\\": \\\"qrs\\\", \\\"cm2_config\\\": {\\\"local\\\": [{\\\"part_count\\\": 1, "
+                + "\\\"biz_name\\\": \\\"general.default\\\", \\\"ip\\\": \\\"172.17.0.2\\\", \\\"version\\\": "
+                + "553898268, \\\"part_id\\\": 0, \\\"tcp_port\\\": 39300}, {\\\"part_count\\\": 1, \\\"biz_name\\\":"
+                + " \\\"general.para_search_4\\\", \\\"ip\\\": \\\"172.17.0.2\\\", \\\"version\\\": 553898268, "
+                + "\\\"part_id\\\": 0, \\\"tcp_port\\\": 39300}, {\\\"part_count\\\": 1, \\\"biz_name\\\": "
+                + "\\\"general.default_sql\\\", \\\"ip\\\": \\\"172.17.0.2\\\", \\\"version\\\": 553898268, "
+                + "\\\"part_id\\\": 0, \\\"tcp_port\\\": 39300}, {\\\"part_count\\\": 1, \\\"biz_name\\\": "
+                + "\\\"general.para_search_2\\\", \\\"ip\\\": \\\"172.17.0.2\\\", \\\"version\\\": 553898268, "
+                + "\\\"part_id\\\": 0, \\\"tcp_port\\\": 39300}, {\\\"part_count\\\": 1, \\\"biz_name\\\": "
+                + "\\\"general.default_agg\\\", \\\"ip\\\": \\\"172.17.0.2\\\", \\\"version\\\": 553898268, "
+                + "\\\"part_id\\\": 0, \\\"tcp_port\\\": 39300}]}, \\\"part_id\\\": 0, \\\"part_count\\\": 0}, "
+                + "\\\"clean_disk\\\": false}\"\n"
+                + "}";
+            OutputStream os = exchange.getResponseBody();
+            os.write(response.getBytes());
+            os.close();
+        });
+        qrsServer.start();
+
+        searcherServer = HttpServer.create(new InetSocketAddress(39200), 0);
+        searcherServer.createContext("/HeartbeatService/heartbeat", exchange -> {
+            exchange.sendResponseHeaders(200, 0);
+            String response = "{\n"
+                + "\"customInfo\":\n"
+                + "  \"{\\n\\\"app_info\\\":\\n  {\\n  \\\"config_path\\\":\\n    \\\"\\\",\\n  "
+                + "\\\"keep_count\\\":\\n    20\\n  },\\n\\\"biz_info\\\":\\n  {\\n  \\\"default\\\":\\n    {\\n    "
+                + "\\\"config_path\\\":\\n      \\\"\\\\\\/usr\\\\\\/share\\\\\\/havenask\\\\\\/data_havenask"
+                + "\\\\\\/config\\\\\\/bizs\\\\\\/0\\\",\\n    \\\"custom_biz_info\\\":\\n      {\\n      },\\n    "
+                + "\\\"keep_count\\\":\\n      5\\n    }\\n  },\\n\\\"custom_app_info\\\":\\n  {\\n  },"
+                + "\\n\\\"service_info\\\":\\n  {\\n  \\\"cm2\\\":\\n    {\\n    \\\"topo_info\\\":\\n      "
+                + "\\\"general.default:1:0:553898268:100:2400309353:-1:true|general"
+                + ".default_agg:1:0:553898268:100:2400309353:-1:true|general"
+                + ".default_sql:1:0:553898268:100:2400309353:-1:true|general"
+                + ".para_search_2:1:0:553898268:100:2400309353:-1:true|general"
+                + ".para_search_4:1:0:553898268:100:2400309353:-1:true|\\\"\\n    }\\n  },\\n\\\"table_info\\\":\\n  "
+                + "{\\n  \\\"in0\\\":\\n    {\\n    \\\"0\\\":\\n      {\\n      \\\"config_path\\\":\\n        "
+                + "\\\"\\\\\\/usr\\\\\\/share\\\\\\/havenask\\\\\\/data_havenask\\\\\\/config\\\\\\/table\\\\\\/0"
+                + "\\\",\\n      \\\"force_online\\\":\\n        false,\\n      \\\"group_name\\\":\\n        "
+                + "\\\"default_group_name\\\",\\n      \\\"index_root\\\":\\n        "
+                + "\\\"\\\\\\/usr\\\\\\/share\\\\\\/havenask\\\\\\/data_havenask\\\\\\/local_search_12000"
+                + "\\\\\\/general_0\\\\\\/runtimedata\\\",\\n      \\\"partitions\\\":\\n        {\\n        "
+                + "\\\"0_65535\\\":\\n          {\\n          \\\"check_index_path\\\":\\n            \\\"\\\",\\n   "
+                + "       \\\"deploy_status\\\":\\n            2,\\n          \\\"deploy_status_map\\\":\\n          "
+                + "  [\\n              [\\n                1,\\n                {\\n                "
+                + "\\\"deploy_status\\\":\\n                  2,\\n                \\\"local_config_path\\\":\\n     "
+                + "             \\\"\\\\\\/usr\\\\\\/share\\\\\\/havenask\\\\\\/data_havenask"
+                + "\\\\\\/local_search_12000\\\\\\/general_0\\\\\\/zone_config\\\\\\/table\\\\\\/in0\\\\\\/0"
+                + "\\\\\\/\\\"\\n                }\\n              ]\\n            ],\\n          "
+                + "\\\"inc_version\\\":\\n            1,\\n          \\\"keep_count\\\":\\n            1,\\n         "
+                + " \\\"loaded_config_path\\\":\\n            "
+                + "\\\"\\\\\\/usr\\\\\\/share\\\\\\/havenask\\\\\\/data_havenask\\\\\\/config\\\\\\/table\\\\\\/0"
+                + "\\\",\\n          \\\"loaded_index_root\\\":\\n            "
+                + "\\\"\\\\\\/usr\\\\\\/share\\\\\\/havenask\\\\\\/data_havenask\\\\\\/local_search_12000"
+                + "\\\\\\/general_0\\\\\\/runtimedata\\\",\\n          \\\"local_index_path\\\":\\n            "
+                + "\\\"\\\\\\/usr\\\\\\/share\\\\\\/havenask\\\\\\/data_havenask\\\\\\/local_search_12000"
+                + "\\\\\\/general_0\\\\\\/runtimedata\\\\\\/in0\\\\\\/generation_0\\\\\\/partition_0_65535\\\",\\n   "
+                + "       \\\"rt_status\\\":\\n            0,\\n          \\\"schema_version\\\":\\n            0,\\n"
+                + "          \\\"table_load_type\\\":\\n            0,\\n          \\\"table_status\\\":\\n          "
+                + "  6,\\n          \\\"table_type\\\":\\n            0\\n          }\\n        },\\n      "
+                + "\\\"raw_index_root\\\":\\n        \\\"\\\",\\n      \\\"rt_status\\\":\\n        0,\\n      "
+                + "\\\"timestamp_to_skip\\\":\\n        -1\\n      }\\n    },\\n  \\\"test_ha\\\":\\n    {\\n    "
+                + "\\\"0\\\":\\n      {\\n      \\\"config_path\\\":\\n        "
+                + "\\\"\\\\\\/usr\\\\\\/share\\\\\\/havenask\\\\\\/data_havenask\\\\\\/config\\\\\\/table\\\\\\/0"
+                + "\\\",\\n      \\\"force_online\\\":\\n        false,\\n      \\\"group_name\\\":\\n        "
+                + "\\\"default_group_name\\\",\\n      \\\"index_root\\\":\\n        "
+                + "\\\"\\\\\\/usr\\\\\\/share\\\\\\/havenask\\\\\\/data_havenask\\\\\\/local_search_12000"
+                + "\\\\\\/general_0\\\\\\/runtimedata\\\",\\n      \\\"partitions\\\":\\n        {\\n        "
+                + "\\\"0_65535\\\":\\n          {\\n          \\\"check_index_path\\\":\\n            \\\"\\\",\\n   "
+                + "       \\\"deploy_status\\\":\\n            2,\\n          \\\"deploy_status_map\\\":\\n          "
+                + "  [\\n              [\\n                0,\\n                {\\n                "
+                + "\\\"deploy_status\\\":\\n                  2,\\n                \\\"local_config_path\\\":\\n     "
+                + "             \\\"\\\\\\/usr\\\\\\/share\\\\\\/havenask\\\\\\/data_havenask"
+                + "\\\\\\/local_search_12000\\\\\\/general_0\\\\\\/zone_config\\\\\\/table\\\\\\/test_ha\\\\\\/0"
+                + "\\\\\\/\\\"\\n                }\\n              ]\\n            ],\\n          "
+                + "\\\"inc_version\\\":\\n            0,\\n          \\\"keep_count\\\":\\n            1,\\n         "
+                + " \\\"loaded_config_path\\\":\\n            "
+                + "\\\"\\\\\\/usr\\\\\\/share\\\\\\/havenask\\\\\\/data_havenask\\\\\\/config\\\\\\/table\\\\\\/0"
+                + "\\\",\\n          \\\"loaded_index_root\\\":\\n            "
+                + "\\\"\\\\\\/usr\\\\\\/share\\\\\\/havenask\\\\\\/data_havenask\\\\\\/local_search_12000"
+                + "\\\\\\/general_0\\\\\\/runtimedata\\\",\\n          \\\"local_index_path\\\":\\n            "
+                + "\\\"\\\\\\/usr\\\\\\/share\\\\\\/havenask\\\\\\/data_havenask\\\\\\/local_search_12000"
+                + "\\\\\\/general_0\\\\\\/runtimedata\\\\\\/test_ha\\\\\\/generation_0\\\\\\/partition_0_65535\\\","
+                + "\\n          \\\"rt_status\\\":\\n            0,\\n          \\\"schema_version\\\":\\n           "
+                + " 0,\\n          \\\"table_load_type\\\":\\n            0,\\n          \\\"table_status\\\":\\n    "
+                + "        6,\\n          \\\"table_type\\\":\\n            0\\n          }\\n        },\\n      "
+                + "\\\"raw_index_root\\\":\\n        \\\"\\\",\\n      \\\"rt_status\\\":\\n        0,\\n      "
+                + "\\\"timestamp_to_skip\\\":\\n        -1\\n      }\\n    }\\n  }\\n}\",\n"
+                + "\"serviceInfo\":\n"
+                + "  \"{\\n\\\"cm2\\\":\\n  {\\n  \\\"topo_info\\\":\\n    \\\"general"
+                + ".default:1:0:553898268:100:2400309353:-1:true|general"
+                + ".default_agg:1:0:553898268:100:2400309353:-1:true|general"
+                + ".default_sql:1:0:553898268:100:2400309353:-1:true|general"
+                + ".para_search_2:1:0:553898268:100:2400309353:-1:true|general"
+                + ".para_search_4:1:0:553898268:100:2400309353:-1:true|\\\"\\n  }\\n}\",\n"
+                + "\"signature\":\n"
+                + "  \"{\\\"table_info\\\": {\\\"in0\\\": {\\\"0\\\": {\\\"index_root\\\": "
+                + "\\\"\\/usr\\/share\\/havenask\\/data_havenask\\/local_search_12000\\/general_0\\/runtimedata\\\", "
+                + "\\\"partitions\\\": {\\\"0_65535\\\": {\\\"inc_version\\\": 1}}, \\\"config_path\\\": "
+                + "\\\"\\/usr\\/share\\/havenask\\/data_havenask\\/config\\/table\\/0\\\"}}, \\\"test_ha\\\": "
+                + "{\\\"0\\\": {\\\"index_root\\\": "
+                + "\\\"\\/usr\\/share\\/havenask\\/data_havenask\\/local_search_12000\\/general_0\\/runtimedata\\\", "
+                + "\\\"partitions\\\": {\\\"0_65535\\\": {\\\"inc_version\\\": 0}}, \\\"config_path\\\": "
+                + "\\\"\\/usr\\/share\\/havenask\\/data_havenask\\/config\\/table\\/0\\\"}}}, \\\"biz_info\\\": "
+                + "{\\\"default\\\": {\\\"config_path\\\": "
+                + "\\\"\\/usr\\/share\\/havenask\\/data_havenask\\/config\\/bizs\\/0\\\"}}, \\\"service_info\\\": "
+                + "{\\\"zone_name\\\": \\\"general\\\", \\\"version\\\": 0, \\\"part_count\\\": 1, \\\"part_id\\\": "
+                + "0}, \\\"clean_disk\\\": false}\"\n"
+                + "}";
+            OutputStream os = exchange.getResponseBody();
+            os.write(response.getBytes());
+            os.close();
+        });
+        searcherServer.start();
     }
 
     @After
     public void tearDown() throws Exception {
         super.tearDown();
-        server.removeContext("/sql");
-        server.removeContext("/sqlClientInfo");
-        server.stop(0);
+        qrsServer.removeContext("/sql");
+        qrsServer.removeContext("/sqlClientInfo");
+        qrsServer.stop(0);
+        searcherServer.removeContext("/HeartbeatService/heartbeat");
+        searcherServer.stop(0);
     }
 
 }

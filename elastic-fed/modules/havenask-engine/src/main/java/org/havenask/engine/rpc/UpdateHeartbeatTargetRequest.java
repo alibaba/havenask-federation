@@ -20,7 +20,6 @@ import org.havenask.common.ParseField;
 import org.havenask.common.collect.Map;
 import org.havenask.common.xcontent.ToXContentObject;
 import org.havenask.common.xcontent.XContentBuilder;
-import org.havenask.engine.index.config.TargetInfo;
 
 public class UpdateHeartbeatTargetRequest implements ToXContentObject {
 
@@ -37,9 +36,9 @@ public class UpdateHeartbeatTargetRequest implements ToXContentObject {
     @Override
     public XContentBuilder toXContent(XContentBuilder builder, Params params) throws IOException {
         builder.startObject();
-        builder.field(SIGNATURE_FIELD.getPreferredName(), targetInfo);
-        builder.field(CUSTOM_INFO_FIELD.getPreferredName(), targetInfo);
-        builder.field(GLOBAL_CUSTOM_INFO_FIELD.getPreferredName(), Map.of(CUSTOM_INFO_FIELD.getPreferredName(), targetInfo));
+        builder.field(SIGNATURE_FIELD.getPreferredName(), targetInfo.toString());
+        builder.field(CUSTOM_INFO_FIELD.getPreferredName(), targetInfo.toString());
+        builder.field(GLOBAL_CUSTOM_INFO_FIELD.getPreferredName(), Map.of(CUSTOM_INFO_FIELD.getPreferredName(), targetInfo.toString()));
         builder.endObject();
         return builder;
     }
