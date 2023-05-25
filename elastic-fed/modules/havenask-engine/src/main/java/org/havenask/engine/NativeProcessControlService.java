@@ -374,7 +374,7 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
         return qrsHttpPort;
     }
 
-    public synchronized void startBsJob(String indexName, String realtimeInfo) {
+    public void startBsJob(String indexName, String realtimeInfo) {
         if (isDataNode) {
             // 启动bs job
             final String finalStartBsJobCommand = startBsJobCommand + " " + indexName + " '" + realtimeInfo + "'";
@@ -382,7 +382,7 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
         }
     }
 
-    public synchronized void startBsJob(String indexName) {
+    public void startBsJob(String indexName) {
         if (isDataNode) {
             // 启动bs job
             final String finalStartBsJobCommand = startBsJobCommand + " " + indexName;
