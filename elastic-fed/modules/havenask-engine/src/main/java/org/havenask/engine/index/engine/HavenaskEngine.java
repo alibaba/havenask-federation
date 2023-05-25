@@ -173,19 +173,33 @@ public class HavenaskEngine extends InternalEngine {
     }
 
     private void checkTableStatus() throws IOException {
-        try {
-            HeartbeatTargetResponse heartbeatTargetResponse = havenaskClient.getHeartbeatTarget();
-            if (heartbeatTargetResponse.getCustomInfo() == null) {
-                throw new IOException("havenask get heartbeat target failed");
-            }
-            TargetInfo targetInfo = heartbeatTargetResponse.getCustomInfo();
-            if (false == targetInfo.table_info.containsKey(shardId.getIndexName())) {
-                throw new IOException("havenask table not found");
-            }
+        long timeout = 300000;
+        while (timeout > 0) {
+            try {
+                HeartbeatTargetResponse heartbeatTargetResponse = havenaskClient.getHeartbeatTarget();
+                if (heartbeatTargetResponse.getCustomInfo() == null) {
+                    throw new IOException("havenask get heartbeat target failed");
+                }
+                TargetInfo targetInfo = heartbeatTargetResponse.getCustomInfo();
+                if (false == targetInfo.table_info.containsKey(shardId.getIndexName())) {
+                    throw new IOException("havenask table not found");
+                }
 
-            // TODO check table status
-        } catch (Exception e) {
-            throw new IOException("havenask check table status failed", e);
+                // TODO check table status
+                return;
+            } catch (Exception e) {
+                logger.error(() -> new ParameterizedMessage("shard [{}] checkTableStatus exception", engineConfig.getShardId()), e);
+                timeout -= 5000;
+                try {
+                    Thread.sleep(5000);
+                } catch (InterruptedException interruptedException) {
+                    Thread.currentThread().interrupt();
+                }
+            }
+        }
+
+        if (timeout <= 0) {
+            throw new IOException("shard [" + engineConfig.getShardId() + "] check havenask table status timeout");
         }
     }
 
