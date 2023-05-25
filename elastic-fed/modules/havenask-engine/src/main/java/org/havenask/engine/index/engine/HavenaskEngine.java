@@ -188,7 +188,7 @@ public class HavenaskEngine extends InternalEngine {
                 // TODO check table status
                 return;
             } catch (Exception e) {
-                logger.error(() -> new ParameterizedMessage("shard [{}] checkTableStatus exception", engineConfig.getShardId()), e);
+                logger.info(() -> new ParameterizedMessage("shard [{}] checkTableStatus exception", engineConfig.getShardId()), e);
                 timeout -= 5000;
                 try {
                     Thread.sleep(5000);
