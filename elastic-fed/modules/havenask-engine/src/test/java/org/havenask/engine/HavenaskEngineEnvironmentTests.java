@@ -36,6 +36,7 @@ import org.havenask.test.HavenaskTestCase;
 import static org.havenask.discovery.DiscoveryModule.SINGLE_NODE_DISCOVERY_TYPE;
 import static org.havenask.engine.index.config.generator.BizConfigGenerator.BIZ_DIR;
 import static org.havenask.engine.index.config.generator.BizConfigGenerator.DEFAULT_BIZ_CONFIG;
+import static org.havenask.engine.index.config.generator.BizConfigGenerator.DEFAULT_DIR;
 import static org.havenask.engine.index.config.generator.TableConfigGenerator.TABLE_DIR;
 
 public class HavenaskEngineEnvironmentTests extends HavenaskTestCase {
@@ -57,11 +58,11 @@ public class HavenaskEngineEnvironmentTests extends HavenaskTestCase {
         Path configPath = workDir.resolve(HavenaskEngineEnvironment.DEFAULT_DATA_PATH)
             .resolve(HavenaskEngineEnvironment.HAVENASK_CONFIG_PATH);
         Files.createDirectories(configPath.resolve(TABLE_DIR).resolve("0"));
-        Files.createDirectories(configPath.resolve(BIZ_DIR).resolve("0"));
-        Files.createDirectories(configPath.resolve(BIZ_DIR).resolve("0").resolve("zones").resolve("general"));
+        Files.createDirectories(configPath.resolve(BIZ_DIR).resolve(DEFAULT_DIR).resolve("0"));
+        Files.createDirectories(configPath.resolve(BIZ_DIR).resolve(DEFAULT_DIR).resolve("0").resolve("zones").resolve("general"));
         ZoneBiz zoneBiz = new ZoneBiz();
         Files.write(
-            configPath.resolve(BIZ_DIR).resolve("0").resolve(DEFAULT_BIZ_CONFIG),
+            configPath.resolve(BIZ_DIR).resolve(DEFAULT_DIR).resolve("0").resolve(DEFAULT_BIZ_CONFIG),
             zoneBiz.toString().getBytes(StandardCharsets.UTF_8),
             StandardOpenOption.CREATE
         );
