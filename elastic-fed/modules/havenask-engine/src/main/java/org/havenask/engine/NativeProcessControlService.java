@@ -43,9 +43,11 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
     public static final String SEARCHER_ROLE = "searcher";
     public static final String QRS_ROLE = "qrs";
     private static final String START_SEARCHER_COMMAND = "cd %s;python %s/havenask/command/general_search_starter.py -i "
-        + "%s -c %s -b /ha3_install -T in0 -p 30468,30480 --role searcher --httpBindPort %d --arpcBindPort %d --grpcBindPort 39400 >> search.log 2>> search.error.log";
+        + "%s -c %s -b /ha3_install -T in0 -p 30468,30480 --role searcher --httpBindPort %d --arpcBindPort %d "
+        + "--grpcBindPort %d >> search.log 2>> search.error.log";
     private static final String START_QRS_COMMAND = "cd %s;python %s/havenask/command/general_search_starter.py -i "
-        + "%s -c %s -b /ha3_install -T in0 -p 30468,30480 --role qrs --httpBindPort %d --arpcBindPort %d >> qrs.log 2>> qrs.error.log";
+        + "%s -c %s -b /ha3_install -T in0 -p 30468,30480 --role qrs --httpBindPort %d --arpcBindPort %d >> qrs.log "
+        + "2>> qrs.error.log";
     private static final String UPDATE_SEARCHER_COMMAND = "cd %s;python %s/havenask/command/general_search_updater.py -i "
         + "%s -c %s -T in0 -p 30468,30480 --role searcher >> search.log 2>> search.error.log";
     private static final String UPDATE_QRS_COMMAND = "cd %s;python %s/havenask/command/general_search_updater.py -i "
@@ -67,6 +69,12 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
     public static final Setting<Integer> HAVENASK_SEARCHER_TCP_PORT_SETTING = Setting.intSetting(
         "havenask.searcher.tcp.port",
         39300,
+        Property.NodeScope,
+        Property.Final
+    );
+    public static final Setting<Integer> HAVENASK_SEARCHER_GRPC_PORT_SETTING = Setting.intSetting(
+        "havenask.searcher.grpc.port",
+        39400,
         Property.NodeScope,
         Property.Final
     );
@@ -103,6 +111,7 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
     private final HavenaskEngineEnvironment havenaskEngineEnvironment;
     private final int searcherHttpPort;
     private final int searcherTcpPort;
+    private final int searcherGrpcPort;
     private final int qrsHttpPort;
     private final int qrsTcpPort;
     private TimeValue commandTimeout;
@@ -135,6 +144,7 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
         havenaskEngineEnvironment.setNativeProcessControlService(this);
         this.searcherHttpPort = HAVENASK_SEARCHER_HTTP_PORT_SETTING.get(settings);
         this.searcherTcpPort = HAVENASK_SEARCHER_TCP_PORT_SETTING.get(settings);
+        this.searcherGrpcPort = HAVENASK_SEARCHER_GRPC_PORT_SETTING.get(settings);
         this.qrsHttpPort = HAVENASK_QRS_HTTP_PORT_SETTING.get(settings);
         this.qrsTcpPort = HAVENASK_QRS_TCP_PORT_SETTING.get(settings);
         this.startSearcherCommand = String.format(
@@ -145,7 +155,8 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
             havenaskEngineEnvironment.getRuntimedataPath(),
             havenaskEngineEnvironment.getConfigPath(),
             searcherHttpPort,
-            searcherTcpPort
+            searcherTcpPort,
+            searcherGrpcPort
         );
         this.updateSearcherCommand = String.format(
             Locale.ROOT,

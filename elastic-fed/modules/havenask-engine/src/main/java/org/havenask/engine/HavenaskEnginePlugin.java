@@ -193,6 +193,7 @@ public class HavenaskEnginePlugin extends Plugin
             NativeProcessControlService.HAVENASK_COMMAND_TIMEOUT_SETTING,
             NativeProcessControlService.HAVENASK_SEARCHER_HTTP_PORT_SETTING,
             NativeProcessControlService.HAVENASK_SEARCHER_TCP_PORT_SETTING,
+            NativeProcessControlService.HAVENASK_SEARCHER_GRPC_PORT_SETTING,
             NativeProcessControlService.HAVENASK_QRS_HTTP_PORT_SETTING,
             NativeProcessControlService.HAVENASK_QRS_TCP_PORT_SETTING
         );
