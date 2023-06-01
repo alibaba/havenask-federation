@@ -12,7 +12,7 @@ if __name__ == '__main__':
         print "Usage: python start_bs_job.py config_path data_path work_path runtime_path index_name"
         sys.exit(1)
     config_path = sys.argv[1]
-    data_path = sys.argv[2]
+    data_path = sys.argv[2] + "/empty.data"
     work_path = sys.argv[3]
     runtime_path = sys.argv[4]
     index_name = sys.argv[5]
