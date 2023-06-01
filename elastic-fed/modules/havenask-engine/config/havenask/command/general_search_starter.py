@@ -114,6 +114,7 @@ examples:
         self.parser.add_option('-p', '--port', action='store', dest='portList')
         self.parser.add_option('', '--httpBindPort', dest='httpBindPort', type='int', default=0)
         self.parser.add_option('', '--arpcBindPort', dest='arpcBindPort', type='int', default=0)
+        self.parser.add_option('', '--grpcBindPort', dest='grpcBindPort', type='int', default=0)
 
         self.parser.add_option('-z', '--zone', action='store', dest='zoneName')
         self.parser.add_option('-j', '--tables', action='store', dest='atables')
@@ -253,6 +254,7 @@ examples:
 
         self.httpBindPort = options.httpBindPort
         self.arpcBindPort = options.arpcBindPort
+        self.grpcBindPort = options.grpcBindPort
         self.portList = []
         self.origin_port_list = map(lambda x:int(x), options.portList.split(","))
         self.searcher_port_list = []
@@ -307,7 +309,7 @@ examples:
             self.startCmdTemplate += " ENABLE_PUBLISH_TABLE_TOPO_INFO=true"
 
         self.startCmdTemplate += " HIPPO_APP_INST_ROOT=" + self.binaryPath + " HIPPO_APP_WORKDIR=" + os.getcwd() + " TJ_RUNTIME_TEMP_DIR=" + self.binaryPath
-        self.startCmdTemplate += " PATH=$JAVA_HOME/bin:%s LD_LIBRARY_PATH=%s  sap_server_d -l %s -r %s -c %s --port arpc:%d --port http:%d --env httpPort=%d --env gigGrpcPort=0 --env serviceName=%s --env amonitorPath=%s/%s --env roleType=%s --env port=%d --env ip=%s --env userName=admin --env decodeUri=true --env haCompatible=true --env zoneName=%s --env roleName=%s_partition_%d --env partId=0 --env decisionLoopInterval=10000 --env dpThreadNum=1 --env loadThreadNum=4 --env load_biz_thread_num=4 --env kmonitorNormalSamplePeriod=1 --env naviPoolModeAsan=1 --env naviDisablePerf=1 --env WORKER_IDENTIFIER_FOR_CARBON= "
+        self.startCmdTemplate += " PATH=$JAVA_HOME/bin:%s LD_LIBRARY_PATH=%s  sap_server_d -l %s -r %s -c %s --port arpc:%d --port http:%d --env httpPort=%d --env gigGrpcPort=%d --env serviceName=%s --env amonitorPath=%s/%s --env roleType=%s --env port=%d --env ip=%s --env userName=admin --env decodeUri=true --env haCompatible=true --env zoneName=%s --env roleName=%s_partition_%d --env partId=0 --env decisionLoopInterval=10000 --env dpThreadNum=1 --env loadThreadNum=4 --env load_biz_thread_num=4 --env kmonitorNormalSamplePeriod=1 --env naviPoolModeAsan=1 --env naviDisablePerf=1 --env WORKER_IDENTIFIER_FOR_CARBON= "
         if self.localBizService:
             self.startCmdTemplate += " --env localBizService=true"
         self.alogConfigPath = os.path.join(self.binaryPath, "usr/local/etc/ha3/ha3_alog.conf")
@@ -781,7 +783,7 @@ examples:
         os.system("cp %s %s" % (self.qrsCfg, targetCfg))
         startCmd = self.startCmdTemplate % (self.binPath, self.libPath, self.alogConfigPath,
                                             self.binaryPath, targetCfg, self.arpcBindPort, 0,
-                                            self.httpBindPort, self.serviceName, self.amonPath,
+                                            self.httpBindPort, self.grpcBindPort, self.serviceName, self.amonPath,
                                             zoneName, "qrs", self.arpcBindPort, self.ip, zoneName, zoneName, partId)
         if self.qrsQueue :
             startCmd += " --env extraTaskQueues=" + self.qrsQueue
@@ -885,7 +887,7 @@ examples:
                 # override tags['zone'], tags['role'], tags['host']
                 kmonServiceName = self.serviceName + '@zone^{}@role^{}@host^{}'.format(zoneName, partId, roleName)
             startCmd = self.startCmdTemplate % (self.binPath, self.libPath, self.alogConfigPath,
-                                                self.binaryPath, targetCfg, self.arpcBindPort, 0, self.httpBindPort, kmonServiceName, self.amonPath,
+                                                self.binaryPath, targetCfg, self.arpcBindPort, 0, self.httpBindPort, self.grpcBindPort, kmonServiceName, self.amonPath,
                                                 zoneName, "searcher", self.arpcBindPort, self.ip, zoneName, zoneName, partId )
             if self.searcherQueue :
                 startCmd += " --env extraTaskQueues=" + self.searcherQueue

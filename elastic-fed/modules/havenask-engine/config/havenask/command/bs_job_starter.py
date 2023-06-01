@@ -25,7 +25,7 @@ if __name__ == '__main__':
     if os.path.exists(final_work_path):
         os.system("rm -rf %s" % final_work_path)
     os.system("mkdir -p %s" % final_work_path)
-    cmd = "/ha3_install/usr/local/bin/bs startjob -c %s/bizs -n %s -j local -m full -d %s -w %s -i %s -p 1 --documentformat=ha3" % (config_path, index_name, data_path, final_work_path, runtime_path)
+    cmd = "/ha3_install/usr/local/bin/bs startjob -c %s/table -n %s -j local -m full -d %s -w %s -i %s -p 1 --documentformat=ha3" % (config_path, index_name, data_path, final_work_path, runtime_path)
     if realtimeInfo:
         cmd += " --realtimeInfo='%s'" % realtimeInfo
 
