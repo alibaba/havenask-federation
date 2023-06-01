@@ -25,7 +25,7 @@ public class BizConfig {
     public OfflineIndexConfig offline_index_config = new OfflineIndexConfig();
     public boolean direct_write = true;
     public WalConfig wal_config = new WalConfig();
-    public boolean realtime = false;
+    public boolean realtime = true;
 
     public static class WalConfig {
         public int timeout_ms = 10000;
