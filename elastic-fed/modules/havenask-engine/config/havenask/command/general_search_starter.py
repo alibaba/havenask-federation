@@ -1126,6 +1126,8 @@ examples:
 
                     has_offline_index = True
                     has_realtime = False
+                    if tableName != "in0" :
+                        has_realtime = True
                     if tabletInfos.has_key(tableName):
                         has_offline_index = tabletInfos[tableName]['has_offline_index']
                         has_realtime = True
