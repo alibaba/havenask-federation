@@ -131,6 +131,7 @@ public class BizConfigGenerator {
         BizConfig bizConfig = new BizConfig();
         bizConfig.cluster_config.cluster_name = indexName;
         bizConfig.cluster_config.table_name = indexName;
+        bizConfig.wal_config.sink.queue_name = indexName;
         Path clusterConfigPath = configPath.resolve(version).resolve(CLUSTER_DIR).resolve(indexName + CLUSTER_FILE_SUFFIX);
         Files.write(
             clusterConfigPath,
