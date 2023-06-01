@@ -45,6 +45,8 @@ import org.havenask.engine.NativeProcessControlService;
 import org.havenask.engine.index.config.generator.RuntimeSegmentGenerator;
 import org.havenask.engine.index.mapper.VectorField;
 import org.havenask.engine.rpc.HavenaskClient;
+import org.havenask.engine.rpc.HeartbeatTargetResponse;
+import org.havenask.engine.rpc.TargetInfo;
 import org.havenask.index.engine.EngineConfig;
 import org.havenask.index.engine.EngineException;
 import org.havenask.index.engine.InternalEngine;
@@ -95,6 +97,7 @@ public class HavenaskEngine extends InternalEngine {
         // 加载配置表
         try {
             activeTable();
+            checkTableStatus();
         } catch (IOException e) {
             logger.error(() -> new ParameterizedMessage("shard [{}] activeTable exception", engineConfig.getShardId()), e);
             failEngine("active havenask table failed", e);
@@ -167,6 +170,37 @@ public class HavenaskEngine extends InternalEngine {
         // 更新配置表信息
         nativeProcessControlService.updateDataNodeTarget();
         nativeProcessControlService.updateIngestNodeTarget();
+    }
+
+    private void checkTableStatus() throws IOException {
+        long timeout = 300000;
+        while (timeout > 0) {
+            try {
+                HeartbeatTargetResponse heartbeatTargetResponse = havenaskClient.getHeartbeatTarget();
+                if (heartbeatTargetResponse.getCustomInfo() == null) {
+                    throw new IOException("havenask get heartbeat target failed");
+                }
+                TargetInfo targetInfo = heartbeatTargetResponse.getCustomInfo();
+                if (false == targetInfo.table_info.containsKey(shardId.getIndexName())) {
+                    throw new IOException("havenask table not found");
+                }
+
+                // TODO check table status
+                return;
+            } catch (Exception e) {
+                logger.info(() -> new ParameterizedMessage("shard [{}] checkTableStatus exception", engineConfig.getShardId()), e);
+                timeout -= 5000;
+                try {
+                    Thread.sleep(5000);
+                } catch (InterruptedException interruptedException) {
+                    Thread.currentThread().interrupt();
+                }
+            }
+        }
+
+        if (timeout <= 0) {
+            throw new IOException("shard [" + engineConfig.getShardId() + "] check havenask table status timeout");
+        }
     }
 
     /**

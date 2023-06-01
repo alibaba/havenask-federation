@@ -34,7 +34,7 @@ public class VersionUtils {
                 .map(Long::valueOf)
                 .max(Long::compare)
                 .orElse(defaultVersion);
-            logger.info("path[{}] get max version: {}", path, maxVersion);
+            logger.debug("path[{}] get max version: {}", path, maxVersion);
             return maxVersion;
         }
     }

@@ -27,6 +27,7 @@ public class TargetInfo {
     public CustomAppInfo custom_app_info;
     public ServiceInfo service_info;
     public Map<String, Map<String, TableInfo>> table_info;
+    public Boolean clean_disk;
 
     public static class AppInfo {
         public String config_path;

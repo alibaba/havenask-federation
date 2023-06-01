@@ -26,12 +26,17 @@ import org.havenask.client.Client;
 import org.havenask.cluster.ClusterState;
 import org.havenask.cluster.metadata.IndexMetadata;
 import org.havenask.cluster.node.DiscoveryNode;
+import org.havenask.cluster.routing.RoutingNode;
+import org.havenask.cluster.routing.ShardRouting;
 import org.havenask.cluster.service.ClusterService;
 import org.havenask.common.component.AbstractLifecycleComponent;
 import org.havenask.common.settings.Settings;
 import org.havenask.common.unit.TimeValue;
 import org.havenask.common.util.concurrent.AbstractAsyncTask;
 import org.havenask.engine.index.engine.EngineSettings;
+import org.havenask.engine.rpc.HavenaskClient;
+import org.havenask.engine.rpc.HeartbeatTargetResponse;
+import org.havenask.engine.rpc.TargetInfo;
 import org.havenask.engine.search.action.HavenaskSqlClientInfoAction;
 import org.havenask.threadpool.ThreadPool;
 
@@ -45,6 +50,7 @@ public class CheckTargetService extends AbstractLifecycleComponent {
     private final ThreadPool threadPool;
     private final Client client;
     private final NativeProcessControlService nativeProcessControlService;
+    private final HavenaskClient searcherClient;
     private final boolean enabled;
     private final boolean isDataNode;
     private final boolean isIngestNode;
@@ -56,12 +62,14 @@ public class CheckTargetService extends AbstractLifecycleComponent {
         ClusterService clusterService,
         ThreadPool threadPool,
         Client client,
-        NativeProcessControlService nativeProcessControlService
+        NativeProcessControlService nativeProcessControlService,
+        HavenaskClient searcherClient
     ) {
         this.clusterService = clusterService;
         this.threadPool = threadPool;
         this.client = client;
         this.nativeProcessControlService = nativeProcessControlService;
+        this.searcherClient = searcherClient;
 
         Settings settings = clusterService.getSettings();
         isDataNode = DiscoveryNode.isDataNode(settings);
@@ -109,11 +117,51 @@ public class CheckTargetService extends AbstractLifecycleComponent {
                 return;
             }
 
-            // TODO check cluster state and searcher\qrs target
             ClusterState clusterState = clusterService.state();
 
             if (isDataNode) {
-                // TODO 根据target心跳结果和数据表,判断是否要更新searcher的target
+                try {
+                    HeartbeatTargetResponse heartbeatTargetResponse = searcherClient.getHeartbeatTarget();
+                    if (heartbeatTargetResponse.getCustomInfo() == null) {
+                        throw new IOException("havenask get heartbeat target failed");
+                    }
+                    TargetInfo targetInfo = heartbeatTargetResponse.getCustomInfo();
+                    Set<String> searcherTables = new HashSet<>(targetInfo.table_info.keySet());
+                    searcherTables.remove("in0");
+
+                    RoutingNode localRoutingNode = clusterState.getRoutingNodes().node(clusterState.nodes().getLocalNodeId());
+                    if (localRoutingNode == null) {
+                        return;
+                    }
+                    Set<String> indices = new HashSet<>();
+                    for (ShardRouting shardRouting : localRoutingNode) {
+                        indices.add(shardRouting.getIndexName());
+                    }
+
+                    Set<String> havenaskIndices = new HashSet<>();
+                    indices.forEach((index) -> {
+                        IndexMetadata indexMetadata = clusterState.metadata().index(index);
+                        if (EngineSettings.isHavenaskEngine(indexMetadata.getSettings())) {
+                            havenaskIndices.add(index);
+                        }
+                    });
+
+                    if (false == searcherTables.equals(havenaskIndices)) {
+                        LOGGER.info(
+                            "havenask searcher heartbeat target is not equal to data node, update searcher target, "
+                                + "searcher tables: {}, data node indices: {}",
+                            searcherTables,
+                            havenaskIndices
+                        );
+
+                        nativeProcessControlService.updateDataNodeTarget();
+                        nativeProcessControlService.updateIngestNodeTarget();
+                    }
+
+                    // TODO 如果有failed的index, searcher正常加载后, shard状态无法恢复成started
+                } catch (Exception e) {
+                    LOGGER.warn("havenask check searcher heartbeat target failed", e);
+                }
             }
 
             if (isIngestNode) {
@@ -143,7 +191,7 @@ public class CheckTargetService extends AbstractLifecycleComponent {
                     if (false == havenaskIndices.equals(tablesSet)) {
                         // qrs记录的数据表跟元数据不一致, 更新searcher/qrs的target
                         LOGGER.info(
-                            "havenask indices not equal to qrs tables, update target, havenask indices:{}, qrs tables:{}",
+                            "havenask indices not equal to qrs tables, update target, havenask indices:{}, qrs " + "tables:{}",
                             havenaskIndices,
                             tablesSet
                         );
