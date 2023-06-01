@@ -1105,9 +1105,7 @@ examples:
                 "tables" : []
             }
             tableGroupTables = {}
-            atables = [self.mainTableName]
-            if self.atableList.has_key(zoneName):
-                atables = self.atableList[zoneName].split(",")
+            atables = os.listdir(self.indexPath)
             zoneGid = self._getMaxGenerationId(self.indexPath, self.mainTableName)
             partitions = self._getPartitions(self.indexPath, self.mainTableName, zoneGid)
             fullPartition = "0_65535"
