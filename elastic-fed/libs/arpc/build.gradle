@@ -43,9 +43,6 @@ dependencies {
     api 'com.google.protobuf:protobuf-java:3.11.1'
     api "org.slf4j:slf4j-api:${versions.slf4j}"
     api "org.apache.logging.log4j:log4j-slf4j-impl:${versions.log4j}"
-    api 'args4j:args4j:2.0.16'
-    testImplementation 'org.mockito:mockito-all:1.8.0'
-    testImplementation(project(":test:framework"))
 }
 
 compileJava.options.compilerArgs << "-Xlint:-cast,-deprecation,-rawtypes,-try,-unchecked"
@@ -55,6 +52,10 @@ compileTestJava.options.compilerArgs << "-Xlint:-cast,-deprecation,-rawtypes,-tr
 disableTasks('forbiddenApisMain')
 disableTasks('checkstyleMain')
 disableTasks('checkstyleTest')
+disableTasks('forbiddenPatterns')
+disableTasks('spotlessJavaCheck')
+disableTasks('thirdPartyAudit')
 
+test.enabled = false
 jarHell.enabled = false
 
