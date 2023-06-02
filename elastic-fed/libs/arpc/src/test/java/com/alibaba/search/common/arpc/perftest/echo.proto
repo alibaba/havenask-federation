@@ -1,0 +1,20 @@
+import "arpc/proto/rpc_extensions.proto";
+package arpc;
+
+option java_package="com.alibaba.search.common.arpc.perftest";
+option java_generic_services = true;
+
+message Request {
+	required string request = 1;
+}
+
+message Response {
+	required string response = 1;
+}
+
+service EchoService {
+	option (arpc.global_service_id) = 43633;
+	rpc Echo(Request) returns(Response) {
+	option (arpc.local_method_id) = 52762;
+	}
+}
