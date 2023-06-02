@@ -822,17 +822,16 @@ examples:
             startCmd += " --env enableLocalCatalog=true"
         if self.onlySql:
             startCmd += " --env onlySql=true"
-        if (self.tabletInfos):
-            if self.mode:
-                startCmd += " --env mode=" + self.mode
-            if self.zkRoot:
-                startCmd += " --env zk_root=" + self.zkRoot
-            if self.leaderElectionStrategyType:
-                startCmd += " --env leader_election_strategy_type=" + self.leaderElectionStrategyType
-            if self.leaderElectionConfig:
-                startCmd += " --env leader_election_config=" + "'" + self.leaderElectionConfig + "'"
-            if self.versionSyncConfig:
-                startCmd += " --env version_sync_config=" + "'" + self.versionSyncConfig + "'"
+        if self.mode:
+            startCmd += " --env mode=" + self.mode
+        if self.zkRoot:
+            startCmd += " --env zk_root=" + self.zkRoot
+        if self.leaderElectionStrategyType:
+            startCmd += " --env leader_election_strategy_type=" + self.leaderElectionStrategyType
+        if self.leaderElectionConfig:
+            startCmd += " --env leader_election_config=" + "'" + self.leaderElectionConfig + "'"
+        if self.versionSyncConfig:
+            startCmd += " --env version_sync_config=" + "'" + self.versionSyncConfig + "'"
 
         startCmd += ' -d -n 1>>%s 2>>%s ' % (os.path.join(self.localSearchDir, "qrs.stdout.out"), os.path.join(self.localSearchDir, "qrs.stderr.out"))
         os.chdir(rundir)
@@ -918,17 +917,16 @@ examples:
                 startCmd += " --env disableSql=true"
             if self.onlySql:
                 startCmd += " --env onlySql=true"
-            if (self.tabletInfos):
-                if self.mode:
-                    startCmd += " --env mode=" + self.mode
-                if self.zkRoot:
-                    startCmd += " --env zk_root=" + self.zkRoot
-                if self.leaderElectionStrategyType:
-                    startCmd += " --env leader_election_strategy_type=" + self.leaderElectionStrategyType
-                if self.leaderElectionConfig:
-                    startCmd += " --env leader_election_config=" + "'" + self.leaderElectionConfig + "'"
-                if self.versionSyncConfig:
-                    startCmd += " --env version_sync_config=" + "'" + self.versionSyncConfig + "'"
+            if self.mode:
+                startCmd += " --env mode=" + self.mode
+            if self.zkRoot:
+                startCmd += " --env zk_root=" + self.zkRoot
+            if self.leaderElectionStrategyType:
+                startCmd += " --env leader_election_strategy_type=" + self.leaderElectionStrategyType
+            if self.leaderElectionConfig:
+                startCmd += " --env leader_election_config=" + "'" + self.leaderElectionConfig + "'"
+            if self.versionSyncConfig:
+                startCmd += " --env version_sync_config=" + "'" + self.versionSyncConfig + "'"
             startCmd += ' -d -n 1>>%s 2>>%s ' % (os.path.join(self.localSearchDir, "{}.stdout.out".format(roleName)), os.path.join(self.localSearchDir, "{}.stderr.out".format(roleName)))
             os.chdir(rundir)
             print "start searcher cmd: %s"% startCmd

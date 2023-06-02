@@ -479,7 +479,7 @@ public abstract class Engine implements Closeable {
             return operationType;
         }
 
-        void setTranslogLocation(Translog.Location translogLocation) {
+        public void setTranslogLocation(Translog.Location translogLocation) {
             if (freeze.get() == null) {
                 this.translogLocation = translogLocation;
             } else {

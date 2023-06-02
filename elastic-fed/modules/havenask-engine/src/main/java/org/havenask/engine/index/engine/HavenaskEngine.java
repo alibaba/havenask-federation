@@ -38,8 +38,6 @@ import org.apache.logging.log4j.message.ParameterizedMessage;
 import org.apache.lucene.index.IndexableField;
 import org.apache.lucene.util.BytesRef;
 import org.havenask.HavenaskException;
-import org.havenask.action.delete.DeleteRequest;
-import org.havenask.action.index.IndexRequest;
 import org.havenask.common.Nullable;
 import org.havenask.common.settings.Settings;
 import org.havenask.engine.HavenaskEngineEnvironment;
@@ -61,6 +59,7 @@ import org.havenask.index.mapper.ParsedDocument;
 import org.havenask.index.mapper.SourceFieldMapper;
 import org.havenask.index.mapper.Uid;
 import org.havenask.index.shard.ShardId;
+import org.havenask.index.translog.Translog;
 
 public class HavenaskEngine extends InternalEngine {
 
@@ -339,12 +338,15 @@ public class HavenaskEngine extends InternalEngine {
             WriteRequest writeRequest = buildWriteRequest(shardId.getIndexName(), index.id(), index.operationType(), haDoc);
             // TODO
             WriteResponse writeResponse = searcherClient.write(writeRequest);
-            return new IndexResult(index.version(), index.primaryTerm(), index.seqNo(), true);
+            IndexResult indexResult = new IndexResult(index.version(), index.primaryTerm(), index.seqNo(), true);
+            final Translog.Location location = translog.add(new Translog.Index(index, indexResult));
+            indexResult.setTranslogLocation(location);
+            return indexResult;
         }
     }
 
     @Override
-    public DeleteResult delete(Delete delete) {
+    public DeleteResult delete(Delete delete) throws IOException {
         Map<String, String> haDoc = new HashMap<>();
         haDoc.put(IdFieldMapper.NAME, delete.id());
         if (false == realTimeEnable) {
@@ -359,7 +361,11 @@ public class HavenaskEngine extends InternalEngine {
             WriteRequest writeRequest = buildWriteRequest(shardId.getIndexName(), delete.id(), delete.operationType(), haDoc);
             // TODO
             WriteResponse writeResponse = searcherClient.write(writeRequest);
-            return new DeleteResult(delete.version(), delete.primaryTerm(), delete.seqNo(), true);
+
+            DeleteResult deleteResult = new DeleteResult(delete.version(), delete.primaryTerm(), delete.seqNo(), true);
+            final Translog.Location location = translog.add(new Translog.Delete(delete, deleteResult));
+            deleteResult.setTranslogLocation(location);
+            return deleteResult;
         }
     }
 
