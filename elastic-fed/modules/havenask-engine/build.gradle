@@ -148,6 +148,16 @@ internalClusterTest {
   systemProperty 'tests.security.manager', 'false'
 }
 
+tasks.named("processResources") {
+  duplicatesStrategy = 'include'
+}
+
+tasks.named("sourcesJar") {
+  duplicatesStrategy = 'include'
+}
+
+tasks.named("javadoc").configure { enabled = false }
+
 sourceSets {
   main {
     proto {
