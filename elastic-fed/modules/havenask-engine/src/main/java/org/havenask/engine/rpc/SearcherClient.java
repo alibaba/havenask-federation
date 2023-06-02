@@ -14,4 +14,6 @@
 
 package org.havenask.engine.rpc;
 
-public interface SearcherClient extends HavenaskClient {}
+public interface SearcherClient extends HavenaskClient {
+    WriteResponse write(WriteRequest request);
+}

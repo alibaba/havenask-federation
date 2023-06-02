@@ -12,19 +12,28 @@
  *
  */
 
-package org.havenask.engine.rpc.http;
+package org.havenask.engine.rpc;
 
-import org.havenask.engine.rpc.SearcherClient;
-import org.havenask.engine.rpc.WriteRequest;
-import org.havenask.engine.rpc.WriteResponse;
+public class WriteRequest {
+    private String table;
+    private int hashid;
+    private String source;
 
-public class SearcherHttpClient extends HavenaskHttpClient implements SearcherClient {
-    public SearcherHttpClient(int port) {
-        super(port);
+    public WriteRequest(String table, int hashid, String source) {
+        this.table = table;
+        this.hashid = hashid;
+        this.source = source;
     }
 
-    @Override
-    public WriteResponse write(WriteRequest request) {
-        throw new UnsupportedOperationException("Not implemented yet");
+    public String getTable() {
+        return table;
+    }
+
+    public int getHashid() {
+        return hashid;
+    }
+
+    public String getSource() {
+        return source;
     }
 }
