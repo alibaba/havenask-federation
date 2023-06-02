@@ -46,6 +46,8 @@ import org.havenask.engine.index.engine.EngineSettings;
 import org.havenask.engine.index.engine.HavenaskEngine;
 import org.havenask.engine.index.mapper.DenseVectorFieldMapper;
 import org.havenask.engine.rpc.HavenaskClient;
+import org.havenask.engine.rpc.SearcherClient;
+import org.havenask.engine.rpc.arpc.SearcherArpcClient;
 import org.havenask.engine.rpc.http.SearcherHttpClient;
 import org.havenask.engine.search.action.HavenaskSqlAction;
 import org.havenask.engine.search.action.HavenaskSqlClientInfoAction;
@@ -93,6 +95,7 @@ public class HavenaskEnginePlugin extends Plugin
     private final SetOnce<NativeProcessControlService> nativeProcessControlServiceSetOnce = new SetOnce<>();
     private final SetOnce<CheckTargetService> checkTargetServiceSetOnce = new SetOnce<>();
     private final SetOnce<HavenaskClient> searcherClientSetOnce = new SetOnce<>();
+    private final SetOnce<SearcherClient> searcherArpcClientSetOnce = new SetOnce<>();
 
     public static final String HAVENASK_THREAD_POOL_NAME = "havenask";
     public static final Setting<Boolean> HAVENASK_ENGINE_ENABLED_SETTING = Setting.boolSetting(
@@ -130,6 +133,7 @@ public class HavenaskEnginePlugin extends Plugin
                 engineConfig -> new HavenaskEngine(
                     engineConfig,
                     searcherClientSetOnce.get(),
+                    searcherArpcClientSetOnce.get(),
                     havenaskEngineEnvironmentSetOnce.get(),
                     nativeProcessControlServiceSetOnce.get()
                 )
@@ -162,7 +166,9 @@ public class HavenaskEnginePlugin extends Plugin
         );
         nativeProcessControlServiceSetOnce.set(nativeProcessControlService);
         HavenaskClient havenaskClient = new SearcherHttpClient(nativeProcessControlService.getSearcherHttpPort());
+        SearcherClient searcherClient = new SearcherArpcClient(nativeProcessControlService.getSearcherTcpPort());
         searcherClientSetOnce.set(havenaskClient);
+        searcherArpcClientSetOnce.set(searcherClient);
         CheckTargetService checkTargetService = new CheckTargetService(
             clusterService,
             threadPool,

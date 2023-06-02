@@ -379,6 +379,13 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
     }
 
     /**
+     * @return searcher启动的tcp port
+     */
+    public int getSearcherTcpPort() {
+        return searcherTcpPort;
+    }
+
+    /**
      * @return qrs启动的http port
      */
     public int getQrsHttpPort() {
