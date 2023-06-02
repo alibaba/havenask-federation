@@ -23,7 +23,19 @@ public class BizConfig {
     public BuildOptionConfig build_option_config = new BuildOptionConfig();
     public ClusterConfig cluster_config = new ClusterConfig();
     public OfflineIndexConfig offline_index_config = new OfflineIndexConfig();
-    public boolean realtime = false;
+    public boolean direct_write = true;
+    public WalConfig wal_config = new WalConfig();
+    //public boolean realtime = true;
+
+    public static class WalConfig {
+        public int timeout_ms = 10000;
+        public SinkConfig sink = new SinkConfig();
+        public String strategy = "queue";
+    }
+
+    public static class SinkConfig {
+        public String queue_name;
+    }
 
     public static class BuildOptionConfig {
         public boolean async_build = true;

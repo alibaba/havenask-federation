@@ -13,8 +13,32 @@ import time
 import socket
 import shutil
 import httplib
+import errno
 from datetime import datetime
-import json
+from itertools import product
+
+class TimeoutTerminator:
+    def __init__(self, timeout):
+        self.timeout = timeout;
+        self.start = time.time()
+        self.due = self.start + timeout;
+
+    def left_time(self):
+        return self.due - time.time()
+
+    def is_timeout(self):
+        return self.left_time() <= 0
+
+    def raw_timeout(self):
+        return self.timeout
+
+    def start_str(self):
+        return datetime.utcfromtimestamp(self.start).strftime('%Y-%m-%d %H:%M:%S.%f')
+
+class PortListItem:
+    def __init__(self):
+        self.ports = None
+        self.role = None
 
 class GeneralSearchStartCmd(object):
     '''
@@ -31,7 +55,8 @@ local_search_starter.py
     {-S disable_sql         | --disableSql=sql_flag}
     {-W disable_sql_warmup  | --disableSqlWarmup=sql_warmup_flag}
     {-m multi_biz           | --multiBiz=multi_biz}
-
+    {-M model_biz           | --modelBiz=model_biz}
+    {-L local_biz_service   | --localBizService=localBizService}
 options:
     -i index_dir,     --index=index_dir              : required, index dir
     -c config_dir,    --config=config_dir            : required, config path,
@@ -42,16 +67,32 @@ options:
     -t timeout,       --timeout=timeout              : optional, special timeout load [defalut 300]
     -l preload,       --preload=preload              : optional, special lib to load
     -s serviceName,   --serviceName=serviceName      : optional, serviceName [default ha3_suez_local_search]
-    -a amonPort,      --amonPort=amonPort            : optional, amon port [default 10086]
+    -a amonPath,      --amonPath=amonPath            : optional, amon path [default ha3_suez_local_search]
     -g agg_name,      --aggName=aggName              : optional, aggName [default default_agg_4]
     --basicTuringBizNames=names                      : optional, common turing biz names, example [biz1,biz2]
+    --tabletInfos=tabletInfos                        : optional, tabletInfos [default empty str]
     --basicTuringPrefix=prefix                       : optional, common turing request http prefix, example [/common]
     -w para_search_ways, --paraSearchWays=paraSearchWays  : optional, paraSearchWays [default 2,4]
     -S disable_sql,   --disableSql=true              : optional, disableSql [default false]
     -W disable_sql_warmup, --disableSqlWarmup=true   : optional, disableSqlWarmup [default false]
     -d dailyrun mode, --dailyrunMode=true            : optional, enable dailyrun mode
     -m multi_biz,        --multiBiz=multiBiz         : optional, enable multi_biz
-
+    -M model_biz,        --modelBiz=modelBiz         : optional, modelBiz list
+    -L local_biz_service, --localBizService=localBizService : optional, [defalut false]
+    --enableMultiPartition                           : optional, enableMultiPartition [default false]
+    --enableLocalAccess                              : optional, enableLocalAccess [default false]
+    --onlySql                                        : optional, onlySql [default false]
+    --enableLocalCatalog                             : optional, enableLocalCatalog [default false]
+    --enableUpdateCatalog                            : optional, enableUpdateCatalog [default false]
+    --zk_root                                        : optional, zk_root for leader election [default LOCAL]
+    --mode                                           : optional, mode for table direct write
+    --leader_election_strategy_type                  : optional, leader election type
+    --leader_election_config                         : optional, leader election config
+    --version_sync_config                            : optional, version sync config
+    --disableCodeGen                                 : optional, disable indexlib codegen
+    --disableTurbojet                                : optional, disable turbojet
+    --searcherLocalSubscribe                         : optional, searcher will subscribe each other
+    --enablePublishTableTopoInfo                     : optional, searcher will publish topo info by table
 examples:
     ./local_search_starter.py -i /path/to/index -c path/to/config
     ./local_search_starter.py -i /path/to/index -c path/to/config -p 12345
@@ -66,23 +107,25 @@ examples:
         print self.__doc__ % {'prog' : sys.argv[0]}
 
     def addOptions(self):
-        self.parser.add_option('-M', '--mainTableName', action='store', dest='mainTableName')
+        self.parser.add_option('-T', '--mainTableName', action='store', dest='mainTableName')
         self.parser.add_option('-r', '--role', action='store', dest='role', default="all")
         self.parser.add_option('-i', '--index', action='store', dest='indexPath')
         self.parser.add_option('-c', '--config', action='store', dest='configPath')
         self.parser.add_option('-p', '--port', action='store', dest='portList')
         self.parser.add_option('', '--httpBindPort', dest='httpBindPort', type='int', default=0)
         self.parser.add_option('', '--arpcBindPort', dest='arpcBindPort', type='int', default=0)
+        self.parser.add_option('', '--grpcBindPort', dest='grpcBindPort', type='int', default=0)
 
         self.parser.add_option('-z', '--zone', action='store', dest='zoneName')
         self.parser.add_option('-j', '--tables', action='store', dest='atables')
         self.parser.add_option('-b', '--binary', action='store', dest='binaryPath')
         self.parser.add_option('-t', '--timeout', action='store', dest='timeout',type='int', default=300)
-        self.parser.add_option('-l', '--preload', action='store', dest='preload')
+        self.parser.add_option('-l', '--preload', action='store', dest='preload', default = '')
         self.parser.add_option('-s', '--serviceName', action='store', dest='serviceName', default="ha3_suez_local_search")
-        self.parser.add_option('-a', '--amonPort', action='store', dest='amonPort',type='int', default=10086)
+        self.parser.add_option('-a', '--amonPath', action='store', dest='amonPath', default="ha3_suez_local_search")
         self.parser.add_option('-g', '--aggName', action='store', dest='aggName')
         self.parser.add_option('', '--basicTuringBizNames', action='store', dest='basicTuringBizNames')
+        self.parser.add_option('', '--tabletInfos', action='store', dest='tabletInfos')
         self.parser.add_option('', '--basicTuringPrefix', action='store', dest='basicTuringPrefix')
         self.parser.add_option('-w', '--paraSearchWays', action='store', dest='paraSearchWays')
         self.parser.add_option('-S', '--disableSql', action='store_true', dest='disableSql', default=False)
@@ -91,14 +134,34 @@ examples:
         self.parser.add_option('', '--searcherExtraQueue', action='store', dest='searcherQueue')
         self.parser.add_option('', '--searcherThreadNum', action='store', dest='searcherThreadNum', type='int')
         self.parser.add_option('', '--searcherQueueSize', action='store', dest='searcherQueueSize', type='int')
+        self.parser.add_option('', '--naviThreadNum', action='store', dest='naviThreadNum', type='int')
+        self.parser.add_option('', '--threadNumScaleFactor', action='store', dest='threadNumScaleFactor', type='float')
         self.parser.add_option('', '--qrsThreadNum', action='store', dest='qrsThreadNum', type='int')
         self.parser.add_option('', '--qrsQueueSize', action='store', dest='qrsQueueSize', type='int')
         self.parser.add_option('-d', '--dailyrunMode', action='store_true', dest='dailyrunMode', default=False)
-        self.parser.add_option('-m', '--multiBiz', action='store', dest='multiBiz')
+        self.parser.add_option('', '--enableMultiPartition', action='store_true', dest='enableMultiPartition', default=False)
+        self.parser.add_option('', '--enableLocalAccess', action='store_true', dest='enableLocalAccess', default=False)
+        self.parser.add_option('', '--onlySql', action='store_true', dest='onlySql', default=False)
+        self.parser.add_option('', '--enableLocalCatalog', action='store_true', dest='enableLocalCatalog', default=False)
+        self.parser.add_option('', '--enableUpdateCatalog', action='store_true', dest='enableUpdateCatalog', default=False)
+        self.parser.add_option('-m', '--multiBiz', action='store_true', dest='multiBiz')
+        self.parser.add_option('-M', '--modelBiz', action='store', dest='modelBiz', default='')
+        self.parser.add_option('-L', '--localBizService', action='store_true', dest='localBizService')
         # https://yuque.alibaba-inc.com/lhubic/wuhf65/aecyg6
         self.parser.add_option('', '--kmonSinkAddress', action='store', dest='kmonSinkAddress',
-                               default='127.0.0.1')
+                               default='11.163.219.136')
         self.parser.add_option('', '--specialCatalogList', action='store', dest='specialCatalogList')
+        self.parser.add_option('', '--zk_root', action='store', dest='zkRoot', default='LOCAL')
+        self.parser.add_option('', '--mode', action='store', dest='mode', default='rw')
+        self.parser.add_option('', '--leader_election_strategy_type', action='store', dest='leaderElectionStrategyType')
+        self.parser.add_option('', '--leader_election_config', action='store', dest='leaderElectionConfig')
+        self.parser.add_option('', '--version_sync_config', action='store', dest='versionSyncConfig')
+        self.parser.add_option('', '--searcherReplica', type=int, dest='searcherReplica', default=1)
+        self.parser.add_option('', '--disableCodeGen', action='store_true', dest='disableCodeGen', default=False)
+        self.parser.add_option('', '--disableTurbojet', action='store_true', dest='disableTurbojet', default=False)
+        self.parser.add_option('', '--searcherSubscribeConfig', action='store', dest='searcherSubscribeConfig', )
+        self.parser.add_option('', '--searcherLocalSubscribe', action='store_true', dest='searcherLocalSubscribe', default=False)
+        self.parser.add_option('', '--enablePublishTableTopoInfo', action='store_true', dest='enablePublishTableTopoInfo', default=False)
 
     def parseParams(self, optionList):
         self.optionList = optionList
@@ -126,6 +189,7 @@ examples:
         return True
 
     def initMember(self, options):
+        self.searcherReplica = options.searcherReplica
         self.workdir = os.getcwd()
         self.mainTableName = options.mainTableName
         self.role = options.role
@@ -134,18 +198,37 @@ examples:
         self.qrsThreadNum = options.qrsThreadNum
         self.qrsQueueSize = options.qrsQueueSize
         self.searcherThreadNum = options.searcherThreadNum
+        self.naviThreadNum = options.naviThreadNum
         self.searcherQueueSize = options.searcherQueueSize
+        self.threadNumScaleFactor = options.threadNumScaleFactor
         self.indexPath = options.indexPath
         self.aggName = options.aggName
         self.basicTuringBizNames = options.basicTuringBizNames
+        self.tabletInfos = options.tabletInfos
         self.basicTuringPrefix = options.basicTuringPrefix
         self.paraSearchWays = options.paraSearchWays
         self.disableSql = options.disableSql
         self.disableSqlWarmup = options.disableSqlWarmup
+        self.enableMultiPartition = options.enableMultiPartition
+        self.enableLocalAccess = options.enableLocalAccess
+        self.onlySql = options.onlySql
+        self.enableLocalCatalog = options.enableLocalCatalog
+        self.enableUpdateCatalog = options.enableUpdateCatalog
         self.dailyrunMode = options.dailyrunMode
         self.multiBiz = options.multiBiz
+        self.modelBiz = set(options.modelBiz.split(','))
+        self.localBizService = options.localBizService
         self.kmonSinkAddress = options.kmonSinkAddress
         self.specialCatalogList = options.specialCatalogList
+        self.zkRoot = options.zkRoot
+        self.mode = options.mode
+        self.leaderElectionStrategyType = options.leaderElectionStrategyType
+        self.leaderElectionConfig = options.leaderElectionConfig
+        self.versionSyncConfig = options.versionSyncConfig
+        self.disableCodeGen = options.disableCodeGen
+        self.disableTurbojet = options.disableTurbojet
+        self.searcherLocalSubscribe = options.searcherLocalSubscribe
+        self.enablePublishTableTopoInfo = options.enablePublishTableTopoInfo
         if not self.indexPath.startswith('/'):
             self.indexPath = os.path.join(os.getcwd(), self.indexPath)
         self.configPath = options.configPath
@@ -155,18 +238,13 @@ examples:
         if not os.path.exists(self.configPath):
            defaultConfigPath = sys.path[0] + "/config.tar.gz"
            os.system("mkdir %s && tar -zxvf %s --strip-components 1 -C %s" % (self.configPath, defaultConfigPath, self.configPath))
-           os.system("cp /ha3_install/usr/local/lib64/libaitheta_indexer.so %s/bizs/0/plugins/" % (self.configPath))
+           os.system("cp /ha3_install/usr/local/lib64/libaitheta_indexer.so %s/bizs/default/0/plugins/" % (self.configPath))
            os.system("cp /ha3_install/usr/local/lib64/libaitheta_indexer.so %s/table/0/plugins/" % (self.configPath))
         if not os.path.exists(self.indexPath):
            defaultIndexPath = sys.path[0] + "/runtimedata.tar.gz"
            os.system("mkdir %s && tar -zxvf %s --strip-components 1 -C %s" % (self.indexPath, defaultIndexPath, self.indexPath))
 
         self.onlineConfigPath = os.path.join(self.configPath, "bizs")
-        configVersions = sorted(map(lambda x:int(x), os.listdir(self.onlineConfigPath)))
-        if len(configVersions) == 0:
-            print "config version count is 0, path [%s]"% self.onlineConfigPath
-        else:
-            self.onlineConfigPath = os.path.join(self.onlineConfigPath, str(configVersions[-1]))
         self.offlineConfigPath = os.path.join(self.configPath, "table")
         tableVersions = sorted(map(lambda x:int(x), os.listdir(self.offlineConfigPath)))
         if len(tableVersions) == 0:
@@ -176,11 +254,11 @@ examples:
 
         self.httpBindPort = options.httpBindPort
         self.arpcBindPort = options.arpcBindPort
+        self.grpcBindPort = options.grpcBindPort
         self.portList = []
-        # self.origin_port_list = map(lambda x:int(x), options.portList.split(","))
+        self.origin_port_list = map(lambda x:int(x), options.portList.split(","))
         self.searcher_port_list = []
         self.qrs_port_list = None
-
         self.portStart = 12000
         if len(self.portList) > 0:
             self.portStart = int(self.portList[0])
@@ -209,38 +287,61 @@ examples:
         self.timeout = options.timeout
         self.preload = options.preload
         self.serviceName = options.serviceName
-        self.amonPort = options.amonPort
-        self.libPath = "/opt/taobao/java/jre/lib/amd64/server/:/ha3_depends/home/admin/sap/lib64/:/ha3_depends/home/admin/diamond-client4cpp/lib:/ha3_depends/home/admin/eagleeye-core/lib/:/ha3_depends/usr/local/cuda-10.1/lib64/stubs:/ha3_depends/usr/local/cuda-10.1/lib64/:/ha3_depends/usr/local/lib64:/ha3_depends/usr/local/lib:/ha3_depends/usr/lib64/:/ha3_depends/usr/lib/:/usr/local/lib64:"  + self.binaryPath + "/usr/local/lib64:" + self.binaryPath + "/usr/lib:" + self.binaryPath + "/usr/lib64:" + self.binaryPath + "/usr/local/lib:"
-        self.binPath = self.binaryPath + "/usr/local/bin/:" + self.binaryPath + "/usr/bin/:" + self.binaryPath + "/bin/:" + "/usr/local/bin:/usr/bin:/bin:/ha3_depends/home/admin/sap/bin/"
+        self.amonPath = options.amonPath
+        self.libPath = "/usr/ali/java/jre/lib/amd64/server:/usr/local/java/jdk/jre/lib/amd64/server:" + self.binaryPath + "/home/admin/sap/lib64/:"  + self.binaryPath + "/home/admin/diamond-client4cpp/lib:" + self.binaryPath + "/home/admin/eagleeye-core/lib/:"  + self.binaryPath + "/usr/local/cuda-10.1/lib64/stubs:"  + self.binaryPath + "/usr/local/cuda-10.1/lib64/:"  + self.binaryPath + "/usr/local/lib64:" + self.binaryPath + "/usr/lib:" + self.binaryPath + "/usr/lib64:" + self.binaryPath + "/usr/local/lib:" + "/home/admin/isearch5_data/AliWS-1.4.0.0/usr/local/lib:" + "/usr/local/lib64:"
+        self.binPath = self.binaryPath + "/home/admin/sap/bin/:" + self.binaryPath + "/usr/local/bin/:" + self.binaryPath + "/usr/bin/:" + self.binaryPath + "/bin/:" + "/usr/local/bin:/usr/bin:/bin"
         self.startCmdTemplate = "/bin/env HIPPO_DP2_SLAVE_PORT=19715"
         if self.preload:
             if self.preload == "asan":
-                self.startCmdTemplate += " LD_PRELOAD=/usr/lib/gcc/x86_64-redhat-linux/8/libasan.so  ASAN_OPTIONS=\"detect_leaks=1 handle_segv=0 disable_coredump=0 malloc_context_size=100\""
+                self.startCmdTemplate += " LSAN_OPTIONS=\"suppressions=%s/usr/local/etc/ha3/leak_suppression\" ASAN_OPTIONS=\"detect_odr_violation=0 detect_leaks=1\"" %(self.binaryPath)
             else:
                 self.startCmdTemplate += " LD_PRELOAD=%s" % self.preload
 
         self.startCmdTemplate += " JAVA_HOME=/usr/local/java HADOOP_HOME=/usr/local/hadoop/hadoop"
         if self.dailyrunMode:
             self.startCmdTemplate += " DAILY_RUN_MODE=true"
-        self.startCmdTemplate += " PATH=$JAVA_HOME/bin:%s LD_LIBRARY_PATH=%s sap_server_d -l %s -r %s -c %s --port arpc:%d --port http:%d --env httpPort=%d --env serviceName=%s --env amonitorPath=%s/%s --env amonitorPort=%s --env roleType=%s --env port=%d --env ip=%s --env userName=admin --env decodeUri=true --env haCompatible=true --env zoneName=%s --env roleName=%s_partition_%d --env partId=0 --env decisionLoopInterval=10000 --env loadThreadNum=1"
+            self.startCmdTemplate += " IS_TEST_MODE=true"
+        if self.disableCodeGen:
+            self.startCmdTemplate += " DISABLE_CODEGEN=true"
+        if self.disableTurbojet:
+            self.startCmdTemplate += " DISABLE_TURBOJET=true"
+        if self.enablePublishTableTopoInfo:
+            self.startCmdTemplate += " ENABLE_PUBLISH_TABLE_TOPO_INFO=true"
 
+        self.startCmdTemplate += " HIPPO_APP_INST_ROOT=" + self.binaryPath + " HIPPO_APP_WORKDIR=" + os.getcwd() + " TJ_RUNTIME_TEMP_DIR=" + self.binaryPath
+        self.startCmdTemplate += " PATH=$JAVA_HOME/bin:%s LD_LIBRARY_PATH=%s  sap_server_d -l %s -r %s -c %s --port arpc:%d --port http:%d --env httpPort=%d --env gigGrpcPort=%d --env serviceName=%s --env amonitorPath=%s/%s --env roleType=%s --env port=%d --env ip=%s --env userName=admin --env decodeUri=true --env haCompatible=true --env zoneName=%s --env roleName=%s_partition_%d --env partId=0 --env decisionLoopInterval=10000 --env dpThreadNum=1 --env loadThreadNum=4 --env load_biz_thread_num=4 --env kmonitorNormalSamplePeriod=1 --env naviPoolModeAsan=1 --env naviDisablePerf=1 --env WORKER_IDENTIFIER_FOR_CARBON= "
+        if self.localBizService:
+            self.startCmdTemplate += " --env localBizService=true"
         self.alogConfigPath = os.path.join(self.binaryPath, "usr/local/etc/ha3/ha3_alog.conf")
         self.searchCfg = os.path.join(self.binaryPath, "usr/local/etc/ha3/search_server.cfg")
         self.qrsCfg = os.path.join(self.binaryPath, "usr/local/etc/ha3/qrs_server.cfg")
         self.ip = socket.gethostbyname(socket.gethostname())
-        self.readyZones = {}
-        self.localSearchDir = os.path.join(os.getcwd(), "local_search_%d" % self.portStart)
+        self.gigInfos = {}
+        cwd = os.getcwd()
+        self.localSearchDir = os.path.join(cwd, "local_search_%d" % self.portStart)
         if not os.path.exists(self.localSearchDir):
             os.system("mkdir %s" % self.localSearchDir)
         binarySymbol = "%s/binary" % (self.localSearchDir)
         if not os.path.exists(binarySymbol):
-            os.symlink(self.binaryPath, binarySymbol)
+            try:
+                os.symlink(self.binaryPath, binarySymbol)
+            except OSError, e:
+                if e.errno == errno.EEXIST:
+                    os.remove(binarySymbol)
+                    os.symlink(self.binaryPath, binarySymbol)
+                else:
+                    raise e
+
         self.pidFile = os.path.join(self.localSearchDir, self.role + "_pid")
-        self.portFile = os.path.join(self.localSearchDir, self.role+"_ports")
+        self.portFile = os.path.join(self.localSearchDir, self.role + "_ports")
+        self.qrsPortFile = os.path.join(cwd, 'qrs_port')
+        self.searcherPortFile = os.path.join(cwd, 'searcher_port')
         self.start_time = datetime.now()
+        self.targetVersion = 1651870394
 
     def run(self):
         tryTimes = 1
+        ret = -1
         status = None
         while tryTimes > 0:
             tryTimes -= 1
@@ -250,25 +351,100 @@ examples:
                 continue
             else:
                 break
+        if ret == 0:
+            if self.qrs_port_list:
+                with open(self.qrsPortFile, 'w') as f:
+                    f.write(json.dumps(self.__format_port_list(self.qrs_port_list), indent=4))
+            if len(self.searcher_port_list) > 0:
+                port_map = [(x.role, self.__format_port_list(x.ports)) for x in self.searcher_port_list]
+                with open(self.searcherPortFile, 'w') as f:
+                    f.write(json.dumps(port_map, indent=4))
         return status
 
+    def __format_port_list(self, port_list):
+        return {
+            'http_arpc_port' : port_list[0],
+            'arpc_port' : port_list[1],
+            'grpc_port' : port_list[2]
+        }
+
     def start_once(self):
+        terminator = TimeoutTerminator(self.timeout)
+        searcherTargetInfos = None
         if not self.stopAll():
             return -1, ("", "stop exist pid failed", -1)
+
         if self.role == "all" or self.role == "searcher":
-            searcher_ret = self.startSearcher()
-            if searcher_ret != 0:
-                return searcher_ret, ("", "start searcher failed", -1)
-            if self.role == "searcher":
-                return 0, ("", "", 0)
-        if self.role == "all" or self.role == "qrs":
-            qrs_ret = self.startQrs()
-            if qrs_ret == 0:
-                return 0, ("", "", 0)
+            if not self.enableLocalAccess:
+                searcher_ret, searcherTargetInfos, createCatalogRequest = self.startSearcher()
+                if searcher_ret != 0:
+                    return searcher_ret, ("", "start searcher failed", -1)
             else:
+                zoneNames = self._getNeedStartZoneName()
+                if len(zoneNames) > 1:
+                    return -1, ("", "local access mode only support one zone, now zone names " + str(zoneNames), -1)
+
+            if not self.enableLocalAccess:
+                ret = self.createCatalog(createCatalogRequest)
+                if ret != 0:
+                    return ret, ("", "create catalog failed", -1)
+                ret = self.loadSearcherTarget(searcherTargetInfos, terminator.left_time())
+                if ret != 0:
+                    return ret, ("", "load searcher target failed", -1)
+
+            if self.searcherLocalSubscribe:
+                ret = self.subscribeLocalSearchService()
+                if ret != 0:
+                    return ret, ("", "add local subscribe failed", -1)
+
+            with open(os.path.join(self.workdir, "readyZones.json"), "w") as f:
+                json.dump(self.gigInfos, f)
+
+        if self.role == "all" or self.role == "qrs":
+            with open(os.path.join(self.workdir, "readyZones.json"), "r") as f:
+                self.gigInfos = json.load(f)
+            qrs_ret = self.startQrs()
+            if qrs_ret != 0:
                 return qrs_ret, ("", "start qrs failed", -1)
 
+            ret = self.loadQrsTarget(terminator.left_time())
+            if ret != 0:
+                return ret, ("", "load qrs target failed", -1)
+
+
+        return 0, ("", "", 0)
+
+    def subscribeLocalSearchService(self):
+        targetInfos, _ = self._genTargetInfos(self._getNeedStartZoneName(), self.searcherReplica)
+        subscribeConfig = {
+            "local" : []
+        }
+        idx = 0
+        for needSubscribeInfo in targetInfos:
+            grpcPort = self._getSearcherPortList(idx)[2]
+            idx += 1
+            zoneName = needSubscribeInfo[0]
+            bizName = zoneName + ".default_sql"
+            local_config = {
+                "part_count": 1,
+                "biz_name": bizName,
+                "version": 123,
+                "part_id": 0,
+                "ip": socket.gethostbyname(socket.gethostname()),
+                "support_heartbeat": True,
+                "grpc_port": int(grpcPort)
+            }
+            subscribeConfig["local"].append(local_config)
+
+        for targetInfo in targetInfos:
+            target = targetInfo[3]
+            target['service_info']['cm2_config'] = subscribeConfig
+        terminator = TimeoutTerminator(self.timeout)
+        ret = self.loadSearcherTarget(targetInfos, terminator.left_time())
+        return ret
+
     def stopAll(self, timeout = 120):
+        terminator = TimeoutTerminator(timeout)
         needKillPids = []
         if os.path.exists(self.pidFile):
             f = open(self.pidFile)
@@ -286,7 +462,9 @@ examples:
             cmd = "kill -9 %s" % pid
             print "clean exist process, cmd [%s]" % cmd
             os.system(cmd)
-        while timeout > 0:
+        while True:
+            if terminator.is_timeout():
+                return False
             allKilled = True
             defunctPids = self.getDefunctPids()
             for (pid, rundir) in needKillPids:
@@ -301,45 +479,43 @@ examples:
                 os.system(cmd)
                 break
             time.sleep(0.1)
-            timeout -= 0.1
-        return timeout > 0
+        return True
 
     def startSearcher(self):
         zoneNames = self._getNeedStartZoneName()
-        tableInfos = self._genTargetInfos(zoneNames)
-        if not self._startSearcher(tableInfos):
-            return -1
+        targetInfos, createCatalogRequest = self._genTargetInfos(zoneNames, replica = self.searcherReplica)
+        if not self._startSearcher(targetInfos):
+            print "start searcher with table info failed: ", json.dumps(targetInfos)
+            return -1, None, None
         print "wait searcher target load"
-        result = self._loadSearcherTarget(tableInfos, self.timeout)
-        with open(os.path.join(self.workdir, "readyZones.json"), "w") as f:
-            json.dump(self.readyZones, f)
-        return result
+        return 0, targetInfos, createCatalogRequest
 
     def startQrs(self):
-        with open(os.path.join(self.workdir, "readyZones.json"), "r") as f:
-            self.readyZones = json.load(f)
         if not self._startQrs():
             return -1
         print "wait qrs target load"
-        return self._loadQrsTarget(self.timeout)
+        return 0
 
-    def curl(self, address, method, request, curl_type='POST'):
-        try:
-            conn = httplib.HTTPConnection(address, timeout=3)
-            #print "request "+method+":" + json.dumps(request)
-            conn.request(curl_type, method, json.dumps(request))
-            r = conn.getresponse()
-            data = r.read()
-            #print "response:" + data
-            retCode = 0
-            if r.status != 200:
-                retCode = -1
-            return retCode, data, r.reason, r.status
-        except Exception, e:
-            return -1, '', str(e), 418
+    def curl(self, address, method, request, curl_type='POST', timeout=20):
+        terminator = TimeoutTerminator(timeout)
+        while True:
+            try:
+                timeout = terminator.left_time()
+                conn = httplib.HTTPConnection(address, timeout=timeout)
+                conn.request(curl_type, method, json.dumps(request))
+                conn.sock.settimeout(10 if timeout > 10 else timeout)
+                r = conn.getresponse()
+                data = r.read()
+                retCode = 0
+                if r.status != 200:
+                    retCode = -1
+                return retCode, data, r.reason, r.status
+            except Exception, e:
+                if terminator.is_timeout():
+                    return -1, '', str(e), 418
 
-    def createRuntimedirLink(self, zoneName, partId):
-        zoneDir = os.path.join(self.localSearchDir, zoneName + "_" + str(partId))
+    def createRuntimedirLink(self, zoneDirName):
+        zoneDir = os.path.join(self.localSearchDir, zoneDirName)
         if not os.path.exists(zoneDir):
             os.makedirs(zoneDir)
         runtimeDir = os.path.join(zoneDir, "runtimedata")
@@ -350,6 +526,15 @@ examples:
                 print "create link failed, src %s, dst %s, e[%s]" % (self.indexPath, runtimeDir, str(e))
                 raise e
         return runtimeDir
+
+    def genOnlineConfigPath(self, config, biz):
+        onlineConfig = os.path.join(self.onlineConfigPath, biz)
+        configVersions = sorted(map(lambda x:int(x), os.listdir(onlineConfig)))
+        if len(configVersions) == 0:
+            print "config version count is 0, path [%s]"% onlineConfig
+        else:
+            onlineConfig = os.path.join(onlineConfig, str(configVersions[-1]))
+        return onlineConfig
 
     def createConfigLink(self, zoneName, prefix, bizName, config):
         pos = config.rfind('/')
@@ -371,89 +556,122 @@ examples:
             open(doneFile, 'a').close()
         return config
 
-    def _loadQrsTarget(self, timeout = 300):
+    def createCatalog(self, createCatalogRequest):
+        if self.enableLocalCatalog and not self.disableSql:
+            qrsHttpArpcPort = self.getQrsPortList()[0]
+            address = "%s:%d" %(self.ip, qrsHttpArpcPort)
+            retCode, out, err, _ = self.curl(address, "/CatalogService/createCatalog", createCatalogRequest, timeout=10)
+            if retCode != 0:
+                print "create catalog failed, address[%s] retcode[%d] request[%s]" % (address, retCode, json.dumps(createCatalogRequest))
+                return -1
+        return 0
+
+
+    def loadQrsTarget(self, timeout = 300):
+        terminator = TimeoutTerminator(timeout)
+        bizs = os.listdir(self.onlineConfigPath)
+        bizInfo = {}
+        if self.enableMultiBiz:
+            for biz in bizs:
+                onlineConfig = self.genOnlineConfigPath(self.onlineConfigPath, biz)
+                bizInfo[biz] = {
+                    "config_path" : self.createConfigLink('qrs', 'biz', biz, onlineConfig)
+                }
+                if biz in self.modelBiz:
+                    bizInfo[biz]["custom_biz_info"] = {
+                            "biz_type" : "model_biz"
+                    }
+        else:
+            onlineConfig = self.genOnlineConfigPath(self.onlineConfigPath, bizs[0])
+            bizInfo['default'] = {
+                "config_path" : self.createConfigLink('qrs', 'biz', 'default', onlineConfig)
+            }
+        tableInfos = {}
+        zoneName = "qrs"
+        portList = self.getQrsPortList()
+        httpArpcPort = portList[0]
+        arpcPort = portList[1]
+        grpcPort = portList[2]
+        address = "%s:%d" %(self.ip, httpArpcPort)
+        arpcAddress = "%s:%d" %(self.ip, arpcPort)
+
+        if self.enableLocalAccess:
+            zoneNames = self._getNeedStartZoneName()
+            targetInfos, createCatalogRequest = self._genTargetInfos(zoneNames, 1, True)
+            tableInfos = targetInfos[0][3]["table_info"]
+            zoneName = zoneNames[0]
+            ret = self.createCatalog(createCatalogRequest)
+            if ret != 0:
+                print "create catalog %s failed." % createCatalogRequest
+                return -1
+
+        gigInfos = self.gigInfos
+
         target = {
             "service_info" : {
                 "cm2_config" : {
-                    "local" : self.readyZones.values()
+                    "local" : gigInfos.values()
                 },
-                "part_count" : 0,
+                "part_count" : 1,
                 "part_id" : 0,
-                "zone_name": "qrs"
+                "zone_name": zoneName
             },
-            "biz_info" : {
-                "default" : {
-                    "config_path" : self.createConfigLink('qrs', 'biz', 'default', self.onlineConfigPath)
-                }
-            },
-            "table_info" : {
-            },
-            "clean_disk" : False
+            "biz_info" : bizInfo,
+            "table_info" : tableInfos,
+            "clean_disk" : False,
+            "catalog_address" : arpcAddress,
+            "target_version" : self.targetVersion
         }
         targetStr = ''
-        if self.enableMultiBiz:
-            target_multiBiz = {
-                "service_info" : {
-                    "cm2_config" : {
-                        "local" : self.readyZones.values()
-                    },
-                    "part_count" : 0,
-                    "part_id" : 0,
-                    "zone_name": "qrs"
-                },
-                "biz_info" : {
-                    "default" : {
-                        "config_path" : self.createConfigLink('qrs', 'biz', 'default', self.onlineConfigPath)
-                    },
-                    self.multiBiz : {
-                        "config_path" : self.createConfigLink('qrs', 'biz', self.multiBiz, self.onlineConfigPath)
-                    }
-                },
-                "table_info" : {
-                },
-                "clean_disk" : False
-            }
-            targetStr = json.dumps(target_multiBiz)
-        else:
-            targetStr = json.dumps(target)
+        targetStr = json.dumps(target)
         requestSig = targetStr
         globalInfo = {"customInfo":targetStr}
         targetRequest = { "signature" : requestSig,
                           "customInfo" : targetStr,
                           "globalCustomInfo": json.dumps(globalInfo)
         }
-        portList = self._getQrsPortList()
-        httpArpcPort = portList[0]
-        arpcPort = portList[1]
-        address = "%s:%d" %(self.ip, httpArpcPort)
-        while timeout > 0:
-            time.sleep(0.1)
-            timeout -= 0.1
+        lastRespSignature = ""
+        while True:
+            timeout = terminator.left_time()
+            if timeout <= 0:
+                break
             log_file = os.path.join(self.localSearchDir, "qrs", 'logs/ha3.log')
             log_state = self.check_log_file(log_file)
             if log_state != 0:
                 return log_state
 
-            retCode, out, err, _ = self.curl(address, "/HeartbeatService/heartbeat", targetRequest)
-            if retCode != 0:
-                print "set qrs target %s failed." % targetStr
-                continue
+            retCode, out, err, status = self.curl(address, "/HeartbeatService/heartbeat", targetRequest, timeout=timeout)
+            if retCode != 0: #qrs core
+                print "set qrs target [{}] failed, address[{}] ret[{}] out[{}] err[{}] status[{}] left[{}]s".format(targetStr, address, retCode, out, err, status, terminator.left_time())
+                return -1
             response = json.loads(out)
-            if response["signature"] == requestSig:
-                print "start local search success\nqrs is ready for search, http and arpc port: %s %s" % (httpArpcPort, arpcPort)
+            if "signature" not in response:
+                print "set qrs target response invalid [{}], continue...".format(out)
+                continue
+            lastRespSig = response["signature"]
+            if lastRespSig == requestSig:
+                print "start local search success\nqrs is ready for search, http arpc grpc port: %s %s %s" % (httpArpcPort, arpcPort, grpcPort)
                 return 0
-        if timeout > 0:
-            return 0
-        else:
-            return -1
+            time.sleep(0.1)
+        print 'load qrs target timeout [{}]s left[{}]s resp[{}] request[{}]'.format(terminator.raw_timeout(), terminator.left_time(), lastRespSig, requestSig)
+        return -1
 
     def check_log_file(self, log_file):
         if os.path.isfile(log_file):
-            content = open(log_file, 'r').read()
-            splited = filter(bool, content.split('\n'))
-            if self.has_log('has been stopped', splited):
+            expectLog = '\'has been stopped\''
+            cmd = 'grep %s %s' % (expectLog, log_file)
+            p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
+            out, err = p.communicate()
+            splited = filter(bool, out.split('\n'))
+            if self.has_log(expectLog, splited):
                 return 1
-            if self.has_log('initBiz failed', splited):
+
+            expectLog = '\'initBiz failed\''
+            cmd = 'grep %s %s' % (expectLog, log_file)
+            p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
+            out, err = p.communicate()
+            splited = filter(bool, out.split('\n'))
+            if self.has_log(expectLog, splited):
                 return -1
         return 0
 
@@ -474,23 +692,32 @@ examples:
         log_time = datetime.strptime(timestamp, '%Y-%m-%d %H:%M:%S.%f')
         return (log_time - self.start_time).total_seconds() > 0
 
-    def _loadSearcherTarget(self, targetInfos, timeout = 300):
-        self.readyZones = {}
-        while timeout > 0:
-            time.sleep(0.1)
-            timeout -= 0.1
+    def loadSearcherTarget(self, targetInfos, timeout = 300):
+        self.gigInfos = {}
+        terminator = TimeoutTerminator(timeout)
+        readyTarget = set()
+        while True:
+            timeout = terminator.left_time()
+            if timeout <= 0:
+                break
             count = 0
             for targetInfo in targetInfos:
                 portList = self._getSearcherPortList(count)
                 count += 1
                 zoneName = targetInfo[0]
                 partId = targetInfo[1]
-                roleName = zoneName + "_" + str(partId)
-                if self.readyZones.has_key(roleName) :
+                replicaId = targetInfo[2]
+                roleName = self.genRoleName(targetInfo)
+                if roleName in readyTarget:
                     continue
-                target = targetInfo[2]
+
+                target = targetInfo[3]
+                if self.options.searcherSubscribeConfig:
+                    target['service_info']['cm2_config'] = json.loads(self.options.searcherSubscribeConfig)
                 httpArpcPort = portList[0]
                 arpcPort = portList[1]
+                grpcPort = portList[2]
+                target["target_version"] = self.targetVersion
                 targetStr = json.dumps(target)
                 requestSig = targetStr
                 globalInfo = {"customInfo":targetStr}
@@ -503,12 +730,18 @@ examples:
                 if log_state != 0:
                     return log_state
                 address = "%s:%d" %(self.ip, httpArpcPort)
-                retCode, out, err, _ = self.curl(address, "/HeartbeatService/heartbeat", targetRequest)
-                if retCode != 0:
-                    print "set target %s failed." % targetStr
-                    continue
+                retCode, out, err, status = self.curl(address, "/HeartbeatService/heartbeat",
+                                                      targetRequest, timeout=timeout)
+
+                if retCode != 0:  # binary core
+                    print "set searcher target [{}] failed. role[{}] address[{}] ret[{}] out[{}] err[{}] status[{}] left[{}]s".format(
+                        targetRequest, roleName, address, retCode, out, err, status, terminator.left_time())
+                    return -1
                 response = json.loads(out)
                 infos = []
+                if "signature" not in response:
+                    print "set searcher target response invalid [{}] role [{}], continue...".format(out, roleName)
+                    continue
                 if response["signature"] == requestSig:
                     serviceInfo = json.loads(response["serviceInfo"])
                     infos = serviceInfo["cm2"]["topo_info"].strip('|').split('|')
@@ -521,22 +754,24 @@ examples:
                         localConfig["version"] = int(splitInfo[3])
                         localConfig["ip"] = self.ip
                         localConfig["tcp_port"] = arpcPort
-                        if splitInfo[0] == 'default':
-                            self.readyZones[roleName] = localConfig
-                            print "searcher [%s] is ready for search, topo [%s]" % (roleName, json.dumps(localConfig))
-                        else:
-                            zoneName = splitInfo[0] + "_" + str(partId)
-                            self.readyZones[zoneName] = localConfig
-                            print "searcher [%s] is ready for search, topo [%s]" % (zoneName, json.dumps(localConfig))
-                elif timeout <= 0:
-                    print "searcher [%s] load target [%s] failed" % (roleName, targetStr)
-                if len(infos) > 0 and len(targetInfos) == (len(self.readyZones) / len(infos)):
+                        if grpcPort != 0:
+                            localConfig["grpc_port"] = grpcPort
+                            localConfig["support_heartbeat"] = True
+                        gigKey = roleName + "_" + splitInfo[0] + "_" + str(splitInfo[2])
+                        self.gigInfos[gigKey] = localConfig
+                    readyTarget.add(roleName)
+                    print "searcher [%s] is ready for search, topo [%s]" % (roleName, json.dumps(localConfig))
+                if len(targetInfos) == len(readyTarget):
                     print "all searcher is ready."
                     return 0
-        if timeout > 0:
-            return 0
-        else:
-            return -1
+            time.sleep(0.1)
+        print 'load searcher [{}] target [{}] timeout [{}]s left [{}]s readyTarget[{}]'.format(
+            zoneName,
+            targetStr,
+            terminator.raw_timeout(),
+            terminator.left_time(),
+            readyTarget)
+        return -1
 
     def _startQrs(self):
         zoneName = "qrs"
@@ -548,14 +783,18 @@ examples:
         os.system("cp %s %s" % (self.qrsCfg, targetCfg))
         startCmd = self.startCmdTemplate % (self.binPath, self.libPath, self.alogConfigPath,
                                             self.binaryPath, targetCfg, self.arpcBindPort, 0,
-                                            self.httpBindPort, self.serviceName,self.serviceName,
-                                            zoneName, self.amonPort, "qrs", self.arpcBindPort, self.ip, zoneName, zoneName, partId)
+                                            self.httpBindPort, self.grpcBindPort, self.serviceName, self.amonPath,
+                                            zoneName, "qrs", self.arpcBindPort, self.ip, zoneName, zoneName, partId)
         if self.qrsQueue :
             startCmd += " --env extraTaskQueues=" + self.qrsQueue
         if self.qrsQueueSize :
             startCmd += " --env queueSize=" + str(self.qrsQueueSize)
         if self.qrsThreadNum :
             startCmd += " --env threadNum=" + str(self.qrsThreadNum)
+        if self.naviThreadNum :
+            startCmd += " --env naviThreadNum=" + str(self.naviThreadNum)
+        if self.threadNumScaleFactor :
+            startCmd += " --env threadNumScaleFactor=" + str(self.threadNumScaleFactor)
         if self.aggName:
             startCmd += " --env defaultAgg=" + self.aggName
         if self.basicTuringBizNames:
@@ -572,15 +811,44 @@ examples:
             startCmd += " --env kmonitorSinkAddress=" + self.kmonSinkAddress;
         if self.specialCatalogList:
             startCmd += " --env specialCatalogList=" + str(self.specialCatalogList)
+        if self.enableLocalAccess:
+            startCmd += " --env enableLocalAccess=true"
+            startCmd += " --env rewriteLocalBizNameType=ha3"
+            if self.enableMultiPartition:
+                startCmd += " --env enableMultiPartition=true";
+            if self.enableUpdateCatalog and not self.disableSql:
+                startCmd += " --env enableUpdateCatalog=true"
+        if self.enableLocalCatalog and not self.disableSql:
+            startCmd += " --env enableLocalCatalog=true"
+        if self.onlySql:
+            startCmd += " --env onlySql=true"
+        if (self.tabletInfos):
+            if self.mode:
+                startCmd += " --env mode=" + self.mode
+            if self.zkRoot:
+                startCmd += " --env zk_root=" + self.zkRoot
+            if self.leaderElectionStrategyType:
+                startCmd += " --env leader_election_strategy_type=" + self.leaderElectionStrategyType
+            if self.leaderElectionConfig:
+                startCmd += " --env leader_election_config=" + "'" + self.leaderElectionConfig + "'"
+            if self.versionSyncConfig:
+                startCmd += " --env version_sync_config=" + "'" + self.versionSyncConfig + "'"
 
-        startCmd += ' -d -n >> %s_qrs.asan  2>&1 ' % (self.pidFile)
+        startCmd += ' -d -n 1>>%s 2>>%s ' % (os.path.join(self.localSearchDir, "qrs.stdout.out"), os.path.join(self.localSearchDir, "qrs.stderr.out"))
         os.chdir(rundir)
         print "start qrs cmd: %s"% startCmd
         os.system(startCmd)
-        time.sleep(0.3)
-        pids = self.getPids(rundir)
+
+        time.sleep(0.1)
+        terminator = TimeoutTerminator(5)
+        while not terminator.is_timeout():
+            pids = self.getPids(rundir)
+            if len(pids) == 1:
+                break
+            time.sleep(0.1)
+
         if len(pids) != 1:
-            print "start qrs process failed, cmd [%s]"% cmd
+            print "start qrs process failed, cmd [%s]"% startCmd
             return False
         else:
             print "start qrs process success, pid [%d]" % pids[0]
@@ -592,13 +860,10 @@ examples:
         f.close()
 
         self.wait_load(rundir)
-        status, http_port, arpc_port = self.get_listen_ports(pid)
-        if not status:
-            print 'get qrs listen port failed, pid [%d]' % pid
-            return False
-        self.qrs_port_list = (int(http_port), int(arpc_port))
+        http_port, arpc_port, grpc_port = self.get_listen_ports(rundir)
+        self.qrs_port_list = (http_port, arpc_port, grpc_port)
         with open(self.portFile, 'w') as portFile:
-            portFile.write('%s %s\n' % (http_port, arpc_port));
+            portFile.write('%s %s %s\n' % (http_port, arpc_port, grpc_port));
         return True
 
     def _startSearcher(self, targetInfos):
@@ -608,21 +873,32 @@ examples:
         for targetInfo in targetInfos:
             zoneName = targetInfo[0]
             partId = targetInfo[1]
-            roleName = zoneName + "_%d" % partId
+            replicaId = targetInfo[2]
+            roleName = self.genRoleName(targetInfo)
             rundir = os.path.join(self.localSearchDir, roleName)
             if not os.path.exists(rundir):
                 os.system("mkdir %s" % rundir)
             targetCfg = os.path.join(rundir, zoneName + "_%d_search_service_%d.cfg" % (partId, self.portStart))
+            cmd = "cp %s %s" % (self.searchCfg, targetCfg)
+            print cmd
             os.system("cp %s %s" % (self.searchCfg, targetCfg))
+            kmonServiceName = self.serviceName
+            if '^' in self.serviceName:
+                # override tags['zone'], tags['role'], tags['host']
+                kmonServiceName = self.serviceName + '@zone^{}@role^{}@host^{}'.format(zoneName, partId, roleName)
             startCmd = self.startCmdTemplate % (self.binPath, self.libPath, self.alogConfigPath,
-                                                self.binaryPath, targetCfg, self.arpcBindPort, 0, self.httpBindPort, self.serviceName, self.serviceName,
-                                                zoneName, self.amonPort, "searcher", self.arpcBindPort, self.ip, zoneName, zoneName, partId )
+                                                self.binaryPath, targetCfg, self.arpcBindPort, 0, self.httpBindPort, self.grpcBindPort, kmonServiceName, self.amonPath,
+                                                zoneName, "searcher", self.arpcBindPort, self.ip, zoneName, zoneName, partId )
             if self.searcherQueue :
                 startCmd += " --env extraTaskQueues=" + self.searcherQueue
             if self.searcherQueueSize :
                 startCmd += " --env queueSize=" + str(self.searcherQueueSize)
+            if self.threadNumScaleFactor :
+                startCmd += " --env threadNumScaleFactor=" + str(self.threadNumScaleFactor)
             if self.searcherThreadNum :
                 startCmd += " --env threadNum=" + str(self.searcherThreadNum)
+            if self.naviThreadNum :
+                startCmd += " --env naviThreadNum=" + str(self.naviThreadNum)
             if self.aggName:
                 startCmd += " --env defaultAgg=" + self.aggName
             if self.paraSearchWays:
@@ -631,20 +907,51 @@ examples:
                 startCmd += " --env basicTuringBizNames=" + self.basicTuringBizNames
             if self.kmonSinkAddress:
                 startCmd += " --env kmonitorSinkAddress=" + self.kmonSinkAddress;
-
-            startCmd += ' -d -n >> %s_searcher.asan  2>&1 ' % (self.pidFile)
+            if self.enableMultiPartition:
+                startCmd += " --env enableMultiPartition=true";
+            if self.enableLocalAccess:
+                startCmd += " --env enableLocalAccess=true";
+            else:
+                if self.enableUpdateCatalog and not self.disableSql:
+                    startCmd += " --env enableUpdateCatalog=true"
+            if self.disableSql:
+                startCmd += " --env disableSql=true"
+            if self.onlySql:
+                startCmd += " --env onlySql=true"
+            if (self.tabletInfos):
+                if self.mode:
+                    startCmd += " --env mode=" + self.mode
+                if self.zkRoot:
+                    startCmd += " --env zk_root=" + self.zkRoot
+                if self.leaderElectionStrategyType:
+                    startCmd += " --env leader_election_strategy_type=" + self.leaderElectionStrategyType
+                if self.leaderElectionConfig:
+                    startCmd += " --env leader_election_config=" + "'" + self.leaderElectionConfig + "'"
+                if self.versionSyncConfig:
+                    startCmd += " --env version_sync_config=" + "'" + self.versionSyncConfig + "'"
+            startCmd += ' -d -n 1>>%s 2>>%s ' % (os.path.join(self.localSearchDir, "{}.stdout.out".format(roleName)), os.path.join(self.localSearchDir, "{}.stderr.out".format(roleName)))
             os.chdir(rundir)
+            print "start searcher cmd: %s"% startCmd
             os.system(startCmd)
-            print(startCmd)
+#            time.sleep(150)
             httpArpcPort_list.append((rundir, roleName, startCmd))
             count = count + 1
-
-        time.sleep(0.01)
+        time.sleep(0.1)
+        terminator = TimeoutTerminator(5)
+        while not terminator.is_timeout():
+            start = True
+            for info in httpArpcPort_list:
+                rundir = info[0]
+                pids = self.getPids(rundir)
+                if len(pids) != 1:
+                    start = False
+            if start:
+                break
+            time.sleep(0.1)
         for info in httpArpcPort_list:
             rundir = info[0]
             roleName = info[1]
             startCmd = info[2]
-            print('rundir', rundir)
             pids = self.getPids(rundir)
             print pids
             if len(pids) != 1:
@@ -656,54 +963,86 @@ examples:
 
             pid = pids[0]
             f.write("%d %s\n" % (pid, rundir))
-            self.wait_load(rundir)
-            status, http_port, arpc_port = self.get_listen_ports(pid)
-            if not status:
-                print 'get searcher listen port failed, pid [%d]' % pid
+            if not self.wait_load(rundir):
+                print "wait load failed [{}]".format(rundir)
                 return False
-            self.searcher_port_list.append((int(http_port), int(arpc_port)))
+            http_port, arpc_port, grpc_port = self.get_listen_ports(rundir)
+            item = PortListItem()
+            item.ports = (http_port, arpc_port, grpc_port)
+            item.role = roleName
+            self.searcher_port_list.append(item)
         with open(self.portFile, 'w') as f:
-            for http_port, arpc_port in self.searcher_port_list:
-                f.write('%s %s\n' % (http_port, arpc_port));
-
+            for item in self.searcher_port_list:
+                f.write('%s %s %s\n' % (item.ports[0], item.ports[1], item.ports[2]))
         f.close()
         return True
 
-    def wait_load(self, rundir):
+    def wait_load(self, rundir, timeout = 30):
+        terminator = TimeoutTerminator(timeout)
         while True:
-            cmd = 'tail -1 %s/logs/ha3.log' % rundir
+            timeout = terminator.left_time()
+            if timeout <= 0:
+                break
+            time.sleep(0.1)
+            heartbeatTarget = 'HeartbeatManager.cpp -- getTarget'
+            cmd = 'grep "{}" {}/logs/ha3.log | tail -1'.format(heartbeatTarget, rundir)
             p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
             out, err = p.communicate()
-            if 'HeartbeatManager.cpp -- getTarget' in out:
+            out = out.strip()
+            if out:
                 if self.valid_log(out):
-                    return True
-            time.sleep(0.1)
+                    sapTarget = '\"initWatchThread sucess\"'   # wait sap server ready
+                    cmd = 'grep %s %s/logs/ha3.log | tail -1' % (sapTarget, rundir)
+                    p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
+                    out, err = p.communicate()
+                    if self.valid_log(out):
+                        return True
+        print "wait load timeout [{}]s left[{}]s start[{}] for [{}]".format(terminator.raw_timeout(),
+                                                                            terminator.left_time(),
+                                                                            terminator.start_str(),
+                                                                            rundir)
+        return False
 
-    def get_listen_ports(self, pid):
-        cmd = 'lsof -i -a -P -n -sTCP:LISTEN -p %s' % str(pid)
+    def get_listen_ports(self, rundir):
+        return self.get_listen_http_arpc_ports(rundir), self.get_listen_arpc_ports(rundir), self.get_listen_grpc_ports(rundir)
+
+    def get_listen_arpc_ports(self, rundir):
+        grpcListenKeyword = 'gigRpcServer initArpcServer success, arpc listen port'
+        cmd = 'grep "{}" {}/logs/ha3.log | tail -1'.format(grpcListenKeyword, rundir)
         p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
         out, err = p.communicate()
-        ports = []
-        for line in out.splitlines():
-            if ':' in line:
-                ports.append(line.split(':')[1].split(' ')[0])
-        httpPort = 0
-        arpcPort = 0
-        for port in ports:
-            address = "%s:%s" % (self.ip, port)
-            _, data, _, status_code = self.curl(address, '/__method__', '', 'GET')
-            if '/HeartbeatService/heartbeat' in data:
-                httpPort = port
-            elif status_code != 404:
-                arpcPort = port
-        ret = httpPort != 0 and arpcPort != 0
-        print "%s %s" % (httpPort, arpcPort)
-        return ret, httpPort, arpcPort
+        out = out.strip()
+        if out:
+            if self.valid_log(out):
+                return int(out.split('listen port [')[1].split(']')[0])
+        return 0
+
+    def get_listen_http_arpc_ports(self, rundir):
+        grpcListenKeyword = 'gigRpcServer initHttpArpcServer success, httpArpc listen port'
+        cmd = 'grep "{}" {}/logs/ha3.log | tail -1'.format(grpcListenKeyword, rundir)
+        p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
+        out, err = p.communicate()
+        out = out.strip()
+        if out:
+            if self.valid_log(out):
+                return int(out.split('listen port [')[1].split(']')[0])
+        return 0
+
+    def get_listen_grpc_ports(self, rundir):
+        grpcListenKeyword = 'gigRpcServer initGrpcServer success, grpc listen port'
+        cmd = 'grep "{}" {}/logs/ha3.log | tail -1'.format(grpcListenKeyword, rundir)
+        p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
+        out, err = p.communicate()
+        out = out.strip()
+        if out:
+            if self.valid_log(out):
+                return int(out.split('listen port [')[1].split(']')[0])
+        return 0
 
     def _getSearcherPortList(self, pos):
-        return self.searcher_port_list[pos]
+        return self.searcher_port_list[pos].ports
 
-    def _getQrsPortList(self):
+    def getQrsPortList(self):
         return self.qrs_port_list
 
     def _getArpcPortList(self):
@@ -718,65 +1057,167 @@ examples:
             httpArpcPortList.append(httpArpcPort)
         return httpArpcPortList
 
-    def _genTargetInfos(self, zoneNames):
+    def _genCatalogTable(self, dbName, tableGroupName, tableName, tableMode, tableVersion):
+        return {
+            "id" : {
+                "dbName" : dbName,
+                "tgName" : tableGroupName,
+                "tableName" : tableName
+            },
+            "meta" : {
+                "mode" : tableMode
+            },
+            "partitions" : [{
+                "id" : {
+                    "dbName" : dbName,
+                    "tgName" : tableGroupName,
+                    "tableName" : tableName,
+                    "partitionName" : tableVersion
+                },
+                "meta" : {
+                    "fullVersion" : tableVersion
+                }
+            }]
+        }
+    #tabletInfos = {tableName:{generationId:gid, partitions:["0_65535"], tableMode:1}}
+    def _genTargetInfos(self, zoneNames, replica, inQrs = False):
+        createCatalogRequest = {
+            "catalog" : {
+                "name" : "default",
+                "version" : self.targetVersion,
+                "databases" : []
+            }
+        }
+        tabletInfos = {}
+        if self.tabletInfos:
+            tabletInfos = json.loads(self.tabletInfos)
         targetInfos = []
         for zoneName in zoneNames:
+            tableGroup = {
+                "id" : {
+                    "tgName" : zoneName,
+                    "dbName" : zoneName
+                },
+                "meta" : {
+                    "shardCount" : 1,
+                    "replicaCount" : 0
+                },
+                "tables" : []
+            }
+            tableGroupTables = {}
+            atables = os.listdir(self.indexPath)
             zoneGid = self._getMaxGenerationId(self.indexPath, self.mainTableName)
             partitions = self._getPartitions(self.indexPath, self.mainTableName, zoneGid)
-            partId = 0
             fullPartition = "0_65535"
-            partitionsCnt = len(partitions)
-            for partition in partitions:
+            partCnt = len(partitions)
+            if self.enableMultiPartition:
+                partCnt = 1
+            maxPartCnt = len(partitions)
+            tableGroup["meta"]["shard_count"] = partCnt
+
+            for replicaId, partId in product(range(replica), range(partCnt)):
                 tableInfos = {}
-                for tableName in os.listdir(self.indexPath):
+                for tableName in atables:
+                    if not tableName:
+                        continue
+                    tablePartition = []
+                    curTableGid = None
+                    curTablePartitions = None
 
-                    curTableGid = self._getMaxGenerationId(self.indexPath, tableName)
-                    curTablePartitions = self._getPartitions(self.indexPath, tableName, curTableGid)
-
-                    curTablePartitionCnt = len(curTablePartitions)
-                    if curTablePartitionCnt == 1:
-                         tablePartition = fullPartition
-                    elif curTablePartitionCnt == partitionsCnt:
-                         tablePartition = partition
+                    has_offline_index = True
+                    has_realtime = False
+                    if tableName != "in0" :
+                        has_realtime = True
+                    if tabletInfos.has_key(tableName):
+                        has_offline_index = tabletInfos[tableName]['has_offline_index']
+                        has_realtime = True
+                    if has_offline_index:
+                        curTableGid = self._getMaxGenerationId(self.indexPath, tableName)
+                        curTablePartitions = self._getPartitions(self.indexPath, tableName, curTableGid)
                     else:
-                        raise Exception("table %s : len(curTablePartitions)(%d) != len(partitions)(%d)" % (tableName, curTablePartitionCnt, partitionsCnt))
+                        curTableGid = tabletInfos[tableName]["generationId"]
+                        curTablePartitions = tabletInfos[tableName]["partitions"]
+                    if not self.enableMultiPartition :
+                        curTablePartitionCnt = len(curTablePartitions)
+                        if curTablePartitionCnt == 1:
+                            tablePartition.append(fullPartition)
+                        elif curTablePartitionCnt == maxPartCnt:
+                            tablePartition.append(partitions[partId])
+                        else:
+                            raise Exception("table %s : len(curTablePartitions)(%d) != maxPartCnt(%d)" % (tableName, curTablePartitionCnt, maxPartCnt))
+                    else:
+                        tablePartition = curTablePartitions
 
-                    tableGid = self._getMaxGenerationId(self.indexPath, tableName)
-                    tableVersion = self._getMaxIndexVersion(self.indexPath, tableName, tableGid, tablePartition)
+                    tableGid = curTableGid
+                    zoneDirName = self.genRoleName((zoneName, partId, replicaId))
+                    if inQrs:
+                        zoneDirName = "qrs"
+                    tableMode = 0 if not has_realtime else 1 # TM_READ_WRITE
+                    tableType = 3 if not has_realtime else 2 # SPT_TABLET
                     tmp = {
                       tableGid : {
-                        "index_root" : self.createRuntimedirLink(zoneName, partId),
-                        "config_path": self.createConfigLink(zoneName + "_" + str(partId), 'table', tableName, self.offlineConfigPath),
-                        "partitions": {
-                          tablePartition: {
-                            "inc_version" : tableVersion
+                          "table_mode" : tableMode,
+                          "table_type" : tableType,
+                          "index_root" : self.createRuntimedirLink(zoneDirName),
+                          "config_path": self.createConfigLink(zoneDirName, 'table', tableName, self.offlineConfigPath),
+                          "total_partition_count":len(curTablePartitions),
+                          "partitions": {
                           }
-                        }
                       }
                     }
+                    for partition in tablePartition:
+                        incVersion = -1
+                        if has_offline_index:
+                            incVersion = self._getMaxIndexVersion(self.indexPath, tableName, tableGid, partition)
+                        tmp[tableGid]["partitions"][partition] = {
+                            "inc_version" : incVersion
+                        }
                     tableInfos[tableName] = tmp
+                    tableGroupTables[tableName] = self._genCatalogTable(zoneName, zoneName, tableName, tableMode, tableGid)
+                bizs = os.listdir(self.onlineConfigPath)
+                bizInfo = {}
+                if self.enableMultiBiz:
+                    for biz in bizs:
+                        onlineConfig = self.genOnlineConfigPath(self.onlineConfigPath, biz)
+                        bizInfo[biz] = {
+                            "config_path" : self.createConfigLink(zoneDirName, 'biz', biz, onlineConfig)
+                        }
+                        if biz in self.modelBiz:
+                            bizInfo[biz]["custom_biz_info"] = {
+                                "biz_type" : "model_biz"
+                            }
+                else:
+                    onlineConfig = self.genOnlineConfigPath(self.onlineConfigPath, bizs[0])
+                    bizInfo['default'] = {
+                        "config_path" : self.createConfigLink(zoneDirName, 'biz', 'default', onlineConfig)
+                    }
                 targetInfo = {
                     "table_info" : tableInfos,
                     "service_info" : {
-                        "part_count" : len(partitions),
+                        "part_count" : partCnt,
                         "part_id" : partId,
                         "zone_name": zoneName,
                         "version" : zoneGid
                     },
-                    "biz_info" : {
-                        "default" : {
-                            "config_path" : self.createConfigLink(zoneName + "_" + str(partId), 'biz', 'default', self.onlineConfigPath)
-                        }
-                    },
+                    "biz_info" : bizInfo,
                     "clean_disk" : False
                 }
-                
-                targetInfos.append((zoneName, partId, targetInfo))
-                partId = partId + 1
-        return targetInfos
+                targetInfos.append((zoneName, partId, replicaId, targetInfo))
+            database = {
+                "dbName" : zoneName,
+                "description" : "",
+                "tableGroups" : [],
+                "udxfs" : {},
+                "tvfs" : {}
+            }
+            for tableName, catalogTable in tableGroupTables.items():
+                tableGroup["tables"].append(catalogTable)
+
+            database["tableGroups"].append(tableGroup)
+            createCatalogRequest["catalog"]["databases"].append(database)
+        return targetInfos, createCatalogRequest
 
     def _getMaxGenerationId(self, indexPath, tableName):
-        print('get max genid', indexPath, tableName)
         generationList = os.listdir(os.path.join(indexPath, tableName))
         versions = map(lambda x:int(x.split('_')[1]), generationList)
         versions.sort()
@@ -795,9 +1236,24 @@ examples:
         partitions.sort(key=lambda x:int(x.split('_')[0]))
         return partitions
 
+    def _getSchema(self, path, clusterName, generationId, partition):
+        filePath = os.path.join(path, clusterName, 'generation_' + str(generationId), 'partition_' + partition, "schema.json")
+        with open(filePath, "r") as f:
+            schema = json.load(f)
+        return schema
+
+    def _getTableType(self, path, clusterName, generationId, partition):
+        schema = self._getSchema(path, clusterName, generationId, partition)
+        return schema["table_type"]
+
     def _getNeedStartZoneName(self):
-        realPath = os.path.join(self.onlineConfigPath, 'zones')
-        zones = os.listdir(realPath)
+        bizs = os.listdir(self.onlineConfigPath)
+        zones = []
+        for biz in bizs:
+            onlineConfig = self.genOnlineConfigPath(self.onlineConfigPath, biz)
+            realPath = os.path.join(onlineConfig, 'zones')
+            zones += os.listdir(realPath)
+        zones = list(set(zones))
         if len(self.specialZones) == 0:
             return zones
         zoneNames = []
@@ -840,12 +1296,17 @@ examples:
             s.close()
         return ports
 
+    def genRoleName(self, targetInfo):
+        zoneName = targetInfo[0]
+        partId = targetInfo[1]
+        replicaId = targetInfo[2]
+        return '{zoneName}_p{partId}_r{replicaId}'.format(zoneName = zoneName, partId = partId, replicaId = replicaId)
+
 if __name__ == '__main__':
     cmd = GeneralSearchStartCmd()
     if len(sys.argv) < 3:
         cmd.usage()
         sys.exit(-1)
-
     if not cmd.parseParams(sys.argv):
         cmd.usage()
         sys.exit(-1)
