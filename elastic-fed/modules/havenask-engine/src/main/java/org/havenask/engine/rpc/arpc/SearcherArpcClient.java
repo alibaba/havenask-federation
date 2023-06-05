@@ -73,7 +73,7 @@ public class SearcherArpcClient implements SearcherClient, Closeable {
                 return new WriteResponse(ErrorCode.TBS_ERROR_UNKOWN, "write response is null, channel closed");
             }
 
-            if (writeResponse.getErrorInfo() == null) {
+            if (writeResponse.getErrorInfo() == null || writeResponse.getErrorInfo().getErrorCode() != ErrorCode.TBS_ERROR_NONE) {
                 return new WriteResponse(writeResponse.getCheckpoint());
             } else {
                 return new WriteResponse(writeResponse.getErrorInfo().getErrorCode(),
