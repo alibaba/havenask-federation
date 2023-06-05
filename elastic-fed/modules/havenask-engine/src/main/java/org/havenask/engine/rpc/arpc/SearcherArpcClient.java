@@ -64,14 +64,25 @@ public class SearcherArpcClient implements SearcherClient, Closeable {
                 init();
             }
             suez.service.proto.WriteResponse writeResponse = blockingStub.writeTable(controller, writeRequest);
-            return null;
+            if (writeResponse == null) {
+                closeChannel();
+            }
+            return writeResponse == null ? null : new WriteResponse();
         } catch (ServiceException e) {
             logger.warn("write service error", e);
+            closeChannel();
             return null;
         } catch (Exception e) {
             logger.warn("write upexpect error", e);
+            closeChannel();
             return null;
         }
+    }
+
+    private void closeChannel() {
+        channel = null;
+        blockingStub = null;
+        close();
     }
 
     private void init() {
