@@ -22,6 +22,8 @@ import com.alibaba.search.common.arpc.ANetRPCChannelManager;
 import com.alibaba.search.common.arpc.ANetRPCController;
 
 import com.google.protobuf.ServiceException;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.havenask.engine.rpc.HeartbeatTargetResponse;
 import org.havenask.engine.rpc.SearcherClient;
 import org.havenask.engine.rpc.UpdateHeartbeatTargetRequest;
@@ -31,7 +33,7 @@ import suez.service.proto.TableService;
 import suez.service.proto.Write;
 
 public class SearcherArpcClient implements SearcherClient, Closeable {
-
+    private static final Logger logger = LogManager.getLogger(SearcherArpcClient.class);
     private final ANetRPCChannelManager manager;
     private ANetRPCChannel channel;
     private TableService.BlockingInterface blockingStub;
@@ -64,6 +66,10 @@ public class SearcherArpcClient implements SearcherClient, Closeable {
             suez.service.proto.WriteResponse writeResponse = blockingStub.writeTable(controller, writeRequest);
             return null;
         } catch (ServiceException e) {
+            logger.warn("write service error", e);
+            return null;
+        } catch (Exception e) {
+            logger.warn("write upexpect error", e);
             return null;
         }
     }
