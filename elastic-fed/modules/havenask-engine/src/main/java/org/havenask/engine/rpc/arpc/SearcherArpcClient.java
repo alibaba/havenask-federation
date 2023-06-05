@@ -33,14 +33,14 @@ import suez.service.proto.Write;
 public class SearcherArpcClient implements SearcherClient, Closeable {
 
     private final ANetRPCChannelManager manager;
-    private final ANetRPCChannel channel;
-    private final TableService.BlockingInterface blockingStub;
+    private ANetRPCChannel channel;
+    private TableService.BlockingInterface blockingStub;
     private final ANetRPCController controller = new ANetRPCController();
+    private final int port;
 
     public SearcherArpcClient(int port) {
-        manager = new ANetRPCChannelManager();
-        channel = manager.openChannel("127.0.0.1", port);
-        blockingStub = TableService.newBlockingStub(channel);
+        this.manager = new ANetRPCChannelManager();
+        this.port = port;
     }
 
     @Override
@@ -58,11 +58,19 @@ public class SearcherArpcClient implements SearcherClient, Closeable {
         Write write = Write.newBuilder().setHashId(request.getHashid()).setStr(request.getSource()).build();
         suez.service.proto.WriteRequest writeRequest = suez.service.proto.WriteRequest.newBuilder().setTableName(request.getTable()).setFormat("ha3").addWrites(write).build();
         try {
+            if (blockingStub == null) {
+                init();
+            }
             suez.service.proto.WriteResponse writeResponse = blockingStub.writeTable(controller, writeRequest);
             return null;
         } catch (ServiceException e) {
             return null;
         }
+    }
+
+    private void init() {
+        channel = manager.openChannel("127.0.0.1", port);
+        blockingStub = TableService.newBlockingStub(channel);
     }
 
     @Override
