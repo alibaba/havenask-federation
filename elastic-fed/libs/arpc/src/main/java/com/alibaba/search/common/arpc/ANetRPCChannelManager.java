@@ -104,6 +104,20 @@ public class ANetRPCChannelManager {
 	}
 
 	/**
+	 *
+	 * @param host either hostname or ip
+	 * @param port port
+	 * @throws ArpcException if failed to close channel
+	 */
+	public void closeChannel(String host, int port) throws ArpcException {
+		Long key = IpAddressUtil.encodeToLong(host, port);
+		ANetRPCChannel channel = channelMap.remove(key);
+		if (channel != null) {
+			channel.close();
+		}
+	}
+
+	/**
 	 * destroy the AnetRPCChannelManager, you can not open channel with this
 	 * object any more.
 	 */

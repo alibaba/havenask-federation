@@ -20,6 +20,7 @@ import java.io.IOException;
 import com.alibaba.search.common.arpc.ANetRPCChannel;
 import com.alibaba.search.common.arpc.ANetRPCChannelManager;
 import com.alibaba.search.common.arpc.ANetRPCController;
+import com.alibaba.search.common.arpc.exceptions.ArpcException;
 
 import com.google.protobuf.ServiceException;
 import org.apache.logging.log4j.LogManager;
@@ -38,6 +39,7 @@ public class SearcherArpcClient implements SearcherClient, Closeable {
     private ANetRPCChannel channel;
     private TableService.BlockingInterface blockingStub;
     private final ANetRPCController controller = new ANetRPCController();
+    private final String host = "127.0.0.1";
     private final int port;
 
     public SearcherArpcClient(int port) {
@@ -82,11 +84,15 @@ public class SearcherArpcClient implements SearcherClient, Closeable {
     private void closeChannel() {
         channel = null;
         blockingStub = null;
-        close();
+        try {
+            manager.closeChannel(host, port);
+        } catch (ArpcException e) {
+            logger.warn("close channel error", e);
+        }
     }
 
     private void init() {
-        channel = manager.openChannel("127.0.0.1", port);
+        channel = manager.openChannel(host, port);
         blockingStub = TableService.newBlockingStub(channel);
     }
 
