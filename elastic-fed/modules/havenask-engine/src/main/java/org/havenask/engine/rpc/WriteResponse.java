@@ -14,4 +14,34 @@
 
 package org.havenask.engine.rpc;
 
-public class WriteResponse {}
+import suez.service.proto.ErrorCode;
+
+public class WriteResponse {
+    private final long checkpoint;
+    private final ErrorCode errorCode;
+    private final String errorMessage;
+
+    public WriteResponse(long checkpoint) {
+        this.checkpoint = checkpoint;
+        this.errorCode = null;
+        this.errorMessage = "";
+    }
+
+    public WriteResponse(ErrorCode errorCode, String errorMessage) {
+        this.checkpoint = -1L;
+        this.errorCode = errorCode;
+        this.errorMessage = errorMessage;
+    }
+
+    public long getCheckpoint() {
+        return checkpoint;
+    }
+
+    public ErrorCode getErrorCode() {
+        return errorCode;
+    }
+
+    public String getErrorMessage() {
+        return errorMessage;
+    }
+}

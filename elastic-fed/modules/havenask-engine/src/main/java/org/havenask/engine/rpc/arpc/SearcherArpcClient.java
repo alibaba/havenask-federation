@@ -30,6 +30,7 @@ import org.havenask.engine.rpc.SearcherClient;
 import org.havenask.engine.rpc.UpdateHeartbeatTargetRequest;
 import org.havenask.engine.rpc.WriteRequest;
 import org.havenask.engine.rpc.WriteResponse;
+import suez.service.proto.ErrorCode;
 import suez.service.proto.TableService;
 import suez.service.proto.Write;
 
@@ -60,7 +61,8 @@ public class SearcherArpcClient implements SearcherClient, Closeable {
     @Override
     public WriteResponse write(WriteRequest request) {
         Write write = Write.newBuilder().setHashId(request.getHashid()).setStr(request.getSource()).build();
-        suez.service.proto.WriteRequest writeRequest = suez.service.proto.WriteRequest.newBuilder().setTableName(request.getTable()).setFormat("ha3").addWrites(write).build();
+        suez.service.proto.WriteRequest writeRequest = suez.service.proto.WriteRequest.newBuilder().setTableName(
+            request.getTable()).setFormat("ha3").addWrites(write).build();
         try {
             if (blockingStub == null) {
                 init();
@@ -68,16 +70,23 @@ public class SearcherArpcClient implements SearcherClient, Closeable {
             suez.service.proto.WriteResponse writeResponse = blockingStub.writeTable(controller, writeRequest);
             if (writeResponse == null) {
                 closeChannel();
+                return new WriteResponse(ErrorCode.TBS_ERROR_UNKOWN, "write response is null, channel closed");
             }
-            return writeResponse == null ? null : new WriteResponse();
+
+            if (writeResponse.getErrorInfo() == null) {
+                return new WriteResponse(writeResponse.getCheckpoint());
+            } else {
+                return new WriteResponse(writeResponse.getErrorInfo().getErrorCode(),
+                    writeResponse.getErrorInfo().getErrorMsg());
+            }
         } catch (ServiceException e) {
             logger.warn("write service error", e);
             closeChannel();
-            return null;
+            return new WriteResponse(ErrorCode.TBS_ERROR_UNKOWN, "service error:" + e.getMessage());
         } catch (Exception e) {
             logger.warn("write upexpect error", e);
             closeChannel();
-            return null;
+            return new WriteResponse(ErrorCode.TBS_ERROR_UNKOWN, "upexpect error:" + e.getMessage());
         }
     }
 
