@@ -106,7 +106,7 @@ public class HavenaskEngine extends InternalEngine {
         // 加载配置表
         try {
             activeTable();
-            checkTableStatus();
+            // checkTableStatus();
         } catch (IOException e) {
             logger.error(() -> new ParameterizedMessage("shard [{}] activeTable exception", engineConfig.getShardId()),
                 e);

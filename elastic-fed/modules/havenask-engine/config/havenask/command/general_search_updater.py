@@ -136,7 +136,6 @@ examples:
         arpcPort = portList[1]
         grpcPort = portList[2]
         address = "%s:%d" %(self.ip, httpArpcPort)
-        arpcAddress = "%s:%d" %(self.ip, arpcPort)
 
         if self.enableLocalAccess:
             zoneNames = self._getNeedStartZoneName()
@@ -161,9 +160,7 @@ examples:
             },
             "biz_info" : bizInfo,
             "table_info" : tableInfos,
-            "clean_disk" : False,
-            "catalog_address" : arpcAddress,
-            "target_version" : self.targetVersion
+            "clean_disk" : False
         }
         targetStr = ''
         targetStr = json.dumps(target)
