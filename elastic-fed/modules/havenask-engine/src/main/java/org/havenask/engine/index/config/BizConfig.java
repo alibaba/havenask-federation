@@ -25,7 +25,16 @@ public class BizConfig {
     public OfflineIndexConfig offline_index_config = new OfflineIndexConfig();
     public boolean direct_write = true;
     public WalConfig wal_config = new WalConfig();
+    public OnlineIndexConfig online_index_config = new OnlineIndexConfig();
+
     //public boolean realtime = true;
+
+    public static class OnlineIndexConfig {
+        public int online_keep_version_count = 2;
+        public boolean on_disk_flush_realtime_index = true;
+        public boolean enable_async_dump_segment = true;
+        public BuildConfig build_config = new BuildConfig();
+    }
 
     public static class WalConfig {
         public int timeout_ms = 10000;
@@ -59,7 +68,7 @@ public class BizConfig {
     }
 
     public static class BuildConfig {
-        public int build_total_memory = 5120;
+        public int build_total_memory = 16;
         public int keep_version_count = 40;
     }
 

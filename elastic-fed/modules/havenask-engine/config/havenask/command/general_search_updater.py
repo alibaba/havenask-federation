@@ -136,6 +136,7 @@ examples:
         arpcPort = portList[1]
         grpcPort = portList[2]
         address = "%s:%d" %(self.ip, httpArpcPort)
+        arpcAddress = "%s:%d" %(self.ip, arpcPort)
 
         if self.enableLocalAccess:
             zoneNames = self._getNeedStartZoneName()
@@ -160,7 +161,9 @@ examples:
             },
             "biz_info" : bizInfo,
             "table_info" : tableInfos,
-            "clean_disk" : False
+            "clean_disk" : False,
+            "catalog_address" : arpcAddress,
+            "target_version" : self.targetVersion
         }
         targetStr = ''
         targetStr = json.dumps(target)
@@ -192,7 +195,7 @@ examples:
             if lastRespSig == requestSig:
                 print "start local search success\nqrs is ready for search, http arpc grpc port: %s %s %s" % (httpArpcPort, arpcPort, grpcPort)
                 return 0
-            time.sleep(0.1)
+            time.sleep(5)
         print 'load qrs target timeout [{}]s left[{}]s resp[{}] request[{}]'.format(terminator.raw_timeout(), terminator.left_time(), lastRespSig, requestSig)
         return -1
 
