@@ -1227,7 +1227,7 @@ examples:
     def _getMaxIndexVersion(self, path, clusterName, generationId, partition):
         files = os.listdir(os.path.join(path, clusterName, 'generation_' + str(generationId), 'partition_' + partition))
         versions = map(lambda x:int(x.split('.')[1]),
-                       filter(lambda x:x.startswith('version.'), files))
+                       filter(lambda x:x.startswith('version.') and False == ('publish' in x), files))
         return sorted(versions)[-1]
 
     def _getPartitions(self, path, clusterName, generationId):

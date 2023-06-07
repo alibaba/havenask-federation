@@ -68,7 +68,7 @@ public class BizConfig {
     }
 
     public static class BuildConfig {
-        public int build_total_memory = 1024;
+        public int build_total_memory = 128;
         public int keep_version_count = 40;
     }
 
