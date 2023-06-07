@@ -37,8 +37,8 @@ import suez.service.proto.Write;
 public class SearcherArpcClient implements SearcherClient, Closeable {
     private static final Logger logger = LogManager.getLogger(SearcherArpcClient.class);
     private final ANetRPCChannelManager manager;
-    private ANetRPCChannel channel;
-    private TableService.BlockingInterface blockingStub;
+    private volatile ANetRPCChannel channel;
+    private volatile TableService.BlockingInterface blockingStub;
     private final ANetRPCController controller = new ANetRPCController();
     private final String host = "127.0.0.1";
     private final int port;
@@ -91,6 +91,7 @@ public class SearcherArpcClient implements SearcherClient, Closeable {
     }
 
     private void closeChannel() {
+        logger.info("searcher arpc client close channel");
         channel = null;
         blockingStub = null;
         try {
@@ -101,6 +102,7 @@ public class SearcherArpcClient implements SearcherClient, Closeable {
     }
 
     private void init() {
+        logger.info("searcher arpc client init");
         channel = manager.openChannel(host, port);
         blockingStub = TableService.newBlockingStub(channel);
     }
