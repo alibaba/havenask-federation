@@ -17,7 +17,6 @@ package org.havenask.engine.index.config;
 import java.util.List;
 import java.util.Objects;
 
-import org.havenask.common.collect.HppcMaps.Object;
 import org.havenask.engine.util.JsonPrettyFormatter;
 
 public class BizConfig {
