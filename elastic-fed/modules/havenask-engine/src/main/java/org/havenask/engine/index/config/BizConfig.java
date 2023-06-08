@@ -17,6 +17,7 @@ package org.havenask.engine.index.config;
 import java.util.List;
 import java.util.Objects;
 
+import org.havenask.common.collect.HppcMaps.Object;
 import org.havenask.engine.util.JsonPrettyFormatter;
 
 public class BizConfig {
@@ -30,9 +31,9 @@ public class BizConfig {
     //public boolean realtime = true;
 
     public static class OnlineIndexConfig {
-        public int online_keep_version_count = 2;
         public boolean on_disk_flush_realtime_index = true;
         public boolean enable_async_dump_segment = true;
+        private int max_realtime_dump_interval = 60;
         public BuildConfig build_config = new BuildConfig();
     }
 
@@ -48,7 +49,7 @@ public class BizConfig {
 
     public static class BuildOptionConfig {
         public boolean async_build = true;
-        public int async_queue_size = 1000;
+        public int async_queue_size = 10000;
         public boolean document_filter = true;
         public int max_recover_time = 30;
         public boolean sort_build = false;
@@ -68,8 +69,8 @@ public class BizConfig {
     }
 
     public static class BuildConfig {
+        public int max_doc_count = 100000;
         public int build_total_memory = 128;
-        public int keep_version_count = 40;
     }
 
     public static class OfflineIndexConfig {
