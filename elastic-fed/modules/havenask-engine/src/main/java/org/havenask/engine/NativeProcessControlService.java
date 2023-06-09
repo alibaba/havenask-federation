@@ -294,7 +294,14 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
             LOGGER.info("start searcher process...");
             while (false == checkProcessAlive(SEARCHER_ROLE)) {
                 // 启动searcher
-                runCommand(startSearcherCommand);
+                boolean runSearcherState = runCommand(startSearcherCommand);
+                if (!runSearcherState) {
+                    try {
+                        Thread.sleep(1000);
+                    } catch (InterruptedException e) {
+                        LOGGER.warn("start searcher process failed, sleep error", e);
+                    }
+                }
             }
         }
 
@@ -302,7 +309,14 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
             LOGGER.info("start qrs process...");
             while (false == checkProcessAlive(QRS_ROLE)) {
                 // 启动qrs
-                runCommand(startQrsCommand);
+                boolean runQrsState = runCommand(startQrsCommand);
+                if (!runQrsState) {
+                    try {
+                        Thread.sleep(1000);
+                    } catch (InterruptedException e) {
+                        LOGGER.warn("start qrs process failed, sleep error", e);
+                    }
+                }
             }
         }
     }
