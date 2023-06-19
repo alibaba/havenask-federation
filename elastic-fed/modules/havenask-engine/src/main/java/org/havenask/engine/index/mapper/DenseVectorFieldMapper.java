@@ -98,7 +98,7 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
         /**
          * Creates a new Builder with a field name
          *
-         * @param name
+         * @param name the name of the field
          */
         protected Builder(String name) {
             super(name);

@@ -61,8 +61,11 @@ public class SearcherArpcClient implements SearcherClient, Closeable {
     @Override
     public WriteResponse write(WriteRequest request) {
         Write write = Write.newBuilder().setHashId(request.getHashid()).setStr(request.getSource()).build();
-        suez.service.proto.WriteRequest writeRequest = suez.service.proto.WriteRequest.newBuilder().setTableName(
-            request.getTable()).setFormat("ha3").addWrites(write).build();
+        suez.service.proto.WriteRequest writeRequest = suez.service.proto.WriteRequest.newBuilder()
+            .setTableName(request.getTable())
+            .setFormat("ha3")
+            .addWrites(write)
+            .build();
         try {
             if (blockingStub == null) {
                 init();
@@ -76,8 +79,7 @@ public class SearcherArpcClient implements SearcherClient, Closeable {
             if (writeResponse.getErrorInfo() == null || writeResponse.getErrorInfo().getErrorCode() == ErrorCode.TBS_ERROR_NONE) {
                 return new WriteResponse(writeResponse.getCheckpoint());
             } else {
-                return new WriteResponse(writeResponse.getErrorInfo().getErrorCode(),
-                    writeResponse.getErrorInfo().getErrorMsg());
+                return new WriteResponse(writeResponse.getErrorInfo().getErrorCode(), writeResponse.getErrorInfo().getErrorMsg());
             }
         } catch (ServiceException e) {
             logger.warn("write service error", e);

@@ -51,7 +51,7 @@ public class ANetRPCChannelManager {
 
 	/**
 	 * @param host either hostname or ip
-	 * @param port
+	 * @param port port
 	 * @return rpc channel which you can invoke rpc calles or null if faild.
 	 *
 	 * This method is thread-safe.
@@ -64,7 +64,7 @@ public class ANetRPCChannelManager {
 
 	/**
 	 * @param host either hostname or ip
-	 * @param port
+	 * @param port port
 	 * @param blocking whether block if the post queue is full
 	 * @param postQueueLimit limit of the post queue
 	 * @return rpc channel which you can invoke rpc calles or null if failed.

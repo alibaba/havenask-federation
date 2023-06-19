@@ -93,6 +93,10 @@ public abstract class Transport {
     class CheckTimeoutThread extends Thread {
         private volatile boolean stop = false;
 
+        public CheckTimeoutThread() {
+            super("arpc-check-timeout-thread");
+        }
+
         public void setStop() {
             stop = true;
         }
