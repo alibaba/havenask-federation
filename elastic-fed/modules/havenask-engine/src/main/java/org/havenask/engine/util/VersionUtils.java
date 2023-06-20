@@ -17,17 +17,19 @@ package org.havenask.engine.util;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Stream;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.havenask.core.internal.io.IOUtils;
 
 public class VersionUtils {
 
     private static Logger logger = LogManager.getLogger(VersionUtils.class);
 
-    public synchronized static long getMaxVersionAndExpireOldVersion(Path path, long defaultVersion) throws IOException {
+    public static synchronized long getMaxVersionAndExpireOldVersion(Path path, long defaultVersion) throws IOException {
         try (Stream<Path> stream = Files.list(path)) {
             // 删除最早的目录,只保存10个目录
             long count = stream.count();
@@ -59,15 +61,21 @@ public class VersionUtils {
         }
     }
 
-    public synchronized static void copyVersionDir(Path sourceDir, Path targetDir) throws IOException {
+    public static synchronized void copyVersionDir(Path sourceDir, Path targetDir) throws IOException {
+        AtomicBoolean result = new AtomicBoolean(true);
         Files.walk(sourceDir).forEach(sourcePath -> {
             Path targetPath = targetDir.resolve(sourceDir.relativize(sourcePath));
             try {
                 Files.copy(sourcePath, targetPath);
             } catch (IOException e) {
-                e.printStackTrace();
+                logger.error("copy version dir error", e);
+                result.set(false);
             }
         });
+        if (false == result.get()) {
+            IOUtils.rm(targetDir);
+            throw new IOException("copy version dir error");
+        }
     }
 
 }

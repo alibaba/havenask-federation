@@ -60,13 +60,13 @@ public class BizConfigGenerator {
         this.configPath = configPath.resolve(BIZ_DIR).resolve(DEFAULT_DIR);
     }
 
-    public synchronized static void generateBiz(String indexName, Settings indexSettings, MapperService mapperService, Path configPath)
+    public static synchronized void generateBiz(String indexName, Settings indexSettings, MapperService mapperService, Path configPath)
         throws IOException {
         BizConfigGenerator bizConfigGenerator = new BizConfigGenerator(indexName, indexSettings, mapperService, configPath);
         bizConfigGenerator.generate();
     }
 
-    public synchronized static void removeBiz(String indexName, Path configPath) throws IOException {
+    public static synchronized void removeBiz(String indexName, Path configPath) throws IOException {
         BizConfigGenerator bizConfigGenerator = new BizConfigGenerator(indexName, null, null, configPath);
         bizConfigGenerator.remove();
     }
@@ -99,7 +99,7 @@ public class BizConfigGenerator {
         removeDefaultBizConfig(strVersion);
     }
 
-    private synchronized void generateDefaultBizConfig(String version) throws IOException {
+    private void generateDefaultBizConfig(String version) throws IOException {
         Path defaultBizConfigPath = configPath.resolve(version).resolve(DEFAULT_BIZ_CONFIG);
 
         String strZone = Files.readString(defaultBizConfigPath, StandardCharsets.UTF_8);
@@ -115,7 +115,7 @@ public class BizConfigGenerator {
         );
     }
 
-    private synchronized void removeDefaultBizConfig(String version) throws IOException {
+    private void removeDefaultBizConfig(String version) throws IOException {
         Path defaultBizConfigPath = configPath.resolve(version).resolve(DEFAULT_BIZ_CONFIG);
 
         String strZone = Files.readString(defaultBizConfigPath, StandardCharsets.UTF_8);
