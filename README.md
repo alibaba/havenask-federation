@@ -65,7 +65,7 @@ Havenask-federation承担三种角色：master、data、coordinate，其中data�
 容器附带了一个opensearch-dashbards可以用作可视化操作fed，启动方式为：
 
      cd dashboards/bin/
-     ./opensearch-dashboards
+     nohup ./opensearch-dashboards &
 
 ## 访问fed
 
