@@ -48,8 +48,11 @@ public class TableConfigGeneratorTests extends MapperServiceTestCase {
         Files.createDirectories(configPath.resolve(TABLE_DIR).resolve("0").resolve(CLUSTER_DIR));
         Files.createDirectories(configPath.resolve(TABLE_DIR).resolve("0").resolve(SCHEMAS_DIR));
         Files.createDirectories(configPath.resolve(TABLE_DIR).resolve("0").resolve(DATA_TABLES_DIR));
-        TableConfigGenerator tableConfigGenerator = new TableConfigGenerator(indexName, Settings.EMPTY, mapperService, configPath);
-        tableConfigGenerator.generate();
+        TableConfigGenerator.generateTable(
+            indexName,
+            Settings.EMPTY,
+            mapperService,
+            configPath);
 
         {
             Path clusterConfigPath = configPath.resolve(TABLE_DIR)
@@ -226,14 +229,15 @@ public class TableConfigGeneratorTests extends MapperServiceTestCase {
             assertEquals(expect, content);
         }
 
-        tableConfigGenerator.remove();
+        TableConfigGenerator.removeTable(indexName, configPath);
         Path clusterConfigPath = configPath.resolve(TABLE_DIR)
             .resolve("0")
             .resolve(BizConfigGenerator.CLUSTER_DIR)
             .resolve(indexName + BizConfigGenerator.CLUSTER_FILE_SUFFIX);
         assertFalse(Files.exists(clusterConfigPath));
 
-        Path schemaConfigPath = configPath.resolve(TABLE_DIR).resolve("0").resolve(SCHEMAS_DIR).resolve(indexName + SCHEMAS_FILE_SUFFIX);
+        Path schemaConfigPath = configPath.resolve(TABLE_DIR).resolve("0").resolve(SCHEMAS_DIR).resolve(
+            indexName + SCHEMAS_FILE_SUFFIX);
         assertFalse(Files.exists(schemaConfigPath));
 
         Path dataTablesPath = configPath.resolve(TABLE_DIR)
@@ -265,8 +269,8 @@ public class TableConfigGeneratorTests extends MapperServiceTestCase {
         Files.createDirectories(configPath.resolve(TABLE_DIR).resolve("0").resolve(CLUSTER_DIR));
         Files.createDirectories(configPath.resolve(TABLE_DIR).resolve("0").resolve(SCHEMAS_DIR));
         Files.createDirectories(configPath.resolve(TABLE_DIR).resolve("0").resolve(DATA_TABLES_DIR));
-        TableConfigGenerator tableConfigGenerator = new TableConfigGenerator(indexName, Settings.EMPTY, mapperService, configPath);
-        tableConfigGenerator.generate();
+        TableConfigGenerator.generateTable(indexName, Settings.EMPTY, mapperService,
+            configPath);
 
         {
             Path clusterConfigPath = configPath.resolve(TABLE_DIR)
@@ -506,14 +510,15 @@ public class TableConfigGeneratorTests extends MapperServiceTestCase {
             assertEquals(expect, content);
         }
 
-        tableConfigGenerator.remove();
+        TableConfigGenerator.removeTable(indexName, configPath);
         Path clusterConfigPath = configPath.resolve(TABLE_DIR)
             .resolve("0")
             .resolve(BizConfigGenerator.CLUSTER_DIR)
             .resolve(indexName + BizConfigGenerator.CLUSTER_FILE_SUFFIX);
         assertFalse(Files.exists(clusterConfigPath));
 
-        Path schemaConfigPath = configPath.resolve(TABLE_DIR).resolve("0").resolve(SCHEMAS_DIR).resolve(indexName + SCHEMAS_FILE_SUFFIX);
+        Path schemaConfigPath = configPath.resolve(TABLE_DIR).resolve("0").resolve(SCHEMAS_DIR).resolve(
+            indexName + SCHEMAS_FILE_SUFFIX);
         assertFalse(Files.exists(schemaConfigPath));
 
         Path dataTablesPath = configPath.resolve(TABLE_DIR)

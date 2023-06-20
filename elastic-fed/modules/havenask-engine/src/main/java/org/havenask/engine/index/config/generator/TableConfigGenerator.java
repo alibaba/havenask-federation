@@ -46,35 +46,45 @@ public class TableConfigGenerator {
     private final Settings indexSettings;
     private final MapperService mapperService;
 
-    public TableConfigGenerator(String indexName, Settings indexSettings, @Nullable MapperService mapperService, Path configPath) {
+    private TableConfigGenerator(String indexName, Settings indexSettings, @Nullable MapperService mapperService, Path configPath) {
         this.indexName = indexName;
         this.indexSettings = indexSettings;
         this.mapperService = mapperService;
         this.configPath = configPath.resolve(TABLE_DIR);
     }
 
-    public static void generateTable(String indexName, Settings indexSettings, MapperService mapperService, Path configPath)
+    public synchronized static void generateTable(String indexName, Settings indexSettings, MapperService mapperService, Path configPath)
         throws IOException {
         TableConfigGenerator tableConfigGenerator = new TableConfigGenerator(indexName, indexSettings, mapperService, configPath);
         tableConfigGenerator.generate();
     }
 
-    public static void removeTable(String indexName, Path configPath) throws IOException {
+    public synchronized static void removeTable(String indexName, Path configPath) throws IOException {
         TableConfigGenerator tableConfigGenerator = new TableConfigGenerator(indexName, null, null, configPath);
         tableConfigGenerator.remove();
     }
 
-    public void generate() throws IOException {
-        long lastVersion = VersionUtils.getMaxVersion(configPath, 0);
-        String strVersion = String.valueOf(lastVersion);
+    void generate() throws IOException {
+        long lastVersion = VersionUtils.getMaxVersionAndExpireOldVersion(configPath, 0);
+        long currentVersion = Math.max(System.currentTimeMillis(), lastVersion + 1);
+        Files.copy(
+            configPath.resolve(String.valueOf(lastVersion)),
+            configPath.resolve(String.valueOf(currentVersion))
+        );
+        String strVersion = String.valueOf(currentVersion);
         generateClusterConfig(strVersion);
         Schema schema = generateSchema(strVersion);
         generateDataTable(schema, strVersion);
     }
 
-    public void remove() throws IOException {
-        long lastVersion = VersionUtils.getMaxVersion(configPath, 0);
-        String strVersion = String.valueOf(lastVersion);
+    void remove() throws IOException {
+        long lastVersion = VersionUtils.getMaxVersionAndExpireOldVersion(configPath, 0);
+        long currentVersion = Math.max(System.currentTimeMillis(), lastVersion + 1);
+        Files.copy(
+            configPath.resolve(String.valueOf(lastVersion)),
+            configPath.resolve(String.valueOf(currentVersion))
+        );
+        String strVersion = String.valueOf(currentVersion);
         Path clusterConfigPath = configPath.resolve(strVersion).resolve(CLUSTER_DIR).resolve(indexName + CLUSTER_FILE_SUFFIX);
         Files.deleteIfExists(clusterConfigPath);
 
