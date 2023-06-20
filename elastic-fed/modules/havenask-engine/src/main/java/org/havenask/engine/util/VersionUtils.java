@@ -27,8 +27,7 @@ public class VersionUtils {
 
     private static Logger logger = LogManager.getLogger(VersionUtils.class);
 
-    public synchronized static long getMaxVersionAndExpireOldVersion(Path path, long defaultVersion)
-        throws IOException {
+    public synchronized static long getMaxVersionAndExpireOldVersion(Path path, long defaultVersion) throws IOException {
         try (Stream<Path> stream = Files.list(path)) {
             // 删除最早的目录,只保存10个目录
             long count = stream.count();
@@ -58,6 +57,17 @@ public class VersionUtils {
             logger.debug("path[{}] get max version: {}", path, maxVersion);
             return maxVersion;
         }
+    }
+
+    public synchronized static void copyVersionDir(Path sourceDir, Path targetDir) throws IOException {
+        Files.walk(sourceDir).forEach(sourcePath -> {
+            Path targetPath = targetDir.resolve(sourceDir.relativize(sourcePath));
+            try {
+                Files.copy(sourcePath, targetPath);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        });
     }
 
 }

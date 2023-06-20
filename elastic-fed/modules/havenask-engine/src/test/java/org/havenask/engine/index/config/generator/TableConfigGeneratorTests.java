@@ -22,6 +22,7 @@ import java.util.Locale;
 
 import org.havenask.common.settings.Settings;
 import org.havenask.engine.HavenaskEnginePlugin;
+import org.havenask.engine.util.VersionUtils;
 import org.havenask.index.mapper.MapperService;
 import org.havenask.index.mapper.MapperServiceTestCase;
 import org.havenask.plugins.Plugin;
@@ -48,15 +49,13 @@ public class TableConfigGeneratorTests extends MapperServiceTestCase {
         Files.createDirectories(configPath.resolve(TABLE_DIR).resolve("0").resolve(CLUSTER_DIR));
         Files.createDirectories(configPath.resolve(TABLE_DIR).resolve("0").resolve(SCHEMAS_DIR));
         Files.createDirectories(configPath.resolve(TABLE_DIR).resolve("0").resolve(DATA_TABLES_DIR));
-        TableConfigGenerator.generateTable(
-            indexName,
-            Settings.EMPTY,
-            mapperService,
-            configPath);
+        TableConfigGenerator.generateTable(indexName, Settings.EMPTY, mapperService, configPath);
+
+        Long version = VersionUtils.getMaxVersionAndExpireOldVersion(configPath.resolve(TABLE_DIR), 0);
 
         {
             Path clusterConfigPath = configPath.resolve(TABLE_DIR)
-                .resolve("0")
+                .resolve(version.toString())
                 .resolve(CLUSTER_DIR)
                 .resolve(indexName + CLUSTER_FILE_SUFFIX);
             assertTrue(Files.exists(clusterConfigPath));
@@ -121,7 +120,7 @@ public class TableConfigGeneratorTests extends MapperServiceTestCase {
 
         {
             Path schemaConfigPath = configPath.resolve(TABLE_DIR)
-                .resolve("0")
+                .resolve(version.toString())
                 .resolve(SCHEMAS_DIR)
                 .resolve(indexName + SCHEMAS_FILE_SUFFIX);
             assertTrue(Files.exists(schemaConfigPath));
@@ -191,7 +190,7 @@ public class TableConfigGeneratorTests extends MapperServiceTestCase {
 
         {
             Path dataTablesPath = configPath.resolve(TABLE_DIR)
-                .resolve("0")
+                .resolve(version.toString())
                 .resolve(DATA_TABLES_DIR)
                 .resolve(indexName + DATA_TABLES_FILE_SUFFIX);
             assertTrue(Files.exists(dataTablesPath));
@@ -230,18 +229,20 @@ public class TableConfigGeneratorTests extends MapperServiceTestCase {
         }
 
         TableConfigGenerator.removeTable(indexName, configPath);
+
+        version = VersionUtils.getMaxVersionAndExpireOldVersion(configPath.resolve(TABLE_DIR), 0);
+
         Path clusterConfigPath = configPath.resolve(TABLE_DIR)
-            .resolve("0")
+            .resolve(version.toString())
             .resolve(BizConfigGenerator.CLUSTER_DIR)
             .resolve(indexName + BizConfigGenerator.CLUSTER_FILE_SUFFIX);
         assertFalse(Files.exists(clusterConfigPath));
 
-        Path schemaConfigPath = configPath.resolve(TABLE_DIR).resolve("0").resolve(SCHEMAS_DIR).resolve(
-            indexName + SCHEMAS_FILE_SUFFIX);
+        Path schemaConfigPath = configPath.resolve(TABLE_DIR).resolve("0").resolve(SCHEMAS_DIR).resolve(indexName + SCHEMAS_FILE_SUFFIX);
         assertFalse(Files.exists(schemaConfigPath));
 
         Path dataTablesPath = configPath.resolve(TABLE_DIR)
-            .resolve("0")
+            .resolve(version.toString())
             .resolve(DATA_TABLES_DIR)
             .resolve(indexName + DATA_TABLES_FILE_SUFFIX);
         assertFalse(Files.exists(dataTablesPath));
@@ -269,12 +270,13 @@ public class TableConfigGeneratorTests extends MapperServiceTestCase {
         Files.createDirectories(configPath.resolve(TABLE_DIR).resolve("0").resolve(CLUSTER_DIR));
         Files.createDirectories(configPath.resolve(TABLE_DIR).resolve("0").resolve(SCHEMAS_DIR));
         Files.createDirectories(configPath.resolve(TABLE_DIR).resolve("0").resolve(DATA_TABLES_DIR));
-        TableConfigGenerator.generateTable(indexName, Settings.EMPTY, mapperService,
-            configPath);
+        TableConfigGenerator.generateTable(indexName, Settings.EMPTY, mapperService, configPath);
+
+        Long version = VersionUtils.getMaxVersionAndExpireOldVersion(configPath.resolve(TABLE_DIR), 0);
 
         {
             Path clusterConfigPath = configPath.resolve(TABLE_DIR)
-                .resolve("0")
+                .resolve(version.toString())
                 .resolve(CLUSTER_DIR)
                 .resolve(indexName + CLUSTER_FILE_SUFFIX);
             assertTrue(Files.exists(clusterConfigPath));
@@ -339,7 +341,7 @@ public class TableConfigGeneratorTests extends MapperServiceTestCase {
 
         {
             Path schemaConfigPath = configPath.resolve(TABLE_DIR)
-                .resolve("0")
+                .resolve(version.toString())
                 .resolve(SCHEMAS_DIR)
                 .resolve(indexName + SCHEMAS_FILE_SUFFIX);
             assertTrue(Files.exists(schemaConfigPath));
@@ -463,7 +465,7 @@ public class TableConfigGeneratorTests extends MapperServiceTestCase {
 
         {
             Path dataTablesPath = configPath.resolve(TABLE_DIR)
-                .resolve("0")
+                .resolve(version.toString())
                 .resolve(DATA_TABLES_DIR)
                 .resolve(indexName + DATA_TABLES_FILE_SUFFIX);
             assertTrue(Files.exists(dataTablesPath));
@@ -511,18 +513,23 @@ public class TableConfigGeneratorTests extends MapperServiceTestCase {
         }
 
         TableConfigGenerator.removeTable(indexName, configPath);
+
+        version = VersionUtils.getMaxVersionAndExpireOldVersion(configPath.resolve(TABLE_DIR), 0);
+
         Path clusterConfigPath = configPath.resolve(TABLE_DIR)
-            .resolve("0")
+            .resolve(version.toString())
             .resolve(BizConfigGenerator.CLUSTER_DIR)
             .resolve(indexName + BizConfigGenerator.CLUSTER_FILE_SUFFIX);
         assertFalse(Files.exists(clusterConfigPath));
 
-        Path schemaConfigPath = configPath.resolve(TABLE_DIR).resolve("0").resolve(SCHEMAS_DIR).resolve(
-            indexName + SCHEMAS_FILE_SUFFIX);
+        Path schemaConfigPath = configPath.resolve(TABLE_DIR)
+            .resolve(version.toString())
+            .resolve(SCHEMAS_DIR)
+            .resolve(indexName + SCHEMAS_FILE_SUFFIX);
         assertFalse(Files.exists(schemaConfigPath));
 
         Path dataTablesPath = configPath.resolve(TABLE_DIR)
-            .resolve("0")
+            .resolve(version.toString())
             .resolve(DATA_TABLES_DIR)
             .resolve(indexName + DATA_TABLES_FILE_SUFFIX);
         assertFalse(Files.exists(dataTablesPath));

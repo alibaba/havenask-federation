@@ -67,10 +67,7 @@ public class TableConfigGenerator {
     void generate() throws IOException {
         long lastVersion = VersionUtils.getMaxVersionAndExpireOldVersion(configPath, 0);
         long currentVersion = Math.max(System.currentTimeMillis(), lastVersion + 1);
-        Files.copy(
-            configPath.resolve(String.valueOf(lastVersion)),
-            configPath.resolve(String.valueOf(currentVersion))
-        );
+        VersionUtils.copyVersionDir(configPath.resolve(String.valueOf(lastVersion)), configPath.resolve(String.valueOf(currentVersion)));
         String strVersion = String.valueOf(currentVersion);
         generateClusterConfig(strVersion);
         Schema schema = generateSchema(strVersion);
@@ -80,10 +77,7 @@ public class TableConfigGenerator {
     void remove() throws IOException {
         long lastVersion = VersionUtils.getMaxVersionAndExpireOldVersion(configPath, 0);
         long currentVersion = Math.max(System.currentTimeMillis(), lastVersion + 1);
-        Files.copy(
-            configPath.resolve(String.valueOf(lastVersion)),
-            configPath.resolve(String.valueOf(currentVersion))
-        );
+        VersionUtils.copyVersionDir(configPath.resolve(String.valueOf(lastVersion)), configPath.resolve(String.valueOf(currentVersion)));
         String strVersion = String.valueOf(currentVersion);
         Path clusterConfigPath = configPath.resolve(strVersion).resolve(CLUSTER_DIR).resolve(indexName + CLUSTER_FILE_SUFFIX);
         Files.deleteIfExists(clusterConfigPath);
