@@ -26,7 +26,7 @@ public class BizConfig {
     public boolean direct_write = true;
     public WalConfig wal_config = new WalConfig();
     public OnlineIndexConfig online_index_config = new OnlineIndexConfig();
-    public boolean realtime = true;
+    public boolean realtime = false;
 
     public static class OnlineIndexConfig {
         public boolean on_disk_flush_realtime_index = true;
