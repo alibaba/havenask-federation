@@ -46,7 +46,10 @@ import org.havenask.engine.index.config.generator.RuntimeSegmentGenerator;
 import org.havenask.engine.index.mapper.VectorField;
 import org.havenask.engine.rpc.HavenaskClient;
 import org.havenask.engine.rpc.HeartbeatTargetResponse;
+import org.havenask.engine.rpc.SearcherClient;
 import org.havenask.engine.rpc.TargetInfo;
+import org.havenask.engine.rpc.WriteRequest;
+import org.havenask.engine.rpc.WriteResponse;
 import org.havenask.index.engine.EngineConfig;
 import org.havenask.index.engine.EngineException;
 import org.havenask.index.engine.InternalEngine;
@@ -56,10 +59,12 @@ import org.havenask.index.mapper.ParsedDocument;
 import org.havenask.index.mapper.SourceFieldMapper;
 import org.havenask.index.mapper.Uid;
 import org.havenask.index.shard.ShardId;
+import org.havenask.index.translog.Translog;
 
 public class HavenaskEngine extends InternalEngine {
 
     private final HavenaskClient havenaskClient;
+    private final SearcherClient searcherClient;
     private final HavenaskEngineEnvironment env;
     private final NativeProcessControlService nativeProcessControlService;
     private final ShardId shardId;
@@ -71,11 +76,13 @@ public class HavenaskEngine extends InternalEngine {
     public HavenaskEngine(
         EngineConfig engineConfig,
         HavenaskClient havenaskClient,
+        SearcherClient searcherClient,
         HavenaskEngineEnvironment env,
         NativeProcessControlService nativeProcessControlService
     ) {
         super(engineConfig);
         this.havenaskClient = havenaskClient;
+        this.searcherClient = searcherClient;
         this.env = env;
         this.nativeProcessControlService = nativeProcessControlService;
         this.shardId = engineConfig.getShardId();
@@ -97,7 +104,7 @@ public class HavenaskEngine extends InternalEngine {
         // 加载配置表
         try {
             activeTable();
-            checkTableStatus();
+            // checkTableStatus();
         } catch (IOException e) {
             logger.error(() -> new ParameterizedMessage("shard [{}] activeTable exception", engineConfig.getShardId()), e);
             failEngine("active havenask table failed", e);
@@ -132,7 +139,7 @@ public class HavenaskEngine extends InternalEngine {
      *
      * @param settings   settings
      * @param kafkaTopic kafkaTopic name
-     * @return
+     * @return partition数量
      */
     static int getKafkaPartition(Settings settings, String kafkaTopic) {
         Map<String, Object> props = new HashMap<>();
@@ -273,7 +280,7 @@ public class HavenaskEngine extends InternalEngine {
         int topicPartition,
         Map<String, String> haDoc
     ) {
-        StringBuffer message = new StringBuffer();
+        StringBuilder message = new StringBuilder();
         switch (type) {
             case INDEX:
                 message.append("CMD=add\u001F\n");
@@ -295,37 +302,108 @@ public class HavenaskEngine extends InternalEngine {
         return new ProducerRecord<>(topicName, (int) partition, id, message.toString());
     }
 
-    @Override
-    public IndexResult index(Index index) throws IOException {
-        if (false == realTimeEnable) {
-            throw new HavenaskException("havenask realtime is not enable! not support index operation!");
+    static WriteRequest buildWriteRequest(String table, String id, Operation.TYPE type, Map<String, String> haDoc) {
+        StringBuilder message = new StringBuilder();
+        switch (type) {
+            case INDEX:
+                message.append("CMD=add\u001F\n");
+                break;
+            case DELETE:
+                message.append("CMD=delete\u001F\n");
+                break;
+            default:
+                throw new IllegalArgumentException("invalid operation type!");
         }
 
-        Map<String, String> haDoc = toHaIndex(index.parsedDoc());
-        ProducerRecord<String, String> record = buildProducerRecord(index.id(), index.operationType(), kafkaTopic, kafkaPartition, haDoc);
-        try {
-            producer.send(record).get();
-        } catch (Exception e) {
-            throw new HavenaskException("havenask realtime index exception", e);
+        for (Map.Entry<String, String> entry : haDoc.entrySet()) {
+            message.append(entry.getKey()).append("=").append(entry.getValue()).append("\u001F\n");
         }
-        return new IndexResult(index.version(), index.primaryTerm(), index.seqNo(), true);
+        message.append("\u001E\n");
+        long hashId = HashAlgorithm.getHashId(id);
+        return new WriteRequest(table, (int) hashId, message.toString());
     }
 
     @Override
-    public DeleteResult delete(Delete delete) {
-        if (false == realTimeEnable) {
-            throw new HavenaskException("havenask realtime is not enable! not support delete operation!");
+    public IndexResult index(Index index) throws IOException {
+        Map<String, String> haDoc = toHaIndex(index.parsedDoc());
+        if (realTimeEnable) {
+            ProducerRecord<String, String> record = buildProducerRecord(
+                index.id(),
+                index.operationType(),
+                kafkaTopic,
+                kafkaPartition,
+                haDoc
+            );
+            try {
+                producer.send(record).get();
+            } catch (Exception e) {
+                throw new HavenaskException("havenask realtime index exception", e);
+            }
+            return new IndexResult(index.version(), index.primaryTerm(), index.seqNo(), true);
+        } else {
+            try {
+                WriteRequest writeRequest = buildWriteRequest(shardId.getIndexName(), index.id(), index.operationType(), haDoc);
+                WriteResponse writeResponse = searcherClient.write(writeRequest);
+                if (writeResponse.getErrorCode() != null) {
+                    throw new IOException(
+                        "havenask index exception, error code: "
+                            + writeResponse.getErrorCode()
+                            + ", error message:"
+                            + writeResponse.getErrorMessage()
+                    );
+                }
+                IndexResult indexResult = new IndexResult(index.version(), index.primaryTerm(), index.seqNo(), true);
+                final Translog.Location location = translog.add(new Translog.Index(index, indexResult));
+                indexResult.setTranslogLocation(location);
+                return indexResult;
+            } catch (IOException e) {
+                logger.warn("havenask index exception", e);
+                maybeFailEngine(e.getMessage(), e);
+                throw e;
+            }
         }
+    }
 
+    @Override
+    public DeleteResult delete(Delete delete) throws IOException {
         Map<String, String> haDoc = new HashMap<>();
         haDoc.put(IdFieldMapper.NAME, delete.id());
-        ProducerRecord<String, String> record = buildProducerRecord(delete.id(), delete.operationType(), kafkaTopic, kafkaPartition, haDoc);
-        try {
-            producer.send(record).get();
-        } catch (Exception e) {
-            throw new HavenaskException("havenask realtime delete exception", e);
+        if (false == realTimeEnable) {
+            ProducerRecord<String, String> record = buildProducerRecord(
+                delete.id(),
+                delete.operationType(),
+                kafkaTopic,
+                kafkaPartition,
+                haDoc
+            );
+            try {
+                producer.send(record).get();
+            } catch (Exception e) {
+                throw new HavenaskException("havenask realtime delete exception", e);
+            }
+            return new DeleteResult(delete.version(), delete.primaryTerm(), delete.seqNo(), true);
+        } else {
+            try {
+                WriteRequest writeRequest = buildWriteRequest(shardId.getIndexName(), delete.id(), delete.operationType(), haDoc);
+                WriteResponse writeResponse = searcherClient.write(writeRequest);
+                if (writeResponse.getErrorCode() != null) {
+                    throw new IOException(
+                        "havenask delete exception, error code: "
+                            + writeResponse.getErrorCode()
+                            + ", error message:"
+                            + writeResponse.getErrorMessage()
+                    );
+                }
+                DeleteResult deleteResult = new DeleteResult(delete.version(), delete.primaryTerm(), delete.seqNo(), true);
+                final Translog.Location location = translog.add(new Translog.Delete(delete, deleteResult));
+                deleteResult.setTranslogLocation(location);
+                return deleteResult;
+            } catch (IOException e) {
+                logger.warn("havenask delete exception", e);
+                maybeFailEngine(e.getMessage(), e);
+                throw e;
+            }
         }
-        return new DeleteResult(delete.version(), delete.primaryTerm(), delete.seqNo(), true);
     }
 
     /**

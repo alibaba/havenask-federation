@@ -149,7 +149,7 @@ public class InternalEngine extends Engine {
      */
     private volatile long lastDeleteVersionPruneTimeMSec;
 
-    private final Translog translog;
+    protected final Translog translog;
     private final HavenaskConcurrentMergeScheduler mergeScheduler;
 
     private final IndexWriter indexWriter;

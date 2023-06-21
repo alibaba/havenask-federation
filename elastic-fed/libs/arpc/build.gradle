@@ -1,0 +1,115 @@
+/* 
+*Copyright (c) 2021, Alibaba Group;
+*Licensed under the Apache License, Version 2.0 (the "License");
+*you may not use this file except in compliance with the License.
+*You may obtain a copy of the License at
+
+*   http://www.apache.org/licenses/LICENSE-2.0
+
+*Unless required by applicable law or agreed to in writing, software
+*distributed under the License is distributed on an "AS IS" BASIS,
+*WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+*See the License for the specific language governing permissions and
+*limitations under the License.
+*
+* Modifications Copyright Havenask Contributors. See
+* GitHub history for details.
+*/
+
+/*
+ * Licensed to Elasticsearch under one or more contributor
+ * license agreements. See the NOTICE file distributed with
+ * this work for additional information regarding copyright
+ * ownership. Elasticsearch licenses this file to you under
+ * the Apache License, Version 2.0 (the "License"); you may
+ * not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+buildscript {
+    dependencies {
+        classpath 'com.google.protobuf:protobuf-gradle-plugin:0.8.18'
+    }
+}
+
+plugins {
+    id "com.google.protobuf" version "0.8.18"
+}
+
+apply plugin: 'havenask.build'
+apply plugin: 'havenask.publish'
+
+dependencies {
+    api 'org.apache.mina:mina-core:2.0.4'
+    api 'com.google.protobuf:protobuf-java:3.11.1'
+    api "org.slf4j:slf4j-api:${versions.slf4j}"
+    api "org.apache.logging.log4j:log4j-slf4j-impl:${versions.log4j}"
+}
+
+compileJava.options.compilerArgs << "-Xlint:-cast,-deprecation,-rawtypes,-try,-unchecked"
+compileTestJava.options.compilerArgs << "-Xlint:-cast,-deprecation,-rawtypes,-try,-unchecked"
+
+// test depend on ES core...
+disableTasks('forbiddenApisMain')
+disableTasks('checkstyleMain')
+disableTasks('checkstyleTest')
+disableTasks('forbiddenPatterns')
+disableTasks('spotlessJavaCheck')
+disableTasks('thirdPartyAudit')
+
+test.enabled = false
+jarHell.enabled = false
+
+
+tasks.named("processResources") {
+    duplicatesStrategy = 'include'
+}
+
+tasks.named("sourcesJar") {
+    duplicatesStrategy = 'include'
+}
+
+tasks.named("javadoc").configure { enabled = false }
+
+sourceSets {
+    main {
+        proto {
+            srcDir 'src/main/proto'
+        }
+        java {
+            srcDir 'src/main/java'
+        }
+    }
+}
+
+protobuf {
+    // Configure the protoc executable
+    protoc {
+        path = '/usr/local/bin/protoc'
+        // Download from repositories
+        artifact = 'com.google.protobuf:protoc:3.14.0'
+    }
+    generateProtoTasks {
+        // all() returns the collection of all protoc tasks
+        all().each { task ->
+            // Here you can configure the task
+        }
+
+        // In addition to all(), you may get the task collection by various
+        // criteria:
+
+        // (Java only) returns tasks for a sourceSet
+        ofSourceSet('main')
+
+    }
+}
+

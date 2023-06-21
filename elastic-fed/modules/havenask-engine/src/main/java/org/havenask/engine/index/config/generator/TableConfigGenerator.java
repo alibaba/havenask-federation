@@ -29,7 +29,6 @@ import org.havenask.engine.index.config.DataTable;
 import org.havenask.engine.index.config.Processor.ProcessChain;
 import org.havenask.engine.index.config.Processor.ProcessorChainConfig;
 import org.havenask.engine.index.config.Schema;
-import org.havenask.engine.index.engine.EngineSettings;
 import org.havenask.engine.util.VersionUtils;
 import org.havenask.index.mapper.IdFieldMapper;
 import org.havenask.index.mapper.MapperService;
@@ -90,7 +89,8 @@ public class TableConfigGenerator {
         BizConfig bizConfig = new BizConfig();
         bizConfig.cluster_config.cluster_name = indexName;
         bizConfig.cluster_config.table_name = indexName;
-        bizConfig.realtime = EngineSettings.HAVENASK_REALTIME_ENABLE.get(indexSettings);
+        bizConfig.wal_config.sink.queue_name = indexName;
+        // bizConfig.realtime = true;//EngineSettings.HAVENASK_REALTIME_ENABLE.get(indexSettings);
         Path clusterConfigPath = configPath.resolve(version).resolve(CLUSTER_DIR).resolve(indexName + CLUSTER_FILE_SUFFIX);
         Files.write(
             clusterConfigPath,

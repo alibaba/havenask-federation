@@ -29,7 +29,7 @@ options:
     -b binary_path,   --binary=binary_path           : optional, special binary path to load
 
 examples:
-    ./local_search_update.py -i /path/to/index -c path/to/config 
+    ./local_search_update.py -i /path/to/index -c path/to/config
     ./local_search_update.py -i /path/to/index -c path/to/config -p 12345
     '''
 
@@ -70,7 +70,6 @@ examples:
         return ("", "", 0)
 
     def _getPortListArray(self):
-        print(self.pidFile)
         if not os.path.exists(self.portFile):
             return False
         self.portListArray = []
@@ -82,52 +81,91 @@ examples:
                 if match:
                     ports.append(int(match.group(0)))
                     self.portList.append(int(match.group(0)))
-            print(ports)
-            if len(ports) != 2:
+            if len(ports) != 3:
                 return False
-            self.portListArray.append((ports[0], ports[1], ports[1]))
+
+            item = general_search_starter.PortListItem()
+            item.ports = (ports[0], ports[1], ports[2])
+            self.portListArray.append(item)
         if self.role == "searcher" or self.role == "all":
             self.searcher_port_list = self.portListArray
         if self.role == "qrs" or self.role == "all":
             self.qrs_port_list = ports
         return True
         pass
-    
+
     def _updateSearchConfig(self):
         zoneNames = self._getNeedStartZoneName()
-        tableInfos = self._genTargetInfos(zoneNames)
-        if not self._loadSearcherTarget(tableInfos):
+        tableInfos, createCatalogRequest = self._genTargetInfos(zoneNames, replica = self.searcherReplica)
+        if 0 != self._loadSearcherTarget(tableInfos):
             return False
         return True
 
     def _updateQrsConfig(self):
-        if not self._loadQrsTarget():
+        if 0 != self._loadQrsTarget():
             return False
         return True
-    
+
 
     def _loadQrsTarget(self, timeout = 300):
         with open(os.path.join(self.workdir, "readyZones.json"), "r") as f:
-            self.readyZones = json.load(f)
-        # print(self.readyZones.values())
+            self.gigInfos = json.load(f)
+
+        terminator = general_search_starter.TimeoutTerminator(timeout)
+        bizs = os.listdir(self.onlineConfigPath)
+        bizInfo = {}
+        if self.enableMultiBiz:
+            for biz in bizs:
+                onlineConfig = self.genOnlineConfigPath(self.onlineConfigPath, biz)
+                bizInfo[biz] = {
+                    "config_path" : self.createConfigLink('qrs', 'biz', biz, onlineConfig)
+                }
+                if biz in self.modelBiz:
+                    bizInfo[biz]["custom_biz_info"] = {
+                            "biz_type" : "model_biz"
+                    }
+        else:
+            onlineConfig = self.genOnlineConfigPath(self.onlineConfigPath, bizs[0])
+            bizInfo['default'] = {
+                "config_path" : self.createConfigLink('qrs', 'biz', 'default', onlineConfig)
+            }
+        tableInfos = {}
+        zoneName = "qrs"
+        portList = self.getQrsPortList()
+        httpArpcPort = portList[0]
+        arpcPort = portList[1]
+        grpcPort = portList[2]
+        address = "%s:%d" %(self.ip, httpArpcPort)
+        arpcAddress = "%s:%d" %(self.ip, arpcPort)
+
+        if self.enableLocalAccess:
+            zoneNames = self._getNeedStartZoneName()
+            targetInfos, createCatalogRequest = self._genTargetInfos(zoneNames, 1, True)
+            tableInfos = targetInfos[0][3]["table_info"]
+            zoneName = zoneNames[0]
+            ret = self.createCatalog(createCatalogRequest)
+            if ret != 0:
+                print "create catalog %s failed." % createCatalogRequest
+                return -1
+
+        gigInfos = self.gigInfos
+
         target = {
             "service_info" : {
                 "cm2_config" : {
-                    "local" : self.readyZones.values()
+                    "local" : gigInfos.values()
                 },
-                "part_count" : 0,
+                "part_count" : 1,
                 "part_id" : 0,
-                "zone_name": "qrs"
+                "zone_name": zoneName
             },
-            "biz_info" : {
-                "default" : {
-                    "config_path" : self.createConfigLink('qrs', 'biz', 'default', self.onlineConfigPath)
-                }
-            },
-            "table_info" : {
-            },
-            "clean_disk" : False
+            "biz_info" : bizInfo,
+            "table_info" : tableInfos,
+            "clean_disk" : False,
+            "catalog_address" : arpcAddress,
+            "target_version" : self.targetVersion
         }
+        targetStr = ''
         targetStr = json.dumps(target)
         requestSig = targetStr
         globalInfo = {"customInfo":targetStr}
@@ -135,41 +173,58 @@ examples:
                           "customInfo" : targetStr,
                           "globalCustomInfo": json.dumps(globalInfo)
         }
-        portList = self._getQrsPortList()
-        httpArpcPort = portList[0]
-        arpcPort = portList[1]
-        address = "%s:%d" %(self.ip, httpArpcPort)
-        while timeout > 0:
-            retCode, out, err, _ = self.curl(address, "/HeartbeatService/heartbeat", targetRequest)
-            if retCode != 0:
-                print "set qrs target %s failed." % targetStr
-                time.sleep(5)
-                timeout -= 5
-                continue
+        lastRespSignature = ""
+        while True:
+            timeout = terminator.left_time()
+            if timeout <= 0:
+                break
+            log_file = os.path.join(self.localSearchDir, "qrs", 'logs/ha3.log')
+            log_state = self.check_log_file(log_file)
+            if log_state != 0:
+                return log_state
+
+            retCode, out, err, status = self.curl(address, "/HeartbeatService/heartbeat", targetRequest, timeout=timeout)
+            if retCode != 0: #qrs core
+                print "set qrs target [{}] failed, address[{}] ret[{}] out[{}] err[{}] status[{}] left[{}]s".format(targetStr, address, retCode, out, err, status, terminator.left_time())
+                return -1
             response = json.loads(out)
-            if response["signature"] == requestSig:
-                print "qrs is ready for search, http port %s, arpc port %s" % (httpArpcPort, arpcPort)
-                return True
+            if "signature" not in response:
+                print "set qrs target response invalid [{}], continue...".format(out)
+                continue
+            lastRespSig = response["signature"]
+            if lastRespSig == requestSig:
+                print "start local search success\nqrs is ready for search, http arpc grpc port: %s %s %s" % (httpArpcPort, arpcPort, grpcPort)
+                return 0
             time.sleep(5)
-            timeout -= 5
-        return timeout > 0
-    
+        print 'load qrs target timeout [{}]s left[{}]s resp[{}] request[{}]'.format(terminator.raw_timeout(), terminator.left_time(), lastRespSig, requestSig)
+        return -1
+
     def _loadSearcherTarget(self, targetInfos, timeout = 300):
-        self.readyZones = {}
-        while timeout > 0:
+        self.gigInfos = {}
+        terminator = general_search_starter.TimeoutTerminator(timeout)
+        readyTarget = set()
+        while True:
+            timeout = terminator.left_time()
+            if timeout <= 0:
+                break
             count = 0
             for targetInfo in targetInfos:
                 portList = self._getSearcherPortList(count)
-                print("portList", portList)
                 count += 1
                 zoneName = targetInfo[0]
                 partId = targetInfo[1]
-                roleName = zoneName + "_" + str(partId)
-                if self.readyZones.has_key(roleName) :
+                replicaId = targetInfo[2]
+                roleName = self.genRoleName(targetInfo)
+                if roleName in readyTarget:
                     continue
-                target = targetInfo[2]
+
+                target = targetInfo[3]
+                if self.options.searcherSubscribeConfig:
+                    target['service_info']['cm2_config'] = json.loads(self.options.searcherSubscribeConfig)
                 httpArpcPort = portList[0]
                 arpcPort = portList[1]
+                grpcPort = portList[2]
+                target["target_version"] = self.targetVersion
                 targetStr = json.dumps(target)
                 requestSig = targetStr
                 globalInfo = {"customInfo":targetStr}
@@ -177,13 +232,23 @@ examples:
                                   "customInfo" :targetStr,
                                   "globalCustomInfo": json.dumps(globalInfo)
                 }
+                log_file = os.path.join(self.localSearchDir, roleName, 'logs/ha3.log')
+                log_state = self.check_log_file(log_file)
+                if log_state != 0:
+                    return log_state
                 address = "%s:%d" %(self.ip, httpArpcPort)
-                retCode, out, err, _ = self.curl(address, "/HeartbeatService/heartbeat", targetRequest)
-                if retCode != 0:
-                    print "set target %s failed." % targetStr
-                    continue
+                retCode, out, err, status = self.curl(address, "/HeartbeatService/heartbeat",
+                                                      targetRequest, timeout=timeout)
+
+                if retCode != 0:  # binary core
+                    print "set searcher target [{}] failed. role[{}] address[{}] ret[{}] out[{}] err[{}] status[{}] left[{}]s".format(
+                        targetRequest, roleName, address, retCode, out, err, status, terminator.left_time())
+                    return -1
                 response = json.loads(out)
                 infos = []
+                if "signature" not in response:
+                    print "set searcher target response invalid [{}] role [{}], continue...".format(out, roleName)
+                    continue
                 if response["signature"] == requestSig:
                     serviceInfo = json.loads(response["serviceInfo"])
                     infos = serviceInfo["cm2"]["topo_info"].strip('|').split('|')
@@ -196,24 +261,26 @@ examples:
                         localConfig["version"] = int(splitInfo[3])
                         localConfig["ip"] = self.ip
                         localConfig["tcp_port"] = arpcPort
-                        if splitInfo[0] == 'default':
-                            self.readyZones[roleName] = localConfig
-                            print "searcher [%s] is ready for search, topo [%s]" % (roleName, json.dumps(localConfig))
-                        else:
-                            zoneName = splitInfo[0] + "_" + str(partId)
-                            self.readyZones[zoneName] = localConfig
-                            print "searcher [%s] is ready for search, topo [%s]" % (zoneName, json.dumps(localConfig))
-                elif timeout <= 0:
-                    print "searcher [%s] load target [%s] failed" % (roleName, targetStr)
-                if len(infos) > 0 and len(targetInfos) == (len(self.readyZones) / len(infos)):
+                        if grpcPort != 0:
+                            localConfig["grpc_port"] = grpcPort
+                            localConfig["support_heartbeat"] = True
+                        gigKey = roleName + "_" + splitInfo[0] + "_" + str(splitInfo[2])
+                        self.gigInfos[gigKey] = localConfig
+                    readyTarget.add(roleName)
+                    print "searcher [%s] is ready for search, topo [%s]" % (roleName, json.dumps(localConfig))
+                if len(targetInfos) == len(readyTarget):
                     print "all searcher is ready."
                     with open(os.path.join(self.workdir, "readyZones.json"), "w") as f:
-                        json.dump(self.readyZones, f)
-                    return True
-
+                        json.dump(self.gigInfos, f)
+                    return 0
             time.sleep(5)
-            timeout -= 5
-        return timeout > 0
+        print 'load searcher [{}] target [{}] timeout [{}]s left [{}]s readyTarget[{}]'.format(
+            zoneName,
+            targetStr,
+            terminator.raw_timeout(),
+            terminator.left_time(),
+            readyTarget)
+        return -1
 
 if __name__ == '__main__':
     cmd = GeneralSearchUpdateCmd()

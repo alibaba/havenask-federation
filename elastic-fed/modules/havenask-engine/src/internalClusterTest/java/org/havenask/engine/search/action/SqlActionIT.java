@@ -20,6 +20,7 @@ import java.util.Collections;
 import java.util.Map;
 
 import com.carrotsearch.randomizedtesting.annotations.ThreadLeakFilters;
+import org.havenask.ArpcThreadLeakFilter;
 import org.havenask.OkHttpThreadLeakFilter;
 import org.havenask.common.SuppressForbidden;
 import org.havenask.common.settings.Settings;
@@ -33,7 +34,7 @@ import org.havenask.test.HavenaskIntegTestCase;
 import org.havenask.transport.nio.MockNioTransportPlugin;
 
 @SuppressForbidden(reason = "use a http server")
-@ThreadLeakFilters(filters = { OkHttpThreadLeakFilter.class })
+@ThreadLeakFilters(filters = { OkHttpThreadLeakFilter.class, ArpcThreadLeakFilter.class })
 @HavenaskIntegTestCase.ClusterScope(numDataNodes = 1, numClientNodes = 0, scope = HavenaskIntegTestCase.Scope.TEST)
 public class SqlActionIT extends HavenaskITTestCase {
 

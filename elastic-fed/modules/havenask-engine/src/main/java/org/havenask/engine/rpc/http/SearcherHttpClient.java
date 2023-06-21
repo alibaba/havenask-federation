@@ -15,9 +15,16 @@
 package org.havenask.engine.rpc.http;
 
 import org.havenask.engine.rpc.SearcherClient;
+import org.havenask.engine.rpc.WriteRequest;
+import org.havenask.engine.rpc.WriteResponse;
 
 public class SearcherHttpClient extends HavenaskHttpClient implements SearcherClient {
     public SearcherHttpClient(int port) {
         super(port);
+    }
+
+    @Override
+    public WriteResponse write(WriteRequest request) {
+        throw new UnsupportedOperationException("Not implemented yet");
     }
 }

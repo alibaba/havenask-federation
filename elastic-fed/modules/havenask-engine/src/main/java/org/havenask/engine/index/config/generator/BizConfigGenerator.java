@@ -39,6 +39,7 @@ import org.havenask.index.mapper.MapperService;
 public class BizConfigGenerator {
 
     public static final String BIZ_DIR = "bizs";
+    public static final String DEFAULT_DIR = "default";
     public static final String CLUSTER_DIR = "clusters";
     public static final String CLUSTER_FILE_SUFFIX = "_cluster.json";
     private static final String PLUGINS_DIR = "plugins";
@@ -56,7 +57,7 @@ public class BizConfigGenerator {
         this.indexName = indexName;
         this.indexSettings = indexSettings;
         this.mapperService = mapperService;
-        this.configPath = configPath.resolve(BIZ_DIR);
+        this.configPath = configPath.resolve(BIZ_DIR).resolve(DEFAULT_DIR);
     }
 
     public static void generateBiz(String indexName, Settings indexSettings, MapperService mapperService, Path configPath)
@@ -130,6 +131,7 @@ public class BizConfigGenerator {
         BizConfig bizConfig = new BizConfig();
         bizConfig.cluster_config.cluster_name = indexName;
         bizConfig.cluster_config.table_name = indexName;
+        bizConfig.wal_config.sink.queue_name = indexName;
         Path clusterConfigPath = configPath.resolve(version).resolve(CLUSTER_DIR).resolve(indexName + CLUSTER_FILE_SUFFIX);
         Files.write(
             clusterConfigPath,

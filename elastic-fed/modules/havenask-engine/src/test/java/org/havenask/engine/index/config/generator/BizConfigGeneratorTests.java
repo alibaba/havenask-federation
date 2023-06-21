@@ -36,6 +36,7 @@ import static org.havenask.engine.index.config.generator.BizConfigGenerator.CLUS
 import static org.havenask.engine.index.config.generator.BizConfigGenerator.DATA_TABLES_DIR;
 import static org.havenask.engine.index.config.generator.BizConfigGenerator.DATA_TABLES_FILE_SUFFIX;
 import static org.havenask.engine.index.config.generator.BizConfigGenerator.DEFAULT_BIZ_CONFIG;
+import static org.havenask.engine.index.config.generator.BizConfigGenerator.DEFAULT_DIR;
 import static org.havenask.engine.index.config.generator.BizConfigGenerator.SCHEMAS_DIR;
 import static org.havenask.engine.index.config.generator.BizConfigGenerator.SCHEMAS_FILE_SUFFIX;
 
@@ -49,13 +50,13 @@ public class BizConfigGeneratorTests extends MapperServiceTestCase {
         String indexName = randomAlphaOfLength(5);
         MapperService mapperService = createMapperService(fieldMapping(b -> b.field("type", "keyword")));
         Path configPath = createTempDir();
-        Files.createDirectories(configPath.resolve(BIZ_DIR).resolve("0").resolve(CLUSTER_DIR));
-        Files.createDirectories(configPath.resolve(BIZ_DIR).resolve("0").resolve(SCHEMAS_DIR));
-        Files.createDirectories(configPath.resolve(BIZ_DIR).resolve("0").resolve(DATA_TABLES_DIR));
-        Files.createDirectories(configPath.resolve(BIZ_DIR).resolve("0").resolve("zones").resolve("general"));
+        Files.createDirectories(configPath.resolve(BIZ_DIR).resolve(DEFAULT_DIR).resolve("0").resolve(CLUSTER_DIR));
+        Files.createDirectories(configPath.resolve(BIZ_DIR).resolve(DEFAULT_DIR).resolve("0").resolve(SCHEMAS_DIR));
+        Files.createDirectories(configPath.resolve(BIZ_DIR).resolve(DEFAULT_DIR).resolve("0").resolve(DATA_TABLES_DIR));
+        Files.createDirectories(configPath.resolve(BIZ_DIR).resolve(DEFAULT_DIR).resolve("0").resolve("zones").resolve("general"));
         ZoneBiz zoneBiz = new ZoneBiz();
         Files.write(
-            configPath.resolve(BIZ_DIR).resolve("0").resolve(DEFAULT_BIZ_CONFIG),
+            configPath.resolve(BIZ_DIR).resolve(DEFAULT_DIR).resolve("0").resolve(DEFAULT_BIZ_CONFIG),
             zoneBiz.toString().getBytes(StandardCharsets.UTF_8),
             StandardOpenOption.CREATE
         );
@@ -63,7 +64,11 @@ public class BizConfigGeneratorTests extends MapperServiceTestCase {
         bizConfigGenerator.generate();
 
         {
-            Path clusterConfigPath = configPath.resolve(BIZ_DIR).resolve("0").resolve(CLUSTER_DIR).resolve(indexName + CLUSTER_FILE_SUFFIX);
+            Path clusterConfigPath = configPath.resolve(BIZ_DIR)
+                .resolve(DEFAULT_DIR)
+                .resolve("0")
+                .resolve(CLUSTER_DIR)
+                .resolve(indexName + CLUSTER_FILE_SUFFIX);
             assertTrue(Files.exists(clusterConfigPath));
             String content = Files.readString(clusterConfigPath);
             String expect = String.format(
@@ -71,7 +76,7 @@ public class BizConfigGeneratorTests extends MapperServiceTestCase {
                 "{\n"
                     + "\t\"build_option_config\":{\n"
                     + "\t\t\"async_build\":true,\n"
-                    + "\t\t\"async_queue_size\":1000,\n"
+                    + "\t\t\"async_queue_size\":10000,\n"
                     + "\t\t\"document_filter\":true,\n"
                     + "\t\t\"max_recover_time\":30,\n"
                     + "\t\t\"sort_build\":false,\n"
@@ -93,14 +98,31 @@ public class BizConfigGeneratorTests extends MapperServiceTestCase {
                     + "\t\t},\n"
                     + "\t\t\"table_name\":\"%s\"\n"
                     + "\t},\n"
+                    + "\t\"direct_write\":true,\n"
                     + "\t\"offline_index_config\":{\n"
                     + "\t\t\"build_config\":{\n"
-                    + "\t\t\t\"build_total_memory\":5120,\n"
-                    + "\t\t\t\"keep_version_count\":40\n"
+                    + "\t\t\t\"build_total_memory\":128,\n"
+                    + "\t\t\t\"max_doc_count\":100000\n"
                     + "\t\t}\n"
                     + "\t},\n"
-                    + "\t\"realtime\":false\n"
+                    + "\t\"online_index_config\":{\n"
+                    + "\t\t\"build_config\":{\n"
+                    + "\t\t\t\"build_total_memory\":128,\n"
+                    + "\t\t\t\"max_doc_count\":100000\n"
+                    + "\t\t},\n"
+                    + "\t\t\"enable_async_dump_segment\":true,\n"
+                    + "\t\t\"on_disk_flush_realtime_index\":true\n"
+                    + "\t},\n"
+                    + "\t\"realtime\":true,\n"
+                    + "\t\"wal_config\":{\n"
+                    + "\t\t\"sink\":{\n"
+                    + "\t\t\t\"queue_name\":\"%s\"\n"
+                    + "\t\t},\n"
+                    + "\t\t\"strategy\":\"queue\",\n"
+                    + "\t\t\"timeout_ms\":10000\n"
+                    + "\t}\n"
                     + "}",
+                indexName,
                 indexName,
                 indexName
             );
@@ -109,7 +131,11 @@ public class BizConfigGeneratorTests extends MapperServiceTestCase {
         }
 
         {
-            Path schemaConfigPath = configPath.resolve(BIZ_DIR).resolve("0").resolve(SCHEMAS_DIR).resolve(indexName + SCHEMAS_FILE_SUFFIX);
+            Path schemaConfigPath = configPath.resolve(BIZ_DIR)
+                .resolve(DEFAULT_DIR)
+                .resolve("0")
+                .resolve(SCHEMAS_DIR)
+                .resolve(indexName + SCHEMAS_FILE_SUFFIX);
             assertTrue(Files.exists(schemaConfigPath));
             String content = Files.readString(schemaConfigPath);
             String expect = String.format(
@@ -177,6 +203,7 @@ public class BizConfigGeneratorTests extends MapperServiceTestCase {
 
         {
             Path dataTablesPath = configPath.resolve(BIZ_DIR)
+                .resolve(DEFAULT_DIR)
                 .resolve("0")
                 .resolve(DATA_TABLES_DIR)
                 .resolve(indexName + DATA_TABLES_FILE_SUFFIX);
@@ -216,7 +243,7 @@ public class BizConfigGeneratorTests extends MapperServiceTestCase {
         }
 
         {
-            Path defaultBizPath = configPath.resolve(BIZ_DIR).resolve("0").resolve(DEFAULT_BIZ_CONFIG);
+            Path defaultBizPath = configPath.resolve(BIZ_DIR).resolve(DEFAULT_DIR).resolve("0").resolve(DEFAULT_BIZ_CONFIG);
             assertTrue(Files.exists(defaultBizPath));
             String content = Files.readString(defaultBizPath);
             ZoneBiz zoneBizNew = ZoneBiz.parse(content);
@@ -246,10 +273,18 @@ public class BizConfigGeneratorTests extends MapperServiceTestCase {
         }
 
         bizConfigGenerator.remove();
-        Path clusterConfigPath = configPath.resolve(BIZ_DIR).resolve("0").resolve(CLUSTER_DIR).resolve(indexName + CLUSTER_FILE_SUFFIX);
+        Path clusterConfigPath = configPath.resolve(BIZ_DIR)
+            .resolve(DEFAULT_DIR)
+            .resolve("0")
+            .resolve(CLUSTER_DIR)
+            .resolve(indexName + CLUSTER_FILE_SUFFIX);
         assertFalse(Files.exists(clusterConfigPath));
 
-        Path schemaConfigPath = configPath.resolve(BIZ_DIR).resolve("0").resolve(SCHEMAS_DIR).resolve(indexName + SCHEMAS_FILE_SUFFIX);
+        Path schemaConfigPath = configPath.resolve(BIZ_DIR)
+            .resolve(DEFAULT_DIR)
+            .resolve("0")
+            .resolve(SCHEMAS_DIR)
+            .resolve(indexName + SCHEMAS_FILE_SUFFIX);
         assertFalse(Files.exists(schemaConfigPath));
 
         Path dataTablesPath = configPath.resolve(BIZ_DIR)
@@ -258,7 +293,7 @@ public class BizConfigGeneratorTests extends MapperServiceTestCase {
             .resolve(indexName + DATA_TABLES_FILE_SUFFIX);
         assertFalse(Files.exists(dataTablesPath));
 
-        Path defaultBizPath = configPath.resolve(BIZ_DIR).resolve("0").resolve(DEFAULT_BIZ_CONFIG);
+        Path defaultBizPath = configPath.resolve(BIZ_DIR).resolve(DEFAULT_DIR).resolve("0").resolve(DEFAULT_BIZ_CONFIG);
         assertTrue(Files.exists(defaultBizPath));
         String content = Files.readString(defaultBizPath);
         ZoneBiz zoneBizNew = ZoneBiz.parse(content);
@@ -299,13 +334,13 @@ public class BizConfigGeneratorTests extends MapperServiceTestCase {
             }
         }));
         Path configPath = createTempDir();
-        Files.createDirectories(configPath.resolve(BIZ_DIR).resolve("0").resolve(CLUSTER_DIR));
-        Files.createDirectories(configPath.resolve(BIZ_DIR).resolve("0").resolve(SCHEMAS_DIR));
-        Files.createDirectories(configPath.resolve(BIZ_DIR).resolve("0").resolve(DATA_TABLES_DIR));
-        Files.createDirectories(configPath.resolve(BIZ_DIR).resolve("0").resolve("zones").resolve("general"));
+        Files.createDirectories(configPath.resolve(BIZ_DIR).resolve(DEFAULT_DIR).resolve("0").resolve(CLUSTER_DIR));
+        Files.createDirectories(configPath.resolve(BIZ_DIR).resolve(DEFAULT_DIR).resolve("0").resolve(SCHEMAS_DIR));
+        Files.createDirectories(configPath.resolve(BIZ_DIR).resolve(DEFAULT_DIR).resolve("0").resolve(DATA_TABLES_DIR));
+        Files.createDirectories(configPath.resolve(BIZ_DIR).resolve(DEFAULT_DIR).resolve("0").resolve("zones").resolve("general"));
         ZoneBiz zoneBiz = new ZoneBiz();
         Files.write(
-            configPath.resolve(BIZ_DIR).resolve("0").resolve(DEFAULT_BIZ_CONFIG),
+            configPath.resolve(BIZ_DIR).resolve(DEFAULT_DIR).resolve("0").resolve(DEFAULT_BIZ_CONFIG),
             zoneBiz.toString().getBytes(StandardCharsets.UTF_8),
             StandardOpenOption.CREATE
         );
@@ -313,7 +348,11 @@ public class BizConfigGeneratorTests extends MapperServiceTestCase {
         bizConfigGenerator.generate();
 
         {
-            Path clusterConfigPath = configPath.resolve(BIZ_DIR).resolve("0").resolve(CLUSTER_DIR).resolve(indexName + CLUSTER_FILE_SUFFIX);
+            Path clusterConfigPath = configPath.resolve(BIZ_DIR)
+                .resolve(DEFAULT_DIR)
+                .resolve("0")
+                .resolve(CLUSTER_DIR)
+                .resolve(indexName + CLUSTER_FILE_SUFFIX);
             assertTrue(Files.exists(clusterConfigPath));
             String content = Files.readString(clusterConfigPath);
             String expect = String.format(
@@ -321,7 +360,7 @@ public class BizConfigGeneratorTests extends MapperServiceTestCase {
                 "{\n"
                     + "\t\"build_option_config\":{\n"
                     + "\t\t\"async_build\":true,\n"
-                    + "\t\t\"async_queue_size\":1000,\n"
+                    + "\t\t\"async_queue_size\":10000,\n"
                     + "\t\t\"document_filter\":true,\n"
                     + "\t\t\"max_recover_time\":30,\n"
                     + "\t\t\"sort_build\":false,\n"
@@ -343,14 +382,31 @@ public class BizConfigGeneratorTests extends MapperServiceTestCase {
                     + "\t\t},\n"
                     + "\t\t\"table_name\":\"%s\"\n"
                     + "\t},\n"
+                    + "\t\"direct_write\":true,\n"
                     + "\t\"offline_index_config\":{\n"
                     + "\t\t\"build_config\":{\n"
-                    + "\t\t\t\"build_total_memory\":5120,\n"
-                    + "\t\t\t\"keep_version_count\":40\n"
+                    + "\t\t\t\"build_total_memory\":128,\n"
+                    + "\t\t\t\"max_doc_count\":100000\n"
                     + "\t\t}\n"
                     + "\t},\n"
-                    + "\t\"realtime\":false\n"
+                    + "\t\"online_index_config\":{\n"
+                    + "\t\t\"build_config\":{\n"
+                    + "\t\t\t\"build_total_memory\":128,\n"
+                    + "\t\t\t\"max_doc_count\":100000\n"
+                    + "\t\t},\n"
+                    + "\t\t\"enable_async_dump_segment\":true,\n"
+                    + "\t\t\"on_disk_flush_realtime_index\":true\n"
+                    + "\t},\n"
+                    + "\t\"realtime\":true,\n"
+                    + "\t\"wal_config\":{\n"
+                    + "\t\t\"sink\":{\n"
+                    + "\t\t\t\"queue_name\":\"%s\"\n"
+                    + "\t\t},\n"
+                    + "\t\t\"strategy\":\"queue\",\n"
+                    + "\t\t\"timeout_ms\":10000\n"
+                    + "\t}\n"
                     + "}",
+                indexName,
                 indexName,
                 indexName
             );
@@ -359,7 +415,11 @@ public class BizConfigGeneratorTests extends MapperServiceTestCase {
         }
 
         {
-            Path schemaConfigPath = configPath.resolve(BIZ_DIR).resolve("0").resolve(SCHEMAS_DIR).resolve(indexName + SCHEMAS_FILE_SUFFIX);
+            Path schemaConfigPath = configPath.resolve(BIZ_DIR)
+                .resolve(DEFAULT_DIR)
+                .resolve("0")
+                .resolve(SCHEMAS_DIR)
+                .resolve(indexName + SCHEMAS_FILE_SUFFIX);
             assertTrue(Files.exists(schemaConfigPath));
             String content = Files.readString(schemaConfigPath);
             String expect = String.format(
@@ -452,6 +512,7 @@ public class BizConfigGeneratorTests extends MapperServiceTestCase {
 
         {
             Path dataTablesPath = configPath.resolve(BIZ_DIR)
+                .resolve(DEFAULT_DIR)
                 .resolve("0")
                 .resolve(DATA_TABLES_DIR)
                 .resolve(indexName + DATA_TABLES_FILE_SUFFIX);
@@ -499,7 +560,7 @@ public class BizConfigGeneratorTests extends MapperServiceTestCase {
         }
 
         {
-            Path defaultBizPath = configPath.resolve(BIZ_DIR).resolve("0").resolve(DEFAULT_BIZ_CONFIG);
+            Path defaultBizPath = configPath.resolve(BIZ_DIR).resolve(DEFAULT_DIR).resolve("0").resolve(DEFAULT_BIZ_CONFIG);
             assertTrue(Files.exists(defaultBizPath));
             String content = Files.readString(defaultBizPath);
             ZoneBiz zoneBizNew = ZoneBiz.parse(content);
@@ -529,10 +590,18 @@ public class BizConfigGeneratorTests extends MapperServiceTestCase {
         }
 
         bizConfigGenerator.remove();
-        Path clusterConfigPath = configPath.resolve(BIZ_DIR).resolve("0").resolve(CLUSTER_DIR).resolve(indexName + CLUSTER_FILE_SUFFIX);
+        Path clusterConfigPath = configPath.resolve(BIZ_DIR)
+            .resolve(DEFAULT_DIR)
+            .resolve("0")
+            .resolve(CLUSTER_DIR)
+            .resolve(indexName + CLUSTER_FILE_SUFFIX);
         assertFalse(Files.exists(clusterConfigPath));
 
-        Path schemaConfigPath = configPath.resolve(BIZ_DIR).resolve("0").resolve(SCHEMAS_DIR).resolve(indexName + SCHEMAS_FILE_SUFFIX);
+        Path schemaConfigPath = configPath.resolve(BIZ_DIR)
+            .resolve(DEFAULT_DIR)
+            .resolve("0")
+            .resolve(SCHEMAS_DIR)
+            .resolve(indexName + SCHEMAS_FILE_SUFFIX);
         assertFalse(Files.exists(schemaConfigPath));
 
         Path dataTablesPath = configPath.resolve(BIZ_DIR)
@@ -541,7 +610,7 @@ public class BizConfigGeneratorTests extends MapperServiceTestCase {
             .resolve(indexName + DATA_TABLES_FILE_SUFFIX);
         assertFalse(Files.exists(dataTablesPath));
 
-        Path defaultBizPath = configPath.resolve(BIZ_DIR).resolve("0").resolve(DEFAULT_BIZ_CONFIG);
+        Path defaultBizPath = configPath.resolve(BIZ_DIR).resolve(DEFAULT_DIR).resolve("0").resolve(DEFAULT_BIZ_CONFIG);
         assertTrue(Files.exists(defaultBizPath));
         String content = Files.readString(defaultBizPath);
         ZoneBiz zoneBizNew = ZoneBiz.parse(content);

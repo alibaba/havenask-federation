@@ -17,7 +17,9 @@ package org.havenask.engine.search.action;
 import java.util.Arrays;
 import java.util.Collection;
 
+import com.carrotsearch.randomizedtesting.annotations.ThreadLeakFilters;
 import org.hamcrest.Matchers;
+import org.havenask.ArpcThreadLeakFilter;
 import org.havenask.common.settings.Settings;
 import org.havenask.engine.HavenaskEnginePlugin;
 import org.havenask.engine.search.action.HavenaskSqlClientInfoAction.Request;
@@ -25,6 +27,7 @@ import org.havenask.plugins.Plugin;
 import org.havenask.test.HavenaskIntegTestCase;
 import org.havenask.transport.nio.MockNioTransportPlugin;
 
+@ThreadLeakFilters(filters = { ArpcThreadLeakFilter.class })
 public class SqlActionNoIngestIT extends HavenaskIntegTestCase {
 
     @Override

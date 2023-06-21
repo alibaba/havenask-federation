@@ -23,11 +23,31 @@ public class BizConfig {
     public BuildOptionConfig build_option_config = new BuildOptionConfig();
     public ClusterConfig cluster_config = new ClusterConfig();
     public OfflineIndexConfig offline_index_config = new OfflineIndexConfig();
-    public boolean realtime = false;
+    public boolean direct_write = true;
+    public WalConfig wal_config = new WalConfig();
+    public OnlineIndexConfig online_index_config = new OnlineIndexConfig();
+    public boolean realtime = true;
+
+    public static class OnlineIndexConfig {
+        public boolean on_disk_flush_realtime_index = true;
+        public boolean enable_async_dump_segment = true;
+        private int max_realtime_dump_interval = 60;
+        public BuildConfig build_config = new BuildConfig();
+    }
+
+    public static class WalConfig {
+        public int timeout_ms = 10000;
+        public SinkConfig sink = new SinkConfig();
+        public String strategy = "queue";
+    }
+
+    public static class SinkConfig {
+        public String queue_name;
+    }
 
     public static class BuildOptionConfig {
         public boolean async_build = true;
-        public int async_queue_size = 1000;
+        public int async_queue_size = 10000;
         public boolean document_filter = true;
         public int max_recover_time = 30;
         public boolean sort_build = false;
@@ -47,8 +67,8 @@ public class BizConfig {
     }
 
     public static class BuildConfig {
-        public int build_total_memory = 5120;
-        public int keep_version_count = 40;
+        public int max_doc_count = 100000;
+        public int build_total_memory = 128;
     }
 
     public static class OfflineIndexConfig {
