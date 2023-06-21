@@ -27,28 +27,7 @@ public class VersionUtils {
 
     private static Logger logger = LogManager.getLogger(VersionUtils.class);
 
-    public synchronized static long getMaxVersionAndExpireOldVersion(Path path, long defaultVersion)
-        throws IOException {
-        try (Stream<Path> stream = Files.list(path)) {
-            // 删除最早的目录,只保存10个目录
-            long count = stream.count();
-            if (count > 10) {
-                stream.map(path1 -> path1.getFileName().toString())
-                    .filter(StringUtils::isNumeric)
-                    .map(Long::valueOf)
-                    .sorted(Long::compare)
-                    .limit(count - 10)
-                    .forEach(version -> {
-                        try {
-                            Files.delete(path.resolve(String.valueOf(version)));
-                            logger.info("path [{}] delete old version: {}", path, version);
-                        } catch (IOException e) {
-                            logger.error("delete old version error", e);
-                        }
-                    });
-            }
-        }
-
+    public static long getMaxVersion(Path path, long defaultVersion) throws IOException {
         try (Stream<Path> stream = Files.list(path)) {
             long maxVersion = stream.map(path1 -> path1.getFileName().toString())
                 .filter(StringUtils::isNumeric)
