@@ -25,7 +25,6 @@ import java.util.Locale;
 import org.havenask.common.settings.Settings;
 import org.havenask.engine.HavenaskEnginePlugin;
 import org.havenask.engine.index.config.ZoneBiz;
-import org.havenask.engine.util.VersionUtils;
 import org.havenask.index.mapper.MapperService;
 import org.havenask.index.mapper.MapperServiceTestCase;
 import org.havenask.plugins.Plugin;
@@ -61,14 +60,13 @@ public class BizConfigGeneratorTests extends MapperServiceTestCase {
             zoneBiz.toString().getBytes(StandardCharsets.UTF_8),
             StandardOpenOption.CREATE
         );
-        BizConfigGenerator.generateBiz(indexName, Settings.EMPTY, mapperService, configPath);
-
-        Long version = VersionUtils.getMaxVersionAndExpireOldVersion(configPath.resolve(BIZ_DIR).resolve(DEFAULT_DIR), 0);
+        BizConfigGenerator bizConfigGenerator = new BizConfigGenerator(indexName, Settings.EMPTY, mapperService, configPath);
+        bizConfigGenerator.generate();
 
         {
             Path clusterConfigPath = configPath.resolve(BIZ_DIR)
                 .resolve(DEFAULT_DIR)
-                .resolve(version.toString())
+                .resolve("0")
                 .resolve(CLUSTER_DIR)
                 .resolve(indexName + CLUSTER_FILE_SUFFIX);
             assertTrue(Files.exists(clusterConfigPath));
@@ -135,7 +133,7 @@ public class BizConfigGeneratorTests extends MapperServiceTestCase {
         {
             Path schemaConfigPath = configPath.resolve(BIZ_DIR)
                 .resolve(DEFAULT_DIR)
-                .resolve(version.toString())
+                .resolve("0")
                 .resolve(SCHEMAS_DIR)
                 .resolve(indexName + SCHEMAS_FILE_SUFFIX);
             assertTrue(Files.exists(schemaConfigPath));
@@ -206,7 +204,7 @@ public class BizConfigGeneratorTests extends MapperServiceTestCase {
         {
             Path dataTablesPath = configPath.resolve(BIZ_DIR)
                 .resolve(DEFAULT_DIR)
-                .resolve(version.toString())
+                .resolve("0")
                 .resolve(DATA_TABLES_DIR)
                 .resolve(indexName + DATA_TABLES_FILE_SUFFIX);
             assertTrue(Files.exists(dataTablesPath));
@@ -245,7 +243,7 @@ public class BizConfigGeneratorTests extends MapperServiceTestCase {
         }
 
         {
-            Path defaultBizPath = configPath.resolve(BIZ_DIR).resolve(DEFAULT_DIR).resolve(version.toString()).resolve(DEFAULT_BIZ_CONFIG);
+            Path defaultBizPath = configPath.resolve(BIZ_DIR).resolve(DEFAULT_DIR).resolve("0").resolve(DEFAULT_BIZ_CONFIG);
             assertTrue(Files.exists(defaultBizPath));
             String content = Files.readString(defaultBizPath);
             ZoneBiz zoneBizNew = ZoneBiz.parse(content);
@@ -274,30 +272,28 @@ public class BizConfigGeneratorTests extends MapperServiceTestCase {
             assertEquals(expect, zoneBizNew);
         }
 
-        BizConfigGenerator.removeBiz(indexName, configPath);
-
-        version = VersionUtils.getMaxVersionAndExpireOldVersion(configPath.resolve(BIZ_DIR).resolve(DEFAULT_DIR), 0);
+        bizConfigGenerator.remove();
         Path clusterConfigPath = configPath.resolve(BIZ_DIR)
             .resolve(DEFAULT_DIR)
-            .resolve(version.toString())
+            .resolve("0")
             .resolve(CLUSTER_DIR)
             .resolve(indexName + CLUSTER_FILE_SUFFIX);
         assertFalse(Files.exists(clusterConfigPath));
 
         Path schemaConfigPath = configPath.resolve(BIZ_DIR)
             .resolve(DEFAULT_DIR)
-            .resolve(version.toString())
+            .resolve("0")
             .resolve(SCHEMAS_DIR)
             .resolve(indexName + SCHEMAS_FILE_SUFFIX);
         assertFalse(Files.exists(schemaConfigPath));
 
         Path dataTablesPath = configPath.resolve(BIZ_DIR)
-            .resolve(version.toString())
+            .resolve("0")
             .resolve(DATA_TABLES_DIR)
             .resolve(indexName + DATA_TABLES_FILE_SUFFIX);
         assertFalse(Files.exists(dataTablesPath));
 
-        Path defaultBizPath = configPath.resolve(BIZ_DIR).resolve(DEFAULT_DIR).resolve(version.toString()).resolve(DEFAULT_BIZ_CONFIG);
+        Path defaultBizPath = configPath.resolve(BIZ_DIR).resolve(DEFAULT_DIR).resolve("0").resolve(DEFAULT_BIZ_CONFIG);
         assertTrue(Files.exists(defaultBizPath));
         String content = Files.readString(defaultBizPath);
         ZoneBiz zoneBizNew = ZoneBiz.parse(content);
@@ -348,14 +344,13 @@ public class BizConfigGeneratorTests extends MapperServiceTestCase {
             zoneBiz.toString().getBytes(StandardCharsets.UTF_8),
             StandardOpenOption.CREATE
         );
-        BizConfigGenerator.generateBiz(indexName, Settings.EMPTY, mapperService, configPath);
-
-        Long version = VersionUtils.getMaxVersionAndExpireOldVersion(configPath.resolve(BIZ_DIR).resolve(DEFAULT_DIR), 0);
+        BizConfigGenerator bizConfigGenerator = new BizConfigGenerator(indexName, Settings.EMPTY, mapperService, configPath);
+        bizConfigGenerator.generate();
 
         {
             Path clusterConfigPath = configPath.resolve(BIZ_DIR)
                 .resolve(DEFAULT_DIR)
-                .resolve(version.toString())
+                .resolve("0")
                 .resolve(CLUSTER_DIR)
                 .resolve(indexName + CLUSTER_FILE_SUFFIX);
             assertTrue(Files.exists(clusterConfigPath));
@@ -422,7 +417,7 @@ public class BizConfigGeneratorTests extends MapperServiceTestCase {
         {
             Path schemaConfigPath = configPath.resolve(BIZ_DIR)
                 .resolve(DEFAULT_DIR)
-                .resolve(version.toString())
+                .resolve("0")
                 .resolve(SCHEMAS_DIR)
                 .resolve(indexName + SCHEMAS_FILE_SUFFIX);
             assertTrue(Files.exists(schemaConfigPath));
@@ -518,7 +513,7 @@ public class BizConfigGeneratorTests extends MapperServiceTestCase {
         {
             Path dataTablesPath = configPath.resolve(BIZ_DIR)
                 .resolve(DEFAULT_DIR)
-                .resolve(version.toString())
+                .resolve("0")
                 .resolve(DATA_TABLES_DIR)
                 .resolve(indexName + DATA_TABLES_FILE_SUFFIX);
             assertTrue(Files.exists(dataTablesPath));
@@ -565,7 +560,7 @@ public class BizConfigGeneratorTests extends MapperServiceTestCase {
         }
 
         {
-            Path defaultBizPath = configPath.resolve(BIZ_DIR).resolve(DEFAULT_DIR).resolve(version.toString()).resolve(DEFAULT_BIZ_CONFIG);
+            Path defaultBizPath = configPath.resolve(BIZ_DIR).resolve(DEFAULT_DIR).resolve("0").resolve(DEFAULT_BIZ_CONFIG);
             assertTrue(Files.exists(defaultBizPath));
             String content = Files.readString(defaultBizPath);
             ZoneBiz zoneBizNew = ZoneBiz.parse(content);
@@ -594,31 +589,28 @@ public class BizConfigGeneratorTests extends MapperServiceTestCase {
             assertEquals(expect, zoneBizNew);
         }
 
-        BizConfigGenerator.removeBiz(indexName, configPath);
-
-        version = VersionUtils.getMaxVersionAndExpireOldVersion(configPath.resolve(BIZ_DIR).resolve(DEFAULT_DIR), 0);
-
+        bizConfigGenerator.remove();
         Path clusterConfigPath = configPath.resolve(BIZ_DIR)
             .resolve(DEFAULT_DIR)
-            .resolve(version.toString())
+            .resolve("0")
             .resolve(CLUSTER_DIR)
             .resolve(indexName + CLUSTER_FILE_SUFFIX);
         assertFalse(Files.exists(clusterConfigPath));
 
         Path schemaConfigPath = configPath.resolve(BIZ_DIR)
             .resolve(DEFAULT_DIR)
-            .resolve(version.toString())
+            .resolve("0")
             .resolve(SCHEMAS_DIR)
             .resolve(indexName + SCHEMAS_FILE_SUFFIX);
         assertFalse(Files.exists(schemaConfigPath));
 
         Path dataTablesPath = configPath.resolve(BIZ_DIR)
-            .resolve(version.toString())
+            .resolve("0")
             .resolve(DATA_TABLES_DIR)
             .resolve(indexName + DATA_TABLES_FILE_SUFFIX);
         assertFalse(Files.exists(dataTablesPath));
 
-        Path defaultBizPath = configPath.resolve(BIZ_DIR).resolve(DEFAULT_DIR).resolve(version.toString()).resolve(DEFAULT_BIZ_CONFIG);
+        Path defaultBizPath = configPath.resolve(BIZ_DIR).resolve(DEFAULT_DIR).resolve("0").resolve(DEFAULT_BIZ_CONFIG);
         assertTrue(Files.exists(defaultBizPath));
         String content = Files.readString(defaultBizPath);
         ZoneBiz zoneBizNew = ZoneBiz.parse(content);

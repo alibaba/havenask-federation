@@ -53,7 +53,7 @@ public class BizConfigGenerator {
     private final Settings indexSettings;
     private final MapperService mapperService;
 
-    private BizConfigGenerator(String indexName, Settings indexSettings, @Nullable MapperService mapperService, Path configPath) {
+    public BizConfigGenerator(String indexName, Settings indexSettings, @Nullable MapperService mapperService, Path configPath) {
         this.indexName = indexName;
         this.indexSettings = indexSettings;
         this.mapperService = mapperService;
@@ -71,10 +71,13 @@ public class BizConfigGenerator {
         bizConfigGenerator.remove();
     }
 
-    private void generate() throws IOException {
+    void generate() throws IOException {
         long lastVersion = VersionUtils.getMaxVersionAndExpireOldVersion(configPath, 0);
         long currentVersion = Math.max(System.currentTimeMillis(), lastVersion + 1);
-        VersionUtils.copyVersionDir(configPath.resolve(String.valueOf(lastVersion)), configPath.resolve(String.valueOf(currentVersion)));
+        Files.copy(
+            configPath.resolve(String.valueOf(lastVersion)),
+            configPath.resolve(String.valueOf(currentVersion))
+        );
         String strVersion = String.valueOf(currentVersion);
         generateClusterConfig(strVersion);
         Schema schema = generateSchema(strVersion);
@@ -82,10 +85,13 @@ public class BizConfigGenerator {
         generateDataTable(schema, strVersion);
     }
 
-    private void remove() throws IOException {
+    void remove() throws IOException {
         long lastVersion = VersionUtils.getMaxVersionAndExpireOldVersion(configPath, 0);
         long currentVersion = Math.max(System.currentTimeMillis(), lastVersion + 1);
-        VersionUtils.copyVersionDir(configPath.resolve(String.valueOf(lastVersion)), configPath.resolve(String.valueOf(currentVersion)));
+        Files.copy(
+            configPath.resolve(String.valueOf(lastVersion)),
+            configPath.resolve(String.valueOf(currentVersion))
+        );
         String strVersion = String.valueOf(currentVersion);
         Path clusterConfigPath = configPath.resolve(strVersion).resolve(CLUSTER_DIR).resolve(indexName + CLUSTER_FILE_SUFFIX);
         Files.deleteIfExists(clusterConfigPath);
