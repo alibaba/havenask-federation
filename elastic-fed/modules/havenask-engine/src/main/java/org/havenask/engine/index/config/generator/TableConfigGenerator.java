@@ -53,13 +53,13 @@ public class TableConfigGenerator {
         this.configPath = configPath.resolve(TABLE_DIR);
     }
 
-    public static synchronized void generateTable(String indexName, Settings indexSettings, MapperService mapperService, Path configPath)
+    public synchronized static void generateTable(String indexName, Settings indexSettings, MapperService mapperService, Path configPath)
         throws IOException {
         TableConfigGenerator tableConfigGenerator = new TableConfigGenerator(indexName, indexSettings, mapperService, configPath);
         tableConfigGenerator.generate();
     }
 
-    public static synchronized void removeTable(String indexName, Path configPath) throws IOException {
+    public synchronized static void removeTable(String indexName, Path configPath) throws IOException {
         TableConfigGenerator tableConfigGenerator = new TableConfigGenerator(indexName, null, null, configPath);
         tableConfigGenerator.remove();
     }
