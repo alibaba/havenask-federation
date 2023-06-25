@@ -79,29 +79,24 @@ public class Utils {
         return Path.of(path);
     }
 
-    private static Logger logger = LogManager.getLogger(Utils.class);
-    public static final String DEFAULT_INDEX_UP_PATH = "/usr/share/havenask/data_havenask/runtimedata";
-    public static final String DEFAULT_INDEX_SUB_PATH = "generation_0/partition_0_65535";
+    private static final Logger logger = LogManager.getLogger(Utils.class);
+    public static final String INDEX_SUB_PATH = "generation_0/partition_0_65535";
 
     /**
      * return the timestamp in the max version file under the certain index directory
      */
-    public static String getIndexCheckpoint(String indexName, String upPath, String subPath) {
-        Path versionFilePath = Path.of(upPath, indexName, subPath);
+    public static String getIndexCheckpoint(Path indexPath) {
+        Path versionFilePath = indexPath.resolve(INDEX_SUB_PATH);
         String maxIndexVersionFile = getIndexMaxVersion(versionFilePath);
         // no version file or directory not exists
         if (Objects.equals(maxIndexVersionFile, null)) return null;
         if (Objects.equals(maxIndexVersionFile, "")) {
-            logger.error("directory [{}] has no file ", versionFilePath);
+            logger.error("directory [{}] has no version file ", versionFilePath);
             return null;
         }
 
-        Path filePath = Path.of(upPath, indexName, subPath, maxIndexVersionFile);
+        Path filePath = indexPath.resolve(INDEX_SUB_PATH).resolve(maxIndexVersionFile);
         return getIndexTimestamp(filePath);
-    }
-
-    public static String getIndexCheckpoint(String indexName) {
-        return getIndexCheckpoint(indexName, DEFAULT_INDEX_UP_PATH, DEFAULT_INDEX_SUB_PATH);
     }
 
     /**
