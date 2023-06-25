@@ -14,7 +14,6 @@
 
 package org.havenask.engine.util;
 
-import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.AccessController;
@@ -81,11 +80,14 @@ public class Utils {
     }
 
     private static Logger logger = LogManager.getLogger(Utils.class);
-    public static final String INDEX_UP_PATH = "/usr/share/havenask/data_havenask/runtimedata";
-    public static final String INDEX_SUB_PATH = "generation_0/partition_0_65535";
-    public static String getIndexCheckpoint(String indexName) {
-        Path versionFilePath = Path.of(INDEX_UP_PATH, indexName, INDEX_SUB_PATH);
+    public static final String DEFAULT_INDEX_UP_PATH = "/usr/share/havenask/data_havenask/runtimedata";
+    public static final String DEFAULT_INDEX_SUB_PATH = "generation_0/partition_0_65535";
 
+    /**
+     * return the timestamp in the max version file under the certain index directory
+     */
+    public static String getIndexCheckpoint(String indexName, String upPath, String subPath) {
+        Path versionFilePath = Path.of(upPath, indexName, subPath);
         String maxIndexVersionFile = getIndexMaxVersion(versionFilePath);
         // no version file or directory not exists
         if (Objects.equals(maxIndexVersionFile, null)) return null;
@@ -94,25 +96,35 @@ public class Utils {
             return null;
         }
 
-        Path filePath = Path.of(INDEX_UP_PATH, indexName, INDEX_SUB_PATH, maxIndexVersionFile);
+        Path filePath = Path.of(upPath, indexName, subPath, maxIndexVersionFile);
         return getIndexTimestamp(filePath);
     }
 
+    public static String getIndexCheckpoint(String indexName) {
+        return getIndexCheckpoint(indexName, DEFAULT_INDEX_UP_PATH, DEFAULT_INDEX_SUB_PATH);
+    }
+
+    /**
+     * return the max version file name under the certain index directory
+     */
     private static String getIndexMaxVersion(Path versionFilePath) {
         try (Stream<Path> stream = Files.list(versionFilePath)) {
             String maxVersionFile =  stream.map(path1 -> path1.getFileName().toString())
                     .filter(s -> s.matches("version\\.\\d+"))
-                    .map(s -> Integer.parseInt(s.substring(s.indexOf('.') + 1)))
-                    .max(Integer::compare)
+                    .map(s -> Long.parseLong(s.substring(s.indexOf('.') + 1)))
+                    .max(Long::compare)
                     .map(max -> "version." + max)
                     .orElse("");
             return maxVersionFile;
         } catch (Exception e) {
-            logger.error("directory [{}] does not exist ", versionFilePath, e);
+            logger.error("directory [{}] does not exist or the version num is too big", versionFilePath, e);
             return null;
         }
     }
 
+    /**
+     * return the timestamp in the version file
+     */
     private static String getIndexTimestamp(Path jsonPath) {
         try {
             String content = Files.readString(jsonPath);

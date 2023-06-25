@@ -36,8 +36,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Locale;
 
-import static org.havenask.engine.util.Utils.INDEX_UP_PATH;
-import static org.havenask.engine.util.Utils.INDEX_SUB_PATH;
+import static org.havenask.engine.util.Utils.DEFAULT_INDEX_UP_PATH;
+import static org.havenask.engine.util.Utils.DEFAULT_INDEX_SUB_PATH;
 
 public class UtilsTests extends HavenaskTestCase {
 
@@ -97,7 +97,7 @@ public class UtilsTests extends HavenaskTestCase {
 
     // create directory for certain index
     private Path mkIndexDir(String indexName) {
-        Path path = Path.of(INDEX_UP_PATH, indexName, INDEX_SUB_PATH);
+        Path path = Path.of(DEFAULT_INDEX_UP_PATH, indexName, DEFAULT_INDEX_SUB_PATH);
         try {
             Files.createDirectories(path);
         } catch (IOException e) {
@@ -106,7 +106,8 @@ public class UtilsTests extends HavenaskTestCase {
         return path;
     }
 
-    public void testGetIndexCheckpoint() {
+    // test get index checkpoint in the case of complex file names
+    public void testGetIndexCheckpointComplexFileNames() {
         String testIndex = "in0";
         Path dirPath = mkIndexDir(testIndex);
 
@@ -122,21 +123,24 @@ public class UtilsTests extends HavenaskTestCase {
         assertEquals("78641949317145", timeStamp);
     }
 
-
-    public void testGetIndexCheckpoint2() {
+    // test get index checkpoint in the case of version number is big
+    public void testGetIndexCheckpointBigVersionNum() {
         String testIndex = "in1";
         Path dirPath = mkIndexDir(testIndex);
 
         writeTestFile(dirPath, "version.1", "333");
         writeTestFile(dirPath, "version.11", "78641949317145");
         writeTestFile(dirPath, "version.111", "78641949");
-        writeTestFile(dirPath, "version.186589999", "987657888990");
+
+        // 9223372036854775807 is the max value of long type
+        writeTestFile(dirPath, "version.9223372036854775807", "9876578889901");
 
         String timeStamp = Utils.getIndexCheckpoint(testIndex);
-        assertEquals("987657888990", timeStamp);
+        assertEquals("9876578889901", timeStamp);
     }
 
-    public void testGetIndexCheckpoint3() {
+    // test get index checkpoint in the case of multi index, and some index number is negative
+    public void testGetIndexCheckpointMultiIndex() {
         String testIndex = "in2";
         Path dirPath_in2 = mkIndexDir(testIndex);
 
@@ -156,6 +160,7 @@ public class UtilsTests extends HavenaskTestCase {
         assertNull(timeStamp2);
     }
 
+    // test get index checkpoint in the case of no index directory
     public void testGetIndexCheckpointNoDir() {
         String testIndex = "in4";
 
@@ -163,6 +168,7 @@ public class UtilsTests extends HavenaskTestCase {
         assertNull(timeStamp);
     }
 
+    // test get index checkpoint in the case of no version file
     public void testGetIndexCheckpointNoFile() {
         String testIndex = "in5";
         mkIndexDir(testIndex);
