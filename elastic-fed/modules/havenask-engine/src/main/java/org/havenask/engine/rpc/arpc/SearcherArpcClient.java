@@ -72,7 +72,7 @@ public class SearcherArpcClient implements SearcherClient, Closeable {
             }
             suez.service.proto.WriteResponse writeResponse = blockingStub.writeTable(controller, writeRequest);
             if (writeResponse == null) {
-                closeChannel();
+                resetChannel();
                 return new WriteResponse(ErrorCode.TBS_ERROR_UNKOWN, "write response is null, channel closed");
             }
 
@@ -83,13 +83,27 @@ public class SearcherArpcClient implements SearcherClient, Closeable {
             }
         } catch (ServiceException e) {
             logger.warn("write service error", e);
-            closeChannel();
+            resetChannel();
             return new WriteResponse(ErrorCode.TBS_ERROR_UNKOWN, "service error:" + e.getMessage());
         } catch (Exception e) {
             logger.warn("write upexpect error", e);
-            closeChannel();
+            resetChannel();
             return new WriteResponse(ErrorCode.TBS_ERROR_UNKOWN, "upexpect error:" + e.getMessage());
         }
+    }
+
+    private void resetChannel() {
+        logger.info("searcher arpc client reset");
+        try {
+            manager.closeChannel(host, port);
+            channel = manager.openChannel(host, port);
+        } catch (ArpcException e) {
+            logger.warn("reset channel error", e);
+        }
+        blockingStub = TableService.newBlockingStub(channel);
+        logger.info("searcher arpc client reset, reset BlockingStub success");
+        controller.reset();
+        logger.info("searcher arpc client reset, reset RpcController success");
     }
 
     private void closeChannel() {
@@ -106,7 +120,9 @@ public class SearcherArpcClient implements SearcherClient, Closeable {
     private void init() {
         logger.info("searcher arpc client init");
         channel = manager.openChannel(host, port);
+        logger.info("Open Channel");
         blockingStub = TableService.newBlockingStub(channel);
+        logger.info("Open BlockingStub");
     }
 
     @Override
