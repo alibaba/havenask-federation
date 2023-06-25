@@ -33,7 +33,7 @@ jobs:
       - name: Set up JDK 15
         uses: actions/setup-java@v3
         with:
-          java-version: '15'
+          java-version: '11'
           distribution: 'adopt'
       - name: Run Tests
         run: cd elastic-fed; ./gradlew check -p modules/havenask-engine
