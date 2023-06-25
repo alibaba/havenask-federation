@@ -41,13 +41,10 @@ public class SearcherArpcClientTests extends HavenaskTestCase {
             haDoc.put("annual_rate", "0.6");
             WriteRequest writeRequest = buildWriteRequest(indexName, doc_id, Engine.Operation.TYPE.INDEX, haDoc);
             WriteResponse writeResponse = searcherArpcClient.write(writeRequest);
-            System.out.println(writeResponse.getCheckpoint());
-            System.out.println(writeResponse.getErrorCode());
-            System.out.println(writeResponse.getErrorMessage());
             try {
                 Thread.sleep(1000);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
+            } catch (InterruptedException ignored) {
+
             }
         }
 
