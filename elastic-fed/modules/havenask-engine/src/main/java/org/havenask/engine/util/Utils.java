@@ -104,15 +104,15 @@ public class Utils {
      */
     private static String getIndexMaxVersion(Path versionFilePath) {
         try (Stream<Path> stream = Files.list(versionFilePath)) {
-            String maxVersionFile =  stream.map(path1 -> path1.getFileName().toString())
-                    .filter(s -> s.matches("version\\.\\d+"))
-                    .map(s -> Long.parseLong(s.substring(s.indexOf('.') + 1)))
-                    .max(Long::compare)
-                    .map(max -> "version." + max)
-                    .orElse("");
+            String maxVersionFile = stream.map(path1 -> path1.getFileName().toString())
+                .filter(s -> s.matches("version\\.\\d+"))
+                .map(s -> Long.parseLong(s.substring(s.indexOf('.') + 1)))
+                .max(Long::compare)
+                .map(max -> "version." + max)
+                .orElse("");
             return maxVersionFile;
         } catch (Exception e) {
-            logger.error("directory [{}] does not exist or the version num is too big", versionFilePath, e);
+            logger.error("directory [{}] does not exist or the version num is too big", versionFilePath);
             return null;
         }
     }
@@ -126,7 +126,7 @@ public class Utils {
             JSONObject jsonObject = JSON.parseObject(content);
             return jsonObject.getString("timestamp");
         } catch (Exception e) {
-            logger.error("file [{}] get index timestamp failed ", jsonPath, e);
+            logger.error("file [{}] get index timestamp failed ", jsonPath);
             return null;
         }
     }

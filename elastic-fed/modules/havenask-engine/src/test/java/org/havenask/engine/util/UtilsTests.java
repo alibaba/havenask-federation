@@ -39,53 +39,54 @@ import static org.havenask.engine.util.Utils.INDEX_SUB_PATH;
 
 public class UtilsTests extends HavenaskTestCase {
     public static final String INDEX_UP_PATH = "/usr/share/havenask/data_havenask/runtimedata";
+
     // write file containing certain timestamp
     private void writeTestFile(Path path, String fileName, String timeStamp) {
         String content = String.format(
-                Locale.ROOT,
-                "{\n"
-                        + "\"format_version\":\n"
-                        + "  2,\n"
-                        + "\"last_segmentid\":\n"
-                        + "  1,\n"
-                        + "\"level_info\":\n"
-                        + "  {\n"
-                        + "  \"level_metas\":\n"
-                        + "    [\n"
-                        + "      {\n"
-                        + "      \"cursor\":\n"
-                        + "        0,\n"
-                        + "      \"level_idx\":\n"
-                        + "        0,\n"
-                        + "      \"segments\":\n"
-                        + "        [\n"
-                        + "          1\n"
-                        + "        ],\n"
-                        + "      \"topology\":\n"
-                        + "        \"sequence\"\n"
-                        + "      }\n"
-                        + "    ]\n"
-                        + "  },\n"
-                        + "\"locator\":\n"
-                        + "  \"c544a5eb3063fb610500000000000000\",\n"
-                        + "\"schema_version\":\n"
-                        + "  0,\n"
-                        + "\"segments\":\n"
-                        + "  [\n"
-                        + "    1\n"
-                        + "  ],\n"
-                        + "\"timestamp\":\n"
-                        + "  %s,\n"
-                        + "\"versionid\":\n"
-                        + "  1\n"
-                        + "}",
-                timeStamp
+            Locale.ROOT,
+            "{\n"
+                + "\"format_version\":\n"
+                + "  2,\n"
+                + "\"last_segmentid\":\n"
+                + "  1,\n"
+                + "\"level_info\":\n"
+                + "  {\n"
+                + "  \"level_metas\":\n"
+                + "    [\n"
+                + "      {\n"
+                + "      \"cursor\":\n"
+                + "        0,\n"
+                + "      \"level_idx\":\n"
+                + "        0,\n"
+                + "      \"segments\":\n"
+                + "        [\n"
+                + "          1\n"
+                + "        ],\n"
+                + "      \"topology\":\n"
+                + "        \"sequence\"\n"
+                + "      }\n"
+                + "    ]\n"
+                + "  },\n"
+                + "\"locator\":\n"
+                + "  \"c544a5eb3063fb610500000000000000\",\n"
+                + "\"schema_version\":\n"
+                + "  0,\n"
+                + "\"segments\":\n"
+                + "  [\n"
+                + "    1\n"
+                + "  ],\n"
+                + "\"timestamp\":\n"
+                + "  %s,\n"
+                + "\"versionid\":\n"
+                + "  1\n"
+                + "}",
+            timeStamp
         );
 
         try {
-            Files.write(path.resolve(fileName), content.getBytes());
-        } catch(IOException e) {
-            logger.error("write file [{}] error", fileName, e);
+            Files.write(path.resolve(fileName), content.getBytes("UTF-8"));
+        } catch (IOException e) {
+            logger.error("write file [{}] error", fileName);
         }
     }
 
@@ -95,7 +96,7 @@ public class UtilsTests extends HavenaskTestCase {
         try {
             Files.createDirectories(path);
         } catch (IOException e) {
-            logger.error("mkdir [{}] error", path, e);
+            logger.error("mkdir [{}] error", path);
         }
         return path;
     }
@@ -150,7 +151,6 @@ public class UtilsTests extends HavenaskTestCase {
         Path dirPath_in3 = mkIndexDir(testIndex3);
 
         writeTestFile(dirPath_in3, "version.-1", "333");
-
 
         String timeStamp2 = Utils.getIndexCheckpoint(indexPath2);
         String timeStamp3 = Utils.getIndexCheckpoint(indexPath3);
