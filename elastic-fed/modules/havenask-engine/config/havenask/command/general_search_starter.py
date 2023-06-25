@@ -314,6 +314,9 @@ examples:
             self.startCmdTemplate += " --env localBizService=true"
         self.startCmdTemplate += " --env asyncInterExecutorType=simple"
         self.startCmdTemplate += " --env asyncIntraExecutorType=simple"
+        self.startCmdTemplate += " --env FSLIB_LOCAL_ASYNC_CORO_READ=0"
+        self.startCmdTemplate += " --env SLEEP_CPU_FOR_TEST=1"
+
         self.alogConfigPath = os.path.join(self.binaryPath, "usr/local/etc/ha3/ha3_alog.conf")
         self.searchCfg = os.path.join(self.binaryPath, "usr/local/etc/ha3/search_server.cfg")
         self.qrsCfg = os.path.join(self.binaryPath, "usr/local/etc/ha3/qrs_server.cfg")
