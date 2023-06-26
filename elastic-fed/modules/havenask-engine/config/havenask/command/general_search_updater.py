@@ -253,14 +253,14 @@ examples:
                 if response["signature"] == requestSig:
                     serviceInfo = json.loads(response["serviceInfo"])
                     infos = serviceInfo["cm2"]["topo_info"].strip('|').split('|')
-                    version = int(splitInfo[3]) + random.randint(1,100000)
+                    random_version = random.randint(1,100000)
                     for info in infos:
                         splitInfo = info.split(':')
                         localConfig = {}
                         localConfig["biz_name"] = splitInfo[0]
                         localConfig["part_count"] = int(splitInfo[1])
                         localConfig["part_id"] = int(splitInfo[2])
-                        localConfig["version"] = version
+                        localConfig["version"] = int(splitInfo[3]) + random_version
                         localConfig["ip"] = self.ip
                         localConfig["tcp_port"] = arpcPort
                         if grpcPort != 0:
