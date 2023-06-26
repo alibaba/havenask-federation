@@ -19,7 +19,14 @@ import java.nio.file.Path;
 import java.security.AccessController;
 import java.security.PrivilegedActionException;
 import java.security.PrivilegedExceptionAction;
+import java.util.Objects;
+import java.util.stream.Stream;
 
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONObject;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.havenask.SpecialPermission;
 
 public class Utils {
@@ -70,5 +77,57 @@ public class Utils {
             return null;
         }
         return Path.of(path);
+    }
+
+    private static final Logger logger = LogManager.getLogger(Utils.class);
+    public static final String INDEX_SUB_PATH = "generation_0/partition_0_65535";
+
+    /**
+     * return the timestamp in the max version file under the certain index directory
+     */
+    public static String getIndexCheckpoint(Path indexPath) {
+        Path versionFilePath = indexPath.resolve(INDEX_SUB_PATH);
+        String maxIndexVersionFile = getIndexMaxVersion(versionFilePath);
+        // no version file or directory not exists
+        if (Objects.equals(maxIndexVersionFile, null)) return null;
+        if (Objects.equals(maxIndexVersionFile, "")) {
+            logger.error("directory [{}] has no version file ", versionFilePath);
+            return null;
+        }
+
+        Path filePath = indexPath.resolve(INDEX_SUB_PATH).resolve(maxIndexVersionFile);
+        return getIndexTimestamp(filePath);
+    }
+
+    /**
+     * return the max version file name under the certain index directory
+     */
+    private static String getIndexMaxVersion(Path versionFilePath) {
+        try (Stream<Path> stream = Files.list(versionFilePath)) {
+            String maxVersionFile = stream.map(path1 -> path1.getFileName().toString())
+                .filter(s -> s.matches("version\\.\\d+"))
+                .map(s -> Long.parseLong(s.substring(s.indexOf('.') + 1)))
+                .max(Long::compare)
+                .map(max -> "version." + max)
+                .orElse("");
+            return maxVersionFile;
+        } catch (Exception e) {
+            logger.error("directory [{}] does not exist or the version num is too big", versionFilePath);
+            return null;
+        }
+    }
+
+    /**
+     * return the timestamp in the version file
+     */
+    private static String getIndexTimestamp(Path jsonPath) {
+        try {
+            String content = Files.readString(jsonPath);
+            JSONObject jsonObject = JSON.parseObject(content);
+            return jsonObject.getString("timestamp");
+        } catch (Exception e) {
+            logger.error("file [{}] get index timestamp failed ", jsonPath);
+            return null;
+        }
     }
 }
