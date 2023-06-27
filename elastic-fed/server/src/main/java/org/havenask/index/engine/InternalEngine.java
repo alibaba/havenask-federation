@@ -149,7 +149,7 @@ public class InternalEngine extends Engine {
      */
     private volatile long lastDeleteVersionPruneTimeMSec;
 
-    protected final Translog translog;
+    private final Translog translog;
     private final HavenaskConcurrentMergeScheduler mergeScheduler;
 
     private final IndexWriter indexWriter;
@@ -1119,7 +1119,7 @@ public class InternalEngine extends Engine {
         return plan;
     }
 
-    private IndexResult indexIntoLucene(Index index, IndexingStrategy plan)
+    protected IndexResult indexIntoLucene(Index index, IndexingStrategy plan)
         throws IOException {
         assert index.seqNo() >= 0 : "ops should have an assigned seq no.; origin: " + index.origin();
         assert plan.versionForIndexing >= 0 : "version must be set. got " + plan.versionForIndexing;
@@ -1222,7 +1222,7 @@ public class InternalEngine extends Engine {
     protected static final class IndexingStrategy {
         final boolean currentNotFoundOrDeleted;
         final boolean useLuceneUpdateDocument;
-        final long versionForIndexing;
+        public final long versionForIndexing;
         final boolean indexIntoLucene;
         final boolean addStaleOpToLucene;
         final int reservedDocs;
@@ -1481,7 +1481,7 @@ public class InternalEngine extends Engine {
         return plan;
     }
 
-    private DeleteResult deleteInLucene(Delete delete, DeletionStrategy plan) throws IOException {
+    protected DeleteResult deleteInLucene(Delete delete, DeletionStrategy plan) throws IOException {
         assert assertMaxSeqNoOfUpdatesIsAdvanced(delete.uid(), delete.seqNo(), false, false);
         try {
             if (softDeleteEnabled) {

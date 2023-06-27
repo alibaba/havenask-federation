@@ -324,7 +324,9 @@ public class HavenaskEngine extends InternalEngine {
     }
 
     @Override
-    public IndexResult index(Index index) throws IOException {
+    protected IndexResult indexIntoLucene(Index index, IndexingStrategy plan) throws IOException {
+        index.parsedDoc().updateSeqID(index.seqNo(), index.primaryTerm());
+        index.parsedDoc().version().setLongValue(plan.versionForIndexing);
         Map<String, String> haDoc = toHaIndex(index.parsedDoc());
         if (realTimeEnable) {
             ProducerRecord<String, String> record = buildProducerRecord(
@@ -352,10 +354,7 @@ public class HavenaskEngine extends InternalEngine {
                             + writeResponse.getErrorMessage()
                     );
                 }
-                IndexResult indexResult = new IndexResult(index.version(), index.primaryTerm(), index.seqNo(), true);
-                final Translog.Location location = translog.add(new Translog.Index(index, indexResult));
-                indexResult.setTranslogLocation(location);
-                return indexResult;
+                return new IndexResult(index.version(), index.primaryTerm(), index.seqNo(), true);
             } catch (IOException e) {
                 logger.warn("havenask index exception", e);
                 maybeFailEngine(e.getMessage(), e);
@@ -365,7 +364,7 @@ public class HavenaskEngine extends InternalEngine {
     }
 
     @Override
-    public DeleteResult delete(Delete delete) throws IOException {
+    protected DeleteResult deleteInLucene(Delete delete, DeletionStrategy plan) throws IOException {
         Map<String, String> haDoc = new HashMap<>();
         haDoc.put(IdFieldMapper.NAME, delete.id());
         if (false == realTimeEnable) {
@@ -394,10 +393,7 @@ public class HavenaskEngine extends InternalEngine {
                             + writeResponse.getErrorMessage()
                     );
                 }
-                DeleteResult deleteResult = new DeleteResult(delete.version(), delete.primaryTerm(), delete.seqNo(), true);
-                final Translog.Location location = translog.add(new Translog.Delete(delete, deleteResult));
-                deleteResult.setTranslogLocation(location);
-                return deleteResult;
+                return new DeleteResult(delete.version(), delete.primaryTerm(), delete.seqNo(), true);
             } catch (IOException e) {
                 logger.warn("havenask delete exception", e);
                 maybeFailEngine(e.getMessage(), e);
