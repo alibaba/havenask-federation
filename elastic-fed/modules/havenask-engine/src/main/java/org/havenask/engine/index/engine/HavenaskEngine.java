@@ -59,7 +59,6 @@ import org.havenask.index.mapper.ParsedDocument;
 import org.havenask.index.mapper.SourceFieldMapper;
 import org.havenask.index.mapper.Uid;
 import org.havenask.index.shard.ShardId;
-import org.havenask.index.translog.Translog;
 
 public class HavenaskEngine extends InternalEngine {
 
