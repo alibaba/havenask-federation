@@ -368,7 +368,7 @@ public class HavenaskEngine extends InternalEngine {
     public DeleteResult delete(Delete delete) throws IOException {
         Map<String, String> haDoc = new HashMap<>();
         haDoc.put(IdFieldMapper.NAME, delete.id());
-        if (false == realTimeEnable) {
+        if (realTimeEnable) {
             ProducerRecord<String, String> record = buildProducerRecord(
                 delete.id(),
                 delete.operationType(),
