@@ -38,7 +38,10 @@ import java.util.Locale;
 import static org.havenask.engine.util.Utils.INDEX_SUB_PATH;
 
 public class UtilsTests extends HavenaskTestCase {
-    public static final String INDEX_UP_PATH = "/usr/share/havenask/data_havenask/runtimedata";
+    private final Path configPath;
+    public UtilsTests() {
+        configPath = createTempDir();
+    }
 
     // write file containing certain timestamp
     private void writeTestFile(Path path, String fileName, String timeStamp) {
@@ -92,7 +95,7 @@ public class UtilsTests extends HavenaskTestCase {
 
     // create directory for certain index
     private Path mkIndexDir(String indexName) {
-        Path path = Path.of(INDEX_UP_PATH, indexName, INDEX_SUB_PATH);
+        Path path = configPath.resolve(indexName).resolve(INDEX_SUB_PATH);
         try {
             Files.createDirectories(path);
         } catch (IOException e) {
@@ -104,7 +107,7 @@ public class UtilsTests extends HavenaskTestCase {
     // test get index checkpoint in the case of complex file names
     public void testGetIndexCheckpointComplexFileNames() {
         String testIndex = "in0";
-        Path indexPath = Path.of(INDEX_UP_PATH, testIndex);
+        Path indexPath = configPath.resolve(testIndex);
         Path dirPath = mkIndexDir(testIndex);
 
         writeTestFile(dirPath, "version.1", "333");
@@ -122,7 +125,7 @@ public class UtilsTests extends HavenaskTestCase {
     // test get index checkpoint in the case of version number is big
     public void testGetIndexCheckpointBigVersionNum() {
         String testIndex = "in1";
-        Path indexPath = Path.of(INDEX_UP_PATH, testIndex);
+        Path indexPath = configPath.resolve(testIndex);
         Path dirPath = mkIndexDir(testIndex);
 
         writeTestFile(dirPath, "version.1", "333");
@@ -139,7 +142,7 @@ public class UtilsTests extends HavenaskTestCase {
     // test get index checkpoint in the case of multi index, and some index number is negative
     public void testGetIndexCheckpointMultiIndex() {
         String testIndex2 = "in2";
-        Path indexPath2 = Path.of(INDEX_UP_PATH, testIndex2);
+        Path indexPath2 = configPath.resolve(testIndex2);
         Path dirPath_in2 = mkIndexDir(testIndex2);
 
         writeTestFile(dirPath_in2, "version.-1", "333");
@@ -147,7 +150,7 @@ public class UtilsTests extends HavenaskTestCase {
         writeTestFile(dirPath_in2, "version.1", "999");
 
         String testIndex3 = "in3";
-        Path indexPath3 = Path.of(INDEX_UP_PATH, testIndex3);
+        Path indexPath3 = configPath.resolve(testIndex3);
         Path dirPath_in3 = mkIndexDir(testIndex3);
 
         writeTestFile(dirPath_in3, "version.-1", "333");
@@ -161,7 +164,7 @@ public class UtilsTests extends HavenaskTestCase {
     // test get index checkpoint in the case of no index directory
     public void testGetIndexCheckpointNoDir() {
         String testIndex = "in4";
-        Path indexPath = Path.of(INDEX_UP_PATH, testIndex);
+        Path indexPath = configPath.resolve(testIndex);
         String timeStamp = Utils.getIndexCheckpoint(indexPath);
         assertNull(timeStamp);
     }
@@ -169,7 +172,7 @@ public class UtilsTests extends HavenaskTestCase {
     // test get index checkpoint in the case of no version file
     public void testGetIndexCheckpointNoFile() {
         String testIndex = "in5";
-        Path indexPath = Path.of(INDEX_UP_PATH, testIndex);
+        Path indexPath = configPath.resolve(testIndex);
         mkIndexDir(testIndex);
 
         String timeStamp = Utils.getIndexCheckpoint(indexPath);
