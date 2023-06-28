@@ -27,7 +27,7 @@ Havenask-federation承担三种角色：master、data、coordinate，其中data�
 
 编译依赖：
 
-*   jdk15
+*   jdk11
 *   docker
 
 编译方式：
@@ -42,9 +42,13 @@ Havenask-federation承担三种角色：master、data、coordinate，其中data�
 项目附带了启动命令：
 
     cd elastic-fed/script
-    ./create_container.sh <CONTAINER_NAME> havenask-fed:test
+    ./create_container.sh <CONTAINER_NAME> {IMAGE_NAME}
 
 这样就启动了一个容器，假设启动一个名为test的容器，示例命令：
+
+    ./create_container.sh test
+
+或者启动指定image的容器，示例命令：
 
     ./create_container.sh test havenask-fed:test
 
