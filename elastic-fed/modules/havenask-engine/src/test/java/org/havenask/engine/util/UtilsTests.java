@@ -96,6 +96,7 @@ public class UtilsTests extends HavenaskTestCase {
     // create directory for certain index
     private Path mkIndexDir(String indexName) {
         Path path = configPath.resolve(indexName).resolve(INDEX_SUB_PATH);
+
         try {
             Files.createDirectories(path);
         } catch (IOException e) {
@@ -108,6 +109,7 @@ public class UtilsTests extends HavenaskTestCase {
     public void testGetIndexCheckpointComplexFileNames() {
         String testIndex = "in0";
         Path indexPath = configPath.resolve(testIndex);
+
         Path dirPath = mkIndexDir(testIndex);
 
         writeTestFile(dirPath, "version.1", "333");
@@ -126,6 +128,7 @@ public class UtilsTests extends HavenaskTestCase {
     public void testGetIndexCheckpointBigVersionNum() {
         String testIndex = "in1";
         Path indexPath = configPath.resolve(testIndex);
+
         Path dirPath = mkIndexDir(testIndex);
 
         writeTestFile(dirPath, "version.1", "333");
@@ -165,6 +168,7 @@ public class UtilsTests extends HavenaskTestCase {
     public void testGetIndexCheckpointNoDir() {
         String testIndex = "in4";
         Path indexPath = configPath.resolve(testIndex);
+
         String timeStamp = Utils.getIndexCheckpoint(indexPath);
         assertNull(timeStamp);
     }
@@ -173,6 +177,7 @@ public class UtilsTests extends HavenaskTestCase {
     public void testGetIndexCheckpointNoFile() {
         String testIndex = "in5";
         Path indexPath = configPath.resolve(testIndex);
+
         mkIndexDir(testIndex);
 
         String timeStamp = Utils.getIndexCheckpoint(indexPath);
