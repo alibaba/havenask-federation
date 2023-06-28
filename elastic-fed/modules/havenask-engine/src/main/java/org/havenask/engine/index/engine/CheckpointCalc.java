@@ -14,21 +14,29 @@
 
 package org.havenask.engine.index.engine;
 
+import java.util.ArrayDeque;
+import java.util.Deque;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Stack;
 
 public class CheckpointCalc {
-    private long minTimestamp = -1;
-    private Map<Long, CheckpointRange> checkpointMap = new HashMap<>();
+    private Deque<CheckpointRange> checkpointStack = new ArrayDeque<>(10);
+    private long currentCkTimestamp = -1;
+    private long currentCheckpoint = -1;
 
+    /**
+     * 添加checkpoint
+     * @param checkpoint checkpoint
+     */
     public void addCheckpoint(long checkpoint) {
         long now = System.currentTimeMillis();
         // 获取now的分钟值
         long nowMinute = now / 60000 + 1;
-        CheckpointRange checkpointValue = checkpointMap.get(nowMinute);
+        CheckpointRange checkpointValue = checkpointStack.peek();
         if (checkpointValue == null) {
-            checkpointValue = new CheckpointRange(checkpoint, checkpoint);
-            checkpointMap.put(nowMinute, checkpointValue);
+            checkpointValue = new CheckpointRange(nowMinute, checkpoint, checkpoint);
+            checkpointStack.push(checkpointValue);
         } else {
             if (checkpointValue.getMin() < checkpoint) {
                 checkpointValue.setMin(checkpoint);
@@ -37,24 +45,52 @@ public class CheckpointCalc {
                 checkpointValue.setMax(checkpoint);
             }
         }
-
-        // 过期历史checkpoint
     }
 
+    /**
+     * 获取指定时间的checkpoint
+     * @param timestamp 指定的时间
+     * @return checkpoint
+     */
     public long getCheckpoint(long timestamp) {
-        long minute = timestamp / 60000 + 1;
-        CheckpointRange checkpointValue = checkpointMap.get(minute);
-        if (checkpointValue == null) {
-            return -1;
+        if (timestamp == currentCkTimestamp) {
+            return currentCheckpoint;
         }
-        return checkpointValue.getMin();
+
+        long minute = timestamp / 60000;
+        CheckpointRange prev = null;
+        for (CheckpointRange checkpointValue : checkpointStack) {
+            if (checkpointValue.minute > minute) {
+                prev = checkpointValue;
+            } else {
+                break;
+            }
+        }
+
+        if (prev == null) {
+            return currentCheckpoint;
+        }
+
+        currentCheckpoint = prev.getMin();
+        currentCkTimestamp = timestamp;
+        return currentCheckpoint;
+    }
+
+    /**
+     * 获取当前的checkpoint
+     * @return 当前的checkpoint
+     */
+    public long getCurrentCheckpoint() {
+        return currentCheckpoint;
     }
 
     public static class CheckpointRange {
+        private final long minute;
         private long min;
         private long max;
 
-        public CheckpointRange(long min, long max) {
+        public CheckpointRange(long minute, long min, long max) {
+            this.minute = minute;
             this.min = min;
             this.max = max;
         }
