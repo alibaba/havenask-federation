@@ -32,6 +32,8 @@ import org.havenask.rest.action.RestBuilderListener;
 
 public class RestHavenaskSqlAction extends BaseRestHandler {
 
+    public static final String SQL_DATABASE = "general";
+
     @Override
     public String getName() {
         return "havenask_sql_action";
@@ -52,6 +54,14 @@ public class RestHavenaskSqlAction extends BaseRestHandler {
         if (kvpair == null) {
             // 组装kvpair
             kvpair = buildKvpair(request);
+        } else if (false == kvpair.contains("databaseName")) {
+            // havenask sql默认必须加上databaseName, 否则会报错
+            // 此处加上默认databaseName
+            if (kvpair.endsWith(";")) {
+                kvpair = kvpair + "databaseName:" + SQL_DATABASE;
+            } else if (false == kvpair.isEmpty()) {
+                kvpair = kvpair + ";databaseName:" + SQL_DATABASE;
+            }
         }
 
         HavenaskSqlRequest havenaskSqlRequest = new HavenaskSqlRequest(query, kvpair);
@@ -77,7 +87,6 @@ public class RestHavenaskSqlAction extends BaseRestHandler {
         boolean resultReadable = request.paramAsBoolean("resultReadable", false);
         int parallel = request.paramAsInt("parallel", 1);
         String parallelTables = request.param("parallelTables");
-        String databaseName = request.param("databaseName");
         boolean lackResultEnable = request.paramAsBoolean("lackResultEnable", false);
         boolean optimizerDebug = request.paramAsBoolean("optimizerDebug", false);
         boolean sortLimitTogether = request.paramAsBoolean("sortLimitTogether", true);
@@ -88,6 +97,15 @@ public class RestHavenaskSqlAction extends BaseRestHandler {
         boolean cacheEnable = request.paramAsBoolean("cacheEnable", false);
 
         StringBuffer kvBuffer = new StringBuffer();
+        // havenask sql默认必须加上databaseName, 否则会报错
+        // 此处加上默认database
+        String databaseName = request.param("databaseName");
+        if (databaseName != null) {
+            kvBuffer.append("databaseName:").append(databaseName).append(";");
+        } else {
+            kvBuffer.append("databaseName:").append(SQL_DATABASE).append(";");
+        }
+
         if (trace != null) {
             kvBuffer.append("trace:").append(trace).append(";");
         }
@@ -115,9 +133,6 @@ public class RestHavenaskSqlAction extends BaseRestHandler {
         if (parallelTables != null) {
             kvBuffer.append("parallelTables:").append(parallelTables).append(";");
         }
-        if (databaseName != null) {
-            kvBuffer.append("databaseName:").append(databaseName).append(";");
-        }
         if (lackResultEnable) {
             kvBuffer.append("lackResultEnable:").append(lackResultEnable).append(";");
         }
@@ -143,12 +158,6 @@ public class RestHavenaskSqlAction extends BaseRestHandler {
             kvBuffer.append("cacheEnable:").append(cacheEnable).append(";");
         }
 
-        String kvpair = kvBuffer.toString();
-        if (kvpair.length() == 0) {
-            return null;
-        } else if (kvpair.length() > 0) {
-            kvpair = kvpair.substring(0, kvpair.length() - 1);
-        }
-        return kvpair;
+        return kvBuffer.substring(0, kvBuffer.length() - 1);
     }
 }
