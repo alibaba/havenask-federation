@@ -21,6 +21,8 @@ import org.havenask.rest.RestRequest;
 import org.havenask.test.HavenaskTestCase;
 import org.havenask.test.rest.FakeRestRequest;
 
+import static org.havenask.engine.search.rest.RestHavenaskSqlAction.SQL_DATABASE;
+
 public class RestHavenaskSqlActionTests extends HavenaskTestCase {
 
     public void testBuildKvpair() {
@@ -47,8 +49,10 @@ public class RestHavenaskSqlActionTests extends HavenaskTestCase {
 
         String kvpair = RestHavenaskSqlAction.buildKvpair(request);
         assertEquals(
-            "trace:true;format:json;timeout:1000;searchInfo:true;sqlPlan:true;forbitMergeSearchInfo:true;resultReadable:true;parallel:2;"
-                + "parallelTables:t1,t2;databaseName:db1;lackResultEnable:true;optimizerDebug:true;sortLimitTogether:false;forceLimit:true;"
+            "databaseName:db1;trace:true;format:json;timeout:1000;searchInfo:true;sqlPlan:true;"
+                + "forbitMergeSearchInfo:true;resultReadable:true;parallel:2;"
+                + "parallelTables:t1,t2;lackResultEnable:true;optimizerDebug:true;sortLimitTogether:false;"
+                + "forceLimit:true;"
                 + "joinConditionCheck:false;forceJoinHask:true;planLevel:true;cacheEnable:true",
             kvpair
         );
@@ -78,7 +82,7 @@ public class RestHavenaskSqlActionTests extends HavenaskTestCase {
         RestRequest request = new FakeRestRequest.Builder(xContentRegistry()).withParams(params).build();
 
         String kvpair = RestHavenaskSqlAction.buildKvpair(request);
-        assertEquals("format:json;timeout:1000;parallelTables:t1,t2;databaseName:db1", kvpair);
+        assertEquals("databaseName:db1;format:json;timeout:1000;parallelTables:t1,t2", kvpair);
     }
 
     public void testBuildKvpairNull() {
@@ -87,7 +91,7 @@ public class RestHavenaskSqlActionTests extends HavenaskTestCase {
         RestRequest request = new FakeRestRequest.Builder(xContentRegistry()).withParams(params).build();
 
         String kvpair = RestHavenaskSqlAction.buildKvpair(request);
-        assertEquals(null, kvpair);
+        assertEquals("databaseName:" + SQL_DATABASE, kvpair);
     }
 
     public void testBuildKvpairRandom() {
@@ -115,6 +119,11 @@ public class RestHavenaskSqlActionTests extends HavenaskTestCase {
 
         String kvpair = RestHavenaskSqlAction.buildKvpair(request);
         String expected = "";
+        if (params.get("databaseName") != null) {
+            expected += "databaseName:" + params.get("databaseName") + ";";
+        } else {
+            expected += "databaseName:" + SQL_DATABASE + ";";
+        }
         if (params.get("trace") != null) {
             expected += "trace:" + params.get("trace") + ";";
         }
@@ -141,9 +150,6 @@ public class RestHavenaskSqlActionTests extends HavenaskTestCase {
         }
         if (params.get("parallelTables") != null) {
             expected += "parallelTables:" + params.get("parallelTables") + ";";
-        }
-        if (params.get("databaseName") != null) {
-            expected += "databaseName:" + params.get("databaseName") + ";";
         }
         if (params.get("lackResultEnable") != "false") {
             expected += "lackResultEnable:" + params.get("lackResultEnable") + ";";
