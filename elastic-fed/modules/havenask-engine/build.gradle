@@ -174,7 +174,7 @@ protobuf {
   protoc {
     path = '/usr/local/bin/protoc'
     // Download from repositories
-    artifact = 'com.google.protobuf:protoc:3.14.0'
+    artifact = 'com.google.protobuf:protoc:3.17.3'
   }
   generateProtoTasks {
     // all() returns the collection of all protoc tasks
