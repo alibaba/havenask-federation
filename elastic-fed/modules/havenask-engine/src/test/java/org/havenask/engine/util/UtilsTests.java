@@ -39,6 +39,7 @@ import static org.havenask.engine.util.Utils.INDEX_SUB_PATH;
 
 public class UtilsTests extends HavenaskTestCase {
     private final Path configPath;
+
     public UtilsTests() {
         configPath = createTempDir();
     }
@@ -109,7 +110,6 @@ public class UtilsTests extends HavenaskTestCase {
     public void testGetIndexCheckpointComplexFileNames() {
         String testIndex = "in0";
         Path indexPath = configPath.resolve(testIndex);
-
         Path dirPath = mkIndexDir(testIndex);
 
         writeTestFile(dirPath, "version.1", "333");
@@ -128,13 +128,11 @@ public class UtilsTests extends HavenaskTestCase {
     public void testGetIndexCheckpointBigVersionNum() {
         String testIndex = "in1";
         Path indexPath = configPath.resolve(testIndex);
-
         Path dirPath = mkIndexDir(testIndex);
 
         writeTestFile(dirPath, "version.1", "333");
         writeTestFile(dirPath, "version.11", "78641949317145");
         writeTestFile(dirPath, "version.111", "78641949");
-
         // 9223372036854775807 is the max value of long type
         writeTestFile(dirPath, "version.9223372036854775807", "9876578889901");
 
@@ -168,7 +166,6 @@ public class UtilsTests extends HavenaskTestCase {
     public void testGetIndexCheckpointNoDir() {
         String testIndex = "in4";
         Path indexPath = configPath.resolve(testIndex);
-
         String timeStamp = Utils.getIndexCheckpoint(indexPath);
         assertNull(timeStamp);
     }
