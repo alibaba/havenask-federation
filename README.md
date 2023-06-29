@@ -21,40 +21,27 @@ Havenask-federation承担三种角色：master、data、coordinate，其中data�
 
 
 # 使用说明
-## 获取镜像
-
-目前fed还未发布release镜像，所以需要通过编译获得。
-
-编译依赖：
-
-*   jdk11
-*   docker
-
-编译方式：
-
-    cd elastic-fed
-    ./gradlew buildDockerImage -p distribution/docker
-
-编译过程先是打包fed安装包，再制作镜像，制作镜像第一次执行会去拉取havenask runtime的镜像，这个镜像有8GB左右，所以命令执行时间比较长，命令执行成功后，会生成一个havenask-fed:test的镜像。
+## 使用依赖
+需要在安装了docker的机器上使用。
 
 ## 启动容器
 
 项目附带了启动命令：
 
     cd elastic-fed/script
-    ./create_container.sh <CONTAINER_NAME> {IMAGE_NAME}
+    ./create_container.sh <CONTAINER_NAME> <IMAGE_NAME>
 
-这样就启动了一个容器，假设启动一个名为test的容器，示例命令：
+这样就启动了一个容器，启动指定image的容器，示例命令：
 
-    ./create_container.sh test
-
-或者启动指定image的容器，示例命令：
-
-    ./create_container.sh test havenask-fed:test
+    ./create_container.sh test registry.cn-hangzhou.aliyuncs.com/havenask/fed:0.4.0.alpha1
 
 容器启动后，进入容器命令：
 
     ./<CONTAINER_NAME>/sshme
+
+进入名为test的容器示例命令：
+
+    ./test/sshme
 
 ## 启动fed
 
@@ -66,10 +53,14 @@ Havenask-federation承担三种角色：master、data、coordinate，其中data�
 
     ./bin/havenask -d
 
-容器附带了一个opensearch-dashbards可以用作可视化操作fed，启动方式为：
+容器附带了一个dashbards可以用作可视化操作fed，启动方式为：
 
      cd dashboards/bin/
-     ./opensearch-dashboards
+     ./havenask-dashboards
+
+如果要以daemon模式启动，命令为：
+
+     nohup ./havenask-dashboards &
 
 ## 访问fed
 
@@ -94,7 +85,7 @@ fed启动后，默认端口是9200，假设在本地访问，访问示例如下�
       "tagline" : "The Havenask Federation Project"
     }
 
-可以通过opensearch-dashboards，在dev\_tools中访问fed
+可以通过dashboards，在dev_tools中访问fed
 
     http://127.0.0.1:5601/app/dev_tools#/console
 
