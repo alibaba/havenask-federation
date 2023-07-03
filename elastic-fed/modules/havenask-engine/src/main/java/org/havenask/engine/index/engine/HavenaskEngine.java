@@ -23,6 +23,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.function.BiFunction;
+import java.util.function.LongConsumer;
+import java.util.function.LongSupplier;
 
 import javax.management.MBeanTrustPermission;
 
@@ -35,8 +37,10 @@ import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.apache.logging.log4j.message.ParameterizedMessage;
+import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexableField;
 import org.apache.lucene.util.BytesRef;
+import org.havenask.ExceptionsHelper;
 import org.havenask.HavenaskException;
 import org.havenask.common.Nullable;
 import org.havenask.common.settings.Settings;
@@ -50,6 +54,7 @@ import org.havenask.engine.rpc.SearcherClient;
 import org.havenask.engine.rpc.TargetInfo;
 import org.havenask.engine.rpc.WriteRequest;
 import org.havenask.engine.rpc.WriteResponse;
+import org.havenask.index.engine.Engine;
 import org.havenask.index.engine.EngineConfig;
 import org.havenask.index.engine.EngineException;
 import org.havenask.index.engine.InternalEngine;
@@ -58,7 +63,11 @@ import org.havenask.index.mapper.ParseContext;
 import org.havenask.index.mapper.ParsedDocument;
 import org.havenask.index.mapper.SourceFieldMapper;
 import org.havenask.index.mapper.Uid;
+import org.havenask.index.seqno.SequenceNumbers;
 import org.havenask.index.shard.ShardId;
+import org.havenask.index.translog.Translog;
+import org.havenask.index.translog.TranslogConfig;
+import org.havenask.index.translog.TranslogDeletionPolicy;
 
 public class HavenaskEngine extends InternalEngine {
 
@@ -71,6 +80,7 @@ public class HavenaskEngine extends InternalEngine {
     private final String kafkaTopic;
     private int kafkaPartition;
     private KafkaProducer<String, String> producer = null;
+    private volatile HavenaskCommitInfo lastCommitInfo = null;
 
     public HavenaskEngine(
         EngineConfig engineConfig,
@@ -80,6 +90,13 @@ public class HavenaskEngine extends InternalEngine {
         NativeProcessControlService nativeProcessControlService
     ) {
         super(engineConfig);
+        long commitTimestamp = getLastCommittedSegmentInfos().userData.containsKey(
+            HavenaskCommitInfo.COMMIT_TIMESTAMP_KEY) ? Long.valueOf(
+            getLastCommittedSegmentInfos().userData.get(HavenaskCommitInfo.COMMIT_TIMESTAMP_KEY)) : -1L;
+        long commitVersion = getLastCommittedSegmentInfos().userData.containsKey(HavenaskCommitInfo.COMMIT_VERSION_KEY)
+            ? Long.valueOf(getLastCommittedSegmentInfos().userData.get(HavenaskCommitInfo.COMMIT_VERSION_KEY)) : -1L;
+        this.lastCommitInfo = new HavenaskCommitInfo(commitTimestamp, commitVersion);
+
         this.havenaskClient = havenaskClient;
         this.searcherClient = searcherClient;
         this.env = env;
@@ -420,6 +437,109 @@ public class HavenaskEngine extends InternalEngine {
         boolean upgradeOnlyAncientSegments,
         @Nullable String forceMergeUUID
     ) throws EngineException {
-        // do nothing
+        throw new UnsupportedOperationException("havenask engine not support force merge operation");
+    }
+
+    @Override
+    protected Translog newTranslog(TranslogConfig translogConfig, String translogUUID,
+        TranslogDeletionPolicy translogDeletionPolicy,
+        LongSupplier globalCheckpointSupplier, LongSupplier primaryTermSupplier,
+        LongConsumer persistedSequenceNumberConsumer) throws IOException {
+        // TODO 实现checkpointSupplier
+        LongSupplier checkpointSupplier = () -> -1L;
+        return new Translog(translogConfig, translogUUID, translogDeletionPolicy, checkpointSupplier,
+            primaryTermSupplier, persistedSequenceNumberConsumer);
+    }
+
+    @Override
+    public void refresh(String source) throws EngineException {
+        // TODO
+    }
+
+    @Override
+    public boolean maybeRefresh(String source) throws EngineException {
+        // TODO
+        return true;
+    }
+
+    @Override
+    public SyncedFlushResult syncFlush(String syncId, CommitId expectedCommitId) throws EngineException {
+        throw new UnsupportedOperationException("havenask engine not support sync flush operation");
+    }
+
+    @Override
+    protected boolean hasTriggerFlush(boolean force) {
+        if (force || hasNewCommitInfo()) {
+            logger.info("has new commit info, need to flush, force: {}", force);
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    /**
+     * 刷新commit信息
+     * @param commitTimestamp  commit timestamp
+     * @param commitVersion  commit version
+     */
+    private void refreshCommitInfo(long commitTimestamp, long commitVersion) {
+        lastCommitInfo = new HavenaskCommitInfo(commitTimestamp, commitVersion);
+    }
+
+    /**
+     * 判断commit信息是否发生变化
+     */
+    public boolean hasNewCommitInfo () {
+        if (lastCommitInfo == null || lastCommitInfo.getCommitTimestamp() <= 0) {
+            return false;
+        }
+
+        long lastCommitTimestamp = Long.valueOf(getLastCommittedSegmentInfos().userData.get(HavenaskCommitInfo.COMMIT_TIMESTAMP_KEY));
+        if (lastCommitInfo.getCommitTimestamp() > lastCommitTimestamp) {
+            logger.info("commit info changed, last commit timestamp: {}, new commit timestamp: {}", lastCommitInfo.getCommitTimestamp(), lastCommitTimestamp);
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    /**
+     * 返回记录在lucene commit信息的checkpint
+     * @return the local checkpoint that has been persisted to disk
+     */
+    public long getCommitLocalCheckpoint() {
+        // TODO
+        return -1L;
+    }
+
+    /**
+     * add custom commit data to the commit data map
+     * @param commitData the commit data
+     */
+    @Override
+    protected void addCustomCommitData(Map<String, String> commitData) {
+        commitData.put(HavenaskCommitInfo.COMMIT_TIMESTAMP_KEY, Long.toString(lastCommitInfo.getCommitTimestamp()));
+        commitData.put(HavenaskCommitInfo.COMMIT_VERSION_KEY, Long.toString(lastCommitInfo.getCommitVersion()));
+    }
+
+    public static class HavenaskCommitInfo {
+        public static final String COMMIT_TIMESTAMP_KEY = "commit_timestamp";
+        public static final String COMMIT_VERSION_KEY = "commit_version";
+
+        private final long commitTimestamp;
+        private final long commitVersion;
+
+        public HavenaskCommitInfo(long commitTimestamp, long commitVersion) {
+            this.commitTimestamp = commitTimestamp;
+            this.commitVersion = commitVersion;
+        }
+
+        public long getCommitTimestamp() {
+            return commitTimestamp;
+        }
+
+        public long getCommitVersion() {
+            return commitVersion;
+        }
     }
 }
