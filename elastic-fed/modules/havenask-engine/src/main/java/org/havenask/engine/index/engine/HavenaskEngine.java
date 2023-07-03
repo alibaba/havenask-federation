@@ -37,10 +37,8 @@ import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.apache.logging.log4j.message.ParameterizedMessage;
-import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexableField;
 import org.apache.lucene.util.BytesRef;
-import org.havenask.ExceptionsHelper;
 import org.havenask.HavenaskException;
 import org.havenask.common.Nullable;
 import org.havenask.common.settings.Settings;
@@ -54,7 +52,6 @@ import org.havenask.engine.rpc.SearcherClient;
 import org.havenask.engine.rpc.TargetInfo;
 import org.havenask.engine.rpc.WriteRequest;
 import org.havenask.engine.rpc.WriteResponse;
-import org.havenask.index.engine.Engine;
 import org.havenask.index.engine.EngineConfig;
 import org.havenask.index.engine.EngineException;
 import org.havenask.index.engine.InternalEngine;
@@ -63,7 +60,6 @@ import org.havenask.index.mapper.ParseContext;
 import org.havenask.index.mapper.ParsedDocument;
 import org.havenask.index.mapper.SourceFieldMapper;
 import org.havenask.index.mapper.Uid;
-import org.havenask.index.seqno.SequenceNumbers;
 import org.havenask.index.shard.ShardId;
 import org.havenask.index.translog.Translog;
 import org.havenask.index.translog.TranslogConfig;
@@ -90,11 +86,12 @@ public class HavenaskEngine extends InternalEngine {
         NativeProcessControlService nativeProcessControlService
     ) {
         super(engineConfig);
-        long commitTimestamp = getLastCommittedSegmentInfos().userData.containsKey(
-            HavenaskCommitInfo.COMMIT_TIMESTAMP_KEY) ? Long.valueOf(
-            getLastCommittedSegmentInfos().userData.get(HavenaskCommitInfo.COMMIT_TIMESTAMP_KEY)) : -1L;
+        long commitTimestamp = getLastCommittedSegmentInfos().userData.containsKey(HavenaskCommitInfo.COMMIT_TIMESTAMP_KEY)
+            ? Long.valueOf(getLastCommittedSegmentInfos().userData.get(HavenaskCommitInfo.COMMIT_TIMESTAMP_KEY))
+            : -1L;
         long commitVersion = getLastCommittedSegmentInfos().userData.containsKey(HavenaskCommitInfo.COMMIT_VERSION_KEY)
-            ? Long.valueOf(getLastCommittedSegmentInfos().userData.get(HavenaskCommitInfo.COMMIT_VERSION_KEY)) : -1L;
+            ? Long.valueOf(getLastCommittedSegmentInfos().userData.get(HavenaskCommitInfo.COMMIT_VERSION_KEY))
+            : -1L;
         this.lastCommitInfo = new HavenaskCommitInfo(commitTimestamp, commitVersion);
 
         this.havenaskClient = havenaskClient;
@@ -441,14 +438,24 @@ public class HavenaskEngine extends InternalEngine {
     }
 
     @Override
-    protected Translog newTranslog(TranslogConfig translogConfig, String translogUUID,
+    protected Translog newTranslog(
+        TranslogConfig translogConfig,
+        String translogUUID,
         TranslogDeletionPolicy translogDeletionPolicy,
-        LongSupplier globalCheckpointSupplier, LongSupplier primaryTermSupplier,
-        LongConsumer persistedSequenceNumberConsumer) throws IOException {
+        LongSupplier globalCheckpointSupplier,
+        LongSupplier primaryTermSupplier,
+        LongConsumer persistedSequenceNumberConsumer
+    ) throws IOException {
         // TODO 实现checkpointSupplier
         LongSupplier checkpointSupplier = () -> -1L;
-        return new Translog(translogConfig, translogUUID, translogDeletionPolicy, checkpointSupplier,
-            primaryTermSupplier, persistedSequenceNumberConsumer);
+        return new Translog(
+            translogConfig,
+            translogUUID,
+            translogDeletionPolicy,
+            checkpointSupplier,
+            primaryTermSupplier,
+            persistedSequenceNumberConsumer
+        );
     }
 
     @Override
@@ -489,14 +496,18 @@ public class HavenaskEngine extends InternalEngine {
     /**
      * 判断commit信息是否发生变化
      */
-    public boolean hasNewCommitInfo () {
+    public boolean hasNewCommitInfo() {
         if (lastCommitInfo == null || lastCommitInfo.getCommitTimestamp() <= 0) {
             return false;
         }
 
         long lastCommitTimestamp = Long.valueOf(getLastCommittedSegmentInfos().userData.get(HavenaskCommitInfo.COMMIT_TIMESTAMP_KEY));
         if (lastCommitInfo.getCommitTimestamp() > lastCommitTimestamp) {
-            logger.info("commit info changed, last commit timestamp: {}, new commit timestamp: {}", lastCommitInfo.getCommitTimestamp(), lastCommitTimestamp);
+            logger.info(
+                "commit info changed, last commit timestamp: {}, new commit timestamp: {}",
+                lastCommitInfo.getCommitTimestamp(),
+                lastCommitTimestamp
+            );
             return true;
         } else {
             return false;
