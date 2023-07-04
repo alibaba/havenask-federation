@@ -23,17 +23,17 @@ Havenask-federation承担三种角色：master、data、coordinate，其中data�
 # 使用说明
 ## 使用依赖
 环境要求
-* 确保机器内存大于4G，cpu大于2核，磁盘大小大于20G。
+* 确保机器内存不少于8G，cpu不少于2核，磁盘大小大于20G。
 * 使用前确保设备已经安装和启动Docker服务。
 
 ## 启动容器
 
-克隆仓库
+克隆仓库或者拷贝启动命令[elastic-fed/script/create_container.sh](https://github.com/alibaba/havenask-federation/blob/main/elastic-fed/script/create_container.sh)命令到本地
 
     git clone https://github.com/alibaba/havenask-federation.git
     cd havenask-federation
 
-项目附带了启动命令：
+执行启动命令：
 
     cd elastic-fed/script
     ./create_container.sh <CONTAINER_NAME> <IMAGE_NAME>
