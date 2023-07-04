@@ -28,7 +28,9 @@ Havenask-federation承担三种角色：master、data、coordinate，其中data�
 
 ## 启动容器
 
-克隆仓库或者拷贝启动命令[elastic-fed/script/create_container.sh](https://github.com/alibaba/havenask-federation/blob/main/elastic-fed/script/create_container.sh)命令到本地
+### 方式一
+
+克隆仓库：
 
     git clone https://github.com/alibaba/havenask-federation.git
     cd havenask-federation
@@ -38,16 +40,24 @@ Havenask-federation承担三种角色：master、data、coordinate，其中data�
     cd elastic-fed/script
     ./create_container.sh <CONTAINER_NAME> <IMAGE_NAME>
 
-这样就启动了一个容器，启动指定image的容器，示例命令：
-
+    #示例命令：
     ./create_container.sh test registry.cn-hangzhou.aliyuncs.com/havenask/fed:0.4.0.alpha1
+
+### 方式二
+直接拷贝启动脚本[elastic-fed/script/create_container.sh](https://github.com/alibaba/havenask-federation/blob/main/elastic-fed/script/create_container.sh)到本地，执行启动命令：
+
+    sh create_container.sh <CONTAINER_NAME> <IMAGE_NAME>
+
+    #示例命令：
+    sh create_container.sh test registry.cn-hangzhou.aliyuncs.com/havenask/fed:0.4.0.alpha1
+
+## 进入容器
 
 容器启动后，进入容器命令：
 
     ./<CONTAINER_NAME>/sshme
 
-进入名为test的容器示例命令：
-
+    #示例命令：
     ./test/sshme
 
 ## 启动fed
@@ -60,7 +70,7 @@ Havenask-federation承担三种角色：master、data、coordinate，其中data�
 
     ./bin/havenask -d
 
-容器附带了一个dashbards可以用作可视化操作fed，启动方式为：
+容器附带了一个dashboards可以用作可视化操作fed，启动方式为：
 
      cd dashboards/bin/
      ./havenask-dashboards
