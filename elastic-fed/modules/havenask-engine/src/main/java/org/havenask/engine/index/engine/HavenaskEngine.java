@@ -60,6 +60,7 @@ import org.havenask.index.mapper.ParseContext;
 import org.havenask.index.mapper.ParsedDocument;
 import org.havenask.index.mapper.SourceFieldMapper;
 import org.havenask.index.mapper.Uid;
+import org.havenask.index.seqno.SequenceNumbers;
 import org.havenask.index.shard.ShardId;
 import org.havenask.index.translog.Translog;
 import org.havenask.index.translog.TranslogConfig;
@@ -92,7 +93,10 @@ public class HavenaskEngine extends InternalEngine {
         long commitVersion = getLastCommittedSegmentInfos().userData.containsKey(HavenaskCommitInfo.COMMIT_VERSION_KEY)
             ? Long.valueOf(getLastCommittedSegmentInfos().userData.get(HavenaskCommitInfo.COMMIT_VERSION_KEY))
             : -1L;
-        this.lastCommitInfo = new HavenaskCommitInfo(commitTimestamp, commitVersion);
+        long commitCheckpoint = getLastCommittedSegmentInfos().userData.containsKey(SequenceNumbers.LOCAL_CHECKPOINT_KEY)
+            ? Long.valueOf(getLastCommittedSegmentInfos().userData.get(SequenceNumbers.LOCAL_CHECKPOINT_KEY))
+            : -1L;
+        this.lastCommitInfo = new HavenaskCommitInfo(commitTimestamp, commitVersion, commitCheckpoint);
 
         this.havenaskClient = havenaskClient;
         this.searcherClient = searcherClient;
@@ -446,8 +450,7 @@ public class HavenaskEngine extends InternalEngine {
         LongSupplier primaryTermSupplier,
         LongConsumer persistedSequenceNumberConsumer
     ) throws IOException {
-        // TODO 实现checkpointSupplier
-        LongSupplier checkpointSupplier = () -> -1L;
+        LongSupplier checkpointSupplier = () -> lastCommitInfo != null ? lastCommitInfo.getCommitCheckpoint() : -1L;
         return new Translog(
             translogConfig,
             translogUUID,
@@ -461,17 +464,30 @@ public class HavenaskEngine extends InternalEngine {
     @Override
     public void refresh(String source) throws EngineException {
         // TODO
+        logger.debug("havenask engine refresh, source: {}", source);
     }
 
     @Override
     public boolean maybeRefresh(String source) throws EngineException {
         // TODO
+        logger.debug("havenask engine maybeRefresh, source: {}", source);
+        return true;
+    }
+
+    @Override
+    public boolean refreshNeeded() {
         return true;
     }
 
     @Override
     public SyncedFlushResult syncFlush(String syncId, CommitId expectedCommitId) throws EngineException {
         throw new UnsupportedOperationException("havenask engine not support sync flush operation");
+    }
+
+    @Override
+    public boolean shouldPeriodicallyFlush() {
+        // havenask不能手动触发flush,只能等待commit信息发生变化,再触发flush
+        return hasNewCommitInfo();
     }
 
     @Override
@@ -489,8 +505,8 @@ public class HavenaskEngine extends InternalEngine {
      * @param commitTimestamp  commit timestamp
      * @param commitVersion  commit version
      */
-    private void refreshCommitInfo(long commitTimestamp, long commitVersion) {
-        lastCommitInfo = new HavenaskCommitInfo(commitTimestamp, commitVersion);
+    private void refreshCommitInfo(long commitTimestamp, long commitVersion, long localCheckpoint) {
+        lastCommitInfo = new HavenaskCommitInfo(commitTimestamp, commitVersion, localCheckpoint);
     }
 
     /**
@@ -519,8 +535,7 @@ public class HavenaskEngine extends InternalEngine {
      * @return the local checkpoint that has been persisted to disk
      */
     public long getCommitLocalCheckpoint() {
-        // TODO
-        return -1L;
+        return lastCommitInfo.getCommitCheckpoint();
     }
 
     /**
@@ -539,10 +554,12 @@ public class HavenaskEngine extends InternalEngine {
 
         private final long commitTimestamp;
         private final long commitVersion;
+        private final long commitCheckpoint;
 
-        public HavenaskCommitInfo(long commitTimestamp, long commitVersion) {
+        public HavenaskCommitInfo(long commitTimestamp, long commitVersion, long commitCheckpoint) {
             this.commitTimestamp = commitTimestamp;
             this.commitVersion = commitVersion;
+            this.commitCheckpoint = commitCheckpoint;
         }
 
         public long getCommitTimestamp() {
@@ -551,6 +568,10 @@ public class HavenaskEngine extends InternalEngine {
 
         public long getCommitVersion() {
             return commitVersion;
+        }
+
+        public long getCommitCheckpoint() {
+            return commitCheckpoint;
         }
     }
 }
