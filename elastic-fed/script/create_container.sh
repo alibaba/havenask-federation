@@ -46,13 +46,16 @@ echo "Begin pull image: ${IMAGE}"
 
 docker pull $IMAGE
 
+# port mapping for different OS
 if [ "$(uname -s)" == "Linux" ]; then
-  echo "docker run for Linux"
-  docker run --ulimit nofile=655350:655350 --privileged --cap-add SYS_ADMIN --device /dev/fuse --ulimit memlock=-1 --cpu-shares=15360 --cpu-quota=9600000 --cpu-period=100000 --memory=500000m -d --net=host --name $CONTAINER_NAME $IMAGE /sbin/init 1> /dev/null
+  echo "docker port mapping for Linux, using local host network stack"
+  PORT_MAPPING_OPTION="--net=host"
 else
-  echo "docker run for Mac or Windows"
-  docker run -p 9200:9200 -p 5005:5005 -p 39200:39200 -p 39300:39300 -p 39400:39400 -p 49200:49200 -p 5601:5601 --ulimit nofile=655350:655350 --privileged --cap-add SYS_ADMIN --device /dev/fuse --ulimit memlock=-1 --cpu-shares=15360 --cpu-quota=9600000 --cpu-period=100000 --memory=500000m -d --name $CONTAINER_NAME $IMAGE /sbin/init 1> /dev/null
+  echo "docker port mapping for Mac or Windows, using container network stack"
+  PORT_MAPPING_OPTION="-p 9200:9200 -p 5005:5005 -p 39200:39200 -p 39300:39300 -p 39400:39400 -p 49200:49200 -p 5601:5601"
 fi
+
+docker run $PORT_MAPPING_OPTION --ulimit nofile=655350:655350 --privileged --cap-add SYS_ADMIN --device /dev/fuse --ulimit memlock=-1 --cpu-shares=15360 --cpu-quota=9600000 --cpu-period=100000 --memory=500000m -d --name $CONTAINER_NAME $IMAGE /sbin/init 1> /dev/null
 
 if [ $? -ne 0 ]; then
     echo "ERROR, run container failed, please check."
