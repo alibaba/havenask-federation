@@ -541,8 +541,16 @@ public class InternalEngine extends Engine {
         final Map<String, String> userData = store.readLastCommittedSegmentsInfo().getUserData();
         final String translogUUID = Objects.requireNonNull(userData.get(Translog.TRANSLOG_UUID_KEY));
         // We expect that this shard already exists, so it must already have an existing translog else something is badly wrong!
-        return new Translog(translogConfig, translogUUID, translogDeletionPolicy, globalCheckpointSupplier,
+        return newTranslog(translogConfig, translogUUID, translogDeletionPolicy, globalCheckpointSupplier,
             engineConfig.getPrimaryTermSupplier(), persistedSequenceNumberConsumer);
+    }
+
+    protected Translog newTranslog(TranslogConfig translogConfig, String translogUUID,
+        TranslogDeletionPolicy translogDeletionPolicy,
+        LongSupplier globalCheckpointSupplier, LongSupplier primaryTermSupplier,
+        LongConsumer persistedSequenceNumberConsumer) throws IOException {
+        return new Translog(translogConfig, translogUUID, translogDeletionPolicy, globalCheckpointSupplier,
+            primaryTermSupplier, persistedSequenceNumberConsumer);
     }
 
     // Package private for testing purposes only
@@ -1836,6 +1844,34 @@ public class InternalEngine extends Engine {
             || localCheckpointTracker.getProcessedCheckpoint() == localCheckpointTracker.getMaxSeqNo();
     }
 
+    /**
+     * Returns true if a flush should be triggered.
+     * @param force if true, force a flush even if there are no uncommitted changes
+     * @return true if a flush should be triggered
+     */
+    protected boolean hasTriggerFlush(boolean force) {
+        // Only flush if (1) Lucene has uncommitted docs, or (2) forced by caller, or (3) the
+        // newly created commit points to a different translog generation (can free translog),
+        // or (4) the local checkpoint information in the last commit is stale, which slows down future recoveries.
+        if (force) {
+            return true;
+        }
+
+        boolean hasUncommittedChanges = indexWriter.hasUncommittedChanges();
+        boolean shouldPeriodicallyFlush = shouldPeriodicallyFlush();
+
+
+        boolean flush = hasUncommittedChanges || shouldPeriodicallyFlush
+            || getProcessedLocalCheckpoint() > Long.parseLong(
+            lastCommittedSegmentInfos.userData.get(SequenceNumbers.LOCAL_CHECKPOINT_KEY));
+        if (flush) {
+            // a temporary debugging to investigate test failure - issue#32827. Remove when the issue is resolved
+            logger.debug("new commit on flush, hasUncommittedChanges:{}, force:{}, shouldPeriodicallyFlush:{}",
+                hasUncommittedChanges, force, shouldPeriodicallyFlush);
+        }
+        return flush;
+    }
+
     @Override
     public CommitId flush(boolean force, boolean waitIfOngoing) throws EngineException {
         ensureOpen();
@@ -1860,24 +1896,13 @@ public class InternalEngine extends Engine {
                 logger.trace("acquired flush lock immediately");
             }
             try {
-                // Only flush if (1) Lucene has uncommitted docs, or (2) forced by caller, or (3) the
-                // newly created commit points to a different translog generation (can free translog),
-                // or (4) the local checkpoint information in the last commit is stale, which slows down future recoveries.
-                boolean hasUncommittedChanges = indexWriter.hasUncommittedChanges();
-                boolean shouldPeriodicallyFlush = shouldPeriodicallyFlush();
-                if (hasUncommittedChanges || force || shouldPeriodicallyFlush
-                        || getProcessedLocalCheckpoint() > Long.parseLong(
-                                lastCommittedSegmentInfos.userData.get(SequenceNumbers.LOCAL_CHECKPOINT_KEY))) {
+                if (hasTriggerFlush(force)) {
                     ensureCanFlush();
                     try {
                         translog.rollGeneration();
                         logger.trace("starting commit for flush; commitTranslog=true");
                         commitIndexWriter(indexWriter, translog, null);
                         logger.trace("finished commit for flush");
-
-                        // a temporary debugging to investigate test failure - issue#32827. Remove when the issue is resolved
-                        logger.debug("new commit on flush, hasUncommittedChanges:{}, force:{}, shouldPeriodicallyFlush:{}",
-                            hasUncommittedChanges, force, shouldPeriodicallyFlush);
 
                         // we need to refresh in order to clear older version values
                         refresh("version_table_flush", SearcherScope.INTERNAL, true);
@@ -2500,6 +2525,14 @@ public class InternalEngine extends Engine {
     }
 
     /**
+     * add custom commit data to the commit data map
+     * @param commitData the commit data
+     */
+    protected void addCustomCommitData(Map<String, String> commitData) {
+
+    }
+
+    /**
      * Commits the specified index writer.
      *
      * @param writer   the index writer to commit
@@ -2510,7 +2543,7 @@ public class InternalEngine extends Engine {
     protected void commitIndexWriter(final IndexWriter writer, final Translog translog, @Nullable final String syncId) throws IOException {
         ensureCanFlush();
         try {
-            final long localCheckpoint = localCheckpointTracker.getProcessedCheckpoint();
+            final long localCheckpoint = getCommitLocalCheckpoint();
             writer.setLiveCommitData(() -> {
                 /*
                  * The user data captured above (e.g. local checkpoint) contains data that must be evaluated *before* Lucene flushes
@@ -2537,6 +2570,8 @@ public class InternalEngine extends Engine {
                 if (currentForceMergeUUID != null) {
                     commitData.put(FORCE_MERGE_UUID_KEY, currentForceMergeUUID);
                 }
+
+                addCustomCommitData(commitData);
                 logger.trace("committing writer with commit data [{}]", commitData);
                 return commitData.entrySet().iterator();
             });
@@ -2609,6 +2644,14 @@ public class InternalEngine extends Engine {
     }
 
     public long getProcessedLocalCheckpoint() {
+        return localCheckpointTracker.getProcessedCheckpoint();
+    }
+
+    /**
+     * 返回记录在lucene commit信息的checkpint
+     * @return the local checkpoint that has been persisted to disk
+     */
+    public long getCommitLocalCheckpoint() {
         return localCheckpointTracker.getProcessedCheckpoint();
     }
 
