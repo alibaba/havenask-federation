@@ -40,13 +40,13 @@ public class CheckpointCalc {
 
     public CheckpointCalc(long milisPerSegment, long timeGapMargin, int segmentSize) {
         if (milisPerSegment <= 0) {
-            throw new IllegalArgumentException("milisPerSegment must be positive");
+            throw new IllegalArgumentException("milisPerSegment must be positive, illegal value: " + milisPerSegment);
         }
         if (timeGapMargin < 0) {
-            throw new IllegalArgumentException("timeGapMargin must be non-negative");
+            throw new IllegalArgumentException("timeGapMargin must be non-negative, illegal value: " + timeGapMargin);
         }
         if (segmentSize <= 0) {
-            throw new IllegalArgumentException("segmentSize must be positive");
+            throw new IllegalArgumentException("segmentSize must be positive, illegal value: " + segmentSize);
         }
         this.milisPerSegment = milisPerSegment;
         this.timeGapMargin = timeGapMargin;

@@ -198,19 +198,19 @@ public class CheckpointCalcTests extends HavenaskTestCase {
             CheckpointCalc checkpointCalc = new CheckpointCalc(0, 0, 5);
             fail("should throw IllegalArgumentException");
         } catch (IllegalArgumentException e) {
-            assertEquals("milisPerSegment must be positive", e.getMessage());
+            assertEquals("milisPerSegment must be positive, illegal value: 0", e.getMessage());
         }
         try {
             CheckpointCalc checkpointCalc = new CheckpointCalc(100, -1, 5);
             fail("should throw IllegalArgumentException");
         } catch (IllegalArgumentException e) {
-            assertEquals("timeGapMargin must be non-negative", e.getMessage());
+            assertEquals("timeGapMargin must be non-negative, illegal value: -1", e.getMessage());
         }
         try {
             CheckpointCalc checkpointCalc = new CheckpointCalc(100, 0, 0);
             fail("should throw IllegalArgumentException");
         } catch (IllegalArgumentException e) {
-            assertEquals("segmentSize must be positive", e.getMessage());
+            assertEquals("segmentSize must be positive, illegal value: 0", e.getMessage());
         }
     }
 }
