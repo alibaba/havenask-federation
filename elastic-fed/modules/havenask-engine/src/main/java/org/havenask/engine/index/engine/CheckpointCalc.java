@@ -24,21 +24,36 @@ public class CheckpointCalc {
 
     private int segmentSize;
 
-    public ArrayDeque<Checkpoint> checkpointDeque = new ArrayDeque<>(segmentSize);
+    protected ArrayDeque<Checkpoint> checkpointDeque = new ArrayDeque<>(segmentSize);
 
     private long currentCheckpoint = -1;
 
+    private static final long DEFAULT_MILIS_PER_SEGMENT = 60000;
+
+    private static final long DEFAULT_TIME_GAP_MARGIN = 0;
+
+    private static final int DEFAULT_SEGMENT_SIZE = 10;
+
     CheckpointCalc() {
-        this(60000, 0, 10);
+        this(DEFAULT_MILIS_PER_SEGMENT, DEFAULT_TIME_GAP_MARGIN, DEFAULT_SEGMENT_SIZE);
     }
 
     CheckpointCalc(long milisPerSegment, long timeGapMargin, int segmentSize) {
+        if (milisPerSegment <= 0) {
+            throw new IllegalArgumentException("milisPerSegment must be positive");
+        }
+        if (timeGapMargin < 0) {
+            throw new IllegalArgumentException("timeGapMargin must be non-negative");
+        }
+        if (segmentSize <= 0) {
+            throw new IllegalArgumentException("segmentSize must be positive");
+        }
         this.milisPerSegment = milisPerSegment;
         this.timeGapMargin = timeGapMargin;
         this.segmentSize = segmentSize;
     }
 
-    public void addCheckpoint(long time, long seqNo) {
+    public synchronized void addCheckpoint(long time, long seqNo) {
         Checkpoint lastCheckpoint = checkpointDeque.peekLast();
 
         long timeSegment = time / milisPerSegment;
@@ -69,7 +84,7 @@ public class CheckpointCalc {
         }
     }
 
-    public long getCheckpoint(long time) {
+    public synchronized long getCheckpoint(long time) {
         time = time - timeGapMargin;
 
         for (Checkpoint checkpoint : checkpointDeque) {
