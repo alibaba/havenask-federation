@@ -34,11 +34,11 @@ public class CheckpointCalc {
 
     private static final int DEFAULT_SEGMENT_SIZE = 10;
 
-    CheckpointCalc() {
+    public CheckpointCalc() {
         this(DEFAULT_MILIS_PER_SEGMENT, DEFAULT_TIME_GAP_MARGIN, DEFAULT_SEGMENT_SIZE);
     }
 
-    CheckpointCalc(long milisPerSegment, long timeGapMargin, int segmentSize) {
+    public CheckpointCalc(long milisPerSegment, long timeGapMargin, int segmentSize) {
         if (milisPerSegment <= 0) {
             throw new IllegalArgumentException("milisPerSegment must be positive");
         }
