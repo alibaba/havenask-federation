@@ -52,6 +52,7 @@ import org.havenask.engine.rpc.SearcherClient;
 import org.havenask.engine.rpc.TargetInfo;
 import org.havenask.engine.rpc.WriteRequest;
 import org.havenask.engine.rpc.WriteResponse;
+import org.havenask.engine.util.Utils;
 import org.havenask.index.engine.EngineConfig;
 import org.havenask.index.engine.EngineException;
 import org.havenask.index.engine.InternalEngine;
@@ -78,6 +79,7 @@ public class HavenaskEngine extends InternalEngine {
     private int kafkaPartition;
     private KafkaProducer<String, String> producer = null;
     private volatile HavenaskCommitInfo lastCommitInfo = null;
+    private CheckpointCalc checkpointCalc = null;
 
     public HavenaskEngine(
         EngineConfig engineConfig,
@@ -97,6 +99,10 @@ public class HavenaskEngine extends InternalEngine {
             ? Long.valueOf(getLastCommittedSegmentInfos().userData.get(SequenceNumbers.LOCAL_CHECKPOINT_KEY))
             : -1L;
         this.lastCommitInfo = new HavenaskCommitInfo(commitTimestamp, commitVersion, commitCheckpoint);
+        this.checkpointCalc = new CheckpointCalc();
+        if (commitTimestamp >= 0 && commitCheckpoint >= 0) {
+            this.checkpointCalc.addCheckpoint(commitTimestamp, commitCheckpoint);
+        }
 
         this.havenaskClient = havenaskClient;
         this.searcherClient = searcherClient;
@@ -463,15 +469,35 @@ public class HavenaskEngine extends InternalEngine {
 
     @Override
     public void refresh(String source) throws EngineException {
-        // TODO
-        logger.debug("havenask engine refresh, source: {}", source);
+        maybeRefresh(source);
     }
 
     @Override
     public boolean maybeRefresh(String source) throws EngineException {
-        // TODO
         logger.debug("havenask engine maybeRefresh, source: {}", source);
-        return true;
+        long time = System.currentTimeMillis();
+        long checkpoint = getPersistedLocalCheckpoint();
+        checkpointCalc.addCheckpoint(time, checkpoint);
+
+        String havenaskTime = Utils.getIndexCheckpoint(env.getRuntimedataPath().resolve(shardId.getIndexName()));
+        long havenaskTimePoint;
+        try {
+            havenaskTimePoint = Long.valueOf(havenaskTime) / 1000;
+        } catch (Exception e) {
+            havenaskTimePoint = -1;
+        }
+        long currentCheckpoint = checkpointCalc.getCheckpoint(havenaskTimePoint);
+        if (currentCheckpoint > lastCommitInfo.getCommitCheckpoint()) {
+            logger.info(
+                "havenask engine refresh checkpoint, checkpoint time: {}, current checkpoint: {}, last commit " + "checkpoint: {}",
+                havenaskTime,
+                currentCheckpoint,
+                lastCommitInfo.getCommitCheckpoint()
+            );
+            refreshCommitInfo(havenaskTimePoint, 0, currentCheckpoint);
+            return true;
+        }
+        return false;
     }
 
     @Override
@@ -517,7 +543,9 @@ public class HavenaskEngine extends InternalEngine {
             return false;
         }
 
-        long lastCommitTimestamp = Long.valueOf(getLastCommittedSegmentInfos().userData.get(HavenaskCommitInfo.COMMIT_TIMESTAMP_KEY));
+        long lastCommitTimestamp = getLastCommittedSegmentInfos().userData.containsKey(HavenaskCommitInfo.COMMIT_TIMESTAMP_KEY)
+            ? Long.valueOf(getLastCommittedSegmentInfos().userData.get(HavenaskCommitInfo.COMMIT_TIMESTAMP_KEY))
+            : -1L;
         if (lastCommitInfo.getCommitTimestamp() > lastCommitTimestamp) {
             logger.info(
                 "commit info changed, last commit timestamp: {}, new commit timestamp: {}",
