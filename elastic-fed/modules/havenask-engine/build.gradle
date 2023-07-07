@@ -17,7 +17,10 @@ plugins {
   id "com.google.protobuf" version "0.8.18"
 }
 
+import org.havenask.gradle.test.rest.JavaRestTestPlugin
+
 apply plugin: 'havenask.internal-cluster-test'
+apply plugin: 'havenask.java-rest-test'
 
 havenaskplugin {
   description 'Havenask engine module'
@@ -37,6 +40,8 @@ dependencies {
   implementation group: 'org.apache.kafka', name: 'kafka-clients', version: '2.8.0'
   api "org.slf4j:slf4j-api:${versions.slf4j}"
   api "org.apache.logging.log4j:log4j-slf4j-impl:${versions.log4j}"
+  javaRestTestImplementation project(':client:rest-high-level')
+  javaRestTestImplementation project(':modules:havenask-engine')
 }
 
 bundlePlugin {
@@ -188,5 +193,16 @@ protobuf {
     // (Java only) returns tasks for a sourceSet
     ofSourceSet('main')
 
+  }
+}
+
+javaRestTest {
+  maxParallelForks = '1'
+  final String cluster = System.getProperty("tests.rest.cluster", null);
+  if (cluster == null) {
+    enabled = false
+  } else {
+    systemProperty "tests.cluster", cluster
+    systemProperty "tests.clustername", cluster
   }
 }

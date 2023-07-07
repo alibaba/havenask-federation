@@ -77,9 +77,9 @@ public class RestTestBasePlugin implements Plugin<Project> {
                 runnerNonInputProperties.systemProperty(TESTS_CLUSTER_NAME, cluster::getName);
             } else {
                 if (System.getProperty(TESTS_CLUSTER) == null || System.getProperty(TESTS_CLUSTER_NAME) == null) {
-                    throw new IllegalArgumentException(
-                        String.format("%s, %s, and %s must all be null or non-null", TESTS_REST_CLUSTER, TESTS_CLUSTER, TESTS_CLUSTER_NAME)
-                    );
+                    //throw new IllegalArgumentException(
+                    //    String.format("%s, %s, and %s must all be null or non-null", TESTS_REST_CLUSTER, TESTS_CLUSTER, TESTS_CLUSTER_NAME)
+                    //);
                 }
             }
         });
