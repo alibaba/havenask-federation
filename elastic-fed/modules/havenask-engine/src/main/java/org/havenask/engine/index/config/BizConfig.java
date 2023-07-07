@@ -67,7 +67,7 @@ public class BizConfig {
     }
 
     public static class BuildConfig {
-        public int max_doc_count = 1000;
+        public int max_doc_count = 100000;
         public int build_total_memory = 128;
     }
 
