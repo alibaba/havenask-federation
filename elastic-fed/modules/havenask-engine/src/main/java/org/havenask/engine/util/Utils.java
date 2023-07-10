@@ -14,6 +14,8 @@
 
 package org.havenask.engine.util;
 
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.AccessController;
@@ -83,7 +85,7 @@ public class Utils {
     public static final String INDEX_SUB_PATH = "generation_0/partition_0_65535";
 
     /**
-     * return the timestamp in the max version file under the certain index directory
+     * return the locator timestamp in the max version file under the certain index directory
      */
     public static String getIndexCheckpoint(Path indexPath) {
         Path versionFilePath = indexPath.resolve(INDEX_SUB_PATH);
@@ -96,7 +98,46 @@ public class Utils {
         }
 
         Path filePath = indexPath.resolve(INDEX_SUB_PATH).resolve(maxIndexVersionFile);
-        return getIndexTimestamp(filePath);
+        String locator = getIndexLocator(filePath);
+        if (Objects.equals(locator, null)) return null;
+
+        if (locator.length() < 80) {
+            logger.error("locator in file [{}] has no timestamp", filePath);
+            return null;
+        }
+
+        // if (locator.length() > 80) {
+        // logger.warn("locator in file [{}] has more than 2 progress, but we only return the timestamp in the first progress", filePath);
+        // }
+
+        String progressNumLittleEndian = locator.substring(32, 48);
+        String timestampLittleEndian = locator.substring(48, 64);
+
+        long progressNum = 0;
+        try {
+            progressNum = getLongLittleEndian(progressNumLittleEndian);
+        } catch (Exception e) {
+            logger.error("illegal form locator in file [{}] with progressNum: {}", filePath, progressNumLittleEndian);
+            return null;
+        }
+
+        if (16 + 16 + 16 + progressNum * 32 != locator.length()) {
+            logger.error(
+                "illegal form locator in file [{}] with progressNum: {} and locator length: {}",
+                filePath,
+                progressNum,
+                locator.length()
+            );
+            return null;
+        }
+
+        try {
+            long timestamp = getLongLittleEndian(timestampLittleEndian);
+            return Long.toString(timestamp);
+        } catch (Exception e) {
+            logger.error("illegal form locator in file [{}] with timestamp: {}", filePath, timestampLittleEndian);
+            return null;
+        }
     }
 
     /**
@@ -118,16 +159,28 @@ public class Utils {
     }
 
     /**
-     * return the timestamp in the version file
+     * return the loactor in the version file
      */
-    private static String getIndexTimestamp(Path jsonPath) {
+    private static String getIndexLocator(Path jsonPath) {
         try {
             String content = Files.readString(jsonPath);
             JSONObject jsonObject = JSON.parseObject(content);
-            return jsonObject.getString("timestamp");
+            return jsonObject.getString("locator");
         } catch (Exception e) {
-            logger.error("file [{}] get index timestamp failed ", jsonPath);
+            logger.error("get index locator failed in file [{}]", jsonPath);
             return null;
         }
+    }
+
+    /**
+     * return the long value for the little endian string
+     */
+    public static long getLongLittleEndian(String littleEndianHex) {
+        byte[] bytes = new byte[8];
+        for (int i = 0; i < 8; i++) {
+            bytes[i] = (byte) Integer.parseInt(littleEndianHex.substring(i * 2, i * 2 + 2), 16);
+        }
+
+        return ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN).getLong();
     }
 }
