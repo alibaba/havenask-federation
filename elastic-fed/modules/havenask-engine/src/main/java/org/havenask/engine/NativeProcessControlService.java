@@ -19,8 +19,10 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
+import java.util.HashSet;
 import java.util.Locale;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.logging.log4j.LogManager;
@@ -34,8 +36,10 @@ import org.havenask.common.settings.Setting.Property;
 import org.havenask.common.settings.Settings;
 import org.havenask.common.unit.TimeValue;
 import org.havenask.common.util.concurrent.AbstractAsyncTask;
+import org.havenask.engine.index.engine.HavenaskEngine;
 import org.havenask.env.Environment;
 import org.havenask.env.NodeEnvironment;
+import org.havenask.index.engine.EngineException;
 import org.havenask.threadpool.ThreadPool;
 
 public class NativeProcessControlService extends AbstractLifecycleComponent {
@@ -124,6 +128,7 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
     protected String startBsJobCommand;
     private ProcessControlTask processControlTask;
     private boolean running;
+    private final Set<HavenaskEngine> havenaskEngines = new HashSet<>();
 
     public NativeProcessControlService(
         ClusterService clusterService,
@@ -271,6 +276,10 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
 
             if (isDataNode) {
                 if (false == checkProcessAlive(SEARCHER_ROLE)) {
+                    havenaskEngines.forEach((havenaskEngine) -> {
+                        EngineException e = new EngineException(havenaskEngine.config().getShardId(), "havenask searcher process is not alive");
+                        havenaskEngine.failEngine("havenask searcher process is not alive", e);
+                    });
                     LOGGER.info("start searcher process...");
                     // 启动searcher
                     runCommand(startSearcherCommand);
@@ -502,5 +511,21 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
 
     public void setCommandTimeout(TimeValue commandTimeout) {
         this.commandTimeout = commandTimeout;
+    }
+
+    /**
+     * 记录启动的engine
+     * @param engine
+     */
+    public void addHavenaskEngine(HavenaskEngine engine) {
+        havenaskEngines.add(engine);
+    }
+
+    /**
+     * remove关闭的engine
+     * @param engine
+     */
+    public void removeHavenaskEngine(HavenaskEngine engine) {
+        havenaskEngines.remove(engine);
     }
 }
