@@ -479,10 +479,10 @@ public class HavenaskEngine extends InternalEngine {
         long checkpoint = getPersistedLocalCheckpoint();
         checkpointCalc.addCheckpoint(time, checkpoint);
 
-        String havenaskTime = Utils.getIndexCheckpoint(env.getRuntimedataPath().resolve(shardId.getIndexName()));
+        Long havenaskTime = Utils.getIndexCheckpoint(env.getRuntimedataPath().resolve(shardId.getIndexName()));
         long havenaskTimePoint;
         try {
-            havenaskTimePoint = Long.valueOf(havenaskTime) / 1000;
+            havenaskTimePoint = havenaskTime / 1000;
         } catch (Exception e) {
             havenaskTimePoint = -1;
         }
