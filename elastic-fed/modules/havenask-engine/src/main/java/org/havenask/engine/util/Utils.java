@@ -15,7 +15,6 @@
 package org.havenask.engine.util;
 
 import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.AccessController;
@@ -87,7 +86,7 @@ public class Utils {
     /**
      * return the locator timestamp in the max version file under the certain index directory
      */
-    public static String getIndexCheckpoint(Path indexPath) {
+    public static Long getIndexCheckpoint(Path indexPath) {
         Path versionFilePath = indexPath.resolve(INDEX_SUB_PATH);
         String maxIndexVersionFile = getIndexMaxVersion(versionFilePath);
         // no version file or directory not exists
@@ -99,45 +98,8 @@ public class Utils {
 
         Path filePath = indexPath.resolve(INDEX_SUB_PATH).resolve(maxIndexVersionFile);
         String locator = getIndexLocator(filePath);
-        if (Objects.equals(locator, null)) return null;
 
-        if (locator.length() < 80) {
-            logger.error("locator in file [{}] has no timestamp", filePath);
-            return null;
-        }
-
-        // if (locator.length() > 80) {
-        // logger.warn("locator in file [{}] has more than 2 progress, but we only return the timestamp in the first progress", filePath);
-        // }
-
-        String progressNumLittleEndian = locator.substring(32, 48);
-        String timestampLittleEndian = locator.substring(48, 64);
-
-        long progressNum = 0;
-        try {
-            progressNum = getLongLittleEndian(progressNumLittleEndian);
-        } catch (Exception e) {
-            logger.error("illegal form locator in file [{}] with progressNum: {}", filePath, progressNumLittleEndian);
-            return null;
-        }
-
-        if (16 + 16 + 16 + progressNum * 32 != locator.length()) {
-            logger.error(
-                "illegal form locator in file [{}] with progressNum: {} and locator length: {}",
-                filePath,
-                progressNum,
-                locator.length()
-            );
-            return null;
-        }
-
-        try {
-            long timestamp = getLongLittleEndian(timestampLittleEndian);
-            return Long.toString(timestamp);
-        } catch (Exception e) {
-            logger.error("illegal form locator in file [{}] with timestamp: {}", filePath, timestampLittleEndian);
-            return null;
-        }
+        return getLocatorCheckpoint(locator);
     }
 
     /**
@@ -173,14 +135,63 @@ public class Utils {
     }
 
     /**
-     * return the long value for the little endian string
+     * return the checkpoint in the locator string
      */
-    public static long getLongLittleEndian(String littleEndianHex) {
-        byte[] bytes = new byte[8];
-        for (int i = 0; i < 8; i++) {
-            bytes[i] = (byte) Integer.parseInt(littleEndianHex.substring(i * 2, i * 2 + 2), 16);
+    public static Long getLocatorCheckpoint(String locator) {
+        if (Objects.equals(locator, null)) return null;
+
+        if (locator.length() < 80) {
+            logger.debug("locator has no timestamp");
+            return null;
         }
 
-        return ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN).getLong();
+        // if (locator.length() > 80) {
+        // logger.warn("locator in file [{}] has more than 2 progress, but we only return the timestamp in the first progress", filePath);
+        // }
+
+        long progressNum = 0;
+        try {
+            progressNum = getLongLittleEndian(locator, 32, 48);
+        } catch (Exception e) {
+            logger.error("illegal form locator [{}]", locator);
+            return null;
+        }
+
+        if (16 + 16 + 16 + progressNum * 32 != locator.length()) {
+            logger.error("illegal form locator with progressNum: [{}] and locator length: [{}]", progressNum, locator.length());
+            return null;
+        }
+
+        try {
+            return getLongLittleEndian(locator, 48, 64);
+        } catch (Exception e) {
+            logger.error("illegal form locator [{}]", locator);
+            return null;
+        }
+    }
+
+    /**
+     * return the long value for the little endian string
+     */
+    public static Long getLongLittleEndian(String littleEndianHex, int start, int end) {
+        int len = end - start;
+        if (len != 16) throw new IllegalArgumentException("hex string length must be 16 for long type");
+        byte[] bytes = new byte[len / 2];
+        for (int i = 0; i < len / 2; i++) {
+            char byteHighPos = littleEndianHex.charAt(start + len - i * 2 - 2);
+            char byteLowPos = littleEndianHex.charAt(start + len - i * 2 - 1);
+            bytes[i] = (byte) (hexCharToInt(byteHighPos) << 4 | hexCharToInt(byteLowPos));
+        }
+        return ByteBuffer.wrap(bytes).getLong();
+    }
+
+    /**
+     * hex to int, thorw exception if the char is not a hex char
+     */
+    public static int hexCharToInt(char c) {
+        if (c >= '0' && c <= '9') return c - '0';
+        if (c >= 'a' && c <= 'f') return c - 'a' + 10;
+        if (c >= 'A' && c <= 'F') return c - 'A' + 10;
+        throw new NumberFormatException("invalid hex char: " + c);
     }
 }

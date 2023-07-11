@@ -123,8 +123,9 @@ public class UtilsTests extends HavenaskTestCase {
         writeTestFile(dirPath, "version.8a", prefix + "0600000000000000" + suffix);
         writeTestFile(dirPath, "version.a9", prefix + "0700000000000000" + suffix);
 
-        String timeStamp = Utils.getIndexCheckpoint(indexPath);
-        assertEquals("2", timeStamp);
+        Long timeStamp = Utils.getIndexCheckpoint(indexPath);
+        assert timeStamp != null;
+        assertEquals(2, timeStamp.longValue());
     }
 
     // test get index checkpoint in the case of version number is big
@@ -139,8 +140,9 @@ public class UtilsTests extends HavenaskTestCase {
         // 9223372036854775807 is the max value of long type
         writeTestFile(dirPath, "version.9223372036854775807", prefix + "ffff000000000000" + suffix);
 
-        String timeStamp = Utils.getIndexCheckpoint(indexPath);
-        assertEquals("65535", timeStamp);
+        Long timeStamp = Utils.getIndexCheckpoint(indexPath);
+        assert timeStamp != null;
+        assertEquals(65535, timeStamp.longValue());
     }
 
     // test get index checkpoint in the case of multi index, and some index number is negative
@@ -159,8 +161,8 @@ public class UtilsTests extends HavenaskTestCase {
 
         writeTestFile(dirPath_in3, "version.-1", prefix + "ffff000000000000" + suffix);
 
-        String timeStamp2 = Utils.getIndexCheckpoint(indexPath2);
-        String timeStamp3 = Utils.getIndexCheckpoint(indexPath3);
+        Long timeStamp2 = Utils.getIndexCheckpoint(indexPath2);
+        Long timeStamp3 = Utils.getIndexCheckpoint(indexPath3);
         assertNull(timeStamp2);
         assertNull(timeStamp3);
     }
@@ -169,7 +171,7 @@ public class UtilsTests extends HavenaskTestCase {
     public void testGetIndexCheckpointNoDir() {
         String testIndex = "in4";
         Path indexPath = configPath.resolve(testIndex);
-        String timeStamp = Utils.getIndexCheckpoint(indexPath);
+        Long timeStamp = Utils.getIndexCheckpoint(indexPath);
         assertNull(timeStamp);
     }
 
@@ -180,18 +182,42 @@ public class UtilsTests extends HavenaskTestCase {
 
         mkIndexDir(testIndex);
 
-        String timeStamp = Utils.getIndexCheckpoint(indexPath);
+        Long timeStamp = Utils.getIndexCheckpoint(indexPath);
         assertNull(timeStamp);
+    }
+
+    // test getLocatorCheckpoint
+    public void testGetLocatorCheckpoint() {
+        assertEquals(-1, Utils.getLocatorCheckpoint(prefix + "ffffffffffffffff" + suffix).longValue());
+        assertEquals(65535, Utils.getLocatorCheckpoint(prefix + "ffff000000000000" + suffix).longValue());
+        assertEquals(65295, Utils.getLocatorCheckpoint(prefix + "0fff000000000000" + suffix).longValue());
+        assertEquals(65280, Utils.getLocatorCheckpoint(prefix + "00ff000000000000" + suffix).longValue());
+        assertEquals(256, Utils.getLocatorCheckpoint(prefix + "0001000000000000" + suffix).longValue());
+        assertEquals(3840, Utils.getLocatorCheckpoint(prefix + "000f000000000000" + suffix).longValue());
     }
 
     // test getLongLittleEndian
     public void testGetLongLittleEndian() {
-        assertEquals(-1, Utils.getLongLittleEndian("ffffffffffffffff"));
-        assertEquals(65535, Utils.getLongLittleEndian("ffff000000000000"));
-        assertEquals(65295, Utils.getLongLittleEndian("0fff000000000000"));
-        assertEquals(65280, Utils.getLongLittleEndian("00ff000000000000"));
-        assertEquals(3840, Utils.getLongLittleEndian("000f000000000000"));
-        assertEquals(3840, Utils.getLongLittleEndian("000f000000000000"));
-        assertThrows(NumberFormatException.class, () -> Utils.getLongLittleEndian("g0000000000000000"));
+        assertEquals(-1, Utils.getLongLittleEndian("ffffffffffffffff", 0, 16).longValue());
+        assertEquals(65535, Utils.getLongLittleEndian("ffff000000000000", 0, 16).longValue());
+        assertEquals(65295, Utils.getLongLittleEndian("0fff000000000000", 0, 16).longValue());
+        assertEquals(65280, Utils.getLongLittleEndian("00ff000000000000", 0, 16).longValue());
+        assertEquals(3840, Utils.getLongLittleEndian("000f000000000000", 0, 16).longValue());
+        assertEquals(256, Utils.getLongLittleEndian("0001000000000000", 0, 16).longValue());
+        assertThrows(NumberFormatException.class, () -> Utils.getLongLittleEndian("g000000000000000", 0, 16));
+    }
+
+    // test hexCharToInt
+    public void testHexCharToInt() {
+        assertEquals(0, Utils.hexCharToInt('0'));
+        assertEquals(3, Utils.hexCharToInt('3'));
+        assertEquals(9, Utils.hexCharToInt('9'));
+        assertEquals(10, Utils.hexCharToInt('a'));
+        assertEquals(12, Utils.hexCharToInt('c'));
+        assertEquals(15, Utils.hexCharToInt('f'));
+        assertEquals(10, Utils.hexCharToInt('A'));
+        assertEquals(12, Utils.hexCharToInt('C'));
+        assertEquals(15, Utils.hexCharToInt('F'));
+        assertThrows(NumberFormatException.class, () -> Utils.hexCharToInt('g'));
     }
 }
