@@ -98,6 +98,30 @@ public class EngineSettings {
         Property.Final
     );
 
+    // index.max_doc_count
+    public static final Setting<Integer> HAVENASK_MAX_DOC_COUNT = new Setting<>(
+            "index.flush_max_doc_count",
+            "100000",
+            Integer::parseInt,
+            new Setting.Validator<>() {
+                @Override
+                public void validate(Integer value) {}
+
+                @Override
+                public void validate(Integer value, Map<Setting<?>, Object> settings) {
+                    if (value <= 0) throw new IllegalArgumentException("index.flush_max_doc_count must be positive");
+                }
+
+                @Override
+                public Iterator<Setting<?>> settings() {
+                    List<Setting<?>> settings = List.of(HAVENASK_REALTIME_TOPIC_NAME, HAVENASK_REALTIME_BOOTSTRAP_SERVERS);
+                    return settings.iterator();
+                }
+            },
+            Setting.Property.IndexScope,
+            Property.Final
+    );
+
     // index.havenask.realtime.topic_name
     public static final Setting<String> HAVENASK_REALTIME_TOPIC_NAME = new Setting<>(
         "index.havenask.realtime.topic_name",
