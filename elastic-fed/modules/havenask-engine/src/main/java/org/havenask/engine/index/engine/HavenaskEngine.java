@@ -481,11 +481,13 @@ public class HavenaskEngine extends InternalEngine {
 
         Long havenaskTime = Utils.getIndexCheckpoint(env.getRuntimedataPath().resolve(shardId.getIndexName()));
         long havenaskTimePoint;
-        try {
+
+        if (havenaskTime != null) {
             havenaskTimePoint = havenaskTime / 1000;
-        } catch (Exception e) {
+        } else {
             havenaskTimePoint = -1;
         }
+
         long currentCheckpoint = checkpointCalc.getCheckpoint(havenaskTimePoint);
         if (currentCheckpoint > lastCommitInfo.getCommitCheckpoint()) {
             logger.info(
