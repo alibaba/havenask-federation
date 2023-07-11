@@ -22,6 +22,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.CountDownLatch;
 import java.util.function.BiFunction;
 import java.util.function.LongConsumer;
 import java.util.function.LongSupplier;
@@ -89,6 +90,12 @@ public class HavenaskEngine extends InternalEngine {
         NativeProcessControlService nativeProcessControlService
     ) {
         super(engineConfig);
+        this.havenaskClient = havenaskClient;
+        this.searcherClient = searcherClient;
+        this.env = env;
+        this.nativeProcessControlService = nativeProcessControlService;
+        this.shardId = engineConfig.getShardId();
+
         long commitTimestamp = getLastCommittedSegmentInfos().userData.containsKey(HavenaskCommitInfo.COMMIT_TIMESTAMP_KEY)
             ? Long.valueOf(getLastCommittedSegmentInfos().userData.get(HavenaskCommitInfo.COMMIT_TIMESTAMP_KEY))
             : -1L;
@@ -104,11 +111,9 @@ public class HavenaskEngine extends InternalEngine {
             this.checkpointCalc.addCheckpoint(commitTimestamp, commitCheckpoint);
         }
 
-        this.havenaskClient = havenaskClient;
-        this.searcherClient = searcherClient;
-        this.env = env;
-        this.nativeProcessControlService = nativeProcessControlService;
-        this.shardId = engineConfig.getShardId();
+        logger.info("HavenaskEngine init, shardId: {}, commitTimestamp: {}, commitVersion: {}, commitCheckpoint: {}",
+            shardId, commitTimestamp, commitVersion, commitCheckpoint);
+
         this.realTimeEnable = EngineSettings.HAVENASK_REALTIME_ENABLE.get(engineConfig.getIndexSettings().getSettings());
         this.kafkaTopic = realTimeEnable
             ? EngineSettings.HAVENASK_REALTIME_TOPIC_NAME.get(engineConfig.getIndexSettings().getSettings())
@@ -149,9 +154,9 @@ public class HavenaskEngine extends InternalEngine {
     }
 
     @Override
-    public void close() throws IOException {
-        super.close();
-        logger.info("[{}] close havenask engine", shardId);
+    protected void closeNoLock(String reason, CountDownLatch closedLatch) {
+        super.closeNoLock(reason, closedLatch);
+        logger.info("[{}] close havenask engine, reason: {}", shardId, reason);
         if (realTimeEnable && producer != null) {
             producer.close();
         }
