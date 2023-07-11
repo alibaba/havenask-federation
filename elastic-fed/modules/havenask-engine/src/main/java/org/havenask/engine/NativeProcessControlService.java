@@ -277,6 +277,7 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
             if (isDataNode) {
                 if (false == checkProcessAlive(SEARCHER_ROLE)) {
                     havenaskEngines.forEach((havenaskEngine) -> {
+                        LOGGER.warn("havenask searcher process is not alive, failed engine, shardId: {}", havenaskEngine.config().getShardId());
                         EngineException e = new EngineException(havenaskEngine.config().getShardId(), "havenask searcher process is not alive");
                         havenaskEngine.failEngine("havenask searcher process is not alive", e);
                     });
@@ -518,6 +519,7 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
      * @param engine
      */
     public void addHavenaskEngine(HavenaskEngine engine) {
+        LOGGER.debug("add havenask engine, shardId: [{}]", engine.config().getShardId());
         havenaskEngines.add(engine);
     }
 
@@ -526,6 +528,7 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
      * @param engine
      */
     public void removeHavenaskEngine(HavenaskEngine engine) {
+        LOGGER.debug("remove havenask engine, shardId: [{}]", engine.config().getShardId());
         havenaskEngines.remove(engine);
     }
 }
