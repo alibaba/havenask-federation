@@ -111,8 +111,13 @@ public class HavenaskEngine extends InternalEngine {
             this.checkpointCalc.addCheckpoint(commitTimestamp, commitCheckpoint);
         }
 
-        logger.info("HavenaskEngine init, shardId: {}, commitTimestamp: {}, commitVersion: {}, commitCheckpoint: {}",
-            shardId, commitTimestamp, commitVersion, commitCheckpoint);
+        logger.info(
+            "HavenaskEngine init, shardId: {}, commitTimestamp: {}, commitVersion: {}, commitCheckpoint: {}",
+            shardId,
+            commitTimestamp,
+            commitVersion,
+            commitCheckpoint
+        );
 
         this.realTimeEnable = EngineSettings.HAVENASK_REALTIME_ENABLE.get(engineConfig.getIndexSettings().getSettings());
         this.kafkaTopic = realTimeEnable
