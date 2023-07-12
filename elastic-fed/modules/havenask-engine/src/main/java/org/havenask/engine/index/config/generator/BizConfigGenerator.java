@@ -32,6 +32,7 @@ import org.havenask.engine.index.config.Processor.ProcessChain;
 import org.havenask.engine.index.config.Processor.ProcessorChainConfig;
 import org.havenask.engine.index.config.Schema;
 import org.havenask.engine.index.config.ZoneBiz;
+import org.havenask.engine.index.engine.EngineSettings;
 import org.havenask.engine.util.VersionUtils;
 import org.havenask.index.mapper.IdFieldMapper;
 import org.havenask.index.mapper.MapperService;
@@ -129,6 +130,7 @@ public class BizConfigGenerator {
 
     private void generateClusterConfig(String version) throws IOException {
         BizConfig bizConfig = new BizConfig();
+        bizConfig.online_index_config.build_config.max_doc_count = EngineSettings.HAVENASK_MAX_DOC_COUNT.get(indexSettings);
         bizConfig.cluster_config.cluster_name = indexName;
         bizConfig.cluster_config.table_name = indexName;
         bizConfig.wal_config.sink.queue_name = indexName;
