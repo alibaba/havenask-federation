@@ -43,7 +43,7 @@ public class BizConfig {
 
     public static class SinkConfig {
         public String queue_name;
-        public String queue_size = "50000";
+        public String queue_size = "500000";
     }
 
     public static class BuildOptionConfig {
