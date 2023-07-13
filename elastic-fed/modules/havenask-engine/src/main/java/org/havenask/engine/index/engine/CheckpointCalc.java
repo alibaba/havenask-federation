@@ -18,29 +18,32 @@ import java.util.ArrayDeque;
 
 public class CheckpointCalc {
 
-    private long milisPerSegment;
+    // millisecond per time segment record
+    private long millisPerSegment;
 
+    // the reserved time for the gap between the fed and havenask time system
     private long timeGapMargin;
 
+    // the size of the time segment record
     private int segmentSize;
 
     protected ArrayDeque<Checkpoint> checkpointDeque = new ArrayDeque<>(segmentSize);
 
     private long currentCheckpoint = -1;
 
-    private static final long DEFAULT_MILIS_PER_SEGMENT = 60000;
+    private static final long DEFAULT_MILLIS_PER_SEGMENT = 6000;
 
     private static final long DEFAULT_TIME_GAP_MARGIN = 0;
 
-    private static final int DEFAULT_SEGMENT_SIZE = 10;
+    private static final int DEFAULT_SEGMENT_SIZE = 100;
 
     public CheckpointCalc() {
-        this(DEFAULT_MILIS_PER_SEGMENT, DEFAULT_TIME_GAP_MARGIN, DEFAULT_SEGMENT_SIZE);
+        this(DEFAULT_MILLIS_PER_SEGMENT, DEFAULT_TIME_GAP_MARGIN, DEFAULT_SEGMENT_SIZE);
     }
 
-    public CheckpointCalc(long milisPerSegment, long timeGapMargin, int segmentSize) {
-        if (milisPerSegment <= 0) {
-            throw new IllegalArgumentException("milisPerSegment must be positive, illegal value: " + milisPerSegment);
+    public CheckpointCalc(long millisPerSegment, long timeGapMargin, int segmentSize) {
+        if (millisPerSegment <= 0) {
+            throw new IllegalArgumentException("millisPerSegment must be positive, illegal value: " + millisPerSegment);
         }
         if (timeGapMargin < 0) {
             throw new IllegalArgumentException("timeGapMargin must be non-negative, illegal value: " + timeGapMargin);
@@ -48,7 +51,7 @@ public class CheckpointCalc {
         if (segmentSize <= 0) {
             throw new IllegalArgumentException("segmentSize must be positive, illegal value: " + segmentSize);
         }
-        this.milisPerSegment = milisPerSegment;
+        this.millisPerSegment = millisPerSegment;
         this.timeGapMargin = timeGapMargin;
         this.segmentSize = segmentSize;
     }
@@ -56,7 +59,7 @@ public class CheckpointCalc {
     public synchronized void addCheckpoint(long time, long seqNo) {
         Checkpoint lastCheckpoint = checkpointDeque.peekLast();
 
-        long timeSegment = time / milisPerSegment;
+        long timeSegment = time / millisPerSegment;
 
         if (lastCheckpoint == null) {
             checkpointDeque.addLast(new Checkpoint(time, seqNo));
@@ -71,10 +74,10 @@ public class CheckpointCalc {
                 return;
             }
 
-            if (timeSegment == lastCheckpoint.time / milisPerSegment) { // same time segment
+            if (timeSegment == lastCheckpoint.time / millisPerSegment) { // same time segment
                 lastCheckpoint.setTime(time);
                 lastCheckpoint.setSeqNo(seqNo);
-            } else if (timeSegment > lastCheckpoint.time / milisPerSegment) { // new time segment
+            } else if (timeSegment > lastCheckpoint.time / millisPerSegment) { // new time segment
                 if (checkpointDeque.size() == segmentSize) {
                     checkpointDeque.removeFirst();
                 }
