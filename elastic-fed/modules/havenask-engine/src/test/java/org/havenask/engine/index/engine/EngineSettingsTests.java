@@ -92,4 +92,36 @@ public class EngineSettingsTests extends HavenaskTestCase {
         settings = Settings.builder().put("index.havenask.realtime.enable", false).build();
         assertFalse(EngineSettings.HAVENASK_REALTIME_ENABLE.get(settings));
     }
+
+    public void testHavenaskMaxDocCount() {
+        Settings settings = Settings.builder().put("index.havenask.flush.max_doc_count", "100").build();
+        assertEquals(100, (int) EngineSettings.HAVENASK_FLUSH_MAX_DOC_COUNT.get(settings));
+
+        settings = Settings.builder().put("index.havenask.flush.max_doc_count", "100000").build();
+        assertEquals(100000, (int) EngineSettings.HAVENASK_FLUSH_MAX_DOC_COUNT.get(settings));
+
+        try {
+            settings = Settings.builder().put("index.havenask.flush.max_doc_count", "0").build();
+            EngineSettings.HAVENASK_FLUSH_MAX_DOC_COUNT.get(settings);
+            fail("should throw IllegalArgumentException");
+        } catch (IllegalArgumentException e) {
+            assertEquals("index.havenask.flush.max_doc_count must be a positive integer", e.getMessage());
+        }
+
+        try {
+            settings = Settings.builder().put("index.havenask.flush.max_doc_count", "-1").build();
+            EngineSettings.HAVENASK_FLUSH_MAX_DOC_COUNT.get(settings);
+            fail("should throw IllegalArgumentException");
+        } catch (IllegalArgumentException e) {
+            assertEquals("index.havenask.flush.max_doc_count must be a positive integer", e.getMessage());
+        }
+
+        try {
+            settings = Settings.builder().put("index.havenask.flush.max_doc_count", "abc").build();
+            EngineSettings.HAVENASK_FLUSH_MAX_DOC_COUNT.get(settings);
+            fail("should throw IllegalArgumentException");
+        } catch (IllegalArgumentException e) {
+            assertEquals("Failed to parse value [abc] for setting [index.havenask.flush.max_doc_count]", e.getMessage());
+        }
+    }
 }

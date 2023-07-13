@@ -31,6 +31,7 @@ package org.havenask.engine.util;
 import org.havenask.test.HavenaskTestCase;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Locale;
@@ -39,13 +40,15 @@ import static org.havenask.engine.util.Utils.INDEX_SUB_PATH;
 
 public class UtilsTests extends HavenaskTestCase {
     private final Path configPath;
+    private final String prefix = "0000000000000000ffffffffffffffff0100000000000000";
+    private final String suffix = "00000000ffff0000";
 
     public UtilsTests() {
         configPath = createTempDir();
     }
 
     // write file containing certain timestamp
-    private void writeTestFile(Path path, String fileName, String timeStamp) {
+    private void writeTestFile(Path path, String fileName, String locator) {
         String content = String.format(
             Locale.ROOT,
             "{\n"
@@ -72,7 +75,7 @@ public class UtilsTests extends HavenaskTestCase {
                 + "    ]\n"
                 + "  },\n"
                 + "\"locator\":\n"
-                + "  \"c544a5eb3063fb610500000000000000\",\n"
+                + "  \"%s\",\n"
                 + "\"schema_version\":\n"
                 + "  0,\n"
                 + "\"segments\":\n"
@@ -80,15 +83,15 @@ public class UtilsTests extends HavenaskTestCase {
                 + "    1\n"
                 + "  ],\n"
                 + "\"timestamp\":\n"
-                + "  %s,\n"
+                + "  0,\n"
                 + "\"versionid\":\n"
                 + "  1\n"
                 + "}",
-            timeStamp
+            locator
         );
 
         try {
-            Files.write(path.resolve(fileName), content.getBytes("UTF-8"));
+            Files.write(path.resolve(fileName), content.getBytes(StandardCharsets.UTF_8));
         } catch (IOException e) {
             logger.error("write file [{}] error", fileName);
         }
@@ -112,16 +115,17 @@ public class UtilsTests extends HavenaskTestCase {
         Path indexPath = configPath.resolve(testIndex);
         Path dirPath = mkIndexDir(testIndex);
 
-        writeTestFile(dirPath, "version.1", "333");
-        writeTestFile(dirPath, "version.7", "78641949317145");
-        writeTestFile(dirPath, "version.3", "78641949");
-        writeTestFile(dirPath, "ssversion.18", "786419");
-        writeTestFile(dirPath, "other", "7864198888");
-        writeTestFile(dirPath, "version.8a", "7864198888");
-        writeTestFile(dirPath, "version.a9", "7864198887");
+        writeTestFile(dirPath, "version.1", prefix + "0100000000000000" + suffix);
+        writeTestFile(dirPath, "version.7", prefix + "0200000000000000" + suffix);
+        writeTestFile(dirPath, "version.3", prefix + "0300000000000000" + suffix);
+        writeTestFile(dirPath, "ssversion.18", prefix + "0400000000000000" + suffix);
+        writeTestFile(dirPath, "other", prefix + "0500000000000000" + suffix);
+        writeTestFile(dirPath, "version.8a", prefix + "0600000000000000" + suffix);
+        writeTestFile(dirPath, "version.a9", prefix + "0700000000000000" + suffix);
 
-        String timeStamp = Utils.getIndexCheckpoint(indexPath);
-        assertEquals("78641949317145", timeStamp);
+        Long timeStamp = Utils.getIndexCheckpoint(indexPath);
+        assert timeStamp != null;
+        assertEquals(2, timeStamp.longValue());
     }
 
     // test get index checkpoint in the case of version number is big
@@ -130,14 +134,15 @@ public class UtilsTests extends HavenaskTestCase {
         Path indexPath = configPath.resolve(testIndex);
         Path dirPath = mkIndexDir(testIndex);
 
-        writeTestFile(dirPath, "version.1", "333");
-        writeTestFile(dirPath, "version.11", "78641949317145");
-        writeTestFile(dirPath, "version.111", "78641949");
+        writeTestFile(dirPath, "version.1", prefix + "0100000000000000" + suffix);
+        writeTestFile(dirPath, "version.11", prefix + "1100000000000000" + suffix);
+        writeTestFile(dirPath, "version.111", prefix + "ff00000000000000" + suffix);
         // 9223372036854775807 is the max value of long type
-        writeTestFile(dirPath, "version.9223372036854775807", "9876578889901");
+        writeTestFile(dirPath, "version.9223372036854775807", prefix + "ffff000000000000" + suffix);
 
-        String timeStamp = Utils.getIndexCheckpoint(indexPath);
-        assertEquals("9876578889901", timeStamp);
+        Long timeStamp = Utils.getIndexCheckpoint(indexPath);
+        assert timeStamp != null;
+        assertEquals(65535, timeStamp.longValue());
     }
 
     // test get index checkpoint in the case of multi index, and some index number is negative
@@ -146,19 +151,19 @@ public class UtilsTests extends HavenaskTestCase {
         Path indexPath2 = configPath.resolve(testIndex2);
         Path dirPath_in2 = mkIndexDir(testIndex2);
 
-        writeTestFile(dirPath_in2, "version.-1", "333");
-        writeTestFile(dirPath_in2, "version.0", "666");
-        writeTestFile(dirPath_in2, "version.1", "999");
+        writeTestFile(dirPath_in2, "version.-1", prefix + "0100000000000000" + suffix);
+        writeTestFile(dirPath_in2, "version.0", prefix + "0200000000000000" + suffix);
+        writeTestFile(dirPath_in2, "version.1", prefix + "gg00000000000000" + suffix);
 
         String testIndex3 = "in3";
         Path indexPath3 = configPath.resolve(testIndex3);
         Path dirPath_in3 = mkIndexDir(testIndex3);
 
-        writeTestFile(dirPath_in3, "version.-1", "333");
+        writeTestFile(dirPath_in3, "version.-1", prefix + "ffff000000000000" + suffix);
 
-        String timeStamp2 = Utils.getIndexCheckpoint(indexPath2);
-        String timeStamp3 = Utils.getIndexCheckpoint(indexPath3);
-        assertEquals("999", timeStamp2);
+        Long timeStamp2 = Utils.getIndexCheckpoint(indexPath2);
+        Long timeStamp3 = Utils.getIndexCheckpoint(indexPath3);
+        assertNull(timeStamp2);
         assertNull(timeStamp3);
     }
 
@@ -166,7 +171,7 @@ public class UtilsTests extends HavenaskTestCase {
     public void testGetIndexCheckpointNoDir() {
         String testIndex = "in4";
         Path indexPath = configPath.resolve(testIndex);
-        String timeStamp = Utils.getIndexCheckpoint(indexPath);
+        Long timeStamp = Utils.getIndexCheckpoint(indexPath);
         assertNull(timeStamp);
     }
 
@@ -177,7 +182,42 @@ public class UtilsTests extends HavenaskTestCase {
 
         mkIndexDir(testIndex);
 
-        String timeStamp = Utils.getIndexCheckpoint(indexPath);
+        Long timeStamp = Utils.getIndexCheckpoint(indexPath);
         assertNull(timeStamp);
+    }
+
+    // test getLocatorCheckpoint
+    public void testGetLocatorCheckpoint() {
+        assertEquals(-1, Utils.getLocatorCheckpoint(prefix + "ffffffffffffffff" + suffix).longValue());
+        assertEquals(65535, Utils.getLocatorCheckpoint(prefix + "ffff000000000000" + suffix).longValue());
+        assertEquals(65295, Utils.getLocatorCheckpoint(prefix + "0fff000000000000" + suffix).longValue());
+        assertEquals(65280, Utils.getLocatorCheckpoint(prefix + "00ff000000000000" + suffix).longValue());
+        assertEquals(256, Utils.getLocatorCheckpoint(prefix + "0001000000000000" + suffix).longValue());
+        assertEquals(3840, Utils.getLocatorCheckpoint(prefix + "000f000000000000" + suffix).longValue());
+    }
+
+    // test getLongLittleEndian
+    public void testGetLongLittleEndian() {
+        assertEquals(-1, Utils.getLongLittleEndian("ffffffffffffffff", 0, 16).longValue());
+        assertEquals(65535, Utils.getLongLittleEndian("ffff000000000000", 0, 16).longValue());
+        assertEquals(65295, Utils.getLongLittleEndian("0fff000000000000", 0, 16).longValue());
+        assertEquals(65280, Utils.getLongLittleEndian("00ff000000000000", 0, 16).longValue());
+        assertEquals(3840, Utils.getLongLittleEndian("000f000000000000", 0, 16).longValue());
+        assertEquals(256, Utils.getLongLittleEndian("0001000000000000", 0, 16).longValue());
+        assertThrows(NumberFormatException.class, () -> Utils.getLongLittleEndian("g000000000000000", 0, 16));
+    }
+
+    // test hexCharToInt
+    public void testHexCharToInt() {
+        assertEquals(0, Utils.hexCharToInt('0'));
+        assertEquals(3, Utils.hexCharToInt('3'));
+        assertEquals(9, Utils.hexCharToInt('9'));
+        assertEquals(10, Utils.hexCharToInt('a'));
+        assertEquals(12, Utils.hexCharToInt('c'));
+        assertEquals(15, Utils.hexCharToInt('f'));
+        assertEquals(10, Utils.hexCharToInt('A'));
+        assertEquals(12, Utils.hexCharToInt('C'));
+        assertEquals(15, Utils.hexCharToInt('F'));
+        assertThrows(NumberFormatException.class, () -> Utils.hexCharToInt('g'));
     }
 }

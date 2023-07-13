@@ -23,6 +23,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.function.BiFunction;
+import java.util.function.LongConsumer;
+import java.util.function.LongSupplier;
 
 import javax.management.MBeanTrustPermission;
 
@@ -50,6 +52,7 @@ import org.havenask.engine.rpc.SearcherClient;
 import org.havenask.engine.rpc.TargetInfo;
 import org.havenask.engine.rpc.WriteRequest;
 import org.havenask.engine.rpc.WriteResponse;
+import org.havenask.engine.util.Utils;
 import org.havenask.index.engine.EngineConfig;
 import org.havenask.index.engine.EngineException;
 import org.havenask.index.engine.InternalEngine;
@@ -58,7 +61,11 @@ import org.havenask.index.mapper.ParseContext;
 import org.havenask.index.mapper.ParsedDocument;
 import org.havenask.index.mapper.SourceFieldMapper;
 import org.havenask.index.mapper.Uid;
+import org.havenask.index.seqno.SequenceNumbers;
 import org.havenask.index.shard.ShardId;
+import org.havenask.index.translog.Translog;
+import org.havenask.index.translog.TranslogConfig;
+import org.havenask.index.translog.TranslogDeletionPolicy;
 
 public class HavenaskEngine extends InternalEngine {
 
@@ -71,6 +78,8 @@ public class HavenaskEngine extends InternalEngine {
     private final String kafkaTopic;
     private int kafkaPartition;
     private KafkaProducer<String, String> producer = null;
+    private volatile HavenaskCommitInfo lastCommitInfo = null;
+    private CheckpointCalc checkpointCalc = null;
 
     public HavenaskEngine(
         EngineConfig engineConfig,
@@ -80,6 +89,7 @@ public class HavenaskEngine extends InternalEngine {
         NativeProcessControlService nativeProcessControlService
     ) {
         super(engineConfig);
+
         this.havenaskClient = havenaskClient;
         this.searcherClient = searcherClient;
         this.env = env;
@@ -100,6 +110,28 @@ public class HavenaskEngine extends InternalEngine {
             throw new EngineException(shardId, "init kafka producer failed", e);
         }
 
+        long commitTimestamp = getLastCommittedSegmentInfos().userData.containsKey(HavenaskCommitInfo.COMMIT_TIMESTAMP_KEY)
+            ? Long.valueOf(getLastCommittedSegmentInfos().userData.get(HavenaskCommitInfo.COMMIT_TIMESTAMP_KEY))
+            : -1L;
+        long commitVersion = getLastCommittedSegmentInfos().userData.containsKey(HavenaskCommitInfo.COMMIT_VERSION_KEY)
+            ? Long.valueOf(getLastCommittedSegmentInfos().userData.get(HavenaskCommitInfo.COMMIT_VERSION_KEY))
+            : -1L;
+        long commitCheckpoint = getLastCommittedSegmentInfos().userData.containsKey(SequenceNumbers.LOCAL_CHECKPOINT_KEY)
+            ? Long.valueOf(getLastCommittedSegmentInfos().userData.get(SequenceNumbers.LOCAL_CHECKPOINT_KEY))
+            : -1L;
+        this.lastCommitInfo = new HavenaskCommitInfo(commitTimestamp, commitVersion, commitCheckpoint);
+        this.checkpointCalc = new CheckpointCalc();
+        if (commitTimestamp >= 0 && commitCheckpoint >= 0) {
+            this.checkpointCalc.addCheckpoint(commitTimestamp, commitCheckpoint);
+        }
+        logger.info(
+            "havenask engine init, shardId: {}, commitTimestamp: {}, commitVersion: {}, commitCheckpoint: {}",
+            shardId,
+            commitTimestamp,
+            commitVersion,
+            commitCheckpoint
+        );
+
         // 加载配置表
         try {
             activeTable();
@@ -109,6 +141,8 @@ public class HavenaskEngine extends InternalEngine {
             failEngine("active havenask table failed", e);
             throw new EngineException(shardId, "active havenask table failed", e);
         }
+
+        nativeProcessControlService.addHavenaskEngine(this);
     }
 
     static KafkaProducer<String, String> initKafkaProducer(Settings settings) {
@@ -131,6 +165,8 @@ public class HavenaskEngine extends InternalEngine {
         if (realTimeEnable && producer != null) {
             producer.close();
         }
+
+        nativeProcessControlService.removeHavenaskEngine(this);
     }
 
     /**
@@ -420,6 +456,173 @@ public class HavenaskEngine extends InternalEngine {
         boolean upgradeOnlyAncientSegments,
         @Nullable String forceMergeUUID
     ) throws EngineException {
-        // do nothing
+        throw new UnsupportedOperationException("havenask engine not support force merge operation");
+    }
+
+    @Override
+    protected Translog newTranslog(
+        TranslogConfig translogConfig,
+        String translogUUID,
+        TranslogDeletionPolicy translogDeletionPolicy,
+        LongSupplier globalCheckpointSupplier,
+        LongSupplier primaryTermSupplier,
+        LongConsumer persistedSequenceNumberConsumer
+    ) throws IOException {
+        LongSupplier checkpointSupplier = () -> lastCommitInfo != null ? lastCommitInfo.getCommitCheckpoint() : -1L;
+        return new Translog(
+            translogConfig,
+            translogUUID,
+            translogDeletionPolicy,
+            checkpointSupplier,
+            primaryTermSupplier,
+            persistedSequenceNumberConsumer
+        );
+    }
+
+    @Override
+    public void refresh(String source) throws EngineException {
+        maybeRefresh(source);
+    }
+
+    @Override
+    public boolean maybeRefresh(String source) throws EngineException {
+        long time = System.currentTimeMillis();
+        long checkpoint = getPersistedLocalCheckpoint();
+        checkpointCalc.addCheckpoint(time, checkpoint);
+
+        Long havenaskTime = Utils.getIndexCheckpoint(env.getRuntimedataPath().resolve(shardId.getIndexName()));
+        long havenaskTimePoint;
+
+        if (havenaskTime != null) {
+            havenaskTimePoint = havenaskTime / 1000;
+        } else {
+            havenaskTimePoint = -1;
+        }
+
+        long currentCheckpoint = checkpointCalc.getCheckpoint(havenaskTimePoint);
+
+        logger.debug(
+            "havenask engine maybeRefresh, source: {}, time: {}, checkpoint: {}, havenask time point: {}, current checkpoint: {}",
+            source,
+            time,
+            checkpoint,
+            havenaskTimePoint,
+            currentCheckpoint
+        );
+
+        if (currentCheckpoint > lastCommitInfo.getCommitCheckpoint()) {
+            logger.info(
+                "havenask engine refresh checkpoint, checkpoint time: {}, current checkpoint: {}, last commit " + "checkpoint: {}",
+                havenaskTime,
+                currentCheckpoint,
+                lastCommitInfo.getCommitCheckpoint()
+            );
+            refreshCommitInfo(havenaskTimePoint, 0, currentCheckpoint);
+            return true;
+        }
+        return false;
+    }
+
+    @Override
+    public boolean refreshNeeded() {
+        return true;
+    }
+
+    @Override
+    public SyncedFlushResult syncFlush(String syncId, CommitId expectedCommitId) throws EngineException {
+        throw new UnsupportedOperationException("havenask engine not support sync flush operation");
+    }
+
+    @Override
+    public boolean shouldPeriodicallyFlush() {
+        // havenask不能手动触发flush,只能等待commit信息发生变化,再触发flush
+        return hasNewCommitInfo();
+    }
+
+    @Override
+    protected boolean hasTriggerFlush(boolean force) {
+        if (force || hasNewCommitInfo()) {
+            logger.info("has new commit info, need to flush, force: {}", force);
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    /**
+     * 刷新commit信息
+     * @param commitTimestamp  commit timestamp
+     * @param commitVersion  commit version
+     */
+    private void refreshCommitInfo(long commitTimestamp, long commitVersion, long localCheckpoint) {
+        lastCommitInfo = new HavenaskCommitInfo(commitTimestamp, commitVersion, localCheckpoint);
+    }
+
+    /**
+     * 判断commit信息是否发生变化
+     */
+    public boolean hasNewCommitInfo() {
+        if (lastCommitInfo == null || lastCommitInfo.getCommitTimestamp() <= 0) {
+            return false;
+        }
+
+        long lastCommitTimestamp = getLastCommittedSegmentInfos().userData.containsKey(HavenaskCommitInfo.COMMIT_TIMESTAMP_KEY)
+            ? Long.valueOf(getLastCommittedSegmentInfos().userData.get(HavenaskCommitInfo.COMMIT_TIMESTAMP_KEY))
+            : -1L;
+        if (lastCommitInfo.getCommitTimestamp() > lastCommitTimestamp) {
+            logger.info(
+                "commit info changed, last commit timestamp: {}, new commit timestamp: {}",
+                lastCommitInfo.getCommitTimestamp(),
+                lastCommitTimestamp
+            );
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    /**
+     * 返回记录在lucene commit信息的checkpint
+     * @return the local checkpoint that has been persisted to disk
+     */
+    public long getCommitLocalCheckpoint() {
+        return lastCommitInfo.getCommitCheckpoint();
+    }
+
+    /**
+     * add custom commit data to the commit data map
+     * @param commitData the commit data
+     */
+    @Override
+    protected void addCustomCommitData(Map<String, String> commitData) {
+        commitData.put(HavenaskCommitInfo.COMMIT_TIMESTAMP_KEY, Long.toString(lastCommitInfo.getCommitTimestamp()));
+        commitData.put(HavenaskCommitInfo.COMMIT_VERSION_KEY, Long.toString(lastCommitInfo.getCommitVersion()));
+    }
+
+    public static class HavenaskCommitInfo {
+        public static final String COMMIT_TIMESTAMP_KEY = "commit_timestamp";
+        public static final String COMMIT_VERSION_KEY = "commit_version";
+
+        private final long commitTimestamp;
+        private final long commitVersion;
+        private final long commitCheckpoint;
+
+        public HavenaskCommitInfo(long commitTimestamp, long commitVersion, long commitCheckpoint) {
+            this.commitTimestamp = commitTimestamp;
+            this.commitVersion = commitVersion;
+            this.commitCheckpoint = commitCheckpoint;
+        }
+
+        public long getCommitTimestamp() {
+            return commitTimestamp;
+        }
+
+        public long getCommitVersion() {
+            return commitVersion;
+        }
+
+        public long getCommitCheckpoint() {
+            return commitCheckpoint;
+        }
     }
 }

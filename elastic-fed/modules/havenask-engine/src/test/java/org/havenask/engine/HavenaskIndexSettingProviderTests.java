@@ -15,6 +15,7 @@
 package org.havenask.engine;
 
 import org.havenask.common.settings.Settings;
+import org.havenask.common.unit.TimeValue;
 import org.havenask.test.HavenaskTestCase;
 
 import static org.havenask.cluster.metadata.IndexMetadata.SETTING_NUMBER_OF_REPLICAS;
@@ -26,6 +27,8 @@ public class HavenaskIndexSettingProviderTests extends HavenaskTestCase {
         Settings settings = provider.getAdditionalIndexSettings("test", false, Settings.builder().put("index.engine", "havenask").build());
         int replicas = settings.getAsInt(SETTING_NUMBER_OF_REPLICAS, 2);
         assertEquals(0, replicas);
+        TimeValue refresh = settings.getAsTime("index.refresh_interval", null);
+        assertEquals(TimeValue.timeValueSeconds(30), refresh);
     }
 
     // test for havenask engine only support 0 replica
@@ -100,5 +103,32 @@ public class HavenaskIndexSettingProviderTests extends HavenaskTestCase {
         );
         long timestamp2 = settings.getAsLong("index.havenask.realtime.kafka_start_timestamp_us", 0L);
         assertEquals(0L, timestamp2);
+    }
+
+    // test refresh interval
+    public void testGetAdditionalIndexSettingsWithRefreshInterval() {
+        HavenaskIndexSettingProvider provider = new HavenaskIndexSettingProvider();
+        Settings settings = provider.getAdditionalIndexSettings(
+            "test",
+            false,
+            Settings.builder().put("index.engine", "havenask").put("index.refresh_interval", "5m").build()
+        );
+        TimeValue refresh = settings.getAsTime("index.refresh_interval", null);
+        assertEquals(null, refresh);
+    }
+
+    // test refresh interval with wrong value
+    public void testGetAdditionalIndexSettingsWithRefreshInterval2() {
+        HavenaskIndexSettingProvider provider = new HavenaskIndexSettingProvider();
+        try {
+            provider.getAdditionalIndexSettings(
+                "test",
+                false,
+                Settings.builder().put("index.engine", "havenask").put("index.refresh_interval", "60m").build()
+            );
+            fail("should throw IllegalArgumentException");
+        } catch (IllegalArgumentException e) {
+            assertEquals("havenask engine only support refresh interval less than 5m", e.getMessage());
+        }
     }
 }

@@ -31,7 +31,7 @@ public class BizConfig {
     public static class OnlineIndexConfig {
         public boolean on_disk_flush_realtime_index = true;
         public boolean enable_async_dump_segment = true;
-        private int max_realtime_dump_interval = 60;
+        public int max_realtime_dump_interval = 60;
         public BuildConfig build_config = new BuildConfig();
     }
 
@@ -43,11 +43,12 @@ public class BizConfig {
 
     public static class SinkConfig {
         public String queue_name;
+        public String queue_size = "500000";
     }
 
     public static class BuildOptionConfig {
         public boolean async_build = true;
-        public int async_queue_size = 10000;
+        public int async_queue_size = 50000;
         public boolean document_filter = true;
         public int max_recover_time = 30;
         public boolean sort_build = false;
