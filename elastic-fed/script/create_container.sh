@@ -25,6 +25,12 @@ fi
 IMAGE="havenask-fed:test"
 if [ $# -eq 2 ]; then
     IMAGE=$2
+    if docker inspect $IMAGE >/dev/null 2>&1; then
+        echo "Docker image $IMAGE exist"
+    else
+        echo "Begin pull image: ${IMAGE}"
+    docker pull $IMAGE
+    fi
 fi
 
 USER="havenask"
@@ -33,18 +39,14 @@ CONTAINER_NAME=$1
 
 SCRIPT_PATH=$(realpath "$0")
 SCRIPT_DIR=$(dirname "$SCRIPT_PATH")
-REPO_DIR=$(dirname "$SCRIPT_DIR")
+REPO_DIR=$(dirname "$(dirname "$SCRIPT_DIR")")
 CONTAINER_DIR=$SCRIPT_DIR/$CONTAINER_NAME
 
-echo "Start to run scrip"
+echo "Start to run script"
 echo "Info: Repo locatation: $REPO_DIR"
 echo "Info: Container entry: $CONTAINER_DIR"
 
 mkdir -p $CONTAINER_DIR
-
-echo "Begin pull image: ${IMAGE}"
-
-docker pull $IMAGE
 
 # port mapping for different OS
 if [ "$(uname -s)" == "Linux" ]; then
@@ -55,7 +57,7 @@ else
   PORT_MAPPING_OPTION="-p 9200:9200 -p 5005:5005 -p 39200:39200 -p 39300:39300 -p 39400:39400 -p 49200:49200 -p 5601:5601"
 fi
 
-docker run $PORT_MAPPING_OPTION --ulimit nofile=655350:655350 --privileged --cap-add SYS_ADMIN --device /dev/fuse --ulimit memlock=-1 --cpu-shares=15360 --cpu-quota=9600000 --cpu-period=100000 --memory=500000m -d --name $CONTAINER_NAME $IMAGE /sbin/init 1> /dev/null
+docker run $PORT_MAPPING_OPTION --ulimit nofile=655350:655350 --privileged --cap-add SYS_ADMIN --device /dev/fuse --ulimit memlock=-1 --cpu-shares=15360 --cpu-quota=9600000 --cpu-period=100000 --memory=500000m -d $REPO_DIR:/home/havenask/havenask-federation --name $CONTAINER_NAME $IMAGE /sbin/init 1> /dev/null
 
 if [ $? -ne 0 ]; then
     echo "ERROR, run container failed, please check."
