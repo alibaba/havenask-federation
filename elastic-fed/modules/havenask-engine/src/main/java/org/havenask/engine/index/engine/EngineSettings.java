@@ -98,15 +98,15 @@ public class EngineSettings {
         Property.Final
     );
 
-    // index.havenask.max_doc_count
-    public static final Setting<Integer> HAVENASK_MAX_DOC_COUNT = new Setting<>(
-        "index.havenask.max_doc_count",
+    // index.havenask.flush.max_doc_count
+    public static final Setting<Integer> HAVENASK_FLUSH_MAX_DOC_COUNT = new Setting<>(
+        "index.havenask.flush.max_doc_count",
         "100000",
         Integer::parseInt,
         new Setting.Validator<>() {
             @Override
             public void validate(Integer value) {
-                if (value <= 0) throw new IllegalArgumentException("index.havenask.max_doc_count must be a positive integer");
+                if (value <= 0) throw new IllegalArgumentException("index.havenask.flush.max_doc_count must be a positive integer");
             }
         },
         Setting.Property.IndexScope,

@@ -88,7 +88,7 @@ public class TableConfigGenerator {
 
     private void generateClusterConfig(String version) throws IOException {
         BizConfig bizConfig = new BizConfig();
-        bizConfig.online_index_config.build_config.max_doc_count = EngineSettings.HAVENASK_MAX_DOC_COUNT.get(indexSettings);
+        bizConfig.online_index_config.build_config.max_doc_count = EngineSettings.HAVENASK_FLUSH_MAX_DOC_COUNT.get(indexSettings);
         bizConfig.cluster_config.cluster_name = indexName;
         bizConfig.cluster_config.table_name = indexName;
         bizConfig.wal_config.sink.queue_name = indexName;

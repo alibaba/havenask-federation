@@ -534,33 +534,33 @@ public class TableConfigGeneratorTests extends MapperServiceTestCase {
         Files.createDirectories(configPath.resolve(TABLE_DIR).resolve("0").resolve(DATA_TABLES_DIR));
 
         try {
-            Settings settings = Settings.builder().put("index.havenask.max_doc_count", "0").build();
+            Settings settings = Settings.builder().put("index.havenask.flush.max_doc_count", "0").build();
             TableConfigGenerator tableConfigGenerator = new TableConfigGenerator(indexName, settings, mapperService, configPath);
             tableConfigGenerator.generate();
             fail("should throw IllegalArgumentException");
         } catch (IllegalArgumentException e) {
-            assertEquals("index.havenask.max_doc_count must be a positive integer", e.getMessage());
+            assertEquals("index.havenask.flush.max_doc_count must be a positive integer", e.getMessage());
         }
 
         try {
-            Settings settings = Settings.builder().put("index.havenask.max_doc_count", "-1").build();
+            Settings settings = Settings.builder().put("index.havenask.flush.max_doc_count", "-1").build();
             TableConfigGenerator tableConfigGenerator = new TableConfigGenerator(indexName, settings, mapperService, configPath);
             tableConfigGenerator.generate();
             fail("should throw IllegalArgumentException");
         } catch (IllegalArgumentException e) {
-            assertEquals("index.havenask.max_doc_count must be a positive integer", e.getMessage());
+            assertEquals("index.havenask.flush.max_doc_count must be a positive integer", e.getMessage());
         }
 
         try {
-            Settings settings = Settings.builder().put("index.havenask.max_doc_count", "abc").build();
+            Settings settings = Settings.builder().put("index.havenask.flush.max_doc_count", "abc").build();
             TableConfigGenerator tableConfigGenerator = new TableConfigGenerator(indexName, settings, mapperService, configPath);
             tableConfigGenerator.generate();
             fail("should throw IllegalArgumentException");
         } catch (IllegalArgumentException e) {
-            assertEquals("Failed to parse value [abc] for setting [index.havenask.max_doc_count]", e.getMessage());
+            assertEquals("Failed to parse value [abc] for setting [index.havenask.flush.max_doc_count]", e.getMessage());
         }
 
-        Settings settings = Settings.builder().put("index.havenask.max_doc_count", "10").build();
+        Settings settings = Settings.builder().put("index.havenask.flush.max_doc_count", "10").build();
         TableConfigGenerator tableConfigGenerator = new TableConfigGenerator(indexName, settings, mapperService, configPath);
         tableConfigGenerator.generate();
 

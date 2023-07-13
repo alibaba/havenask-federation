@@ -656,33 +656,33 @@ public class BizConfigGeneratorTests extends MapperServiceTestCase {
         );
 
         try {
-            Settings settings = Settings.builder().put("index.havenask.max_doc_count", "0").build();
+            Settings settings = Settings.builder().put("index.havenask.flush.max_doc_count", "0").build();
             BizConfigGenerator bizConfigGenerator = new BizConfigGenerator(indexName, settings, mapperService, configPath);
             bizConfigGenerator.generate();
             fail("should throw IllegalArgumentException");
         } catch (IllegalArgumentException e) {
-            assertEquals("index.havenask.max_doc_count must be a positive integer", e.getMessage());
+            assertEquals("index.havenask.flush.max_doc_count must be a positive integer", e.getMessage());
         }
 
         try {
-            Settings settings = Settings.builder().put("index.havenask.max_doc_count", "-1").build();
+            Settings settings = Settings.builder().put("index.havenask.flush.max_doc_count", "-1").build();
             BizConfigGenerator bizConfigGenerator = new BizConfigGenerator(indexName, settings, mapperService, configPath);
             bizConfigGenerator.generate();
             fail("should throw IllegalArgumentException");
         } catch (IllegalArgumentException e) {
-            assertEquals("index.havenask.max_doc_count must be a positive integer", e.getMessage());
+            assertEquals("index.havenask.flush.max_doc_count must be a positive integer", e.getMessage());
         }
 
         try {
-            Settings settings = Settings.builder().put("index.havenask.max_doc_count", "abc").build();
+            Settings settings = Settings.builder().put("index.havenask.flush.max_doc_count", "abc").build();
             BizConfigGenerator bizConfigGenerator = new BizConfigGenerator(indexName, settings, mapperService, configPath);
             bizConfigGenerator.generate();
             fail("should throw IllegalArgumentException");
         } catch (IllegalArgumentException e) {
-            assertEquals("Failed to parse value [abc] for setting [index.havenask.max_doc_count]", e.getMessage());
+            assertEquals("Failed to parse value [abc] for setting [index.havenask.flush.max_doc_count]", e.getMessage());
         }
 
-        Settings settings = Settings.builder().put("index.havenask.max_doc_count", "5").build();
+        Settings settings = Settings.builder().put("index.havenask.flush.max_doc_count", "5").build();
         BizConfigGenerator bizConfigGenerator = new BizConfigGenerator(indexName, settings, mapperService, configPath);
         bizConfigGenerator.generate();
 
