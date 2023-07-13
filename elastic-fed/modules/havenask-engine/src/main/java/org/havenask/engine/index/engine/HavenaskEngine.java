@@ -141,6 +141,8 @@ public class HavenaskEngine extends InternalEngine {
             failEngine("active havenask table failed", e);
             throw new EngineException(shardId, "active havenask table failed", e);
         }
+
+        nativeProcessControlService.addHavenaskEngine(this);
     }
 
     static KafkaProducer<String, String> initKafkaProducer(Settings settings) {
@@ -163,6 +165,8 @@ public class HavenaskEngine extends InternalEngine {
         if (realTimeEnable && producer != null) {
             producer.close();
         }
+
+        nativeProcessControlService.removeHavenaskEngine(this);
     }
 
     /**
