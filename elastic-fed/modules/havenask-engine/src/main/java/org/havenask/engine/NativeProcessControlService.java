@@ -522,7 +522,7 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
 
     /**
      * 记录启动的engine
-     * @param engine
+     * @param engine 启动的engine
      */
     public void addHavenaskEngine(HavenaskEngine engine) {
         LOGGER.debug("add havenask engine, shardId: [{}]", engine.config().getShardId());
@@ -531,7 +531,7 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
 
     /**
      * remove关闭的engine
-     * @param engine
+     * @param engine 关闭的engine
      */
     public void removeHavenaskEngine(HavenaskEngine engine) {
         LOGGER.debug("remove havenask engine, shardId: [{}]", engine.config().getShardId());
