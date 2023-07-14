@@ -23,7 +23,7 @@ import static org.havenask.cluster.metadata.IndexMetadata.SETTING_NUMBER_OF_REPL
 import static org.havenask.index.IndexSettings.INDEX_REFRESH_INTERVAL_SETTING;
 
 public class HavenaskIndexSettingProvider implements IndexSettingProvider {
-    private static final String DEFAULT_REFRESH_INTERVAL = "30s";
+    private static final String DEFAULT_REFRESH_INTERVAL = "5s";
     private static final TimeValue MAX_REFRESH_INTERVAL = TimeValue.timeValueMinutes(5);
 
     public Settings getAdditionalIndexSettings(String indexName, boolean isDataStreamIndex, Settings templateAndRequestSettings) {
