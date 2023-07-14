@@ -28,7 +28,7 @@ public class HavenaskIndexSettingProviderTests extends HavenaskTestCase {
         int replicas = settings.getAsInt(SETTING_NUMBER_OF_REPLICAS, 2);
         assertEquals(0, replicas);
         TimeValue refresh = settings.getAsTime("index.refresh_interval", null);
-        assertEquals(TimeValue.timeValueSeconds(30), refresh);
+        assertEquals(TimeValue.timeValueSeconds(5), refresh);
     }
 
     // test for havenask engine only support 0 replica
