@@ -57,7 +57,7 @@ else
   PORT_MAPPING_OPTION="-p 9200:9200 -p 5005:5005 -p 39200:39200 -p 39300:39300 -p 39400:39400 -p 49200:49200 -p 5601:5601"
 fi
 
-docker run $PORT_MAPPING_OPTION --ulimit nofile=655350:655350 --privileged --cap-add SYS_ADMIN --device /dev/fuse --ulimit memlock=-1 --cpu-shares=15360 --cpu-quota=9600000 --cpu-period=100000 --memory=500000m -d $REPO_DIR:/home/havenask/havenask-federation --name $CONTAINER_NAME $IMAGE /sbin/init 1> /dev/null
+docker run $PORT_MAPPING_OPTION --ulimit nofile=655350:655350 --privileged --cap-add SYS_ADMIN --device /dev/fuse --ulimit memlock=-1 --cpu-shares=15360 --cpu-quota=9600000 --cpu-period=100000 --memory=500000m -d -v $REPO_DIR:/home/havenask/havenask-federation --name $CONTAINER_NAME $IMAGE /sbin/init 1> /dev/null
 
 if [ $? -ne 0 ]; then
     echo "ERROR, run container failed, please check."
