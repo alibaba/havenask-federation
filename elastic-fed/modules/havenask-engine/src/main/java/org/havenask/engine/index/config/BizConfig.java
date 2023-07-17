@@ -67,6 +67,10 @@ public class BizConfig {
         public String sort_pattern;
     }
 
+    public static class MergeConfig {
+        public String merge_strategy = "combined";
+    }
+
     public static class BuildConfig {
         public int max_doc_count = 100000;
         public int build_total_memory = 128;
@@ -74,6 +78,7 @@ public class BizConfig {
 
     public static class OfflineIndexConfig {
         public BuildConfig build_config = new BuildConfig();
+        public MergeConfig merge_config = new MergeConfig();
     }
 
     public static class ClusterConfig {
