@@ -75,9 +75,11 @@ public class SearcherArpcClient implements SearcherClient, Closeable {
             // double check for write, for the case that connection is unexpectedly closed
             if (writeResponse == null) {
                 resetChannel();
+                logger.info("write response is null, channel reset, retry...");
                 writeResponse = blockingStub.writeTable(controller, writeRequest);
                 if (writeResponse == null) {
-                    return new WriteResponse(ErrorCode.TBS_ERROR_UNKOWN, "write response is null, channel closed");
+                    resetChannel();
+                    return new WriteResponse(ErrorCode.TBS_ERROR_UNKOWN, "write response is null, channel reset");
                 }
             }
 
