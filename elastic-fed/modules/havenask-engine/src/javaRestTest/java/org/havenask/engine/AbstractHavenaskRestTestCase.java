@@ -43,6 +43,10 @@ public abstract class AbstractHavenaskRestTestCase extends HavenaskRestTestCase 
         restHighLevelClient = null;
     }
 
+    protected boolean preserveClusterUponCompletion() {
+        return true;
+    }
+
     public static RestHighLevelClient highLevelClient() {
         return restHighLevelClient;
     }
