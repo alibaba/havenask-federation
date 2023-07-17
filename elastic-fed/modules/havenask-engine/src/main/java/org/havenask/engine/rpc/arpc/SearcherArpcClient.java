@@ -71,9 +71,16 @@ public class SearcherArpcClient implements SearcherClient, Closeable {
                 init();
             }
             suez.service.proto.WriteResponse writeResponse = blockingStub.writeTable(controller, writeRequest);
+
+            // double check for write, for the case that connection is unexpectedly closed
             if (writeResponse == null) {
                 resetChannel();
-                return new WriteResponse(ErrorCode.TBS_ERROR_UNKOWN, "write response is null, channel closed");
+                logger.info("write response is null, channel reset, retry...");
+                writeResponse = blockingStub.writeTable(controller, writeRequest);
+                if (writeResponse == null) {
+                    resetChannel();
+                    return new WriteResponse(ErrorCode.TBS_ERROR_UNKOWN, "write response is null, channel reset");
+                }
             }
 
             if (writeResponse.getErrorInfo() == null || writeResponse.getErrorInfo().getErrorCode() == ErrorCode.TBS_ERROR_NONE) {
