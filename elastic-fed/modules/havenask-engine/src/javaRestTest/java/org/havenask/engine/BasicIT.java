@@ -23,6 +23,10 @@ import org.havenask.action.bulk.BulkRequest;
 import org.havenask.action.delete.DeleteRequest;
 import org.havenask.action.index.IndexRequest;
 import org.havenask.client.RequestOptions;
+import org.havenask.client.ha.SqlClientInfoRequest;
+import org.havenask.client.ha.SqlClientInfoResponse;
+import org.havenask.client.ha.SqlRequest;
+import org.havenask.client.ha.SqlResponse;
 import org.havenask.client.indices.CreateIndexRequest;
 import org.havenask.client.indices.GetIndexRequest;
 import org.havenask.client.indices.GetIndexResponse;
@@ -58,6 +62,17 @@ public class BasicIT extends AbstractHavenaskRestTestCase {
                 .health(new ClusterHealthRequest(index), RequestOptions.DEFAULT);
             assertEquals(clusterHealthResponse.getStatus(), ClusterHealthStatus.GREEN);
         }, 2, TimeUnit.MINUTES);
+
+        SqlClientInfoResponse sqlClientInfoResponse = highLevelClient().havenask()
+            .sqlClientInfo(new SqlClientInfoRequest(), RequestOptions.DEFAULT);
+        assertEquals(sqlClientInfoResponse.getErrorCode(), 0);
+        assertEquals(sqlClientInfoResponse.getErrorMessage(), "");
+
+        @SuppressWarnings("unchecked")
+        java.util.Map<String, Object> tables = (java.util.Map<String, Object>) ((java.util.Map<String, Object>) (((java.util.Map<
+            String,
+            Object>) (sqlClientInfoResponse.getResult().get("default"))).get("general"))).get("tables");
+        assertTrue(tables.containsKey(index));
 
         assertTrue(highLevelClient().indices().delete(new DeleteIndexRequest(index), RequestOptions.DEFAULT).isAcknowledged());
     }
@@ -171,6 +186,16 @@ public class BasicIT extends AbstractHavenaskRestTestCase {
             new IndexRequest(index).source(Map.of("seq", 4, "content", "欢迎使用4", "time", "20230715"), XContentType.JSON),
             RequestOptions.DEFAULT
         );
+
+        /// get index data count
+        SqlResponse sqlResponse = highLevelClient().havenask().sql(new SqlRequest("select count(*) from " + index), RequestOptions.DEFAULT);
+        assertEquals(sqlResponse.getRowCount(), 1);
+        assertEquals(sqlResponse.getSqlResult().getData().length, 1);
+        assertEquals(sqlResponse.getSqlResult().getColumnName().length, 1);
+        assertEquals(sqlResponse.getSqlResult().getColumnType().length, 1);
+        assertEquals(sqlResponse.getSqlResult().getData()[0][0], 4);
+        assertEquals(sqlResponse.getSqlResult().getColumnName()[0], "COUNT(*)");
+        assertEquals(sqlResponse.getSqlResult().getColumnType()[0], "int64");
 
         // DELETE doc
         highLevelClient().delete(new DeleteRequest(index, "1"), RequestOptions.DEFAULT);

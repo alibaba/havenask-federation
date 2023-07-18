@@ -69,6 +69,7 @@ dependencies {
   testImplementation "junit:junit:${versions.junit}"
   //this is needed to make RestHighLevelClientTests#testApiNamingConventions work from IDEs
   testImplementation project(":rest-api-spec")
+  testImplementation project(":modules:havenask-engine")
 }
 
 tasks.named('forbiddenApisMain').configure {

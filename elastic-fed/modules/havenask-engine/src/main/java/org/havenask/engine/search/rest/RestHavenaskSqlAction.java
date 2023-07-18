@@ -19,6 +19,7 @@ import java.util.List;
 
 import org.havenask.client.node.NodeClient;
 import org.havenask.common.xcontent.XContentBuilder;
+import org.havenask.common.xcontent.XContentType;
 import org.havenask.engine.search.action.HavenaskSqlAction;
 import org.havenask.engine.search.action.HavenaskSqlRequest;
 import org.havenask.engine.search.action.HavenaskSqlResponse;
@@ -72,7 +73,7 @@ public class RestHavenaskSqlAction extends BaseRestHandler {
                 if (status == null) {
                     status = RestStatus.INTERNAL_SERVER_ERROR;
                 }
-                return new BytesRestResponse(status, response.getResult());
+                return new BytesRestResponse(status, XContentType.JSON.mediaType(), response.getResult());
             }
         });
     }
