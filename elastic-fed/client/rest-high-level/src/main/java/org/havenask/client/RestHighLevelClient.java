@@ -40,14 +40,6 @@
 package org.havenask.client;
 
 import org.apache.http.HttpEntity;
-import org.havenask.client.Cancellable;
-import org.havenask.client.Request;
-import org.havenask.client.RequestOptions;
-import org.havenask.client.Response;
-import org.havenask.client.ResponseException;
-import org.havenask.client.ResponseListener;
-import org.havenask.client.RestClient;
-import org.havenask.client.RestClientBuilder;
 import org.havenask.HavenaskException;
 import org.havenask.HavenaskStatusException;
 import org.havenask.action.ActionListener;
@@ -282,6 +274,7 @@ public class RestHighLevelClient implements Closeable {
     private final IngestClient ingestClient = new IngestClient(this);
     private final SnapshotClient snapshotClient = new SnapshotClient(this);
     private final TasksClient tasksClient = new TasksClient(this);
+    private final HaClient haClient = new HaClient(this);
 
     /**
      * Creates a {@link RestHighLevelClient} given the low level {@link RestClientBuilder} that allows to build the
@@ -361,6 +354,13 @@ public class RestHighLevelClient implements Closeable {
      */
     public final TasksClient tasks() {
         return tasksClient;
+    }
+
+    /**
+     * Provides a {@link HaClient} which can be used to access the Havenask API.
+     */
+    public final HaClient havenask() {
+        return haClient;
     }
 
     /**
