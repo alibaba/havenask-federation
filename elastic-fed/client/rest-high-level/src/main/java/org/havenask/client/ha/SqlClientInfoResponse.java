@@ -54,4 +54,16 @@ public class SqlClientInfoResponse {
         }
         return new SqlClientInfoResponse(errorMessage, errorCode, result);
     }
+
+    public String getErrorMessage() {
+        return errorMessage;
+    }
+
+    public int getErrorCode() {
+        return errorCode;
+    }
+
+    public Map<String, Object> getResult() {
+        return result;
+    }
 }

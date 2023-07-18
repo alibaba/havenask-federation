@@ -34,6 +34,18 @@ public class SqlResponse {
             this.columnName = columnName;
             this.columnType = columnType;
         }
+
+        public Object[] getData() {
+            return data;
+        }
+
+        public String[] getColumnName() {
+            return columnName;
+        }
+
+        public String[] getColumnType() {
+            return columnType;
+        }
     }
 
     public static class ErrorInfo {

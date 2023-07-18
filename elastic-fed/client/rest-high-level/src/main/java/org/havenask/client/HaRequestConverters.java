@@ -36,79 +36,77 @@ public class HaRequestConverters {
     public static Request sql(SqlRequest sqlRequest) {
         String endpoint = "/_havenask/sql";
         Request request = new Request(HttpGet.METHOD_NAME, endpoint);
-
-        RequestConverters.Params parameters = new RequestConverters.Params();
-        parameters.putParam("sql", sqlRequest.getSql());
+        request.addParameter("query", sqlRequest.getSql());
+        request.addParameter("format", "full_json");
         if (sqlRequest.getTrace() != null) {
-            parameters.putParam("trace", sqlRequest.getTrace());
+            request.addParameter("trace", sqlRequest.getTrace());
         }
 
         if (sqlRequest.getTimeout() != null) {
-            parameters.putParam("timeout", String.valueOf(sqlRequest.getTimeout()));
+            request.addParameter("timeout", String.valueOf(sqlRequest.getTimeout()));
         }
 
         if (sqlRequest.getSearchInfo() != null) {
-            parameters.putParam("searchInfo", String.valueOf(sqlRequest.getSearchInfo()));
+            request.addParameter("searchInfo", String.valueOf(sqlRequest.getSearchInfo()));
         }
 
         if (sqlRequest.getSqlPlan() != null) {
-            parameters.putParam("sqlPlan", String.valueOf(sqlRequest.getSqlPlan()));
+            request.addParameter("sqlPlan", String.valueOf(sqlRequest.getSqlPlan()));
         }
 
         if (sqlRequest.getForbitMergeSearchInfo() != null) {
-            parameters.putParam("forbitMergeSearchInfo", String.valueOf(sqlRequest.getForbitMergeSearchInfo()));
+            request.addParameter("forbitMergeSearchInfo", String.valueOf(sqlRequest.getForbitMergeSearchInfo()));
         }
 
         if (sqlRequest.getResultReadable() != null) {
-            parameters.putParam("resultReadable", String.valueOf(sqlRequest.getResultReadable()));
+            request.addParameter("resultReadable", String.valueOf(sqlRequest.getResultReadable()));
         }
 
         if (sqlRequest.getParallel() != null) {
-            parameters.putParam("parallel", String.valueOf(sqlRequest.getParallel()));
+            request.addParameter("parallel", String.valueOf(sqlRequest.getParallel()));
         }
 
         if (sqlRequest.getParallelTables() != null) {
-            parameters.putParam("parallelTables", sqlRequest.getParallelTables());
+            request.addParameter("parallelTables", sqlRequest.getParallelTables());
         }
 
         if (sqlRequest.getLackResultEnable() != null) {
-            parameters.putParam("lackResultEnable", String.valueOf(sqlRequest.getLackResultEnable()));
+            request.addParameter("lackResultEnable", String.valueOf(sqlRequest.getLackResultEnable()));
         }
 
         if (sqlRequest.getOptimizerDebug() != null) {
-            parameters.putParam("optimizerDebug", String.valueOf(sqlRequest.getOptimizerDebug()));
+            request.addParameter("optimizerDebug", String.valueOf(sqlRequest.getOptimizerDebug()));
         }
 
         if (sqlRequest.getSortLimitTogether() != null) {
-            parameters.putParam("sortLimitTogether", String.valueOf(sqlRequest.getSortLimitTogether()));
+            request.addParameter("sortLimitTogether", String.valueOf(sqlRequest.getSortLimitTogether()));
         }
 
         if (sqlRequest.getForceLimit() != null) {
-            parameters.putParam("forceLimit", String.valueOf(sqlRequest.getForceLimit()));
+            request.addParameter("forceLimit", String.valueOf(sqlRequest.getForceLimit()));
         }
 
         if (sqlRequest.getJoinConditionCheck() != null) {
-            parameters.putParam("joinConditionCheck", String.valueOf(sqlRequest.getJoinConditionCheck()));
+            request.addParameter("joinConditionCheck", String.valueOf(sqlRequest.getJoinConditionCheck()));
         }
 
         if (sqlRequest.getForceJoinHask() != null) {
-            parameters.putParam("forceJoinHask", String.valueOf(sqlRequest.getForceJoinHask()));
+            request.addParameter("forceJoinHask", String.valueOf(sqlRequest.getForceJoinHask()));
         }
 
         if (sqlRequest.getPlanLevel() != null) {
-            parameters.putParam("planLevel", String.valueOf(sqlRequest.getPlanLevel()));
+            request.addParameter("planLevel", String.valueOf(sqlRequest.getPlanLevel()));
         }
 
         if (sqlRequest.getCacheEnable() != null) {
-            parameters.putParam("cacheEnable", String.valueOf(sqlRequest.getCacheEnable()));
+            request.addParameter("cacheEnable", String.valueOf(sqlRequest.getCacheEnable()));
         }
 
-        request.addParameters(parameters.asMap());
         return request;
     }
 
     public static Request sqlClientInfo(SqlClientInfoRequest sqlClientInfoRequest) {
-        String endpoint = "/_havenask/sqlClientInfo";
+        String endpoint = "/_havenask/sql_info";
         Request request = new Request(HttpGet.METHOD_NAME, endpoint);
         return request;
     }
