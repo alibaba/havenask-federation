@@ -20,6 +20,7 @@ import org.havenask.action.admin.cluster.health.ClusterHealthRequest;
 import org.havenask.action.admin.cluster.health.ClusterHealthResponse;
 import org.havenask.action.admin.indices.delete.DeleteIndexRequest;
 import org.havenask.action.bulk.BulkRequest;
+import org.havenask.action.delete.DeleteRequest;
 import org.havenask.action.index.IndexRequest;
 import org.havenask.client.RequestOptions;
 import org.havenask.client.indices.CreateIndexRequest;
@@ -61,9 +62,10 @@ public class BasicIT extends AbstractHavenaskRestTestCase {
         assertTrue(highLevelClient().indices().delete(new DeleteIndexRequest(index), RequestOptions.DEFAULT).isAcknowledged());
     }
 
+    // create index, get index, delete index, HEAD index and set mapping
     public void test_1() throws Exception {
         String index = "my_index1";
-        // 1-1
+        // create index
         assertTrue(
             highLevelClient().indices()
                 .create(
@@ -93,7 +95,7 @@ public class BasicIT extends AbstractHavenaskRestTestCase {
             assertEquals(clusterHealthResponse.getStatus(), ClusterHealthStatus.GREEN);
         }, 2, TimeUnit.MINUTES);
 
-        // 1-2
+        // get index
         GetIndexResponse getIndexResponse = highLevelClient().indices().get(new GetIndexRequest(index), RequestOptions.DEFAULT);
         assertEquals(getIndexResponse.getIndices().length, 1);
         assertEquals(getIndexResponse.getSetting(index, EngineSettings.ENGINE_TYPE_SETTING.getKey()), EngineSettings.ENGINE_HAVENASK);
@@ -111,15 +113,97 @@ public class BasicIT extends AbstractHavenaskRestTestCase {
             )
         );
 
-        // 1-3
+        // delete index and HEAD index
         assertEquals(true, highLevelClient().indices().exists(new GetIndexRequest(index), RequestOptions.DEFAULT));
         assertTrue(highLevelClient().indices().delete(new DeleteIndexRequest(index), RequestOptions.DEFAULT).isAcknowledged());
         assertEquals(false, highLevelClient().indices().exists(new GetIndexRequest(index), RequestOptions.DEFAULT));
     }
 
+    // test document api, PUT/POST/DELETE and bulk
+    public void test_2() throws Exception {
+        String index = "my_index2";
+        // create index
+        assertTrue(
+            highLevelClient().indices()
+                .create(
+                    new CreateIndexRequest(index).settings(
+                        Settings.builder().put(EngineSettings.ENGINE_TYPE_SETTING.getKey(), EngineSettings.ENGINE_HAVENASK).build()
+                    )
+                        .mapping(
+                            Map.of(
+                                "properties",
+                                Map.of(
+                                    "seq",
+                                    Map.of("type", "integer"),
+                                    "content",
+                                    Map.of("type", "keyword"),
+                                    "time",
+                                    Map.of("type", "date")
+                                )
+                            )
+                        ),
+                    RequestOptions.DEFAULT
+                )
+                .isAcknowledged()
+        );
+        assertBusy(() -> {
+            ClusterHealthResponse clusterHealthResponse = highLevelClient().cluster()
+                .health(new ClusterHealthRequest(index), RequestOptions.DEFAULT);
+            assertEquals(clusterHealthResponse.getStatus(), ClusterHealthStatus.GREEN);
+        }, 2, TimeUnit.MINUTES);
+
+        // PUT doc
+        highLevelClient().index(
+            new IndexRequest(index).id("1").source(Map.of("seq", 1, "content", "欢迎使用1", "time", "20230718"), XContentType.JSON),
+            RequestOptions.DEFAULT
+        );
+        highLevelClient().index(
+            new IndexRequest(index).id("2").source(Map.of("seq", 2, "content", "欢迎使用2", "time", "20230717"), XContentType.JSON),
+            RequestOptions.DEFAULT
+        );
+        highLevelClient().index(
+            new IndexRequest(index).id("3").source(Map.of("seq", 3, "content", "欢迎使用3", "time", "20230716"), XContentType.JSON),
+            RequestOptions.DEFAULT
+        );
+
+        // POST doc
+        highLevelClient().index(
+            new IndexRequest(index).source(Map.of("seq", 4, "content", "欢迎使用4", "time", "20230715"), XContentType.JSON),
+            RequestOptions.DEFAULT
+        );
+
+        // DELETE doc
+        highLevelClient().delete(new DeleteRequest(index, "1"), RequestOptions.DEFAULT);
+        highLevelClient().delete(new DeleteRequest(index, "2"), RequestOptions.DEFAULT);
+        highLevelClient().delete(new DeleteRequest(index, "3"), RequestOptions.DEFAULT);
+
+        // bulk doc
+        BulkRequest bulkRequest = new BulkRequest();
+        bulkRequest.add(
+            new IndexRequest(index).id("1").source(Map.of("seq", 1, "content", "欢迎使用1", "time", "20230718"), XContentType.JSON)
+        );
+        bulkRequest.add(
+            new IndexRequest(index).opType("create")
+                .id("2")
+                .source(Map.of("seq", 2, "content", "欢迎使用2", "time", "20230717"), XContentType.JSON)
+        );
+        bulkRequest.add(
+            new IndexRequest(index).id("3").source(Map.of("seq", 3, "content", "欢迎使用3", "time", "20230716"), XContentType.JSON)
+        );
+        bulkRequest.add(new DeleteRequest(index, "3"));
+        highLevelClient().bulk(bulkRequest, RequestOptions.DEFAULT);
+
+        // delete index and HEAD index
+        assertTrue(highLevelClient().indices().delete(new DeleteIndexRequest(index), RequestOptions.DEFAULT).isAcknowledged());
+        assertEquals(false, highLevelClient().indices().exists(new GetIndexRequest(index), RequestOptions.DEFAULT));
+
+        // todo: check data using sql search api
+    }
+
+    // test common data type(int, double, boolean, date, text, keyword, array)
     public void test_3() throws Exception {
         String index = "my_index3";
-        // 3-1
+        // create index with multi data type
         assertTrue(
             highLevelClient().indices()
                 .create(
@@ -158,9 +242,10 @@ public class BasicIT extends AbstractHavenaskRestTestCase {
         }, 2, TimeUnit.MINUTES);
 
         highLevelClient().index(
-            new IndexRequest(index).id("1").source(Map.of("keyword", "keyword"), XContentType.JSON),
+            new IndexRequest(index).id("1").source(Map.of("keyword", "keyword_test"), XContentType.JSON),
             RequestOptions.DEFAULT
         );
+
         highLevelClient().bulk(
             new BulkRequest().add(
                 new IndexRequest(index).id("2")
@@ -189,17 +274,17 @@ public class BasicIT extends AbstractHavenaskRestTestCase {
                         .source(
                             Map.of(
                                 "keyword",
-                                "keyword1",
+                                1,
                                 "text",
-                                "text1",
-                                "integer",
                                 2,
+                                "integer",
+                                "-32768",
                                 "double",
-                                3.14,
+                                "3.14",
                                 "date",
-                                "2023-07-18",
+                                "20230718",
                                 "boolean",
-                                false,
+                                "false",
                                 "integer_array",
                                 new int[] { 2, 3, 4 }
                             ),
@@ -208,8 +293,12 @@ public class BasicIT extends AbstractHavenaskRestTestCase {
                 ),
             RequestOptions.DEFAULT
         );
+
+        // delete index and HEAD index
         assertTrue(highLevelClient().indices().delete(new DeleteIndexRequest(index), RequestOptions.DEFAULT).isAcknowledged());
         assertEquals(false, highLevelClient().indices().exists(new GetIndexRequest(index), RequestOptions.DEFAULT));
+
+        // todo: check data using sql search api
     }
 
 }
