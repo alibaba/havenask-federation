@@ -64,7 +64,7 @@ public class BasicIT extends AbstractHavenaskRestTestCase {
 
     // create index, get index, delete index, HEAD index and set mapping
     public void testIndexMethod() throws Exception {
-        String index = "my_index1";
+        String index = "index_index_method";
         // create index
         assertTrue(
             highLevelClient().indices()
@@ -121,7 +121,7 @@ public class BasicIT extends AbstractHavenaskRestTestCase {
 
     // test document api, PUT/POST/DELETE and bulk
     public void testDocMethod() throws Exception {
-        String index = "my_index2";
+        String index = "index_doc_method";
         // create index
         assertTrue(
             highLevelClient().indices()
@@ -202,7 +202,7 @@ public class BasicIT extends AbstractHavenaskRestTestCase {
 
     // test common data type(int, double, boolean, date, text, keyword, array)
     public void testMultiDataType() throws Exception {
-        String index = "my_index3";
+        String index = "index_multi_data_type";
         // create index with multi data type
         assertTrue(
             highLevelClient().indices()
