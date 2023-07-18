@@ -63,13 +63,13 @@ public class BasicIT extends AbstractHavenaskRestTestCase {
             assertEquals(clusterHealthResponse.getStatus(), ClusterHealthStatus.GREEN);
         }, 2, TimeUnit.MINUTES);
 
-        SqlClientInfoResponse sqlClientInfoResponse = highLevelClient().havenask().sqlClientInfo(new SqlClientInfoRequest(), RequestOptions.DEFAULT);
+        SqlClientInfoResponse sqlClientInfoResponse = highLevelClient().havenask()
+            .sqlClientInfo(new SqlClientInfoRequest(), RequestOptions.DEFAULT);
         assertEquals(sqlClientInfoResponse.getErrorCode(), 0);
         assertEquals(sqlClientInfoResponse.getErrorMessage(), "");
-        java.util.Map<String, Object> tables
-            =
-            (java.util.Map<String, Object>)((java.util.Map<String, Object>)(((java.util.Map<String, Object>)(sqlClientInfoResponse.getResult()
-            .get("default"))).get("general"))).get("tables");
+        java.util.Map<String, Object> tables = (java.util.Map<String, Object>) ((java.util.Map<String, Object>) (((java.util.Map<
+            String,
+            Object>) (sqlClientInfoResponse.getResult().get("default"))).get("general"))).get("tables");
         assertTrue(tables.containsKey(index));
 
         assertTrue(highLevelClient().indices().delete(new DeleteIndexRequest(index), RequestOptions.DEFAULT).isAcknowledged());
@@ -185,14 +185,8 @@ public class BasicIT extends AbstractHavenaskRestTestCase {
             RequestOptions.DEFAULT
         );
 
-
         /// get index data count
-        SqlResponse sqlResponse = highLevelClient().havenask().sql(
-            new SqlRequest(
-                "select count(*) from " + index
-            ),
-            RequestOptions.DEFAULT
-        );
+        SqlResponse sqlResponse = highLevelClient().havenask().sql(new SqlRequest("select count(*) from " + index), RequestOptions.DEFAULT);
         assertEquals(sqlResponse.getRowCount(), 1);
         assertEquals(sqlResponse.getSqlResult().getData().length, 1);
         assertEquals(sqlResponse.getSqlResult().getColumnName().length, 1);
