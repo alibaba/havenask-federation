@@ -67,6 +67,8 @@ public class BasicIT extends AbstractHavenaskRestTestCase {
             .sqlClientInfo(new SqlClientInfoRequest(), RequestOptions.DEFAULT);
         assertEquals(sqlClientInfoResponse.getErrorCode(), 0);
         assertEquals(sqlClientInfoResponse.getErrorMessage(), "");
+
+        @SuppressWarnings("unchecked")
         java.util.Map<String, Object> tables = (java.util.Map<String, Object>) ((java.util.Map<String, Object>) (((java.util.Map<
             String,
             Object>) (sqlClientInfoResponse.getResult().get("default"))).get("general"))).get("tables");
