@@ -37,6 +37,8 @@ import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.serialization.StringSerializer;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.message.ParameterizedMessage;
 import org.apache.lucene.index.IndexableField;
 import org.apache.lucene.util.BytesRef;
@@ -384,7 +386,7 @@ public class HavenaskEngine extends InternalEngine {
         } else {
             try {
                 WriteRequest writeRequest = buildWriteRequest(shardId.getIndexName(), index.id(), index.operationType(), haDoc);
-                WriteResponse writeResponse = retryWrite(searcherClient, writeRequest);
+                WriteResponse writeResponse = retryWrite(shardId, searcherClient, writeRequest);
                 if (writeResponse.getErrorCode() != null) {
                     throw new IOException(
                         "havenask index exception, error code: "
@@ -423,7 +425,7 @@ public class HavenaskEngine extends InternalEngine {
         } else {
             try {
                 WriteRequest writeRequest = buildWriteRequest(shardId.getIndexName(), delete.id(), delete.operationType(), haDoc);
-                WriteResponse writeResponse = retryWrite(searcherClient, writeRequest);
+                WriteResponse writeResponse = retryWrite(shardId, searcherClient, writeRequest);
                 if (writeResponse.getErrorCode() != null) {
                     throw new IOException(
                         "havenask delete exception, error code: "
@@ -443,13 +445,15 @@ public class HavenaskEngine extends InternalEngine {
 
     static final TimeValue DEFAULT_TIMEOUT = TimeValue.timeValueMillis(50);
     static final int MAX_RETRY = 3;
+    private static final Logger LOGGER = LogManager.getLogger(HavenaskEngine.class);
 
-    static WriteResponse retryWrite(SearcherClient searcherClient, WriteRequest writeRequest) {
+    static WriteResponse retryWrite(ShardId shardId, SearcherClient searcherClient, WriteRequest writeRequest) {
         WriteResponse writeResponse = searcherClient.write(writeRequest);
         if (isWriteRetry(writeResponse)) {
+            long start = System.currentTimeMillis();
             // retry if write queue is full or write response is null
-            // Iterator<TimeValue> backoff = BackoffPolicy.exponentialBackoff(DEFAULT_TIMEOUT, MAX_RETRY).iterator();
             Iterator<TimeValue> backoff = BackoffPolicy.exponentialBackoff(DEFAULT_TIMEOUT, MAX_RETRY).iterator();
+            int retryCount = 0;
             while (backoff.hasNext()) {
                 TimeValue timeValue = backoff.next();
                 try {
@@ -458,10 +462,13 @@ public class HavenaskEngine extends InternalEngine {
                     // pass
                 }
                 writeResponse = searcherClient.write(writeRequest);
+                retryCount++;
                 if (false == isWriteRetry(writeResponse)) {
                     break;
                 }
             }
+            long cost = System.currentTimeMillis() - start;
+            LOGGER.info("[{}] havenask write retry, retry count: {}, cost: {}ms", shardId, retryCount, cost);
         }
 
         return writeResponse;

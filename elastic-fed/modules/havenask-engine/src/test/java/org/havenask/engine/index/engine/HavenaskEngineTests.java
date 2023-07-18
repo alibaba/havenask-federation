@@ -30,6 +30,7 @@ import org.havenask.engine.rpc.WriteResponse;
 import org.havenask.index.engine.Engine.Operation;
 import org.havenask.index.engine.EngineTestCase;
 import org.havenask.index.mapper.ParsedDocument;
+import org.havenask.index.shard.ShardId;
 import suez.service.proto.ErrorCode;
 
 import static org.havenask.engine.index.engine.HavenaskEngine.DEFAULT_TIMEOUT;
@@ -127,7 +128,7 @@ public class HavenaskEngineTests extends EngineTestCase {
         when(writeResponse.getErrorCode()).thenReturn(ErrorCode.TBS_ERROR_UNKOWN);
         when(writeResponse.getErrorMessage()).thenReturn("write response is null");
         long start = System.currentTimeMillis();
-        WriteResponse response = HavenaskEngine.retryWrite(searcherClient, writeRequest);
+        WriteResponse response = HavenaskEngine.retryWrite(mock(ShardId.class), searcherClient, writeRequest);
         long cost = System.currentTimeMillis() - start;
         Iterator<TimeValue> backoff = BackoffPolicy.exponentialBackoff(DEFAULT_TIMEOUT, MAX_RETRY).iterator();
         long backoffTime = 0;
@@ -147,7 +148,7 @@ public class HavenaskEngineTests extends EngineTestCase {
         when(writeResponse.getErrorCode()).thenReturn(ErrorCode.TBS_ERROR_OTHERS);
         when(writeResponse.getErrorMessage()).thenReturn("doc queue is full");
         long start = System.currentTimeMillis();
-        WriteResponse response = HavenaskEngine.retryWrite(searcherClient, writeRequest);
+        WriteResponse response = HavenaskEngine.retryWrite(mock(ShardId.class), searcherClient, writeRequest);
         long cost = System.currentTimeMillis() - start;
         Iterator<TimeValue> backoff = BackoffPolicy.exponentialBackoff(DEFAULT_TIMEOUT, MAX_RETRY).iterator();
         long backoffTime = 0;
@@ -167,7 +168,7 @@ public class HavenaskEngineTests extends EngineTestCase {
         when(writeResponse.getErrorCode()).thenReturn(ErrorCode.TBS_ERROR_NONE);
         when(writeResponse.getErrorMessage()).thenReturn(null);
         long start = System.currentTimeMillis();
-        WriteResponse response = HavenaskEngine.retryWrite(searcherClient, writeRequest);
+        WriteResponse response = HavenaskEngine.retryWrite(mock(ShardId.class), searcherClient, writeRequest);
         long cost = System.currentTimeMillis() - start;
         assertTrue(cost < DEFAULT_TIMEOUT.millis());
         assertEquals(response, writeResponse);
