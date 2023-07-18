@@ -63,7 +63,7 @@ public class BasicIT extends AbstractHavenaskRestTestCase {
     }
 
     // create index, get index, delete index, HEAD index and set mapping
-    public void test_1() throws Exception {
+    public void testIndexMethod() throws Exception {
         String index = "my_index1";
         // create index
         assertTrue(
@@ -120,7 +120,7 @@ public class BasicIT extends AbstractHavenaskRestTestCase {
     }
 
     // test document api, PUT/POST/DELETE and bulk
-    public void test_2() throws Exception {
+    public void testDocMethod() throws Exception {
         String index = "my_index2";
         // create index
         assertTrue(
@@ -201,7 +201,7 @@ public class BasicIT extends AbstractHavenaskRestTestCase {
     }
 
     // test common data type(int, double, boolean, date, text, keyword, array)
-    public void test_3() throws Exception {
+    public void testMultiDataType() throws Exception {
         String index = "my_index3";
         // create index with multi data type
         assertTrue(
