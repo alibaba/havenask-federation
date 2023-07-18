@@ -19,6 +19,7 @@ import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -36,12 +37,16 @@ import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.serialization.StringSerializer;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.message.ParameterizedMessage;
 import org.apache.lucene.index.IndexableField;
 import org.apache.lucene.util.BytesRef;
 import org.havenask.HavenaskException;
+import org.havenask.action.bulk.BackoffPolicy;
 import org.havenask.common.Nullable;
 import org.havenask.common.settings.Settings;
+import org.havenask.common.unit.TimeValue;
 import org.havenask.engine.HavenaskEngineEnvironment;
 import org.havenask.engine.NativeProcessControlService;
 import org.havenask.engine.index.config.generator.RuntimeSegmentGenerator;
@@ -66,6 +71,7 @@ import org.havenask.index.shard.ShardId;
 import org.havenask.index.translog.Translog;
 import org.havenask.index.translog.TranslogConfig;
 import org.havenask.index.translog.TranslogDeletionPolicy;
+import suez.service.proto.ErrorCode;
 
 public class HavenaskEngine extends InternalEngine {
 
@@ -380,7 +386,7 @@ public class HavenaskEngine extends InternalEngine {
         } else {
             try {
                 WriteRequest writeRequest = buildWriteRequest(shardId.getIndexName(), index.id(), index.operationType(), haDoc);
-                WriteResponse writeResponse = searcherClient.write(writeRequest);
+                WriteResponse writeResponse = retryWrite(shardId, searcherClient, writeRequest);
                 if (writeResponse.getErrorCode() != null) {
                     throw new IOException(
                         "havenask index exception, error code: "
@@ -419,7 +425,7 @@ public class HavenaskEngine extends InternalEngine {
         } else {
             try {
                 WriteRequest writeRequest = buildWriteRequest(shardId.getIndexName(), delete.id(), delete.operationType(), haDoc);
-                WriteResponse writeResponse = searcherClient.write(writeRequest);
+                WriteResponse writeResponse = retryWrite(shardId, searcherClient, writeRequest);
                 if (writeResponse.getErrorCode() != null) {
                     throw new IOException(
                         "havenask delete exception, error code: "
@@ -434,6 +440,48 @@ public class HavenaskEngine extends InternalEngine {
                 maybeFailEngine(e.getMessage(), e);
                 throw e;
             }
+        }
+    }
+
+    static final TimeValue DEFAULT_TIMEOUT = TimeValue.timeValueMillis(50);
+    static final int MAX_RETRY = 3;
+    private static final Logger LOGGER = LogManager.getLogger(HavenaskEngine.class);
+
+    static WriteResponse retryWrite(ShardId shardId, SearcherClient searcherClient, WriteRequest writeRequest) {
+        WriteResponse writeResponse = searcherClient.write(writeRequest);
+        if (isWriteRetry(writeResponse)) {
+            long start = System.currentTimeMillis();
+            // retry if write queue is full or write response is null
+            Iterator<TimeValue> backoff = BackoffPolicy.exponentialBackoff(DEFAULT_TIMEOUT, MAX_RETRY).iterator();
+            int retryCount = 0;
+            while (backoff.hasNext()) {
+                TimeValue timeValue = backoff.next();
+                try {
+                    Thread.sleep(timeValue.millis());
+                } catch (InterruptedException e) {
+                    // pass
+                }
+                writeResponse = searcherClient.write(writeRequest);
+                retryCount++;
+                if (false == isWriteRetry(writeResponse)) {
+                    break;
+                }
+            }
+            long cost = System.currentTimeMillis() - start;
+            LOGGER.info("[{}] havenask write retry, retry count: {}, cost: {}ms", shardId, retryCount, cost);
+        }
+
+        return writeResponse;
+    }
+
+    private static boolean isWriteRetry(WriteResponse writeResponse) {
+        if ((writeResponse.getErrorCode() == ErrorCode.TBS_ERROR_UNKOWN
+            && writeResponse.getErrorMessage().contains("write response is null"))
+            || (writeResponse.getErrorCode() == ErrorCode.TBS_ERROR_OTHERS
+                && writeResponse.getErrorMessage().contains("doc queue is full"))) {
+            return true;
+        } else {
+            return false;
         }
     }
 

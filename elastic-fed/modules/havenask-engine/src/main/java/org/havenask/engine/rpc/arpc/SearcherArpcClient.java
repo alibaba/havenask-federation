@@ -31,6 +31,7 @@ import org.havenask.engine.rpc.UpdateHeartbeatTargetRequest;
 import org.havenask.engine.rpc.WriteRequest;
 import org.havenask.engine.rpc.WriteResponse;
 import suez.service.proto.ErrorCode;
+import suez.service.proto.ErrorInfo;
 import suez.service.proto.TableService;
 import suez.service.proto.Write;
 
@@ -72,15 +73,9 @@ public class SearcherArpcClient implements SearcherClient, Closeable {
             }
             suez.service.proto.WriteResponse writeResponse = blockingStub.writeTable(controller, writeRequest);
 
-            // double check for write, for the case that connection is unexpectedly closed
             if (writeResponse == null) {
                 resetChannel();
-                logger.info("write response is null, channel reset, retry...");
-                writeResponse = blockingStub.writeTable(controller, writeRequest);
-                if (writeResponse == null) {
-                    resetChannel();
-                    return new WriteResponse(ErrorCode.TBS_ERROR_UNKOWN, "write response is null, channel reset");
-                }
+                return new WriteResponse(ErrorCode.TBS_ERROR_UNKOWN, "write response is null, channel reset");
             }
 
             if (writeResponse.getErrorInfo() == null || writeResponse.getErrorInfo().getErrorCode() == ErrorCode.TBS_ERROR_NONE) {
@@ -96,6 +91,16 @@ public class SearcherArpcClient implements SearcherClient, Closeable {
             logger.warn("write upexpect error", e);
             resetChannel();
             return new WriteResponse(ErrorCode.TBS_ERROR_UNKOWN, "upexpect error:" + e.getMessage());
+        }
+    }
+
+    private boolean isWriteQueueFull(ErrorInfo errorInfo) {
+        if (errorInfo != null
+            && errorInfo.getErrorCode() == ErrorCode.TBS_ERROR_OTHERS
+            && errorInfo.getErrorMsg().contains("doc queue is full")) {
+            return true;
+        } else {
+            return false;
         }
     }
 
