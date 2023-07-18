@@ -15,6 +15,9 @@
 package org.havenask.client.ha;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+
 import org.havenask.common.xcontent.XContentParser;
 
 public class SqlResponse {
@@ -25,17 +28,17 @@ public class SqlResponse {
     private final ErrorInfo errorInfo;
 
     public static class SqlResult {
-        private final Object[] data;
+        private final Object[][] data;
         private final String[] columnName;
         private final String[] columnType;
 
-        public SqlResult(Object[] data, String[] columnName, String[] columnType) {
+        public SqlResult(Object[][] data, String[] columnName, String[] columnType) {
             this.data = data;
             this.columnName = columnName;
             this.columnType = columnType;
         }
 
-        public Object[] getData() {
+        public Object[][] getData() {
             return data;
         }
 
@@ -88,6 +91,119 @@ public class SqlResponse {
         return errorInfo;
     }
 
+    /**
+     *
+     * {
+     *   "total_time": 9.981,
+     *   "has_soft_failure": false,
+     *   "covered_percent": 1.0,
+     *   "row_count": 6,
+     *   "format_type": "full_json",
+     *   "search_info": {
+     *
+     *   },
+     *   "rpc_info": "",
+     *   "table_leader_info": {
+     *     "test": true
+     *   },
+     *   "table_build_watermark": {
+     *
+     *   },
+     *   "sql_query": "query=select * from test&&kvpair=databaseName:general;format:full_json",
+     *   "iquan_plan": {
+     *     "error_code": 0,
+     *     "error_message": "",
+     *     "result": {
+     *       "rel_plan_version": "",
+     *       "rel_plan": [
+     *
+     *       ],
+     *       "exec_params": {
+     *
+     *       }
+     *     }
+     *   },
+     *   "navi_graph": "",
+     *   "trace": [
+     *
+     *   ],
+     *   "sql_result": {
+     *     "data": [
+     *       [
+     *         "null",
+     *         0,
+     *         "test2",
+     *         "sVdaaIkBemPxGgQmC4Ke",
+     *         1,
+     *         1
+     *       ],
+     *       [
+     *         "null",
+     *         1,
+     *         "test2",
+     *         "s1daaIkBemPxGgQmD4Ia",
+     *         1,
+     *         1
+     *       ],
+     *       [
+     *         "null",
+     *         2,
+     *         "test2",
+     *         "sldaaIkBemPxGgQmD4Ia",
+     *         1,
+     *         1
+     *       ],
+     *       [
+     *         "null",
+     *         3,
+     *         "test2",
+     *         "tFdaaIkBemPxGgQmD4K9",
+     *         1,
+     *         1
+     *       ],
+     *       [
+     *         "null",
+     *         4,
+     *         "test2",
+     *         "tVdaaIkBemPxGgQmEYJX",
+     *         1,
+     *         1
+     *       ],
+     *       [
+     *         "null",
+     *         5,
+     *         "test2",
+     *         "tldaaIkBemPxGgQmEYLU",
+     *         1,
+     *         1
+     *       ]
+     *     ],
+     *     "column_name": [
+     *       "_routing",
+     *       "_seq_no",
+     *       "foo",
+     *       "_id",
+     *       "_version",
+     *       "_primary_term"
+     *     ],
+     *     "column_type": [
+     *       "multi_char",
+     *       "int64",
+     *       "multi_char",
+     *       "multi_char",
+     *       "int64",
+     *       "int64"
+     *     ]
+     *   },
+     *   "error_info": {
+     *     "ErrorCode": 0,
+     *     "Error": "ERROR_NONE",
+     *     "Message": ""
+     *   }
+     * }
+     *
+     */
+
     public static SqlResponse fromXContent(XContentParser parser) throws IOException {
         XContentParser.Token token;
         double totalTime = 0;
@@ -110,7 +226,7 @@ public class SqlResponse {
                         rowCount = parser.intValue();
                         break;
                     case "sql_result":
-                        Object[] data = null;
+                        Object[][] data = null;
                         String[] columnName = null;
                         String[] columnType = null;
                         while ((token = parser.nextToken()) != XContentParser.Token.END_OBJECT) {
@@ -119,7 +235,32 @@ public class SqlResponse {
                                 parser.nextToken();
                                 switch (sqlResultFieldName) {
                                     case "data":
-                                        data = parser.list().toArray();
+                                        List<Object[]> dataList = new ArrayList<>();
+                                        while ((token = parser.nextToken()) != XContentParser.Token.END_ARRAY) {
+                                            if (token == XContentParser.Token.START_ARRAY) {
+                                                List<Object> row = new ArrayList<>();
+                                                while ((token = parser.nextToken()) != XContentParser.Token.END_ARRAY) {
+                                                    switch (token) {
+                                                        case VALUE_STRING:
+                                                            row.add(parser.text());
+                                                            break;
+                                                        case VALUE_NUMBER:
+                                                            row.add(parser.numberValue());
+                                                            break;
+                                                        case VALUE_BOOLEAN:
+                                                            row.add(parser.booleanValue());
+                                                            break;
+                                                        case VALUE_NULL:
+                                                            row.add(null);
+                                                            break;
+                                                        default:
+                                                            break;
+                                                    }
+                                                }
+                                                dataList.add(row.toArray());
+                                            }
+                                        }
+                                        data = dataList.toArray(new Object[0][]);
                                         break;
                                     case "column_name":
                                         columnName = parser.list().toArray(new String[0]);
@@ -160,6 +301,7 @@ public class SqlResponse {
                         errorInfo = new ErrorInfo(errorCode, error, message);
                         break;
                     default:
+                        parser.skipChildren();
                         break;
                 }
             }
