@@ -398,7 +398,7 @@ public class HavenaskEngine extends InternalEngine {
                 return new IndexResult(index.version(), index.primaryTerm(), index.seqNo(), true);
             } catch (IOException e) {
                 logger.warn("havenask index exception", e);
-                maybeFailEngine(e.getMessage(), e);
+                failEngine(e.getMessage(), e);
                 throw e;
             }
         }
@@ -437,14 +437,14 @@ public class HavenaskEngine extends InternalEngine {
                 return new DeleteResult(delete.version(), delete.primaryTerm(), delete.seqNo(), true);
             } catch (IOException e) {
                 logger.warn("havenask delete exception", e);
-                maybeFailEngine(e.getMessage(), e);
+                failEngine(e.getMessage(), e);
                 throw e;
             }
         }
     }
 
     static final TimeValue DEFAULT_TIMEOUT = TimeValue.timeValueMillis(50);
-    static final int MAX_RETRY = 3;
+    static final int MAX_RETRY = 6;
     private static final Logger LOGGER = LogManager.getLogger(HavenaskEngine.class);
 
     static WriteResponse retryWrite(ShardId shardId, SearcherClient searcherClient, WriteRequest writeRequest) {
