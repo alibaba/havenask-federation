@@ -35,6 +35,7 @@ RUN chmod 0660 config/havenask.yml config/log4j2.properties
 
 # add opensearch-dashboard
 ADD "./packages/dashboards.tar.gz" "/usr/share/havenask/"
+ADD "./packages/libjemalloc.so.2" "/usr/share/havenask/lib/libjemalloc.so.2"
 
 ################################################################################
 # Build stage 1 (the actual Havenask image):
