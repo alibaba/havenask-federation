@@ -153,7 +153,7 @@ public class RunTask extends DefaultTestClustersTask {
                 }
                 if (debug) {
                     logger.lifecycle("Running havenask in debug mode, {} expecting running debug server on port {}", node, debugPort);
-                    node.jvmArgs("-agentlib:jdwp=transport=dt_socket,server=n,suspend=y,address=" + debugPort);
+                    node.jvmArgs("-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=0.0.0.0:" + debugPort);
                     debugPort += 1;
                 }
                 if (keystorePassword.length() > 0) {
