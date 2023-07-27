@@ -1305,7 +1305,11 @@ public class HavenaskNode implements TestClusterConfiguration {
             for (Path file : configFiles) {
                 Path dest = currentConfig.configFile.getParent().resolve(file.getFileName());
                 if (Files.exists(dest) == false) {
-                    Files.copy(file, dest);
+                    if (Files.isDirectory(file)) {
+                        copyFolder(file, dest);
+                    } else {
+                        Files.copy(file, dest);
+                    }
                 }
             }
         } catch (IOException e) {
