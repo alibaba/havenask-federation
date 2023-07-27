@@ -45,8 +45,11 @@ import org.apache.lucene.util.BytesRef;
 import org.havenask.HavenaskException;
 import org.havenask.action.bulk.BackoffPolicy;
 import org.havenask.common.Nullable;
+import org.havenask.common.bytes.BytesArray;
+import org.havenask.common.bytes.BytesReference;
 import org.havenask.common.settings.Settings;
 import org.havenask.common.unit.TimeValue;
+import org.havenask.common.xcontent.XContentHelper;
 import org.havenask.engine.HavenaskEngineEnvironment;
 import org.havenask.engine.NativeProcessControlService;
 import org.havenask.engine.index.config.generator.RuntimeSegmentGenerator;
@@ -288,7 +291,8 @@ public class HavenaskEngine extends InternalEngine {
             if (field.name().equals(IdFieldMapper.NAME)) {
                 haDoc.put(field.name(), Uid.decodeId(binaryVal.bytes));
             } else if (field.name().equals(SourceFieldMapper.NAME)) {
-                String src = binaryVal.utf8ToString();
+                BytesReference bytes = new BytesArray(binaryVal);
+                String src = XContentHelper.convertToJson(bytes, false, parsedDocument.getXContentType());
                 haDoc.put(field.name(), src);
             } else if (field instanceof VectorField) {
                 VectorField vectorField = (VectorField) field;
