@@ -1338,7 +1338,7 @@ public class HavenaskNode implements TestClusterConfiguration {
                     Files.copy(f, targetFile);
                 }
             } catch (IOException e) {
-                e.printStackTrace();
+                throw new UncheckedIOException(e);
             }
         });
     }
