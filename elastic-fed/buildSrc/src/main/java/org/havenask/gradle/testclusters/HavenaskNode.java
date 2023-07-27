@@ -980,7 +980,7 @@ public class HavenaskNode implements TestClusterConfiguration {
         LOGGER.info("Stopping `{}`, tailLogs: {}", this, tailLogs);
         requireNonNull(havenaskProcess, "Can't stop `" + this + "` as it was not started or already stopped.");
         // Test clusters are not reused, don't spend time on a graceful shutdown
-        stopHandle(havenaskProcess.toHandle(), true);
+        stopHandle(havenaskProcess.toHandle(), false);
         reaper.unregister(toString());
         if (tailLogs) {
             logFileContents("Standard output of node", currentConfig.stdoutFile);
