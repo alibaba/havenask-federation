@@ -41,6 +41,9 @@ apply plugin: 'havenask.testclusters'
 testClusters {
   runTask {
     testDistribution = 'archive'
+    setting 'network.host', '0.0.0.0'
+    setting 'discovery.type', 'single-node'
+    setting 'havenask.engine.enabled', 'true'
   }
 }
 

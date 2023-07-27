@@ -1316,6 +1316,30 @@ public class HavenaskNode implements TestClusterConfiguration {
         LOGGER.info("Written config file:{} for {}", currentConfig.configFile, this);
     }
 
+    private static void copyFolder(Path source, Path target) throws IOException {
+        // 如果目标目录不存在，则创建
+        if (!Files.exists(target)) {
+            Files.createDirectories(target);
+        }
+
+        // 遍历源目录下的所有文件和子目录，并逐一进行复制
+        Files.walk(source).forEach(f -> {
+            try {
+                Path targetFile = target.resolve(source.relativize(f));
+                if (Files.isDirectory(f)) {
+                    // 如果是目录，则创建对应的目录
+                    Files.createDirectories(targetFile);
+                } else {
+                    // 如果是文件，则进行复制
+                    Files.copy(f, targetFile);
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        });
+    }
+
+
     private void tweakJvmOptions(Path configFileRoot) {
         LOGGER.info("Tweak jvm options {}.", configFileRoot.resolve("jvm.options"));
         Path jvmOptions = configFileRoot.resolve("jvm.options");
