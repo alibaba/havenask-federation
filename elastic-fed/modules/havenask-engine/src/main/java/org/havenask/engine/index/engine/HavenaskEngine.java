@@ -15,11 +15,13 @@
 package org.havenask.engine.index.engine;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -28,6 +30,10 @@ import java.util.function.LongConsumer;
 import java.util.function.LongSupplier;
 
 import javax.management.MBeanTrustPermission;
+
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONArray;
+import com.alibaba.fastjson.JSONObject;
 
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.DescribeTopicsResult;
@@ -41,10 +47,13 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.message.ParameterizedMessage;
 import org.apache.lucene.index.IndexableField;
+import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.util.BytesRef;
 import org.havenask.HavenaskException;
 import org.havenask.action.bulk.BackoffPolicy;
 import org.havenask.common.Nullable;
+import org.havenask.common.bytes.BytesArray;
+import org.havenask.common.lucene.uid.VersionsAndSeqNoResolver.DocIdAndVersion;
 import org.havenask.common.settings.Settings;
 import org.havenask.common.unit.TimeValue;
 import org.havenask.engine.HavenaskEngineEnvironment;
@@ -53,14 +62,19 @@ import org.havenask.engine.index.config.generator.RuntimeSegmentGenerator;
 import org.havenask.engine.index.mapper.VectorField;
 import org.havenask.engine.rpc.HavenaskClient;
 import org.havenask.engine.rpc.HeartbeatTargetResponse;
+import org.havenask.engine.rpc.QrsClient;
+import org.havenask.engine.rpc.QrsSqlRequest;
+import org.havenask.engine.rpc.QrsSqlResponse;
 import org.havenask.engine.rpc.SearcherClient;
 import org.havenask.engine.rpc.TargetInfo;
 import org.havenask.engine.rpc.WriteRequest;
 import org.havenask.engine.rpc.WriteResponse;
 import org.havenask.engine.util.Utils;
+import org.havenask.index.VersionType;
 import org.havenask.index.engine.EngineConfig;
 import org.havenask.index.engine.EngineException;
 import org.havenask.index.engine.InternalEngine;
+import org.havenask.index.engine.TranslogLeafReader;
 import org.havenask.index.mapper.IdFieldMapper;
 import org.havenask.index.mapper.ParseContext;
 import org.havenask.index.mapper.ParsedDocument;
@@ -73,9 +87,12 @@ import org.havenask.index.translog.TranslogConfig;
 import org.havenask.index.translog.TranslogDeletionPolicy;
 import suez.service.proto.ErrorCode;
 
+import static org.havenask.engine.search.rest.RestHavenaskSqlAction.SQL_DATABASE;
+
 public class HavenaskEngine extends InternalEngine {
 
-    private final HavenaskClient havenaskClient;
+    private final HavenaskClient searcherHttpClient;
+    private final QrsClient qrsHttpClient;
     private final SearcherClient searcherClient;
     private final HavenaskEngineEnvironment env;
     private final NativeProcessControlService nativeProcessControlService;
@@ -89,14 +106,16 @@ public class HavenaskEngine extends InternalEngine {
 
     public HavenaskEngine(
         EngineConfig engineConfig,
-        HavenaskClient havenaskClient,
+        HavenaskClient searcherHttpClient,
+        QrsClient qrsHttpClient,
         SearcherClient searcherClient,
         HavenaskEngineEnvironment env,
         NativeProcessControlService nativeProcessControlService
     ) {
         super(engineConfig);
 
-        this.havenaskClient = havenaskClient;
+        this.searcherHttpClient = searcherHttpClient;
+        this.qrsHttpClient = qrsHttpClient;
         this.searcherClient = searcherClient;
         this.env = env;
         this.nativeProcessControlService = nativeProcessControlService;
@@ -224,7 +243,7 @@ public class HavenaskEngine extends InternalEngine {
         long timeout = 300000;
         while (timeout > 0) {
             try {
-                HeartbeatTargetResponse heartbeatTargetResponse = havenaskClient.getHeartbeatTarget();
+                HeartbeatTargetResponse heartbeatTargetResponse = searcherHttpClient.getHeartbeatTarget();
                 if (heartbeatTargetResponse.getCustomInfo() == null) {
                     throw new IOException("havenask get heartbeat target failed");
                 }
@@ -490,7 +509,44 @@ public class HavenaskEngine extends InternalEngine {
      */
     @Override
     public GetResult get(Get get, BiFunction<String, SearcherScope, Searcher> searcherFactory) throws EngineException {
-        throw new UnsupportedOperationException("havenask engine not support get operation");
+        try {
+            String sql = String.format(Locale.ROOT, "select _routing,_seq_no,_primary_term,_version,_source from %s_summary_ where _id='%s'", shardId.getIndexName(), get.id());
+            String kvpair = "format:full_json;timeout:10000;databaseName:" + SQL_DATABASE;
+            QrsSqlRequest request = new QrsSqlRequest(sql, kvpair);
+            QrsSqlResponse response = qrsHttpClient.executeSql(request);
+            JSONObject jsonObject = JSON.parseObject(response.getResult());
+            JSONObject sqlResult = jsonObject.getJSONObject("sql_result");
+            JSONArray datas = sqlResult.getJSONArray("data");
+            if (datas.size() == 0) {
+                return GetResult.NOT_EXISTS;
+            }
+
+            assert datas.size() == 1;
+            JSONArray row = datas.getJSONArray(0);
+            assert row.size() == 5;
+            String routing = row.getString(0);
+            routing = routing == null || routing.isEmpty() ? null : routing;
+            long seqNo = row.getLongValue(1);
+            long primaryTerm = row.getLongValue(2);
+            long version = row.getLongValue(3);
+            String source = row.getString(4);
+
+            Translog.Index operation = new Translog.Index(
+                get.type(),
+                get.id(),
+                seqNo,
+                primaryTerm,
+                version,
+                source.getBytes(StandardCharsets.UTF_8),
+                routing,
+                -1L
+            );
+            TranslogLeafReader reader = new TranslogLeafReader(operation);
+            DocIdAndVersion docIdAndVersion = new DocIdAndVersion(0, version, seqNo, primaryTerm, reader, 0);
+            return new GetResult(null, docIdAndVersion, false);
+        } catch (Exception e) {
+            throw new EngineException(shardId, e.getMessage());
+        }
     }
 
     /**
