@@ -21,7 +21,10 @@ import org.havenask.action.admin.cluster.health.ClusterHealthResponse;
 import org.havenask.action.admin.indices.delete.DeleteIndexRequest;
 import org.havenask.action.bulk.BulkRequest;
 import org.havenask.action.delete.DeleteRequest;
+import org.havenask.action.get.GetRequest;
+import org.havenask.action.get.GetResponse;
 import org.havenask.action.index.IndexRequest;
+import org.havenask.action.update.UpdateRequest;
 import org.havenask.client.RequestOptions;
 import org.havenask.client.ha.SqlClientInfoRequest;
 import org.havenask.client.ha.SqlClientInfoResponse;
@@ -181,6 +184,25 @@ public class BasicIT extends AbstractHavenaskRestTestCase {
             RequestOptions.DEFAULT
         );
 
+        // GET doc
+        GetResponse getResponse = highLevelClient().get(new GetRequest(index, "1"), RequestOptions.DEFAULT);
+        assertEquals(getResponse.isExists(), true);
+        assertEquals(getResponse.getSourceAsMap().get("seq"), 1);
+        assertEquals(getResponse.getSourceAsMap().get("content"), "欢迎使用1");
+        assertEquals(getResponse.getSourceAsMap().get("time"), "20230718");
+
+        GetResponse getResponse2 = highLevelClient().get(new GetRequest(index, "2"), RequestOptions.DEFAULT);
+        assertEquals(getResponse2.isExists(), true);
+        assertEquals(getResponse2.getSourceAsMap().get("seq"), 2);
+        assertEquals(getResponse2.getSourceAsMap().get("content"), "欢迎使用2");
+        assertEquals(getResponse2.getSourceAsMap().get("time"), "20230717");
+
+        GetResponse getResponse3 = highLevelClient().get(new GetRequest(index, "3"), RequestOptions.DEFAULT);
+        assertEquals(getResponse3.isExists(), true);
+        assertEquals(getResponse3.getSourceAsMap().get("seq"), 3);
+        assertEquals(getResponse3.getSourceAsMap().get("content"), "欢迎使用3");
+        assertEquals(getResponse3.getSourceAsMap().get("time"), "20230716");
+
         // POST doc
         highLevelClient().index(
             new IndexRequest(index).source(Map.of("seq", 4, "content", "欢迎使用4", "time", "20230715"), XContentType.JSON),
@@ -197,10 +219,41 @@ public class BasicIT extends AbstractHavenaskRestTestCase {
         assertEquals(sqlResponse.getSqlResult().getColumnName()[0], "COUNT(*)");
         assertEquals(sqlResponse.getSqlResult().getColumnType()[0], "int64");
 
+        // UPDATE doc
+        highLevelClient().update(
+            new UpdateRequest(index, "1").doc(Map.of("seq", 11, "content", "欢迎使用11", "time", "20230718"), XContentType.JSON),
+            RequestOptions.DEFAULT
+        );
+        highLevelClient().update(
+            new UpdateRequest(index, "2").doc(Map.of("seq", 12, "content", "欢迎使用12", "time", "20230717"), XContentType.JSON),
+            RequestOptions.DEFAULT
+        );
+
+        // GET doc check update
+        GetResponse getResponse11 = highLevelClient().get(new GetRequest(index, "1"), RequestOptions.DEFAULT);
+        assertEquals(getResponse11.isExists(), true);
+        assertEquals(getResponse11.getSourceAsMap().get("seq"), 11);
+        assertEquals(getResponse11.getSourceAsMap().get("content"), "欢迎使用11");
+        assertEquals(getResponse11.getSourceAsMap().get("time"), "20230718");
+
+        GetResponse getResponse12 = highLevelClient().get(new GetRequest(index, "2"), RequestOptions.DEFAULT);
+        assertEquals(getResponse12.isExists(), true);
+        assertEquals(getResponse12.getSourceAsMap().get("seq"), 12);
+        assertEquals(getResponse12.getSourceAsMap().get("content"), "欢迎使用12");
+        assertEquals(getResponse12.getSourceAsMap().get("time"), "20230717");
+
         // DELETE doc
         highLevelClient().delete(new DeleteRequest(index, "1"), RequestOptions.DEFAULT);
         highLevelClient().delete(new DeleteRequest(index, "2"), RequestOptions.DEFAULT);
         highLevelClient().delete(new DeleteRequest(index, "3"), RequestOptions.DEFAULT);
+
+        // GET doc not exists
+        GetResponse getResponse4 = highLevelClient().get(new GetRequest(index, "1"), RequestOptions.DEFAULT);
+        assertEquals(getResponse4.isExists(), false);
+        GetResponse getResponse5 = highLevelClient().get(new GetRequest(index, "2"), RequestOptions.DEFAULT);
+        assertEquals(getResponse5.isExists(), false);
+        GetResponse getResponse6 = highLevelClient().get(new GetRequest(index, "3"), RequestOptions.DEFAULT);
+        assertEquals(getResponse6.isExists(), false);
 
         // bulk doc
         BulkRequest bulkRequest = new BulkRequest();
