@@ -46,8 +46,10 @@ import org.havenask.engine.index.engine.EngineSettings;
 import org.havenask.engine.index.engine.HavenaskEngine;
 import org.havenask.engine.index.mapper.DenseVectorFieldMapper;
 import org.havenask.engine.rpc.HavenaskClient;
+import org.havenask.engine.rpc.QrsClient;
 import org.havenask.engine.rpc.SearcherClient;
 import org.havenask.engine.rpc.arpc.SearcherArpcClient;
+import org.havenask.engine.rpc.http.QrsHttpClient;
 import org.havenask.engine.rpc.http.SearcherHttpClient;
 import org.havenask.engine.search.action.HavenaskSqlAction;
 import org.havenask.engine.search.action.HavenaskSqlClientInfoAction;
@@ -95,6 +97,7 @@ public class HavenaskEnginePlugin extends Plugin
     private final SetOnce<NativeProcessControlService> nativeProcessControlServiceSetOnce = new SetOnce<>();
     private final SetOnce<CheckTargetService> checkTargetServiceSetOnce = new SetOnce<>();
     private final SetOnce<HavenaskClient> searcherClientSetOnce = new SetOnce<>();
+    private final SetOnce<QrsClient> qrsClientSetOnce = new SetOnce<>();
     private final SetOnce<SearcherClient> searcherArpcClientSetOnce = new SetOnce<>();
 
     public static final String HAVENASK_THREAD_POOL_NAME = "havenask";
@@ -133,6 +136,7 @@ public class HavenaskEnginePlugin extends Plugin
                 engineConfig -> new HavenaskEngine(
                     engineConfig,
                     searcherClientSetOnce.get(),
+                    qrsClientSetOnce.get(),
                     searcherArpcClientSetOnce.get(),
                     havenaskEngineEnvironmentSetOnce.get(),
                     nativeProcessControlServiceSetOnce.get()
@@ -166,8 +170,10 @@ public class HavenaskEnginePlugin extends Plugin
         );
         nativeProcessControlServiceSetOnce.set(nativeProcessControlService);
         HavenaskClient havenaskClient = new SearcherHttpClient(nativeProcessControlService.getSearcherHttpPort());
+        QrsClient qrsClient = new QrsHttpClient(nativeProcessControlService.getQrsHttpPort());
         SearcherClient searcherClient = new SearcherArpcClient(nativeProcessControlService.getSearcherTcpPort());
         searcherClientSetOnce.set(havenaskClient);
+        qrsClientSetOnce.set(qrsClient);
         searcherArpcClientSetOnce.set(searcherClient);
         CheckTargetService checkTargetService = new CheckTargetService(
             clusterService,
