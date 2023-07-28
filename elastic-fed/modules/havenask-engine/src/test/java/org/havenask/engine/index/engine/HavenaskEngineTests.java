@@ -22,8 +22,11 @@ import com.carrotsearch.randomizedtesting.annotations.ThreadLeakFilters;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.havenask.action.bulk.BackoffPolicy;
+import org.havenask.common.bytes.BytesReference;
 import org.havenask.common.settings.Settings;
 import org.havenask.common.unit.TimeValue;
+import org.havenask.common.xcontent.XContentBuilder;
+import org.havenask.common.xcontent.XContentType;
 import org.havenask.engine.rpc.SearcherClient;
 import org.havenask.engine.rpc.WriteRequest;
 import org.havenask.engine.rpc.WriteResponse;
@@ -55,6 +58,55 @@ public class HavenaskEngineTests extends EngineTestCase {
         assertEquals(haDoc.get("_routing"), "routing");
         assertEquals(haDoc.get("_source"), "{ \"value\" : \"test\" }");
         assertEquals(haDoc.get("value"), "test");
+    }
+
+    // test toHaIndex with multi XContentType in _source
+    public void testMultiXContentTypeToHaIndex() throws IOException {
+        XContentBuilder builder = XContentBuilder.builder(XContentType.SMILE.xContent());
+        builder.startObject();
+        builder.field("value", "test");
+        builder.endObject();
+        builder.close();
+        BytesReference binaryVal = BytesReference.bytes(builder);
+        ParsedDocument parsedDocument = createParsedDoc("id", "routing", binaryVal, XContentType.SMILE);
+        Map<String, String> haDoc = toHaIndex(parsedDocument);
+        assertEquals(haDoc.get("_seq_no"), "-2");
+        assertEquals(haDoc.get("_primary_term"), "0");
+        assertEquals(haDoc.get("_version"), "0");
+        assertEquals(haDoc.get("_id").trim(), "id");
+        assertEquals(haDoc.get("_routing"), "routing");
+        assertEquals(haDoc.get("_source"), "{\"value\":\"test\"}");
+        assertEquals(haDoc.get("value"), "test");
+
+        builder = XContentBuilder.builder(XContentType.CBOR.xContent());
+        builder.startObject();
+        builder.field("value", "test");
+        builder.endObject();
+        builder.close();
+        binaryVal = BytesReference.bytes(builder);
+        parsedDocument = createParsedDoc("id", "routing", binaryVal, XContentType.CBOR);
+        haDoc = toHaIndex(parsedDocument);
+        assertEquals(haDoc.get("_source"), "{\"value\":\"test\"}");
+
+        builder = XContentBuilder.builder(XContentType.JSON.xContent());
+        builder.startObject();
+        builder.field("value", "test");
+        builder.endObject();
+        builder.close();
+        binaryVal = BytesReference.bytes(builder);
+        parsedDocument = createParsedDoc("id", "routing", binaryVal, XContentType.JSON);
+        haDoc = toHaIndex(parsedDocument);
+        assertEquals(haDoc.get("_source"), "{\"value\":\"test\"}");
+
+        builder = XContentBuilder.builder(XContentType.YAML.xContent());
+        builder.startObject();
+        builder.field("value", "test");
+        builder.endObject();
+        builder.close();
+        binaryVal = BytesReference.bytes(builder);
+        parsedDocument = createParsedDoc("id", "routing", binaryVal, XContentType.YAML);
+        haDoc = toHaIndex(parsedDocument);
+        assertEquals(haDoc.get("_source"), "{\"value\":\"test\"}");
     }
 
     // test toHaIndex routing is null
