@@ -43,7 +43,7 @@ import static org.havenask.engine.index.config.generator.BizConfigGenerator.SCHE
 public class BizConfigGeneratorTests extends MapperServiceTestCase {
     @Override
     protected Collection<? extends Plugin> getPlugins() {
-        return singletonList(new HavenaskEnginePlugin());
+        return singletonList(new HavenaskEnginePlugin(Settings.EMPTY));
     }
 
     public void testBasic() throws IOException {

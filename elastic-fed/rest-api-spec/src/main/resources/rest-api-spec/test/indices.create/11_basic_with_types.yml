@@ -49,7 +49,6 @@
 
   - do:
       indices.create:
-        include_type_name: true
         index: test_index
         wait_for_active_shards: all
         body:

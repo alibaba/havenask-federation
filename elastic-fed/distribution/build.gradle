@@ -239,6 +239,9 @@ project.rootProject.subprojects.findAll { it.parent.path == ':modules' }.each { 
   if (module.name.startsWith('transport-')) {
     copyModule(processTransportOutputsTaskProvider, module)
   }
+  if (module.name.equals('havenask-engine')) {
+    copyModule(processTransportOutputsTaskProvider, module)
+  }
 
   copyLog4jProperties(buildLog4jConfigTaskProvider, module)
 

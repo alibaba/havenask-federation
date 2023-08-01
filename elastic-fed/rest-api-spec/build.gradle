@@ -37,5 +37,23 @@ testClusters.all {
   module ':modules:mapper-extras'
 }
 
+yamlRestTest {
+  if (System.getProperty("tests.engine") == "havenask") {
+    systemProperty 'tests.rest.whitelist', [
+            'indices.create/*/*'
+    ].join(",")
+  }
+}
+
+testClusters.yamlRestTest {
+  if (System.getProperty("tests.engine") == "havenask") {
+    setting 'network.host', '0.0.0.0'
+    setting 'discovery.type', 'single-node'
+    setting 'havenask.engine.enabled', 'true'
+    setting 'havenask.engine.set_default_engine', 'true'
+  }
+}
+
+
 test.enabled = false
 jarHell.enabled = false

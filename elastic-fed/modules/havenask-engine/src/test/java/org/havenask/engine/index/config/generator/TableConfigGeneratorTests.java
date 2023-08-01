@@ -38,7 +38,7 @@ import static org.havenask.engine.index.config.generator.TableConfigGenerator.TA
 public class TableConfigGeneratorTests extends MapperServiceTestCase {
     @Override
     protected Collection<? extends Plugin> getPlugins() {
-        return singletonList(new HavenaskEnginePlugin());
+        return singletonList(new HavenaskEnginePlugin(Settings.EMPTY));
     }
 
     public void testBasic() throws IOException {

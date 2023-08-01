@@ -45,7 +45,7 @@ public class SchemaGeneratorTests extends MapperServiceTestCase {
 
     @Override
     protected Collection<? extends Plugin> getPlugins() {
-        return singletonList(new HavenaskEnginePlugin());
+        return singletonList(new HavenaskEnginePlugin(Settings.EMPTY));
     }
 
     private String indexName = randomAlphaOfLength(5);

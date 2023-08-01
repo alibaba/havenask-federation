@@ -99,6 +99,13 @@ public abstract class HavenaskClientYamlSuiteTestCase extends HavenaskRestTestCa
      * e.g. "-Dtests.rest.blacklist=get/10_basic/*"
      */
     public static final String REST_TESTS_BLACKLIST = "tests.rest.blacklist";
+
+    /**
+     * Property that allows to whitelist some of the REST tests based on a comma separated list of globs
+     * e.g. "-Dtests.rest.whitelist=get/10_basic/*"
+     */
+    public static final String REST_TESTS_WHITELIST = "tests.rest.whitelist";
+
     /**
      * We use tests.rest.blacklist in build files to blacklist tests; this property enables a user to add additional blacklisted tests on
      * top of the tests blacklisted in the build.
@@ -124,6 +131,7 @@ public abstract class HavenaskClientYamlSuiteTestCase extends HavenaskRestTestCa
     private static final String PATHS_SEPARATOR = "(?<!\\\\),";
 
     private static List<BlacklistedPathPatternMatcher> blacklistPathMatchers;
+    private static List<BlacklistedPathPatternMatcher> whitelistPathMatchers;
     private static ClientYamlTestExecutionContext restTestExecutionContext;
     private static ClientYamlTestExecutionContext adminExecutionContext;
     private static ClientYamlTestClient clientYamlTestClient;
@@ -165,10 +173,17 @@ public abstract class HavenaskClientYamlSuiteTestCase extends HavenaskRestTestCa
             for (final String entry : blacklistAdditions) {
                 blacklistPathMatchers.add(new BlacklistedPathPatternMatcher(entry));
             }
+            final String[] whitelist = resolvePathsProperty(REST_TESTS_WHITELIST, null);
+            logger.info("whitelisted tests: {}", Arrays.toString(whitelist));
+            whitelistPathMatchers = new ArrayList<>();
+            for (final String entry : whitelist) {
+                whitelistPathMatchers.add(new BlacklistedPathPatternMatcher(entry));
+            }
         }
         assert restTestExecutionContext != null;
         assert adminExecutionContext != null;
         assert blacklistPathMatchers != null;
+        assert whitelistPathMatchers != null;
 
         // admin context must be available for @After always, regardless of whether the test was blacklisted
         adminExecutionContext.clear();
@@ -191,6 +206,7 @@ public abstract class HavenaskClientYamlSuiteTestCase extends HavenaskRestTestCa
             IOUtils.close(clientYamlTestClient);
         } finally {
             blacklistPathMatchers = null;
+            whitelistPathMatchers = null;
             restTestExecutionContext = null;
             adminExecutionContext = null;
             clientYamlTestClient = null;
@@ -365,6 +381,16 @@ public abstract class HavenaskClientYamlSuiteTestCase extends HavenaskRestTestCa
             assumeFalse("[" + testCandidate.getTestPath() + "] skipped, reason: blacklisted", blacklistedPathMatcher
                 .isSuffixMatch(testPath));
         }
+        // skip test if it matches one of the whitelist globs
+        boolean whitelisted = false;
+        for (BlacklistedPathPatternMatcher whitelistedPathMatcher : whitelistPathMatchers) {
+            String testPath = testCandidate.getSuitePath() + "/" + testCandidate.getTestSection().getName();
+            if (whitelistedPathMatcher.isSuffixMatch(testPath)) {
+                whitelisted = true;
+                break;
+            }
+        }
+        assumeTrue("[" + testCandidate.getTestPath() + "] skipped, reason: not whitelisted", whitelisted);
 
         //skip test if the whole suite (yaml file) is disabled
         assumeFalse(testCandidate.getSetupSection().getSkipSection().getSkipMessage(testCandidate.getSuitePath()),

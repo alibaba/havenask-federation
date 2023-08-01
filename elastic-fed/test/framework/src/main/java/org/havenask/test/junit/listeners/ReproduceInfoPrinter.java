@@ -197,7 +197,7 @@ public class ReproduceInfoPrinter extends RunListener {
 
         public ReproduceErrorMessageBuilder appendClientYamlSuiteProperties() {
             return appendProperties(HavenaskClientYamlSuiteTestCase.REST_TESTS_SUITE,
-                HavenaskClientYamlSuiteTestCase.REST_TESTS_BLACKLIST);
+                HavenaskClientYamlSuiteTestCase.REST_TESTS_BLACKLIST, HavenaskClientYamlSuiteTestCase.REST_TESTS_WHITELIST);
         }
 
         protected ReproduceErrorMessageBuilder appendProperties(String... properties) {

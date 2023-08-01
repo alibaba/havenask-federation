@@ -20,15 +20,25 @@ import org.havenask.engine.index.engine.EngineSettings;
 import org.havenask.index.shard.IndexSettingProvider;
 
 import static org.havenask.cluster.metadata.IndexMetadata.SETTING_NUMBER_OF_REPLICAS;
+import static org.havenask.engine.HavenaskEnginePlugin.HAVENASK_SET_DEFAULT_ENGINE_SETTING;
 import static org.havenask.index.IndexSettings.INDEX_REFRESH_INTERVAL_SETTING;
 
 public class HavenaskIndexSettingProvider implements IndexSettingProvider {
     private static final String DEFAULT_REFRESH_INTERVAL = "5s";
     private static final TimeValue MAX_REFRESH_INTERVAL = TimeValue.timeValueMinutes(5);
+    private final boolean defaultHavenaskEngine;
+
+    public HavenaskIndexSettingProvider(Settings clusterSettings) {
+        this.defaultHavenaskEngine = HAVENASK_SET_DEFAULT_ENGINE_SETTING.get(clusterSettings);
+    }
 
     public Settings getAdditionalIndexSettings(String indexName, boolean isDataStreamIndex, Settings templateAndRequestSettings) {
-        if (EngineSettings.isHavenaskEngine(templateAndRequestSettings)) {
-            Settings.Builder builder = Settings.builder();
+        Settings.Builder builder = Settings.builder();
+        if (defaultHavenaskEngine) {
+            builder.put(EngineSettings.ENGINE_TYPE_SETTING.getKey(), EngineSettings.ENGINE_HAVENASK);
+        }
+
+        if (defaultHavenaskEngine || EngineSettings.isHavenaskEngine(templateAndRequestSettings)) {
             int replica = templateAndRequestSettings.getAsInt(SETTING_NUMBER_OF_REPLICAS, 0);
             if (replica != 0) {
                 throw new IllegalArgumentException("havenask engine only support 0 replica");
