@@ -19,6 +19,7 @@ import java.util.Arrays;
 import java.util.Collection;
 
 import org.apache.lucene.index.IndexableField;
+import org.havenask.common.settings.Settings;
 import org.havenask.common.xcontent.XContentBuilder;
 import org.havenask.engine.HavenaskEnginePlugin;
 import org.havenask.engine.index.mapper.DenseVectorFieldMapper.DenseVectorFieldType;
@@ -38,7 +39,7 @@ public class DenseVectorFieldMapperTests extends MapperTestCase {
 
     @Override
     protected Collection<? extends Plugin> getPlugins() {
-        return singletonList(new HavenaskEnginePlugin());
+        return singletonList(new HavenaskEnginePlugin(Settings.EMPTY));
     }
 
     @Override

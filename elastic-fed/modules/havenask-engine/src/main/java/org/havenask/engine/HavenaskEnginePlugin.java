@@ -99,6 +99,7 @@ public class HavenaskEnginePlugin extends Plugin
     private final SetOnce<HavenaskClient> searcherClientSetOnce = new SetOnce<>();
     private final SetOnce<QrsClient> qrsClientSetOnce = new SetOnce<>();
     private final SetOnce<SearcherClient> searcherArpcClientSetOnce = new SetOnce<>();
+    private final Settings settings;
 
     public static final String HAVENASK_THREAD_POOL_NAME = "havenask";
     public static final Setting<Boolean> HAVENASK_ENGINE_ENABLED_SETTING = Setting.boolSetting(
@@ -128,6 +129,40 @@ public class HavenaskEnginePlugin extends Plugin
         Property.NodeScope,
         Setting.Property.Final
     );
+
+    public static final Setting<Boolean> HAVENASK_SET_DEFAULT_ENGINE_SETTING = Setting.boolSetting(
+        "havenask.engine.set_default_engine",
+        false,
+        new Setting.Validator<>() {
+            @Override
+            public void validate(Boolean value) {}
+
+            @Override
+            public void validate(Boolean value, Map<Setting<?>, Object> settings) {
+                // HAVENASK_ENGINE_ENABLED_SETTING must be true when havenask engine is enabled
+                if (value) {
+                    Boolean engineEnabled = (Boolean) settings.get(HAVENASK_ENGINE_ENABLED_SETTING);
+                    if (false == engineEnabled) {
+                        throw new IllegalArgumentException(
+                            "havenask engine can only be set as default engine when havenask engine is enabled"
+                        );
+                    }
+                }
+            }
+
+            @Override
+            public Iterator<Setting<?>> settings() {
+                List<Setting<?>> settings = List.of(HAVENASK_ENGINE_ENABLED_SETTING);
+                return settings.iterator();
+            }
+        },
+        Property.NodeScope,
+        Setting.Property.Final
+    );
+
+    public HavenaskEnginePlugin(Settings settings) {
+        this.settings = settings;
+    }
 
     @Override
     public Optional<EngineFactory> getEngineFactory(IndexSettings indexSettings) {
@@ -195,6 +230,7 @@ public class HavenaskEnginePlugin extends Plugin
     public List<Setting<?>> getSettings() {
         return Arrays.asList(
             HAVENASK_ENGINE_ENABLED_SETTING,
+            HAVENASK_SET_DEFAULT_ENGINE_SETTING,
             HavenaskEngineEnvironment.HAVENASK_PATH_DATA_SETTING,
             EngineSettings.ENGINE_TYPE_SETTING,
             EngineSettings.HA3_FLOAT_MUL_BY10,
@@ -235,7 +271,7 @@ public class HavenaskEnginePlugin extends Plugin
 
     @Override
     public Collection<IndexSettingProvider> getAdditionalIndexSettingProviders() {
-        return Arrays.asList(new HavenaskIndexSettingProvider());
+        return Arrays.asList(new HavenaskIndexSettingProvider(settings));
     }
 
     @Override
