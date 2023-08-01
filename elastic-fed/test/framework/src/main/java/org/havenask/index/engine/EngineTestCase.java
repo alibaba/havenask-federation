@@ -333,28 +333,23 @@ public abstract class EngineTestCase extends HavenaskTestCase {
     }
 
     public static ParsedDocument createParsedDoc(String id, String routing, BytesReference source, XContentType xContentType) {
-        Field uidField = new Field("_id", Uid.encodeId(id), IdFieldMapper.Defaults.FIELD_TYPE);
-        Field versionField = new NumericDocValuesField("_version", 0);
-        SeqNoFieldMapper.SequenceIDFields seqID = SeqNoFieldMapper.SequenceIDFields.emptySeqID();
-        ParseContext.Document document = testDocumentWithTextField();
-        document.add(uidField);
-        document.add(versionField);
-        document.add(seqID.seqNo);
-        document.add(seqID.seqNoDocValue);
-        document.add(seqID.primaryTerm);
-        BytesRef ref = source.toBytesRef();
-        document.add(new StoredField(SourceFieldMapper.NAME, ref.bytes, ref.offset, ref.length));
-        return new ParsedDocument(versionField, seqID, id, "test", routing, Arrays.asList(document), source, xContentType,
-                null);
+        return testParsedDocument(id, routing, testDocumentWithTextField(), source, null,
+            false, xContentType);
     }
 
     protected static ParsedDocument testParsedDocument(
             String id, String routing, ParseContext.Document document, BytesReference source, Mapping mappingUpdate) {
-        return testParsedDocument(id, routing, document, source, mappingUpdate, false);
+        return testParsedDocument(id, routing, document, source, mappingUpdate, false, XContentType.JSON);
     }
+
+    protected static ParsedDocument testParsedDocument(
+            String id, String routing, ParseContext.Document document, BytesReference source, Mapping mappingUpdate, boolean recoverySource) {
+        return testParsedDocument(id, routing, document, source, mappingUpdate, recoverySource, XContentType.JSON);
+    }
+
     protected static ParsedDocument testParsedDocument(
             String id, String routing, ParseContext.Document document, BytesReference source, Mapping mappingUpdate,
-            boolean recoverySource) {
+            boolean recoverySource, XContentType xContentType) {
         Field uidField = new Field("_id", Uid.encodeId(id), IdFieldMapper.Defaults.FIELD_TYPE);
         Field versionField = new NumericDocValuesField("_version", 0);
         SeqNoFieldMapper.SequenceIDFields seqID = SeqNoFieldMapper.SequenceIDFields.emptySeqID();
@@ -370,7 +365,7 @@ public abstract class EngineTestCase extends HavenaskTestCase {
         } else {
             document.add(new StoredField(SourceFieldMapper.NAME, ref.bytes, ref.offset, ref.length));
         }
-        return new ParsedDocument(versionField, seqID, id, "test", routing, Arrays.asList(document), source, XContentType.JSON,
+        return new ParsedDocument(versionField, seqID, id, "test", routing, Arrays.asList(document), source, xContentType,
                 mappingUpdate);
     }
 
