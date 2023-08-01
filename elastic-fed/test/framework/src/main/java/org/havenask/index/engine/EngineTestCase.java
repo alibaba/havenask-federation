@@ -332,13 +332,25 @@ public abstract class EngineTestCase extends HavenaskTestCase {
             recoverySource);
     }
 
+    public static ParsedDocument createParsedDoc(String id, String routing, BytesReference source, XContentType xContentType) {
+        return testParsedDocument(id, routing, testDocumentWithTextField(), source, null,
+            false, xContentType);
+    }
+
     protected static ParsedDocument testParsedDocument(
             String id, String routing, ParseContext.Document document, BytesReference source, Mapping mappingUpdate) {
-        return testParsedDocument(id, routing, document, source, mappingUpdate, false);
+        return testParsedDocument(id, routing, document, source, mappingUpdate, false, XContentType.JSON);
     }
+
     protected static ParsedDocument testParsedDocument(
             String id, String routing, ParseContext.Document document, BytesReference source, Mapping mappingUpdate,
             boolean recoverySource) {
+        return testParsedDocument(id, routing, document, source, mappingUpdate, recoverySource, XContentType.JSON);
+    }
+
+    protected static ParsedDocument testParsedDocument(
+            String id, String routing, ParseContext.Document document, BytesReference source, Mapping mappingUpdate,
+            boolean recoverySource, XContentType xContentType) {
         Field uidField = new Field("_id", Uid.encodeId(id), IdFieldMapper.Defaults.FIELD_TYPE);
         Field versionField = new NumericDocValuesField("_version", 0);
         SeqNoFieldMapper.SequenceIDFields seqID = SeqNoFieldMapper.SequenceIDFields.emptySeqID();
@@ -354,7 +366,7 @@ public abstract class EngineTestCase extends HavenaskTestCase {
         } else {
             document.add(new StoredField(SourceFieldMapper.NAME, ref.bytes, ref.offset, ref.length));
         }
-        return new ParsedDocument(versionField, seqID, id, "test", routing, Arrays.asList(document), source, XContentType.JSON,
+        return new ParsedDocument(versionField, seqID, id, "test", routing, Arrays.asList(document), source, xContentType,
                 mappingUpdate);
     }
 
