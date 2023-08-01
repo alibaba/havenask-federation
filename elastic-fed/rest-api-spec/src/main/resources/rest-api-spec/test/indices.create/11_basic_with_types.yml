@@ -7,14 +7,14 @@
         index: test_index
         body:
           mappings:
-            type_1: {}
+            _doc: {}
 
   - do:
       indices.get_mapping:
         include_type_name: true
         index: test_index
 
-  - is_true: test_index.mappings.type_1
+  - is_true: test_index.mappings._doc
 
 ---
 "Create index with settings":
@@ -51,6 +51,7 @@
       indices.create:
         index: test_index
         wait_for_active_shards: all
+        timeout: 2m
         body:
           settings:
             number_of_replicas: "0"
