@@ -137,10 +137,12 @@ public class HavenaskIndexSettingProviderTests extends HavenaskTestCase {
 
     // test default havenask engine
     public void testGetAdditionalIndexSettingsWithDefaultHavenaskEngine() {
-        HavenaskIndexSettingProvider provider = new HavenaskIndexSettingProvider(Settings.builder()
-            .put(HAVENASK_ENGINE_ENABLED_SETTING.getKey(), true)
-            .put(HAVENASK_SET_DEFAULT_ENGINE_SETTING.getKey(), true)
-            .build());
+        HavenaskIndexSettingProvider provider = new HavenaskIndexSettingProvider(
+            Settings.builder()
+                .put(HAVENASK_ENGINE_ENABLED_SETTING.getKey(), true)
+                .put(HAVENASK_SET_DEFAULT_ENGINE_SETTING.getKey(), true)
+                .build()
+        );
         Settings settings = provider.getAdditionalIndexSettings("test", false, Settings.builder().build());
         String engine = settings.get(EngineSettings.ENGINE_TYPE_SETTING.getKey());
         assertEquals(EngineSettings.ENGINE_HAVENASK, engine);

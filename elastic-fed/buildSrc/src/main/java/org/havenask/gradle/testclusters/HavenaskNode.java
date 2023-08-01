@@ -1343,7 +1343,6 @@ public class HavenaskNode implements TestClusterConfiguration {
         });
     }
 
-
     private void tweakJvmOptions(Path configFileRoot) {
         LOGGER.info("Tweak jvm options {}.", configFileRoot.resolve("jvm.options"));
         Path jvmOptions = configFileRoot.resolve("jvm.options");

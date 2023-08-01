@@ -143,7 +143,9 @@ public class HavenaskEnginePlugin extends Plugin
                 if (value) {
                     Boolean engineEnabled = (Boolean) settings.get(HAVENASK_ENGINE_ENABLED_SETTING);
                     if (false == engineEnabled) {
-                        throw new IllegalArgumentException("havenask engine can only be set as default engine when havenask engine is enabled");
+                        throw new IllegalArgumentException(
+                            "havenask engine can only be set as default engine when havenask engine is enabled"
+                        );
                     }
                 }
             }
