@@ -343,7 +343,8 @@ public abstract class EngineTestCase extends HavenaskTestCase {
     }
 
     protected static ParsedDocument testParsedDocument(
-            String id, String routing, ParseContext.Document document, BytesReference source, Mapping mappingUpdate, boolean recoverySource) {
+            String id, String routing, ParseContext.Document document, BytesReference source, Mapping mappingUpdate,
+            boolean recoverySource) {
         return testParsedDocument(id, routing, document, source, mappingUpdate, recoverySource, XContentType.JSON);
     }
 
