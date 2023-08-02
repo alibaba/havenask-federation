@@ -155,8 +155,11 @@ test {
 }
 
 internalClusterTest {
-  maxParallelForks = '1'
   systemProperty 'tests.security.manager', 'false'
+}
+
+tasks.withType(Test) {
+  maxParallelForks = 1
 }
 
 tasks.named("processResources") {
