@@ -67,6 +67,7 @@ import org.havenask.engine.rpc.QrsClient;
 import org.havenask.engine.rpc.QrsSqlRequest;
 import org.havenask.engine.rpc.QrsSqlResponse;
 import org.havenask.engine.rpc.SearcherClient;
+import org.havenask.engine.rpc.SqlClientInfoResponse;
 import org.havenask.engine.rpc.TargetInfo;
 import org.havenask.engine.rpc.WriteRequest;
 import org.havenask.engine.rpc.WriteResponse;
@@ -243,22 +244,28 @@ public class HavenaskEngine extends InternalEngine {
         long timeout = 600000;
         while (timeout > 0) {
             try {
-                Thread.sleep(10000);
+                Thread.sleep(5000);
                 HeartbeatTargetResponse heartbeatTargetResponse = searcherHttpClient.getHeartbeatTarget();
                 if (heartbeatTargetResponse.getCustomInfo() == null) {
                     throw new IOException("havenask get heartbeat target failed");
                 }
                 TargetInfo targetInfo = heartbeatTargetResponse.getCustomInfo();
                 if (false == targetInfo.table_info.containsKey(shardId.getIndexName())) {
-                    throw new IOException("havenask table not found");
+                    throw new IOException("havenask table not found in searcher");
                 }
 
-                // TODO check table status
-                // qrsHttpClient.executeSqlClientInfo();
+                SqlClientInfoResponse sqlClientInfoResponse = qrsHttpClient.executeSqlClientInfo();
+                if (sqlClientInfoResponse.getErrorCode() != 0) {
+                    throw new IOException("havenask execute sql client info failed");
+                }
+
+                if (sqlClientInfoResponse.getResult().getJSONObject("default").getJSONObject("general").getJSONObject("tables").containsKey(shardId.getIndexName())) {
+                    throw new IOException("havenask table not found in qrs");
+                }
                 return;
             } catch (Exception e) {
                 logger.info(() -> new ParameterizedMessage("shard [{}] checkTableStatus exception", engineConfig.getShardId()), e);
-                timeout -= 10000;
+                timeout -= 5000;
             }
         }
 
