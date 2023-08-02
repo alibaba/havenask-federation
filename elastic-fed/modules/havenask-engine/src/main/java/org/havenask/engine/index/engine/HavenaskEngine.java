@@ -160,7 +160,7 @@ public class HavenaskEngine extends InternalEngine {
         // 加载配置表
         try {
             activeTable();
-            // checkTableStatus();
+            checkTableStatus();
         } catch (IOException e) {
             logger.error(() -> new ParameterizedMessage("shard [{}] activeTable exception", engineConfig.getShardId()), e);
             failEngine("active havenask table failed", e);
@@ -235,14 +235,15 @@ public class HavenaskEngine extends InternalEngine {
             engineConfig.getIndexSettings().getSettings()
         );
         // 更新配置表信息
-        nativeProcessControlService.updateDataNodeTarget();
-        nativeProcessControlService.updateIngestNodeTarget();
+        nativeProcessControlService.updateDataNodeTargetAsync();
+        nativeProcessControlService.updateDataNodeTargetAsync();
     }
 
     private void checkTableStatus() throws IOException {
-        long timeout = 300000;
+        long timeout = 600000;
         while (timeout > 0) {
             try {
+                Thread.sleep(10000);
                 HeartbeatTargetResponse heartbeatTargetResponse = searcherHttpClient.getHeartbeatTarget();
                 if (heartbeatTargetResponse.getCustomInfo() == null) {
                     throw new IOException("havenask get heartbeat target failed");
@@ -253,15 +254,11 @@ public class HavenaskEngine extends InternalEngine {
                 }
 
                 // TODO check table status
+                // qrsHttpClient.executeSqlClientInfo();
                 return;
             } catch (Exception e) {
                 logger.info(() -> new ParameterizedMessage("shard [{}] checkTableStatus exception", engineConfig.getShardId()), e);
-                timeout -= 5000;
-                try {
-                    Thread.sleep(5000);
-                } catch (InterruptedException interruptedException) {
-                    Thread.currentThread().interrupt();
-                }
+                timeout -= 10000;
             }
         }
 
