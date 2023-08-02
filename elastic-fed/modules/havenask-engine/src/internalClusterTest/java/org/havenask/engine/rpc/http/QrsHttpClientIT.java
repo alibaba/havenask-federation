@@ -23,6 +23,7 @@ import org.havenask.engine.rpc.HeartbeatTargetResponse;
 import org.havenask.engine.rpc.QrsClient;
 import org.havenask.engine.rpc.QrsSqlRequest;
 import org.havenask.engine.rpc.QrsSqlResponse;
+import org.havenask.engine.rpc.SqlClientInfoResponse;
 import org.havenask.engine.rpc.TargetInfo;
 import org.havenask.engine.rpc.UpdateHeartbeatTargetRequest;
 
@@ -42,8 +43,13 @@ public class QrsHttpClientIT extends HavenaskITTestCase {
 
     public void testSqlClientInfo() throws IOException {
         QrsClient client = new QrsHttpClient(49200);
-        String result = client.executeSqlClientInfo();
-        assertThat(result, containsString("error_message"));
+        SqlClientInfoResponse response = client.executeSqlClientInfo();
+        if (response.getErrorCode() != 0) {
+            assertEquals(response.getErrorCode(), 400);
+            assertThat(response.getErrorMessage(), containsString("execute failed"));
+        } else {
+            assertThat(response.getResult().toString(), containsString("default"));
+        }
     }
 
     public void testGetHeartbeatTarget() throws IOException {

@@ -15,7 +15,8 @@
 package org.havenask.engine.search.action;
 
 import java.io.IOException;
-import java.util.Map;
+
+import com.alibaba.fastjson.JSONObject;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -25,10 +26,9 @@ import org.havenask.action.support.ActionFilters;
 import org.havenask.action.support.HandledTransportAction;
 import org.havenask.cluster.service.ClusterService;
 import org.havenask.common.inject.Inject;
-import org.havenask.common.xcontent.XContentHelper;
-import org.havenask.common.xcontent.json.JsonXContent;
 import org.havenask.engine.NativeProcessControlService;
 import org.havenask.engine.rpc.QrsClient;
+import org.havenask.engine.rpc.SqlClientInfoResponse;
 import org.havenask.engine.rpc.http.QrsHttpClient;
 import org.havenask.engine.search.action.HavenaskSqlClientInfoAction.Request;
 import org.havenask.engine.search.action.HavenaskSqlClientInfoAction.Response;
@@ -66,34 +66,23 @@ public class TransportHavenaskSqlClientInfoAction extends HandledTransportAction
         }
 
         try {
-            String response = qrsClient.executeSqlClientInfo();
-            Map<String, Object> responseMap = XContentHelper.convertToMap(JsonXContent.jsonXContent, response, false);
-            int errorCode = -1;
-            String errorMessage = "execute sql client info api failed";
-            Map<String, Object> result = null;
-            if (responseMap.containsKey("error_code")) {
-                errorCode = (int) responseMap.get("error_code");
-            }
-            if (responseMap.containsKey("error_message")) {
-                errorMessage = (String) responseMap.get("error_message");
-            }
-            if (responseMap.containsKey("result")) {
-                result = (Map<String, Object>) responseMap.get("result");
-            }
-            if (request == null || errorCode != 0) {
-                listener.onResponse(new HavenaskSqlClientInfoAction.Response(errorMessage, errorCode));
+            SqlClientInfoResponse response = qrsClient.executeSqlClientInfo();
+            if (response.getErrorCode() != 0) {
+                listener.onResponse(new HavenaskSqlClientInfoAction.Response(response.getErrorMessage(), response.getErrorCode()));
                 return;
             }
 
-            // get default general tables
-            if ((result).get("default") != null
-                && ((Map<String, Object>) (result.get("default"))).get("general") != null
-                && ((Map<String, Object>) ((Map<String, Object>) result.get("default")).get("general")).get("tables") != null) {
-                Map<String, Object> defaultGeneralTables = (Map<String, Object>) ((Map<String, Object>) ((Map<String, Object>) result.get(
-                    "default"
-                )).get("general")).get("tables");
-                defaultGeneralTables.remove("in0");
-                defaultGeneralTables.remove("in0_summary_");
+            JSONObject result = response.getResult();
+            if (result.containsKey("default")) {
+                JSONObject defaultJson = result.getJSONObject("default");
+                if (defaultJson.containsKey("general")) {
+                    JSONObject generalJson = defaultJson.getJSONObject("general");
+                    if (generalJson.containsKey("tables")) {
+                        JSONObject tablesJson = generalJson.getJSONObject("tables");
+                        tablesJson.remove("in0");
+                        tablesJson.remove("in0_summary_");
+                    }
+                }
             }
             listener.onResponse(new HavenaskSqlClientInfoAction.Response(result));
         } catch (IOException e) {

@@ -16,6 +16,8 @@ package org.havenask.engine.rpc.http;
 
 import java.io.IOException;
 
+import com.alibaba.fastjson.JSONObject;
+
 import okhttp3.HttpUrl;
 import okhttp3.Request;
 import okhttp3.Response;
@@ -24,6 +26,7 @@ import org.apache.logging.log4j.Logger;
 import org.havenask.engine.rpc.QrsClient;
 import org.havenask.engine.rpc.QrsSqlRequest;
 import org.havenask.engine.rpc.QrsSqlResponse;
+import org.havenask.engine.rpc.SqlClientInfoResponse;
 
 public class QrsHttpClient extends HavenaskHttpClient implements QrsClient {
     private static final Logger logger = LogManager.getLogger(QrsHttpClient.class);
@@ -50,11 +53,28 @@ public class QrsHttpClient extends HavenaskHttpClient implements QrsClient {
     }
 
     @Override
-    public String executeSqlClientInfo() throws IOException {
+    public SqlClientInfoResponse executeSqlClientInfo() throws IOException {
         HttpUrl.Builder urlBuilder = HttpUrl.parse(url + SQL_TABLE_INFO_URL).newBuilder();
         String url = urlBuilder.build().toString();
         Request request = new Request.Builder().url(url).build();
         Response response = client.newCall(request).execute();
-        return response.body().string();
+        String responseStr = response.body().string();
+        JSONObject jsonObject = JSONObject.parseObject(responseStr);
+        int errorCode = -1;
+        String errorMessage = "execute sql client info api failed";
+        JSONObject result = null;
+        if (jsonObject.containsKey("error_code")) {
+            errorCode = (int) jsonObject.get("error_code");
+        }
+        if (jsonObject.containsKey("error_message")) {
+            errorMessage = (String) jsonObject.get("error_message");
+        }
+        if (jsonObject.containsKey("result")) {
+            result = jsonObject.getJSONObject("result");
+        }
+        if (errorCode != 0) {
+            return new SqlClientInfoResponse(errorMessage, errorCode);
+        }
+        return new SqlClientInfoResponse(result);
     }
 }
