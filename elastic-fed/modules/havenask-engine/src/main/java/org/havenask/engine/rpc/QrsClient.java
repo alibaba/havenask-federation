@@ -33,5 +33,5 @@ public interface QrsClient extends HavenaskClient {
      * @return havenask sql client info response
      * @throws IOException TODO
      */
-    String executeSqlClientInfo() throws IOException;
+    SqlClientInfoResponse executeSqlClientInfo() throws IOException;
 }
