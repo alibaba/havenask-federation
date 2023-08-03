@@ -241,7 +241,7 @@ public class HavenaskEngine extends InternalEngine {
     }
 
     private void checkTableStatus() throws IOException {
-        long timeout = 600000;
+        long timeout = 60000;
         while (timeout > 0) {
             try {
                 Thread.sleep(5000);
@@ -259,7 +259,7 @@ public class HavenaskEngine extends InternalEngine {
                     throw new IOException("havenask execute sql client info failed");
                 }
 
-                if (sqlClientInfoResponse.getResult().getJSONObject("default").getJSONObject("general").getJSONObject("tables").containsKey(shardId.getIndexName())) {
+                if (false == sqlClientInfoResponse.getResult().getJSONObject("default").getJSONObject("general").getJSONObject("tables").containsKey(shardId.getIndexName())) {
                     throw new IOException("havenask table not found in qrs");
                 }
                 return;
