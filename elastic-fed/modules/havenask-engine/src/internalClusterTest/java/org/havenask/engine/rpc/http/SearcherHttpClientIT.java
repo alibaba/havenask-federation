@@ -154,7 +154,7 @@ public class SearcherHttpClientIT extends HavenaskITTestCase {
             + " \"version\": 0, \"part_count\": 1, \"part_id\": 0}, \"clean_disk\": false}";
         assertEquals(expectCustomInfo, response.getCustomInfo().toString());
         assertEquals(expectServiceInfo, response.getServiceInfo());
-        assertEquals(expectSignature, response.getSignature());
+        assertEquals(expectSignature, response.getSignature().toString());
     }
 
     public void testUpdateHeartbeatTarget() throws IOException {
@@ -243,7 +243,7 @@ public class SearcherHttpClientIT extends HavenaskITTestCase {
             + ".para_search_4:1:0:1976225101:100:2400309353:-1:true|\"\n"
             + "  }\n"
             + "}";
-        assertEquals(targetStr, response.getSignature());
+        assertEquals(targetStr, response.getSignature().toString());
         assertEquals(responseTargetStr, response.getCustomInfo().toString());
         assertEquals(serviceInfoStr, response.getServiceInfo());
     }

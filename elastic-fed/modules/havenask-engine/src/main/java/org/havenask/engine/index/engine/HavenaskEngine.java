@@ -246,10 +246,10 @@ public class HavenaskEngine extends InternalEngine {
             try {
                 Thread.sleep(5000);
                 HeartbeatTargetResponse heartbeatTargetResponse = searcherHttpClient.getHeartbeatTarget();
-                if (heartbeatTargetResponse.getCustomInfo() == null) {
+                if (heartbeatTargetResponse.getSignature() == null) {
                     throw new IOException("havenask get heartbeat target failed");
                 }
-                TargetInfo targetInfo = heartbeatTargetResponse.getCustomInfo();
+                TargetInfo targetInfo = heartbeatTargetResponse.getSignature();
                 if (false == targetInfo.table_info.containsKey(shardId.getIndexName())) {
                     throw new IOException("havenask table not found in searcher");
                 }

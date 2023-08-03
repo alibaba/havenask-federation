@@ -99,7 +99,7 @@ public class QrsHttpClientIT extends HavenaskITTestCase {
             + "0}, \"clean_disk\": false}";
         assertEquals(expectCustomInfo, response.getCustomInfo().toString());
         assertEquals(expectServiceInfo, response.getServiceInfo());
-        assertEquals(expectSignature, response.getSignature());
+        assertEquals(expectSignature, response.getSignature().toString());
     }
 
     public void testUpdateHeartbeatTarget() throws IOException {
@@ -149,7 +149,7 @@ public class QrsHttpClientIT extends HavenaskITTestCase {
             + ".para_search_4:1:0:1457961441:100:2400309353:-1:true|\"\n"
             + "  }\n"
             + "}";
-        assertEquals(targetStr, response.getSignature());
+        assertEquals(targetStr, response.getSignature().toString());
         assertEquals(responseTargetStr, response.getCustomInfo().toString());
         assertEquals(serviceInfoStr, response.getServiceInfo());
     }
