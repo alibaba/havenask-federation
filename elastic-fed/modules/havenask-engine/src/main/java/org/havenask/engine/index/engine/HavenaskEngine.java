@@ -259,12 +259,19 @@ public class HavenaskEngine extends InternalEngine {
                     throw new IOException("havenask execute sql client info failed");
                 }
 
-                if (false == sqlClientInfoResponse.getResult().getJSONObject("default").getJSONObject("general").getJSONObject("tables").containsKey(shardId.getIndexName())) {
+                if (false == sqlClientInfoResponse.getResult()
+                    .getJSONObject("default")
+                    .getJSONObject("general")
+                    .getJSONObject("tables")
+                    .containsKey(shardId.getIndexName())) {
                     throw new IOException("havenask table not found in qrs");
                 }
                 return;
             } catch (Exception e) {
-                logger.info(() -> new ParameterizedMessage("shard [{}] checkTableStatus exception", engineConfig.getShardId()), e);
+                logger.debug(
+                    () -> new ParameterizedMessage("shard [{}] checkTableStatus exception, waiting for retry", engineConfig.getShardId()),
+                    e
+                );
                 timeout -= 5000;
             }
         }
