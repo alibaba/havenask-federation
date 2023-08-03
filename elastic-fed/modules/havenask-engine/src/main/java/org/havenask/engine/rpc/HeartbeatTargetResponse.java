@@ -69,6 +69,9 @@ public class HeartbeatTargetResponse implements ToXContentObject {
                     serviceInfo = parser.text();
                 } else if (SIGNATURE_FIELD.match(currentFieldName, parser.getDeprecationHandler())) {
                     String signatureStr = parser.text();
+                    if (signatureStr == null || signatureStr.isEmpty()) {
+                        continue;
+                    }
                     signature = TargetInfo.parse(signatureStr);
                 } else {
                     parser.skipChildren();
