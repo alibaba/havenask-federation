@@ -81,8 +81,8 @@ public class CheckTargetService extends AbstractLifecycleComponent {
     protected void doStart() {
         if (enabled && checkTask == null) {
             checkTask = new CheckTask(threadPool, TimeValue.timeValueSeconds(30));
-            // checkTask.rescheduleIfNecessary();
-            running = false;
+            checkTask.rescheduleIfNecessary();
+            running = true;
         }
     }
 
