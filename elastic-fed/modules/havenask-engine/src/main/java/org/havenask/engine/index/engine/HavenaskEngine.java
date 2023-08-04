@@ -67,6 +67,7 @@ import org.havenask.engine.rpc.QrsClient;
 import org.havenask.engine.rpc.QrsSqlRequest;
 import org.havenask.engine.rpc.QrsSqlResponse;
 import org.havenask.engine.rpc.SearcherClient;
+import org.havenask.engine.rpc.SqlClientInfoResponse;
 import org.havenask.engine.rpc.TargetInfo;
 import org.havenask.engine.rpc.WriteRequest;
 import org.havenask.engine.rpc.WriteResponse;
@@ -160,7 +161,7 @@ public class HavenaskEngine extends InternalEngine {
         // 加载配置表
         try {
             activeTable();
-            // checkTableStatus();
+            checkTableStatus();
         } catch (IOException e) {
             logger.error(() -> new ParameterizedMessage("shard [{}] activeTable exception", engineConfig.getShardId()), e);
             failEngine("active havenask table failed", e);
@@ -235,33 +236,43 @@ public class HavenaskEngine extends InternalEngine {
             engineConfig.getIndexSettings().getSettings()
         );
         // 更新配置表信息
-        nativeProcessControlService.updateDataNodeTarget();
-        nativeProcessControlService.updateIngestNodeTarget();
+        nativeProcessControlService.updateDataNodeTargetAsync();
+        nativeProcessControlService.updateIngestNodeTargetAsync();
     }
 
     private void checkTableStatus() throws IOException {
-        long timeout = 300000;
+        long timeout = 60000;
         while (timeout > 0) {
             try {
+                Thread.sleep(5000);
                 HeartbeatTargetResponse heartbeatTargetResponse = searcherHttpClient.getHeartbeatTarget();
-                if (heartbeatTargetResponse.getCustomInfo() == null) {
+                if (heartbeatTargetResponse.getSignature() == null) {
                     throw new IOException("havenask get heartbeat target failed");
                 }
-                TargetInfo targetInfo = heartbeatTargetResponse.getCustomInfo();
+                TargetInfo targetInfo = heartbeatTargetResponse.getSignature();
                 if (false == targetInfo.table_info.containsKey(shardId.getIndexName())) {
-                    throw new IOException("havenask table not found");
+                    throw new IOException("havenask table not found in searcher");
                 }
 
-                // TODO check table status
+                SqlClientInfoResponse sqlClientInfoResponse = qrsHttpClient.executeSqlClientInfo();
+                if (sqlClientInfoResponse.getErrorCode() != 0) {
+                    throw new IOException("havenask execute sql client info failed");
+                }
+
+                if (false == sqlClientInfoResponse.getResult()
+                    .getJSONObject("default")
+                    .getJSONObject("general")
+                    .getJSONObject("tables")
+                    .containsKey(shardId.getIndexName())) {
+                    throw new IOException("havenask table not found in qrs");
+                }
                 return;
             } catch (Exception e) {
-                logger.info(() -> new ParameterizedMessage("shard [{}] checkTableStatus exception", engineConfig.getShardId()), e);
+                logger.debug(
+                    () -> new ParameterizedMessage("shard [{}] checkTableStatus exception, waiting for retry", engineConfig.getShardId()),
+                    e
+                );
                 timeout -= 5000;
-                try {
-                    Thread.sleep(5000);
-                } catch (InterruptedException interruptedException) {
-                    Thread.currentThread().interrupt();
-                }
             }
         }
 

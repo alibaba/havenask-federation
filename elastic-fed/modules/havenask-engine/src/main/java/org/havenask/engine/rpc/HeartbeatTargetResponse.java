@@ -31,9 +31,9 @@ public class HeartbeatTargetResponse implements ToXContentObject {
 
     private final TargetInfo customInfo;
     private final String serviceInfo;
-    private final String signature;
+    private final TargetInfo signature;
 
-    public HeartbeatTargetResponse(TargetInfo customInfo, String serviceInfo, String signature) {
+    public HeartbeatTargetResponse(TargetInfo customInfo, String serviceInfo, TargetInfo signature) {
         this.customInfo = customInfo;
         this.serviceInfo = serviceInfo;
         this.signature = signature;
@@ -47,7 +47,7 @@ public class HeartbeatTargetResponse implements ToXContentObject {
         return serviceInfo;
     }
 
-    public String getSignature() {
+    public TargetInfo getSignature() {
         return signature;
     }
 
@@ -57,7 +57,7 @@ public class HeartbeatTargetResponse implements ToXContentObject {
         String currentFieldName = parser.currentName();
         TargetInfo customInfo = null;
         String serviceInfo = null;
-        String signature = null;
+        TargetInfo signature = null;
         for (Token token = parser.nextToken(); token != Token.END_OBJECT; token = parser.nextToken()) {
             if (token == Token.FIELD_NAME) {
                 currentFieldName = parser.currentName();
@@ -68,7 +68,11 @@ public class HeartbeatTargetResponse implements ToXContentObject {
                 } else if (SERVICE_INFO_FIELD.match(currentFieldName, parser.getDeprecationHandler())) {
                     serviceInfo = parser.text();
                 } else if (SIGNATURE_FIELD.match(currentFieldName, parser.getDeprecationHandler())) {
-                    signature = parser.text();
+                    String signatureStr = parser.text();
+                    if (signatureStr == null || signatureStr.isEmpty()) {
+                        continue;
+                    }
+                    signature = TargetInfo.parse(signatureStr);
                 } else {
                     parser.skipChildren();
                 }

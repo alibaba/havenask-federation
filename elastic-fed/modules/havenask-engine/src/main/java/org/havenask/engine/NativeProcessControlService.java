@@ -449,12 +449,32 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
     }
 
     /**
+     * 异步更新 searcher target
+     */
+    public void updateDataNodeTargetAsync() {
+        if (running && isDataNode) {
+            // 更新datanode searcher的target
+            runCommandAsync(updateSearcherCommand);
+        }
+    }
+
+    /**
      * 更新 qrs target
      */
     public synchronized void updateIngestNodeTarget() {
         if (isIngestNode && running) {
             // 更新ingestnode qrs的target
             runCommand(updateQrsCommand);
+        }
+    }
+
+    /**
+     * 异步更新 qrs target
+     */
+    public void updateIngestNodeTargetAsync() {
+        if (running && isIngestNode) {
+            // 更新ingestnode qrs的target
+            runCommandAsync(updateQrsCommand);
         }
     }
 
@@ -513,6 +533,18 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
                 LOGGER.warn(() -> new ParameterizedMessage("run command {} unexpected failed", command), e);
             }
             return false;
+        });
+    }
+
+    private void runCommandAsync(String command) {
+        AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
+            try {
+                LOGGER.debug("run command async: {}", command);
+                Runtime.getRuntime().exec(new String[] { "sh", "-c", command });
+            } catch (Exception e) {
+                LOGGER.warn(() -> new ParameterizedMessage("run command async {} unexpected failed", command), e);
+            }
+            return null;
         });
     }
 

@@ -86,20 +86,22 @@ public class QrsHttpClientIT extends HavenaskITTestCase {
             + ".para_search_4:1:0:1457961441:100:2400309353:-1:true|\"\n"
             + "  }\n"
             + "}";
-        String expectSignature = "{\"table_info\": {}, \"biz_info\": {\"default\": {\"config_path\": "
-            + "\"/usr/share/havenask/data_havenask/config/bizs/0\"}}, \"service_info\": {\"zone_name\": \"qrs\", "
-            + "\"cm2_config\": {\"local\": [{\"part_count\": 1, \"biz_name\": \"general.default\", \"ip\": \"172.17.0"
-            + ".2\", \"version\": 553898268, \"part_id\": 0, \"tcp_port\": 39300}, {\"part_count\": 1, \"biz_name\": "
-            + "\"general.para_search_4\", \"ip\": \"172.17.0.2\", \"version\": 553898268, \"part_id\": 0, "
-            + "\"tcp_port\": 39300}, {\"part_count\": 1, \"biz_name\": \"general.default_sql\", \"ip\": \"172.17.0"
-            + ".2\", \"version\": 553898268, \"part_id\": 0, \"tcp_port\": 39300}, {\"part_count\": 1, \"biz_name\": "
-            + "\"general.para_search_2\", \"ip\": \"172.17.0.2\", \"version\": 553898268, \"part_id\": 0, "
-            + "\"tcp_port\": 39300}, {\"part_count\": 1, \"biz_name\": \"general.default_agg\", \"ip\": \"172.17.0"
-            + ".2\", \"version\": 553898268, \"part_id\": 0, \"tcp_port\": 39300}]}, \"part_id\": 0, \"part_count\": "
-            + "0}, \"clean_disk\": false}";
+        String expectSignature = "{\n"
+            + "\t\"biz_info\":{\n"
+            + "\t\t\"default\":{\n"
+            + "\t\t\t\"config_path\":\"/usr/share/havenask/data_havenask/config/bizs/0\",\n"
+            + "\t\t\t\"keep_count\":0\n"
+            + "\t\t}\n"
+            + "\t},\n"
+            + "\t\"clean_disk\":false,\n"
+            + "\t\"service_info\":{\n"
+            + "\t\t\n"
+            + "\t},\n"
+            + "\t\"table_info\":{}\n"
+            + "}";
         assertEquals(expectCustomInfo, response.getCustomInfo().toString());
         assertEquals(expectServiceInfo, response.getServiceInfo());
-        assertEquals(expectSignature, response.getSignature());
+        assertEquals(expectSignature, response.getSignature().toString());
     }
 
     public void testUpdateHeartbeatTarget() throws IOException {
@@ -149,7 +151,20 @@ public class QrsHttpClientIT extends HavenaskITTestCase {
             + ".para_search_4:1:0:1457961441:100:2400309353:-1:true|\"\n"
             + "  }\n"
             + "}";
-        assertEquals(targetStr, response.getSignature());
+        String signatureStr = "{\n"
+            + "\t\"biz_info\":{\n"
+            + "\t\t\"default\":{\n"
+            + "\t\t\t\"config_path\":\"/usr/share/havenask/data_havenask/config/bizs/0\",\n"
+            + "\t\t\t\"keep_count\":0\n"
+            + "\t\t}\n"
+            + "\t},\n"
+            + "\t\"clean_disk\":false,\n"
+            + "\t\"service_info\":{\n"
+            + "\t\t\n"
+            + "\t},\n"
+            + "\t\"table_info\":{}\n"
+            + "}";
+        assertEquals(signatureStr, response.getSignature().toString());
         assertEquals(responseTargetStr, response.getCustomInfo().toString());
         assertEquals(serviceInfoStr, response.getServiceInfo());
     }
