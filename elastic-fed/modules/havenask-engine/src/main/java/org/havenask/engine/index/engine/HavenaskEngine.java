@@ -396,6 +396,12 @@ public class HavenaskEngine extends InternalEngine {
     }
 
     @Override
+    protected boolean assertSearcherIsWarmedUp(String source, SearcherScope scope) {
+        // for havenask we don't need to care about "externalReaderManager.isWarmedup"
+        return true;
+    }
+
+    @Override
     protected IndexResult indexIntoLucene(Index index, IndexingStrategy plan) throws IOException {
         index.parsedDoc().updateSeqID(index.seqNo(), index.primaryTerm());
         index.parsedDoc().version().setLongValue(plan.versionForIndexing);
