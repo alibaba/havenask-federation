@@ -423,7 +423,7 @@ public class InternalEngine extends Engine {
     }
 
     @Override
-    final boolean assertSearcherIsWarmedUp(String source, SearcherScope scope) {
+    protected boolean assertSearcherIsWarmedUp(String source, SearcherScope scope) {
         if (scope == SearcherScope.EXTERNAL) {
             switch (source) {
                 // we can access segment_stats while a shard is still in the recovering state.
