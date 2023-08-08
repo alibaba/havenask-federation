@@ -22,8 +22,6 @@ plugins {
   id "com.google.protobuf" version "0.8.18"
 }
 
-import org.havenask.gradle.test.rest.JavaRestTestPlugin
-
 apply plugin: 'havenask.internal-cluster-test'
 apply plugin: 'havenask.java-rest-test'
 
