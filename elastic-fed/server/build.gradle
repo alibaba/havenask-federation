@@ -358,3 +358,21 @@ tasks.named("licenseHeaders").configure {
     excludes << 'org/apache/lucene/search/RegexpQuery87*'
     excludes << 'org/havenask/client/documentation/placeholder.txt'
 }
+
+configurations {
+    testArtifacts.extendsFrom testRuntime
+    testArtifacts.extendsFrom testImplementation
+    testArtifacts.extendsFrom internalClusterTestRuntime
+    testArtifacts.extendsFrom internalClusterTestImplementation
+}
+def testJar = tasks.register("testJar", Jar) {
+    appendix 'test'
+    appendix 'internalClusterTest'
+    from sourceSets.test.output
+    from sourceSets.internalClusterTest.output
+}
+
+artifacts {
+    archives jar
+    testArtifacts testJar
+}

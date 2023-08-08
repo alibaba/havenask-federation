@@ -47,6 +47,7 @@ dependencies {
   api "org.apache.logging.log4j:log4j-slf4j-impl:${versions.log4j}"
   javaRestTestImplementation project(':client:rest-high-level')
   javaRestTestImplementation project(':modules:havenask-engine')
+  testImplementation project(path: ':server', configuration: 'testArtifacts')
 }
 
 bundlePlugin {
