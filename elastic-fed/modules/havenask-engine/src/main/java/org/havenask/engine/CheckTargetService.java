@@ -40,6 +40,8 @@ import org.havenask.engine.rpc.TargetInfo;
 import org.havenask.engine.search.action.HavenaskSqlClientInfoAction;
 import org.havenask.threadpool.ThreadPool;
 
+import static org.havenask.engine.HavenaskEnginePlugin.HAVENASK_THREAD_POOL_NAME;
+
 /**
  * 检查searcher qrs进程加载数据表的情况, 是否和fed元数据保持一致
  */
@@ -99,9 +101,9 @@ public class CheckTargetService extends AbstractLifecycleComponent {
 
     }
 
-    class CheckTask extends AbstractAsyncTask {
+    public class CheckTask extends AbstractAsyncTask {
 
-        protected CheckTask(ThreadPool threadPool, TimeValue interval) {
+        public CheckTask(ThreadPool threadPool, TimeValue interval) {
             super(LOGGER, threadPool, interval, true);
         }
 
@@ -111,7 +113,6 @@ public class CheckTargetService extends AbstractLifecycleComponent {
         }
 
         @Override
-        @SuppressWarnings("unchecked")
         protected void runInternal() {
             if (false == running) {
                 return;
@@ -121,39 +122,7 @@ public class CheckTargetService extends AbstractLifecycleComponent {
 
             if (isDataNode) {
                 try {
-                    HeartbeatTargetResponse heartbeatTargetResponse = searcherClient.getHeartbeatTarget();
-                    if (heartbeatTargetResponse.getCustomInfo() == null) {
-                        throw new IOException("havenask get heartbeat target failed");
-                    }
-                    TargetInfo targetInfo = heartbeatTargetResponse.getCustomInfo();
-                    Set<String> searcherTables = new HashSet<>(targetInfo.table_info.keySet());
-                    searcherTables.remove("in0");
-
-                    RoutingNode localRoutingNode = clusterState.getRoutingNodes().node(clusterState.nodes().getLocalNodeId());
-                    if (localRoutingNode == null) {
-                        return;
-                    }
-                    Set<String> indices = new HashSet<>();
-                    for (ShardRouting shardRouting : localRoutingNode) {
-                        indices.add(shardRouting.getIndexName());
-                    }
-
-                    Set<String> havenaskIndices = new HashSet<>();
-                    indices.forEach((index) -> {
-                        IndexMetadata indexMetadata = clusterState.metadata().index(index);
-                        if (EngineSettings.isHavenaskEngine(indexMetadata.getSettings())) {
-                            havenaskIndices.add(index);
-                        }
-                    });
-
-                    if (false == searcherTables.equals(havenaskIndices)) {
-                        LOGGER.info(
-                            "havenask searcher heartbeat target is not equal to data node, update searcher target, "
-                                + "searcher tables: {}, data node indices: {}",
-                            searcherTables,
-                            havenaskIndices
-                        );
-
+                    if (false == checkDataNode(clusterState, searcherClient)) {
                         nativeProcessControlService.updateDataNodeTarget();
                         nativeProcessControlService.updateIngestNodeTarget();
                     }
@@ -165,42 +134,93 @@ public class CheckTargetService extends AbstractLifecycleComponent {
             }
 
             if (isIngestNode) {
-                Set<String> havenaskIndices = new HashSet<>();
-                clusterState.metadata().indices().forEach((index) -> {
-                    IndexMetadata indexMetadata = index.value;
-                    if (EngineSettings.isHavenaskEngine(indexMetadata.getSettings())) {
-                        havenaskIndices.add(indexMetadata.getIndex().getName());
-                    }
-                });
-
-                HavenaskSqlClientInfoAction.Response sqlInfoResponse = client.execute(
-                    HavenaskSqlClientInfoAction.INSTANCE,
-                    new HavenaskSqlClientInfoAction.Request()
-                ).actionGet();
-                Map<String, Object> result = sqlInfoResponse.getResult();
-                if (result != null
-                    && result.get("default") != null
-                    && ((Map<String, Object>) (result.get("default"))).get("general") != null
-                    && ((Map<String, Object>) ((Map<String, Object>) result.get("default")).get("general")).get("tables") != null) {
-                    Map<String, Object> tables = (Map<String, Object>) ((Map<String, Object>) ((Map<String, Object>) result.get("default"))
-                        .get("general")).get("tables");
-                    Set<String> tablesSet = tables.keySet()
-                        .stream()
-                        .filter(key -> false == key.endsWith("_summary_"))
-                        .collect(Collectors.toSet());
-                    if (false == havenaskIndices.equals(tablesSet)) {
-                        // qrs记录的数据表跟元数据不一致, 更新searcher/qrs的target
-                        LOGGER.info(
-                            "havenask indices not equal to qrs tables, update target, havenask indices:{}, qrs " + "tables:{}",
-                            havenaskIndices,
-                            tablesSet
-                        );
-                        nativeProcessControlService.updateDataNodeTarget();
-                        nativeProcessControlService.updateIngestNodeTarget();
-                    }
-
+                if (false == checkIngestNode(clusterState, client)) {
+                    nativeProcessControlService.updateDataNodeTarget();
+                    nativeProcessControlService.updateIngestNodeTarget();
                 }
+
             }
         }
+
+        protected String getThreadPool() {
+            return HAVENASK_THREAD_POOL_NAME;
+        }
+    }
+
+    static boolean checkDataNode(ClusterState clusterState, HavenaskClient searcherClient) throws IOException {
+        HeartbeatTargetResponse heartbeatTargetResponse = searcherClient.getHeartbeatTarget();
+        if (heartbeatTargetResponse.getCustomInfo() == null) {
+            throw new IOException("havenask get heartbeat target failed");
+        }
+        TargetInfo targetInfo = heartbeatTargetResponse.getCustomInfo();
+        Set<String> searcherTables = new HashSet<>(targetInfo.table_info.keySet());
+        searcherTables.remove("in0");
+
+        RoutingNode localRoutingNode = clusterState.getRoutingNodes().node(clusterState.nodes().getLocalNodeId());
+        if (localRoutingNode == null) {
+            return true;
+        }
+        Set<String> indices = new HashSet<>();
+        for (ShardRouting shardRouting : localRoutingNode) {
+            indices.add(shardRouting.getIndexName());
+        }
+
+        Set<String> havenaskIndices = new HashSet<>();
+        indices.forEach((index) -> {
+            IndexMetadata indexMetadata = clusterState.metadata().index(index);
+            if (EngineSettings.isHavenaskEngine(indexMetadata.getSettings())) {
+                havenaskIndices.add(index);
+            }
+        });
+
+        boolean equals = searcherTables.equals(havenaskIndices);
+        if (false == equals) {
+            LOGGER.info(
+                "havenask searcher heartbeat target is not equal to data node, update searcher target, "
+                    + "searcher tables: {}, data node indices: {}",
+                searcherTables,
+                havenaskIndices
+            );
+        }
+        return equals;
+    }
+
+    @SuppressWarnings("unchecked")
+    static boolean checkIngestNode(ClusterState clusterState, Client client) {
+        Set<String> havenaskIndices = new HashSet<>();
+        clusterState.metadata().indices().forEach((index) -> {
+            IndexMetadata indexMetadata = index.value;
+            if (EngineSettings.isHavenaskEngine(indexMetadata.getSettings())) {
+                havenaskIndices.add(indexMetadata.getIndex().getName());
+            }
+        });
+
+        HavenaskSqlClientInfoAction.Response sqlInfoResponse = client.execute(
+            HavenaskSqlClientInfoAction.INSTANCE,
+            new HavenaskSqlClientInfoAction.Request()
+        ).actionGet();
+        Map<String, Object> result = sqlInfoResponse.getResult();
+        if (result != null
+            && result.get("default") != null
+            && ((Map<String, Object>) (result.get("default"))).get("general") != null
+            && ((Map<String, Object>) ((Map<String, Object>) result.get("default")).get("general")).get("tables") != null) {
+            Map<String, Object> tables = (Map<String, Object>) ((Map<String, Object>) ((Map<String, Object>) result.get("default")).get(
+                "general"
+            )).get("tables");
+            Set<String> tablesSet = tables.keySet().stream().filter(key -> false == key.endsWith("_summary_")).collect(Collectors.toSet());
+            boolean equals = havenaskIndices.equals(tablesSet);
+            if (false == equals) {
+                // qrs记录的数据表跟元数据不一致, 更新searcher/qrs的target
+                LOGGER.info(
+                    "havenask indices not equal to qrs tables, update target, havenask indices:{}, qrs " + "tables:{}",
+                    havenaskIndices,
+                    tablesSet
+                );
+            }
+
+            return equals;
+        }
+
+        return true;
     }
 }
