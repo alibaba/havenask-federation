@@ -1,4 +1,4 @@
-FROM registry.cn-hangzhou.aliyuncs.com/havenask/ha3_runtime:1.0.0-beta
+FROM registry.cn-hangzhou.aliyuncs.com/havenask/ha3_runtime:1.0.0-beta2
 
 # 创建一个名为 havenask 的用户，并将其添加到 sudo 组中
 RUN useradd -ms /bin/bash havenask && echo "havenask ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
@@ -20,3 +20,6 @@ ENV PATH $JAVA_HOME/bin:$PATH
 RUN  cd havenask-federation/elastic-fed;./gradlew assemble -p distribution/archives/linux-tar/
 
 RUN rm -rf havenask-federation
+
+# 切换回root用户
+USER root
