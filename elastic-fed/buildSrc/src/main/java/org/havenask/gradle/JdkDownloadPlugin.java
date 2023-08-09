@@ -135,6 +135,11 @@ public class JdkDownloadPlugin implements Plugin<Project> {
             }
         } else if (jdk.getVendor().equals(VENDOR_OPENJDK)) {
             repoUrl = "https://download.java.net";
+            String classifier = jdk.getArchitecture();
+            if (Integer.valueOf(jdk.getMajor()) <= 11 && (jdk.getPlatform().equals("mac") || jdk.getPlatform().equals("darwin"))) {
+                classifier = "x64";
+            }
+
             if (jdk.getHash() != null) {
                 // current pattern since 12.0.1
                 artifactPattern = "java/GA/jdk"
@@ -143,14 +148,18 @@ public class JdkDownloadPlugin implements Plugin<Project> {
                     + jdk.getHash()
                     + "/"
                     + jdk.getBuild()
-                    + "/GPL/openjdk-[revision]_[module]-[classifier]_bin.[ext]";
+                    + "/GPL/openjdk-[revision]_[module]-"
+                    + classifier
+                    + "_bin.[ext]";
             } else {
                 // simpler legacy pattern from JDK 9 to JDK 12 that we are advocating to Oracle to bring back
                 artifactPattern = "java/GA/jdk"
                     + jdk.getMajor()
                     + "/"
                     + jdk.getBuild()
-                    + "/GPL/openjdk-[revision]_[module]-[classifier]_bin.[ext]";
+                    + "/GPL/openjdk-[revision]_[module]-"
+                    + classifier
+                    + "_bin.[ext]";
             }
         } else if (jdk.getVendor().equals(VENDOR_AZUL)) {
             repoUrl = "https://cdn.azul.com";
