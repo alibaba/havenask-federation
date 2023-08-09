@@ -14,14 +14,16 @@
 
 package org.havenask.engine;
 
+import static org.havenask.discovery.DiscoveryModule.SINGLE_NODE_DISCOVERY_TYPE;
+
 import java.io.IOException;
+import java.nio.file.Paths;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
-import org.apache.lucene.util.LuceneTestCase.AwaitsFix;
 import org.havenask.cluster.service.ClusterService;
 import org.havenask.common.settings.ClusterSettings;
 import org.havenask.common.settings.Setting;
@@ -36,9 +38,7 @@ import org.havenask.threadpool.ThreadPool;
 import org.junit.After;
 import org.junit.Before;
 
-import static org.havenask.discovery.DiscoveryModule.SINGLE_NODE_DISCOVERY_TYPE;
-
-@AwaitsFix(bugUrl = "https://github.com/alibaba/havenask-federation/issues/78")
+//@AwaitsFix(bugUrl = "https://github.com/alibaba/havenask-federation/issues/78")
 public class NativeProcessControlServiceTests extends HavenaskTestCase {
     private NativeProcessControlService nativeProcessControlService;
     private ThreadPool threadPool;
@@ -162,6 +162,40 @@ public class NativeProcessControlServiceTests extends HavenaskTestCase {
                 boolean alive = nativeProcessControlService.checkProcessAlive(NativeProcessControlService.SEARCHER_ROLE);
                 assertFalse(alive);
             });
+        }
+    }
+
+    /**
+     *     public long getTableSize(Path tablePath) {
+     *         if (isDataNode) {
+     *             // 获取table size
+     *             final String finalGetTableSizeCommand = String.format(Locale.ROOT, GET_TABLE_SIZE_COMMAND,
+     *             tablePath);
+     *             String result = runCommandWithResult(finalGetTableSizeCommand);
+     *             if (result != null) {
+     *                 SizeValue sizeValue = SizeValue.parseSizeValue(result);
+     *                 return sizeValue.singles();
+     *             } else {
+     *                 return -1;
+     *             }
+     *         }
+     *         return 0;
+     *     }
+     *
+     */
+
+    // check table size
+    public void testGetTableSize() throws Exception {
+        // 传递正确的table path
+        {
+            long tableSize = nativeProcessControlService.getTableSize(Paths.get("./"));
+            assertTrue(tableSize > 0);
+        }
+
+        // 传递错误的table path
+        {
+            long tableSize = nativeProcessControlService.getTableSize(Paths.get("/exception"));
+            assertEquals(-1L, tableSize);
         }
     }
 }
