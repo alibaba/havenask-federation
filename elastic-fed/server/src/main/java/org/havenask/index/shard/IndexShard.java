@@ -39,7 +39,40 @@
 
 package org.havenask.index.shard;
 
-import com.carrotsearch.hppc.ObjectLongMap;
+import static org.havenask.index.seqno.RetentionLeaseActions.RETAIN_ALL;
+import static org.havenask.index.seqno.SequenceNumbers.UNASSIGNED_SEQ_NO;
+
+import java.io.Closeable;
+import java.io.IOException;
+import java.io.PrintStream;
+import java.nio.channels.ClosedByInterruptException;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.EnumSet;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.function.LongSupplier;
+import java.util.function.Supplier;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
+
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.message.ParameterizedMessage;
 import org.apache.lucene.index.CheckIndex;
@@ -58,9 +91,9 @@ import org.apache.lucene.store.AlreadyClosedException;
 import org.apache.lucene.util.SetOnce;
 import org.apache.lucene.util.ThreadInterruptedException;
 import org.havenask.Assertions;
-import org.havenask.LegacyESVersion;
-import org.havenask.HavenaskException;
 import org.havenask.ExceptionsHelper;
+import org.havenask.HavenaskException;
+import org.havenask.LegacyESVersion;
 import org.havenask.action.ActionListener;
 import org.havenask.action.ActionRunnable;
 import org.havenask.action.admin.indices.flush.FlushRequest;
@@ -172,39 +205,7 @@ import org.havenask.rest.RestStatus;
 import org.havenask.search.suggest.completion.CompletionStats;
 import org.havenask.threadpool.ThreadPool;
 
-import java.io.Closeable;
-import java.io.IOException;
-import java.io.PrintStream;
-import java.nio.channels.ClosedByInterruptException;
-import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.EnumSet;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.Set;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.BiConsumer;
-import java.util.function.Consumer;
-import java.util.function.Function;
-import java.util.function.LongSupplier;
-import java.util.function.Supplier;
-import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
-
-import static org.havenask.index.seqno.RetentionLeaseActions.RETAIN_ALL;
-import static org.havenask.index.seqno.SequenceNumbers.UNASSIGNED_SEQ_NO;
+import com.carrotsearch.hppc.ObjectLongMap;
 
 public class IndexShard extends AbstractIndexShardComponent implements IndicesClusterStateService.Shard {
 
@@ -1059,7 +1060,14 @@ public class IndexShard extends AbstractIndexShardComponent implements IndicesCl
         try {
             final RecoveryState recoveryState = this.recoveryState;
             final long bytesStillToRecover = recoveryState == null ? -1L : recoveryState.getIndex().bytesStillToRecover();
-            return store.stats(bytesStillToRecover == -1 ? StoreStats.UNKNOWN_RESERVED_BYTES : bytesStillToRecover);
+            final long reservedBytes = bytesStillToRecover == -1 ? StoreStats.UNKNOWN_RESERVED_BYTES : bytesStillToRecover;
+            // TODO how to get the havenask engine settings here?
+            // TODO how to reuse the doc stats from the havenask engine?
+            if ("havenask".equals(indexSettings.getSettings().get("index.engine"))){
+                return new StoreStats(getEngine().docStats().getTotalSizeInBytes(), reservedBytes);
+            } else {
+                return store.stats(reservedBytes);
+            }
         } catch (IOException e) {
             failShard("Failing shard because of exception during storeStats", e);
             throw new HavenaskException("io exception while building 'store stats'", e);
