@@ -14,6 +14,8 @@
 
 package org.havenask.engine;
 
+import static org.havenask.discovery.DiscoveryModule.SINGLE_NODE_DISCOVERY_TYPE;
+
 import java.io.IOException;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
@@ -21,8 +23,8 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
-import org.apache.lucene.util.LuceneTestCase.AwaitsFix;
 import org.havenask.cluster.service.ClusterService;
+import org.havenask.common.io.PathUtils;
 import org.havenask.common.settings.ClusterSettings;
 import org.havenask.common.settings.Setting;
 import org.havenask.common.settings.Settings;
@@ -36,9 +38,7 @@ import org.havenask.threadpool.ThreadPool;
 import org.junit.After;
 import org.junit.Before;
 
-import static org.havenask.discovery.DiscoveryModule.SINGLE_NODE_DISCOVERY_TYPE;
-
-@AwaitsFix(bugUrl = "https://github.com/alibaba/havenask-federation/issues/78")
+//@AwaitsFix(bugUrl = "https://github.com/alibaba/havenask-federation/issues/78")
 public class NativeProcessControlServiceTests extends HavenaskTestCase {
     private NativeProcessControlService nativeProcessControlService;
     private ThreadPool threadPool;
@@ -162,6 +162,21 @@ public class NativeProcessControlServiceTests extends HavenaskTestCase {
                 boolean alive = nativeProcessControlService.checkProcessAlive(NativeProcessControlService.SEARCHER_ROLE);
                 assertFalse(alive);
             });
+        }
+    }
+
+    // check table size
+    public void testGetTableSize() throws Exception {
+        // 传递正确的table path
+        {
+            long tableSize = nativeProcessControlService.getTableSize(PathUtils.get("./"));
+            assertTrue(tableSize >= 0);
+        }
+
+        // 传递错误的table path
+        {
+            long tableSize = nativeProcessControlService.getTableSize(PathUtils.get("/exception"));
+            assertEquals(-1L, tableSize);
         }
     }
 }

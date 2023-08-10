@@ -17,6 +17,7 @@ package org.havenask.engine;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.HashSet;
@@ -34,6 +35,7 @@ import org.havenask.common.component.AbstractLifecycleComponent;
 import org.havenask.common.settings.Setting;
 import org.havenask.common.settings.Setting.Property;
 import org.havenask.common.settings.Settings;
+import org.havenask.common.unit.ByteSizeValue;
 import org.havenask.common.unit.TimeValue;
 import org.havenask.common.util.concurrent.AbstractAsyncTask;
 import org.havenask.engine.index.engine.HavenaskEngine;
@@ -62,6 +64,7 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
     private static final String CHECK_HAVENASK_ALIVE_COMMAND =
         "ps aux | grep sap_server_d | grep 'roleType=%s' | grep -v grep | awk '{print $2}'";
     private static final String START_BS_JOB_COMMAND = "python %s/havenask/command/bs_job_starter.py %s %s %s %s ";
+    private static final String GET_TABLE_SIZE_COMMAND = "du -sh %s | awk '{print $1}'";
 
     public static final Setting<Integer> HAVENASK_SEARCHER_HTTP_PORT_SETTING = Setting.intSetting(
         "havenask.searcher.http.port",
@@ -438,6 +441,26 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
         }
     }
 
+    public long getTableSize(Path tablePath) {
+        if (isDataNode) {
+            // 获取table size
+            final String finalGetTableSizeCommand = String.format(Locale.ROOT, GET_TABLE_SIZE_COMMAND, tablePath);
+            String result = runCommandWithResult(finalGetTableSizeCommand);
+            try {
+                if (result != null && false == result.isEmpty()) {
+                    ByteSizeValue sizeValue = ByteSizeValue.parseBytesSizeValue(result.trim(), "table_size");
+                    return sizeValue.getBytes();
+                } else {
+                    return -1;
+                }
+            } catch (Exception e) {
+                LOGGER.info(() -> new ParameterizedMessage("get table size error, table path [{}]", tablePath), e);
+                return -1;
+            }
+        }
+        return 0;
+    }
+
     /**
      * 更新 searcher target
      */
@@ -499,6 +522,38 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
                 }
             });
         }
+    }
+
+    private String runCommandWithResult(String command) {
+        return AccessController.doPrivileged((PrivilegedAction<String>) () -> {
+            try {
+                LOGGER.debug("run command: {}", command);
+                long start = System.currentTimeMillis();
+                Process process = Runtime.getRuntime().exec(new String[] { "sh", "-c", command });
+                boolean timeout = process.waitFor(commandTimeout.seconds(), TimeUnit.SECONDS);
+                if (false == timeout) {
+                    LOGGER.warn("run command timeout, command: {}", command);
+                    process.destroy();
+                    return null;
+                }
+                if (process.exitValue() != 0) {
+                    return null;
+                }
+                try (InputStream inputStream = process.getInputStream()) {
+                    byte[] bytes = inputStream.readAllBytes();
+                    // logger success
+                    LOGGER.debug(
+                        "run command success, cost [{}], command: [{}]",
+                        TimeValue.timeValueMillis(System.currentTimeMillis() - start),
+                        command
+                    );
+                    return new String(bytes, StandardCharsets.UTF_8);
+                }
+            } catch (Exception e) {
+                LOGGER.warn(() -> new ParameterizedMessage("run command {} unexpected failed", command), e);
+            }
+            return null;
+        });
     }
 
     private boolean runCommand(String command) {

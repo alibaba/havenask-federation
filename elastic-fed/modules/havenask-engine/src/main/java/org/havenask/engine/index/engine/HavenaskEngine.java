@@ -82,6 +82,7 @@ import org.havenask.index.mapper.ParsedDocument;
 import org.havenask.index.mapper.SourceFieldMapper;
 import org.havenask.index.mapper.Uid;
 import org.havenask.index.seqno.SequenceNumbers;
+import org.havenask.index.shard.DocsStats;
 import org.havenask.index.shard.ShardId;
 import org.havenask.index.translog.Translog;
 import org.havenask.index.translog.TranslogConfig;
@@ -751,5 +752,39 @@ public class HavenaskEngine extends InternalEngine {
         public long getCommitCheckpoint() {
             return commitCheckpoint;
         }
+    }
+
+    @Override
+    public DocsStats docStats() {
+        // get doc count from havenask
+        long docCount = getDocCount();
+
+        // get total size from du command
+        long totalSize = nativeProcessControlService.getTableSize(
+            env.getRuntimedataPath().resolve(shardId.getIndexName()).toAbsolutePath()
+        );
+        return new DocsStats(docCount, 0, totalSize);
+    }
+
+    long getDocCount() {
+        long docCount = 0;
+        try {
+            String sql = String.format(Locale.ROOT, "select count(*) from %s", shardId.getIndexName());
+            String kvpair = "format:full_json;timeout:10000;databaseName:" + SQL_DATABASE;
+            QrsSqlRequest request = new QrsSqlRequest(sql, kvpair);
+            QrsSqlResponse response = qrsHttpClient.executeSql(request);
+            JSONObject jsonObject = JSON.parseObject(response.getResult());
+            JSONObject sqlResult = jsonObject.getJSONObject("sql_result");
+            JSONArray datas = sqlResult.getJSONArray("data");
+            if (datas.size() != 0) {
+                assert datas.size() == 1;
+                JSONArray row = datas.getJSONArray(0);
+                assert row.size() == 1;
+                docCount = row.getLongValue(0);
+            }
+        } catch (Exception e) {
+            logger.debug("havenask engine get doc stats error", e);
+        }
+        return docCount;
     }
 }
