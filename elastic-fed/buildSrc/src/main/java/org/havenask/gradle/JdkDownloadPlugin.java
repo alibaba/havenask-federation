@@ -116,7 +116,12 @@ public class JdkDownloadPlugin implements Plugin<Project> {
         String repoUrl;
         String artifactPattern;
 
-        if (jdk.getVendor().equals(VENDOR_ADOPTOPENJDK)) {
+        String vendor = jdk.getVendor();
+        if (jdk.getArchitecture().equals("aarch64") && (jdk.getPlatform().equals("mac") || jdk.getPlatform().equals("darwin"))) {
+            vendor = VENDOR_AZUL;
+        }
+
+        if (vendor.equals(VENDOR_ADOPTOPENJDK)) {
             repoUrl = "https://api.adoptopenjdk.net/v3/binary/version/";
             if (jdk.getMajor().equals("8")) {
                 // legacy pattern for JDK 8
@@ -133,7 +138,7 @@ public class JdkDownloadPlugin implements Plugin<Project> {
                     + jdk.getBuild()
                     + "/[module]/[classifier]/jdk/hotspot/normal/adoptopenjdk";
             }
-        } else if (jdk.getVendor().equals(VENDOR_OPENJDK)) {
+        } else if (vendor.equals(VENDOR_OPENJDK)) {
             repoUrl = "https://download.java.net";
             if (jdk.getHash() != null) {
                 // current pattern since 12.0.1
@@ -152,7 +157,7 @@ public class JdkDownloadPlugin implements Plugin<Project> {
                     + jdk.getBuild()
                     + "/GPL/openjdk-[revision]_[module]-[classifier]_bin.[ext]";
             }
-        } else if (jdk.getVendor().equals(VENDOR_AZUL)) {
+        } else if (vendor.equals(VENDOR_AZUL)) {
             repoUrl = "https://cdn.azul.com";
             // The following is an absolute hack until AdoptOpenJdk provides Apple aarch64 builds
             switch (jdk.getMajor()) {
@@ -166,7 +171,7 @@ public class JdkDownloadPlugin implements Plugin<Project> {
                     throw new GradleException("Unknown Azul JDK major version  [" + jdk.getMajor() + "]");
             }
         } else {
-            throw new GradleException("Unknown JDK vendor [" + jdk.getVendor() + "]");
+            throw new GradleException("Unknown JDK vendor [" + vendor + "]");
         }
 
         // Define the repository if we haven't already
