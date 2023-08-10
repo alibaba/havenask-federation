@@ -1063,6 +1063,7 @@ public class IndexShard extends AbstractIndexShardComponent implements IndicesCl
             final long reservedBytes = bytesStillToRecover == -1 ? StoreStats.UNKNOWN_RESERVED_BYTES : bytesStillToRecover;
             // TODO how to get the havenask engine settings here?
             // TODO how to reuse the doc stats from the havenask engine?
+            // TODO 重点关注性能问题,每次获取都要实时查count和size
             if ("havenask".equals(indexSettings.getSettings().get("index.engine"))){
                 return new StoreStats(getEngine().docStats().getTotalSizeInBytes(), reservedBytes);
             } else {
