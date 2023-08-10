@@ -16,6 +16,7 @@ package org.havenask.engine;
 
 import java.util.concurrent.TimeUnit;
 
+import org.apache.http.util.EntityUtils;
 import org.havenask.action.admin.cluster.health.ClusterHealthRequest;
 import org.havenask.action.admin.cluster.health.ClusterHealthResponse;
 import org.havenask.action.admin.indices.delete.DeleteIndexRequest;
@@ -25,7 +26,9 @@ import org.havenask.action.get.GetRequest;
 import org.havenask.action.get.GetResponse;
 import org.havenask.action.index.IndexRequest;
 import org.havenask.action.update.UpdateRequest;
+import org.havenask.client.Request;
 import org.havenask.client.RequestOptions;
+import org.havenask.client.Response;
 import org.havenask.client.ha.SqlClientInfoRequest;
 import org.havenask.client.ha.SqlClientInfoResponse;
 import org.havenask.client.ha.SqlRequest;
@@ -39,6 +42,8 @@ import org.havenask.common.collect.Map;
 import org.havenask.common.settings.Settings;
 import org.havenask.common.xcontent.XContentType;
 import org.havenask.engine.index.engine.EngineSettings;
+
+import com.alibaba.fastjson.JSONObject;
 
 public class BasicIT extends AbstractHavenaskRestTestCase {
     public void testCRUD() throws Exception {
@@ -219,6 +224,25 @@ public class BasicIT extends AbstractHavenaskRestTestCase {
         assertEquals(sqlResponse.getSqlResult().getColumnName()[0], "COUNT(*)");
         assertEquals(sqlResponse.getSqlResult().getColumnType()[0], "int64");
 
+        // get index stats
+        {
+            Response indexStatsResponse = highLevelClient().getLowLevelClient().performRequest(new Request("GET", "/" + index + "/_stats"));
+            String indexStats = EntityUtils.toString(indexStatsResponse.getEntity());
+            JSONObject indexStatsJson = JSONObject.parseObject(indexStats);
+            long docCount = indexStatsJson.getJSONObject("indices")
+                .getJSONObject(index)
+                .getJSONObject("total")
+                .getJSONObject("docs")
+                .getLong("count");
+            assertEquals(docCount, 4L);
+            long storeSize = indexStatsJson.getJSONObject("indices")
+                .getJSONObject(index)
+                .getJSONObject("total")
+                .getJSONObject("store")
+                .getLong("size_in_bytes");
+            assertTrue(storeSize >= 10240L);
+        }
+
         // UPDATE doc
         highLevelClient().update(
             new UpdateRequest(index, "1").doc(Map.of("seq", 11, "content", "欢迎使用11", "time", "20230718"), XContentType.JSON),
@@ -242,6 +266,25 @@ public class BasicIT extends AbstractHavenaskRestTestCase {
         assertEquals(getResponse12.getSourceAsMap().get("content"), "欢迎使用12");
         assertEquals(getResponse12.getSourceAsMap().get("time"), "20230717");
 
+        // get index data count
+        {
+            Response indexStatsResponse = highLevelClient().getLowLevelClient().performRequest(new Request("GET", "/" + index + "/_stats"));
+            String indexStats = EntityUtils.toString(indexStatsResponse.getEntity());
+            JSONObject indexStatsJson = JSONObject.parseObject(indexStats);
+            long docCount = indexStatsJson.getJSONObject("indices")
+                .getJSONObject(index)
+                .getJSONObject("total")
+                .getJSONObject("docs")
+                .getLong("count");
+            assertEquals(docCount, 4L);
+            long storeSize = indexStatsJson.getJSONObject("indices")
+                .getJSONObject(index)
+                .getJSONObject("total")
+                .getJSONObject("store")
+                .getLong("size_in_bytes");
+            assertTrue(storeSize >= 10240L);
+        }
+
         // DELETE doc
         highLevelClient().delete(new DeleteRequest(index, "1"), RequestOptions.DEFAULT);
         highLevelClient().delete(new DeleteRequest(index, "2"), RequestOptions.DEFAULT);
@@ -254,6 +297,25 @@ public class BasicIT extends AbstractHavenaskRestTestCase {
         assertEquals(getResponse5.isExists(), false);
         GetResponse getResponse6 = highLevelClient().get(new GetRequest(index, "3"), RequestOptions.DEFAULT);
         assertEquals(getResponse6.isExists(), false);
+
+        // get
+        {
+            Response indexStatsResponse = highLevelClient().getLowLevelClient().performRequest(new Request("GET", "/" + index + "/_stats"));
+            String indexStats = EntityUtils.toString(indexStatsResponse.getEntity());
+            JSONObject indexStatsJson = JSONObject.parseObject(indexStats);
+            long docCount = indexStatsJson.getJSONObject("indices")
+                .getJSONObject(index)
+                .getJSONObject("total")
+                .getJSONObject("docs")
+                .getLong("count");
+            assertEquals(docCount, 1L);
+            long storeSize = indexStatsJson.getJSONObject("indices")
+                .getJSONObject(index)
+                .getJSONObject("total")
+                .getJSONObject("store")
+                .getLong("size_in_bytes");
+            assertTrue(storeSize >= 10240L);
+        }
 
         // bulk doc
         BulkRequest bulkRequest = new BulkRequest();

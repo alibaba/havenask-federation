@@ -542,7 +542,7 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
                 try (InputStream inputStream = process.getInputStream()) {
                     byte[] bytes = inputStream.readAllBytes();
                     // logger success
-                    LOGGER.info(
+                    LOGGER.debug(
                         "run command success, cost [{}], command: [{}]",
                         TimeValue.timeValueMillis(System.currentTimeMillis() - start),
                         command
