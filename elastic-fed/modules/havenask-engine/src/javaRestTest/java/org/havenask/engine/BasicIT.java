@@ -497,6 +497,7 @@ public class BasicIT extends AbstractHavenaskRestTestCase {
             String exMessage = ex.getMessage();
             assertTrue(exMessage.contains("unsupported_operation_exception") || exMessage.contains("mapper_parsing_exception"));
         }
+
     }
 
 }
