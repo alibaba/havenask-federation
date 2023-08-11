@@ -14,6 +14,8 @@
 
 package org.havenask.engine;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.http.util.EntityUtils;
@@ -439,6 +441,62 @@ public class BasicIT extends AbstractHavenaskRestTestCase {
         assertEquals(false, highLevelClient().indices().exists(new GetIndexRequest(index), RequestOptions.DEFAULT));
 
         // todo: check data using sql search api
+    }
+
+    // test unsupported data type ()
+    public void testUnsupportedDataType() throws Exception {
+        String index = "index_unsupported_data_type";
+
+        ArrayList<String> unsupportedDataType = new ArrayList<String>(
+            Arrays.asList(
+                "binary",
+                "constant_keyword",
+                "wildcard",
+                "half_float",
+                "scaled_float",
+                "date_nanos",
+                "alias",  // Common types
+                "flattened",
+                "nested",
+                "join",    // Object And relational types
+                "integer_range",
+                "float_range",
+                "long_range",
+                "double_range",
+                "date_range",
+                "ip_range",
+                "ip",
+                "version",
+                "murmur3",     // Structured data types
+                "histogram",    // Aggregate data types
+                "annotated-text",
+                "completion",
+                "search_as_you_type",
+                "token_count",    // Text search types
+                "dense_vector",
+                "sparse_vector",
+                "rank_feature",
+                "rank_features",   // Document ranking types
+                "point",
+                "shape",   // Spatial data types
+                "percolator"    // Other types
+            )
+        );
+
+        for (String curDataType : unsupportedDataType) {
+            org.havenask.HavenaskStatusException ex = expectThrows(
+                org.havenask.HavenaskStatusException.class,
+                () -> highLevelClient().indices()
+                    .create(
+                        new CreateIndexRequest(index).settings(
+                            Settings.builder().put(EngineSettings.ENGINE_TYPE_SETTING.getKey(), EngineSettings.ENGINE_HAVENASK).build()
+                        ).mapping(Map.of("properties", Map.of("curDataType", Map.of("type", curDataType)))),
+                        RequestOptions.DEFAULT
+                    )
+            );
+            String ex2str = ex.getMessage();
+            assertTrue(ex2str.contains("unsupported_operation_exception") || ex2str.contains("mapper_parsing_exception"));
+        }
     }
 
 }
