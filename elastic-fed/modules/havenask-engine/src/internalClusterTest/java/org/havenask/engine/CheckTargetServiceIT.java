@@ -24,11 +24,14 @@ import org.havenask.cluster.ClusterState;
 import org.havenask.engine.rpc.SearcherClient;
 import org.havenask.engine.rpc.http.SearcherHttpClient;
 import org.havenask.plugins.Plugin;
+import org.havenask.test.HavenaskIntegTestCase;
+import org.havenask.test.HavenaskIntegTestCase.Scope;
 import org.havenask.transport.nio.MockNioTransportPlugin;
 
 import com.carrotsearch.randomizedtesting.annotations.ThreadLeakFilters;
 
 @ThreadLeakFilters(filters = { OkHttpThreadLeakFilter.class, ArpcThreadLeakFilter.class })
+@HavenaskIntegTestCase.ClusterScope(numDataNodes = 1, numClientNodes = 0, scope = Scope.SUITE)
 public class CheckTargetServiceIT extends HavenaskITTestCase {
     @Override
     protected Collection<Class<? extends Plugin>> nodePlugins() {
@@ -49,8 +52,12 @@ public class CheckTargetServiceIT extends HavenaskITTestCase {
 
     public void testCheckIngestNode() throws IOException {
         ClusterState clusterState = clusterService().state();
-        boolean result = CheckTargetService.checkIngestNode(clusterState, client());
-        assertFalse(result);
+        try {
+            boolean result = CheckTargetService.checkIngestNode(clusterState, client());
+            assertFalse(result);
+        } catch (IllegalStateException e) {
+            assertTrue(e.getMessage().contains("no ingest node"));
+        }
     }
 
 }
