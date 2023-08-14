@@ -614,7 +614,7 @@ public class HavenaskEngine extends InternalEngine {
 
     /**
      * 原lucene引擎的逻辑是定时向内存中刷segment,而havenask引擎重载后则是增加一次checkpointCalc的记录项,并且更新内存中的checkpoint等commit信息
-     * 刷新间隔可以在创建索引时通过指定refresh_interval调整
+     * 刷新间隔可以在创建索引时通过指定settings中的refresh_interval进行调整
      */
     @Override
     public boolean maybeRefresh(String source) throws EngineException {
