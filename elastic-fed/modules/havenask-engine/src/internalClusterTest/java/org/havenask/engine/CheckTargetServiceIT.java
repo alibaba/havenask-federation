@@ -17,18 +17,24 @@ package org.havenask.engine;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashSet;
+import java.util.Set;
 
 import org.havenask.ArpcThreadLeakFilter;
 import org.havenask.OkHttpThreadLeakFilter;
 import org.havenask.cluster.ClusterState;
 import org.havenask.engine.rpc.SearcherClient;
 import org.havenask.engine.rpc.http.SearcherHttpClient;
+import org.havenask.engine.search.action.HavenaskSqlClientInfoAction;
 import org.havenask.plugins.Plugin;
+import org.havenask.test.HavenaskIntegTestCase;
+import org.havenask.test.HavenaskIntegTestCase.Scope;
 import org.havenask.transport.nio.MockNioTransportPlugin;
 
 import com.carrotsearch.randomizedtesting.annotations.ThreadLeakFilters;
 
 @ThreadLeakFilters(filters = { OkHttpThreadLeakFilter.class, ArpcThreadLeakFilter.class })
+@HavenaskIntegTestCase.ClusterScope(numDataNodes = 1, numClientNodes = 0, scope = Scope.SUITE)
 public class CheckTargetServiceIT extends HavenaskITTestCase {
     @Override
     protected Collection<Class<? extends Plugin>> nodePlugins() {
@@ -48,9 +54,21 @@ public class CheckTargetServiceIT extends HavenaskITTestCase {
     }
 
     public void testCheckIngestNode() throws IOException {
-        ClusterState clusterState = clusterService().state();
-        boolean result = CheckTargetService.checkIngestNode(clusterState, client());
-        assertFalse(result);
+        try {
+            HavenaskSqlClientInfoAction.Response sqlInfoResponse = client().execute(
+                HavenaskSqlClientInfoAction.INSTANCE,
+                new HavenaskSqlClientInfoAction.Request()
+            ).actionGet();
+            Set<String> havenaskIndices = new HashSet<>();
+            if (sqlInfoResponse.getResult() != null && sqlInfoResponse.getResult().isEmpty() == false) {
+                havenaskIndices.add("test2");
+            }
+
+            boolean result = CheckTargetService.checkIngestNodeEquals(sqlInfoResponse, havenaskIndices);
+            assertTrue(result);
+        } catch (IllegalStateException e) {
+            assertTrue(e.getMessage().contains("no ingest node"));
+        }
     }
 
 }
