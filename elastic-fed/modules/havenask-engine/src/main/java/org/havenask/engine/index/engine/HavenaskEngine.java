@@ -612,6 +612,10 @@ public class HavenaskEngine extends InternalEngine {
         maybeRefresh(source);
     }
 
+    /**
+     * 原lucene引擎的逻辑是定时向内存中刷segment,而havenask引擎重载后则是增加一次checkpointCalc的记录项,并且更新内存中的checkpoint等commit信息
+     * 刷新间隔可以在创建索引时通过指定refresh_interval调整
+     */
     @Override
     public boolean maybeRefresh(String source) throws EngineException {
         long time = System.currentTimeMillis();
@@ -661,12 +665,17 @@ public class HavenaskEngine extends InternalEngine {
         throw new UnsupportedOperationException("havenask engine not support sync flush operation");
     }
 
+    /**
+     * havenask不能主动触发刷盘(flush),因此周期刷盘的逻辑对于havenask引擎是无效的,这里将判断逻辑简单改为探测是否有新的commit信息
+     */
     @Override
     public boolean shouldPeriodicallyFlush() {
-        // havenask不能手动触发flush,只能等待commit信息发生变化,再触发flush
         return hasNewCommitInfo();
     }
 
+    /**
+     * havenask不能主动触发刷盘(flush),havenask引擎刷盘和fed元数据刷盘并不同步,只能等待commit信息发生变化,再主动探测这个变化（探测时机可以是下次写doc或隔一段时间）才能触发fed元数据的flush
+     */
     @Override
     protected boolean hasTriggerFlush(boolean force) {
         if (force || hasNewCommitInfo()) {
@@ -694,12 +703,15 @@ public class HavenaskEngine extends InternalEngine {
             return false;
         }
 
+        // get last timestamp having been committed in disk
         long lastCommitTimestamp = getLastCommittedSegmentInfos().userData.containsKey(HavenaskCommitInfo.COMMIT_TIMESTAMP_KEY)
             ? Long.valueOf(getLastCommittedSegmentInfos().userData.get(HavenaskCommitInfo.COMMIT_TIMESTAMP_KEY))
             : -1L;
+
+        // if last commit timestamp in memory is newer than last commit timestamp in disk, it means commit info has changed
         if (lastCommitInfo.getCommitTimestamp() > lastCommitTimestamp) {
             logger.info(
-                "commit info changed, last commit timestamp: {}, new commit timestamp: {}",
+                "commit info changed, synchronization is needed， memory last commit timestamp: {}, disk last commit timestamp: {}",
                 lastCommitInfo.getCommitTimestamp(),
                 lastCommitTimestamp
             );
@@ -710,8 +722,8 @@ public class HavenaskEngine extends InternalEngine {
     }
 
     /**
-     * 返回记录在lucene commit信息的checkpint
-     * @return the local checkpoint that has been persisted to disk
+     * 返回已和havenask引擎同步的checkpoint,这个checkpoint是在内存中的,并不是已经持久化到磁盘的checkpoint,相比磁盘中的checkpoint可能已经变化
+     * @return the local checkpoint that has been synchronized with havenask engine
      */
     public long getCommitLocalCheckpoint() {
         return lastCommitInfo.getCommitCheckpoint();
