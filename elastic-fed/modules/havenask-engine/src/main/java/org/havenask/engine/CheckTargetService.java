@@ -25,6 +25,7 @@ import org.apache.logging.log4j.Logger;
 import org.havenask.client.Client;
 import org.havenask.cluster.ClusterState;
 import org.havenask.cluster.metadata.IndexMetadata;
+import org.havenask.cluster.metadata.Metadata;
 import org.havenask.cluster.node.DiscoveryNode;
 import org.havenask.cluster.routing.RoutingNode;
 import org.havenask.cluster.routing.ShardRouting;
@@ -165,9 +166,13 @@ public class CheckTargetService extends AbstractLifecycleComponent {
             indices.add(shardRouting.getIndexName());
         }
 
+        return checkDataNodeEquals(clusterState.metadata(), indices, searcherTables);
+    }
+
+    static boolean checkDataNodeEquals(Metadata metadata, Set<String> nodeIndices, Set<String> searcherTables) throws IOException {
         Set<String> havenaskIndices = new HashSet<>();
-        indices.forEach((index) -> {
-            IndexMetadata indexMetadata = clusterState.metadata().index(index);
+        nodeIndices.forEach((index) -> {
+            IndexMetadata indexMetadata = metadata.index(index);
             if (EngineSettings.isHavenaskEngine(indexMetadata.getSettings())) {
                 havenaskIndices.add(index);
             }
