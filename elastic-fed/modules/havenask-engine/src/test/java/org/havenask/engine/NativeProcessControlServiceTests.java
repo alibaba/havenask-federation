@@ -38,7 +38,6 @@ import org.havenask.threadpool.ThreadPool;
 import org.junit.After;
 import org.junit.Before;
 
-//@AwaitsFix(bugUrl = "https://github.com/alibaba/havenask-federation/issues/78")
 public class NativeProcessControlServiceTests extends HavenaskTestCase {
     private NativeProcessControlService nativeProcessControlService;
     private ThreadPool threadPool;
@@ -110,6 +109,7 @@ public class NativeProcessControlServiceTests extends HavenaskTestCase {
         });
     }
 
+    @AwaitsFix(bugUrl = "https://github.com/alibaba/havenask-federation/issues/78")
     public void testCheckProcessAlive() throws Exception {
         // 传递错误的searcher名称
         {
