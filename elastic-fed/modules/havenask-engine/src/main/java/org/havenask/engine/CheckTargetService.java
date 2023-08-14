@@ -185,7 +185,6 @@ public class CheckTargetService extends AbstractLifecycleComponent {
         return equals;
     }
 
-    @SuppressWarnings("unchecked")
     static boolean checkIngestNode(ClusterState clusterState, Client client) {
         Set<String> havenaskIndices = new HashSet<>();
         clusterState.metadata().indices().forEach((index) -> {
@@ -199,6 +198,11 @@ public class CheckTargetService extends AbstractLifecycleComponent {
             HavenaskSqlClientInfoAction.INSTANCE,
             new HavenaskSqlClientInfoAction.Request()
         ).actionGet();
+        return checkIngestNodeEquals(sqlInfoResponse, havenaskIndices);
+    }
+
+    @SuppressWarnings("unchecked")
+    static boolean checkIngestNodeEquals(HavenaskSqlClientInfoAction.Response sqlInfoResponse, Set<String> havenaskIndices) {
         Map<String, Object> result = sqlInfoResponse.getResult();
         if (result != null
             && result.get("default") != null
