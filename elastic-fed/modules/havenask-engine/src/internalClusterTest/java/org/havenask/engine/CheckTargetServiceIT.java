@@ -22,19 +22,17 @@ import java.util.Set;
 
 import org.havenask.ArpcThreadLeakFilter;
 import org.havenask.OkHttpThreadLeakFilter;
-import org.havenask.cluster.ClusterState;
-import org.havenask.engine.rpc.SearcherClient;
-import org.havenask.engine.rpc.http.SearcherHttpClient;
+import org.havenask.Version;
+import org.havenask.cluster.metadata.IndexMetadata;
+import org.havenask.cluster.metadata.Metadata;
+import org.havenask.common.settings.Settings;
 import org.havenask.engine.search.action.HavenaskSqlClientInfoAction;
 import org.havenask.plugins.Plugin;
-import org.havenask.test.HavenaskIntegTestCase;
-import org.havenask.test.HavenaskIntegTestCase.Scope;
 import org.havenask.transport.nio.MockNioTransportPlugin;
 
 import com.carrotsearch.randomizedtesting.annotations.ThreadLeakFilters;
 
 @ThreadLeakFilters(filters = { OkHttpThreadLeakFilter.class, ArpcThreadLeakFilter.class })
-@HavenaskIntegTestCase.ClusterScope(numDataNodes = 1, numClientNodes = 0, scope = Scope.SUITE)
 public class CheckTargetServiceIT extends HavenaskITTestCase {
     @Override
     protected Collection<Class<? extends Plugin>> nodePlugins() {
@@ -47,13 +45,38 @@ public class CheckTargetServiceIT extends HavenaskITTestCase {
     }
 
     public void testCheckDataNode() throws IOException {
-        ClusterState clusterState = clusterService().state();
-        SearcherClient client = new SearcherHttpClient(39200);
-        boolean result = CheckTargetService.checkDataNode(clusterState, client);
-        assertFalse(result);
+        Metadata metadata = Metadata.builder()
+            .put(
+                IndexMetadata.builder("test1")
+                    .settings(
+                        Settings.builder().put(IndexMetadata.SETTING_VERSION_CREATED, Version.CURRENT).put("index.engine", "havenask")
+                    )
+                    .numberOfShards(1)
+                    .numberOfReplicas(0)
+                    .build(),
+                true
+            )
+            .put(
+                IndexMetadata.builder("test2")
+                    .settings(Settings.builder().put(IndexMetadata.SETTING_VERSION_CREATED, Version.CURRENT))
+                    .numberOfShards(1)
+                    .numberOfReplicas(0)
+                    .build(),
+                true
+            )
+            .build();
+
+        Set<String> nodeIndices = new HashSet<>();
+        nodeIndices.add("test1");
+        nodeIndices.add("test2");
+
+        Set<String> searcherTables = new HashSet<>();
+        searcherTables.add("test1");
+        boolean result = CheckTargetService.checkDataNodeEquals(metadata, nodeIndices, searcherTables);
+        assertTrue(result);
     }
 
-    public void testCheckIngestNode() throws IOException {
+    public void testCheckIngestNode() {
         try {
             HavenaskSqlClientInfoAction.Response sqlInfoResponse = client().execute(
                 HavenaskSqlClientInfoAction.INSTANCE,
