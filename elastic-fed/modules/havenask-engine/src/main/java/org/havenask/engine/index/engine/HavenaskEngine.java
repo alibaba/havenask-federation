@@ -14,6 +14,8 @@
 
 package org.havenask.engine.index.engine;
 
+import static org.havenask.engine.search.rest.RestHavenaskSqlAction.SQL_DATABASE;
+
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.security.AccessController;
@@ -30,10 +32,6 @@ import java.util.function.LongConsumer;
 import java.util.function.LongSupplier;
 
 import javax.management.MBeanTrustPermission;
-
-import com.alibaba.fastjson.JSON;
-import com.alibaba.fastjson.JSONArray;
-import com.alibaba.fastjson.JSONObject;
 
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.DescribeTopicsResult;
@@ -62,13 +60,11 @@ import org.havenask.engine.NativeProcessControlService;
 import org.havenask.engine.index.config.generator.RuntimeSegmentGenerator;
 import org.havenask.engine.index.mapper.VectorField;
 import org.havenask.engine.rpc.HavenaskClient;
-import org.havenask.engine.rpc.HeartbeatTargetResponse;
 import org.havenask.engine.rpc.QrsClient;
 import org.havenask.engine.rpc.QrsSqlRequest;
 import org.havenask.engine.rpc.QrsSqlResponse;
 import org.havenask.engine.rpc.SearcherClient;
 import org.havenask.engine.rpc.SqlClientInfoResponse;
-import org.havenask.engine.rpc.TargetInfo;
 import org.havenask.engine.rpc.WriteRequest;
 import org.havenask.engine.rpc.WriteResponse;
 import org.havenask.engine.util.Utils;
@@ -87,9 +83,12 @@ import org.havenask.index.shard.ShardId;
 import org.havenask.index.translog.Translog;
 import org.havenask.index.translog.TranslogConfig;
 import org.havenask.index.translog.TranslogDeletionPolicy;
-import suez.service.proto.ErrorCode;
 
-import static org.havenask.engine.search.rest.RestHavenaskSqlAction.SQL_DATABASE;
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONArray;
+import com.alibaba.fastjson.JSONObject;
+
+import suez.service.proto.ErrorCode;
 
 public class HavenaskEngine extends InternalEngine {
 
@@ -246,14 +245,15 @@ public class HavenaskEngine extends InternalEngine {
         while (timeout > 0) {
             try {
                 Thread.sleep(5000);
-                HeartbeatTargetResponse heartbeatTargetResponse = searcherHttpClient.getHeartbeatTarget();
-                if (heartbeatTargetResponse.getSignature() == null) {
-                    throw new IOException("havenask get heartbeat target failed");
-                }
-                TargetInfo targetInfo = heartbeatTargetResponse.getSignature();
-                if (false == targetInfo.table_info.containsKey(shardId.getIndexName())) {
-                    throw new IOException("havenask table not found in searcher");
-                }
+                // TODO 关闭searcher target的检查
+                // HeartbeatTargetResponse heartbeatTargetResponse = searcherHttpClient.getHeartbeatTarget();
+                // if (heartbeatTargetResponse.getSignature() == null) {
+                // throw new IOException("havenask get heartbeat target failed");
+                // }
+                // TargetInfo targetInfo = heartbeatTargetResponse.getSignature();
+                // if (false == targetInfo.table_info.containsKey(shardId.getIndexName())) {
+                // throw new IOException("havenask table not found in searcher");
+                // }
 
                 SqlClientInfoResponse sqlClientInfoResponse = qrsHttpClient.executeSqlClientInfo();
                 if (sqlClientInfoResponse.getErrorCode() != 0) {
