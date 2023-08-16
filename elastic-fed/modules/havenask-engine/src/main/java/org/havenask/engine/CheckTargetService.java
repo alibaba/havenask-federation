@@ -123,10 +123,11 @@ public class CheckTargetService extends AbstractLifecycleComponent {
 
             if (isDataNode) {
                 try {
-                    if (false == checkDataNode(clusterState, searcherClient)) {
-                        nativeProcessControlService.updateDataNodeTarget();
-                        nativeProcessControlService.updateIngestNodeTarget();
-                    }
+                    // TODO 关闭searcher target的检查
+                    // if (false == checkDataNode(clusterState, searcherClient)) {
+                    // nativeProcessControlService.updateDataNodeTarget();
+                    // nativeProcessControlService.updateIngestNodeTarget();
+                    // }
 
                     // TODO 如果有failed的index, searcher正常加载后, shard状态无法恢复成started
                 } catch (Exception e) {
