@@ -80,7 +80,7 @@ public class TransportSearcherStopAction extends HandledTransportAction<Searcher
             TransportService transportService,
             ActionFilters actionFilters
     ) {
-        super(HavenaskSqlAction.NAME, transportService, actionFilters, SearcherStopRequest::new, ThreadPool.Names.SEARCH);
+        super(SearcherStopAction.NAME, transportService, actionFilters, SearcherStopRequest::new, ThreadPool.Names.SEARCH);
 
     }
 
