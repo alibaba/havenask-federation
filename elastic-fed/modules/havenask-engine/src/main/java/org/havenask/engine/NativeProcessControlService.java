@@ -35,7 +35,6 @@ import org.havenask.common.component.AbstractLifecycleComponent;
 import org.havenask.common.settings.Setting;
 import org.havenask.common.settings.Setting.Property;
 import org.havenask.common.settings.Settings;
-import org.havenask.common.unit.ByteSizeValue;
 import org.havenask.common.unit.TimeValue;
 import org.havenask.common.util.concurrent.AbstractAsyncTask;
 import org.havenask.engine.index.engine.HavenaskEngine;
@@ -64,7 +63,7 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
     private static final String CHECK_HAVENASK_ALIVE_COMMAND =
         "ps aux | grep sap_server_d | grep 'roleType=%s' | grep -v grep | awk '{print $2}'";
     private static final String START_BS_JOB_COMMAND = "python %s/havenask/command/bs_job_starter.py %s %s %s %s ";
-    private static final String GET_TABLE_SIZE_COMMAND = "du -sh %s | awk '{print $1}'";
+    private static final String GET_TABLE_SIZE_COMMAND = "du -sk %s | awk '{print $1}'";
 
     public static final Setting<Integer> HAVENASK_SEARCHER_HTTP_PORT_SETTING = Setting.intSetting(
         "havenask.searcher.http.port",
@@ -443,13 +442,14 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
 
     public long getTableSize(Path tablePath) {
         if (isDataNode) {
-            // 获取table size
+            // 获取table size, 获取的size大小单位是KB
             final String finalGetTableSizeCommand = String.format(Locale.ROOT, GET_TABLE_SIZE_COMMAND, tablePath);
             String result = runCommandWithResult(finalGetTableSizeCommand);
             try {
                 if (result != null && false == result.isEmpty()) {
-                    ByteSizeValue sizeValue = ByteSizeValue.parseBytesSizeValue(result.trim(), "table_size");
-                    return sizeValue.getBytes();
+                    // table size 单位由KB转为Byte
+                    long sizeValue = Long.parseLong(result.trim()) * 1024;
+                    return sizeValue;
                 } else {
                     return -1;
                 }
