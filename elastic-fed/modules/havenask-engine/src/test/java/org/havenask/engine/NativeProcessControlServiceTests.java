@@ -77,6 +77,7 @@ public class NativeProcessControlServiceTests extends HavenaskTestCase {
         threadPool = null;
     }
 
+    @AwaitsFix(bugUrl = "https://github.com/alibaba/havenask-federation/issues/78")
     public void testStartStopSearcher() throws Exception {
         // 启动searcher
         nativeProcessControlService.start();
@@ -93,6 +94,7 @@ public class NativeProcessControlServiceTests extends HavenaskTestCase {
         });
     }
 
+    @AwaitsFix(bugUrl = "https://github.com/alibaba/havenask-federation/issues/78")
     public void testStartStopQrs() throws Exception {
         // 启动qrs
         nativeProcessControlService.start();
