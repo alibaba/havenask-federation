@@ -57,6 +57,9 @@ import org.havenask.engine.search.action.TransportHavenaskSqlAction;
 import org.havenask.engine.search.action.TransportHavenaskSqlClientInfoAction;
 import org.havenask.engine.search.rest.RestHavenaskSqlAction;
 import org.havenask.engine.search.rest.RestHavenaskSqlClientInfoAction;
+import org.havenask.engine.stop.searcher.action.SearcherStopAction;
+import org.havenask.engine.stop.searcher.action.TransportSearcherStopAction;
+import org.havenask.engine.stop.searcher.rest.RestSearcherStop;
 import org.havenask.env.Environment;
 import org.havenask.env.NodeEnvironment;
 import org.havenask.index.IndexModule;
@@ -251,8 +254,9 @@ public class HavenaskEnginePlugin extends Plugin
     @Override
     public List<ActionHandler<? extends ActionRequest, ? extends ActionResponse>> getActions() {
         return Arrays.asList(
-            new ActionHandler<>(HavenaskSqlAction.INSTANCE, TransportHavenaskSqlAction.class),
-            new ActionHandler<>(HavenaskSqlClientInfoAction.INSTANCE, TransportHavenaskSqlClientInfoAction.class)
+                new ActionHandler<>(HavenaskSqlAction.INSTANCE, TransportHavenaskSqlAction.class),
+                new ActionHandler<>(HavenaskSqlClientInfoAction.INSTANCE, TransportHavenaskSqlClientInfoAction.class),
+                new ActionHandler<>(SearcherStopAction.INSTANCE, TransportSearcherStopAction.class)
         );
     }
 
@@ -266,7 +270,7 @@ public class HavenaskEnginePlugin extends Plugin
         IndexNameExpressionResolver indexNameExpressionResolver,
         Supplier<DiscoveryNodes> nodesInCluster
     ) {
-        return Arrays.asList(new RestHavenaskSqlAction(), new RestHavenaskSqlClientInfoAction());
+        return Arrays.asList(new RestHavenaskSqlAction(), new RestHavenaskSqlClientInfoAction(), new RestSearcherStop());
     }
 
     @Override
