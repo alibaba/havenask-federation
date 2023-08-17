@@ -440,5 +440,4 @@ public class BasicIT extends AbstractHavenaskRestTestCase {
 
         // todo: check data using sql search api
     }
-
 }
