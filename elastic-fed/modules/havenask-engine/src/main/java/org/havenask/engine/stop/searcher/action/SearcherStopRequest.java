@@ -58,10 +58,14 @@ package org.havenask.engine.stop.searcher.action;
 
 import org.havenask.action.ActionRequest;
 import org.havenask.action.ActionRequestValidationException;
+import org.havenask.common.io.stream.StreamInput;
 
 public class SearcherStopRequest extends ActionRequest {
 
     public SearcherStopRequest() {
+    }
+
+    public SearcherStopRequest(StreamInput streamInput) {
     }
 
     @Override

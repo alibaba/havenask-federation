@@ -57,18 +57,31 @@
 package org.havenask.engine.stop.searcher.action;
 
 import org.havenask.action.ActionListener;
+import org.havenask.action.ingest.IngestActionForwarder;
 import org.havenask.action.support.ActionFilters;
 import org.havenask.action.support.HandledTransportAction;
+import org.havenask.cluster.service.ClusterService;
+import org.havenask.common.inject.Inject;
 import org.havenask.common.io.stream.Writeable;
+import org.havenask.engine.NativeProcessControlService;
+import org.havenask.engine.rpc.http.QrsHttpClient;
+import org.havenask.engine.search.action.HavenaskSqlAction;
+import org.havenask.engine.search.action.HavenaskSqlRequest;
 import org.havenask.tasks.Task;
+import org.havenask.threadpool.ThreadPool;
 import org.havenask.transport.TransportService;
 
 import java.io.IOException;
 
 public class TransportSearcherStopAction extends HandledTransportAction<SearcherStopRequest, SearcherStopResponse> {
 
-    protected TransportSearcherStopAction(String actionName, TransportService transportService, ActionFilters actionFilters, Writeable.Reader<SearcherStopRequest> searcherStopRequestReader) {
-        super(actionName, transportService, actionFilters, searcherStopRequestReader);
+    @Inject
+    public TransportSearcherStopAction(
+            TransportService transportService,
+            ActionFilters actionFilters
+    ) {
+        super(HavenaskSqlAction.NAME, transportService, actionFilters, SearcherStopRequest::new, ThreadPool.Names.SEARCH);
+
     }
 
     @Override
