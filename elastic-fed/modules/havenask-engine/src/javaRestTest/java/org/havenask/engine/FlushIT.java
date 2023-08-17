@@ -42,6 +42,7 @@ import org.havenask.client.indices.GetIndexRequest;
 import org.havenask.cluster.health.ClusterHealthStatus;
 import org.havenask.common.collect.Map;
 import org.havenask.common.settings.Settings;
+import org.havenask.common.xcontent.XContentType;
 import org.havenask.engine.index.engine.EngineSettings;
 
 import java.util.concurrent.TimeUnit;
@@ -73,49 +74,142 @@ public class FlushIT extends AbstractHavenaskRestTestCase {
         assertEquals(-1, getLocalCheckpoint(index));
         assertEquals(-1, getMaxSeqNo(index));
 
-        // create 4 docs
+        // create 4 docs and all docs willed flushed
         for (int i = 0; i <= 3; i++) {
-            highLevelClient().index(new IndexRequest(index).source(Map.of("foo", "flush test " + i)), RequestOptions.DEFAULT);
+            highLevelClient().index(new IndexRequest(index).source(Map.of("foo", "flush test " + i), XContentType.JSON), RequestOptions.DEFAULT);
         }
 
         assertEquals(-1, getLocalCheckpoint(index));
         assertEquals(3, getMaxSeqNo(index));
 
-        // sleep 6s
+        // sleep 6s and create 2 docs, doc0 - doc4 will be flushed
         Thread.sleep(6000);
-
-        // create 5 docs
-        for (int i = 4; i <= 8; i++) {
+        for (int i = 4; i <= 5; i++) {
             highLevelClient().index(new IndexRequest(index).source(Map.of("foo", "flush test " + i)), RequestOptions.DEFAULT);
         }
 
+        // wait for 10s for flush and create a doc to trigger flush
+        Thread.sleep(15000);
+        highLevelClient().index(new IndexRequest(index).source(Map.of("foo", "flush test 6")), RequestOptions.DEFAULT);
+
+        // checkpoint will be 3 or 4, in most case it will be 3
+        if (getLocalCheckpoint(index) == 3) {
+            // print log
+            logger.info("common case: checkpoint is 3");
+        } else if (getLocalCheckpoint(index) == 4) {
+            // print log
+            logger.info("corner case: checkpoint is 4");
+        } else {
+            fail("checkpoint should be 3 or 4, but get " + getLocalCheckpoint(index));
+        }
+
+        // delete index and HEAD index
+        assertEquals(true, highLevelClient().indices().exists(new GetIndexRequest(index), RequestOptions.DEFAULT));
+        assertTrue(highLevelClient().indices().delete(new DeleteIndexRequest(index), RequestOptions.DEFAULT).isAcknowledged());
+        assertEquals(false, highLevelClient().indices().exists(new GetIndexRequest(index), RequestOptions.DEFAULT));
+    }
+
+    public void testMultiFlush() throws Exception {
+        // create index with havenask engine, 1s refresh_interval and 1 max_doc_count
+        String index = "multi_flush_test";
+        assertTrue(
+            highLevelClient().indices()
+                .create(
+                    new CreateIndexRequest(index).settings(
+                        Settings.builder()
+                            .put(EngineSettings.ENGINE_TYPE_SETTING.getKey(), EngineSettings.ENGINE_HAVENASK)
+                            .put("refresh_interval", "1s")
+                            .put("index.havenask.flush.max_doc_count", 2)
+                            .build()
+                    ).mapping(Map.of("properties", Map.of("foo", Map.of("type", "keyword")))),
+                    RequestOptions.DEFAULT
+                )
+                .isAcknowledged()
+        );
+        assertBusy(() -> {
+            ClusterHealthResponse clusterHealthResponse = highLevelClient().cluster()
+                .health(new ClusterHealthRequest(index), RequestOptions.DEFAULT);
+            assertEquals(clusterHealthResponse.getStatus(), ClusterHealthStatus.GREEN);
+        }, 2, TimeUnit.MINUTES);
+
+        // check before write
         assertEquals(-1, getLocalCheckpoint(index));
-        assertEquals(8, getMaxSeqNo(index));
+        assertEquals(-1, getMaxSeqNo(index));
 
-        // sleep 10s and add 1 doc, so fed meta data can trigger flush
-        Thread.sleep(10000);
-        highLevelClient().index(new IndexRequest(index).source(Map.of("foo", "flush test " + 9)), RequestOptions.DEFAULT);
-        assertEquals(3, getLocalCheckpoint(index));
-
-        for (int i = 10; i <= 20; i++) {
-            highLevelClient().index(new IndexRequest(index).source(Map.of("foo", "flush test " + i)), RequestOptions.DEFAULT);
-        }
-
-        assertEquals(3, getLocalCheckpoint(index));
-        assertEquals(20, getMaxSeqNo(index));
-
-        Thread.sleep(10000);
-        highLevelClient().index(new IndexRequest(index).source(Map.of("foo", "flush test " + 21)), RequestOptions.DEFAULT);
-        assertEquals(8, getLocalCheckpoint(index));
-
+        // create 1 doc
+        highLevelClient().index(new IndexRequest(index).source(Map.of("foo", "multi flush test 1")), RequestOptions.DEFAULT);
+        assertEquals(0, getMaxSeqNo(index));
         Thread.sleep(6000);
-        for (int i = 22; i <= 26; i++) {
-            highLevelClient().index(new IndexRequest(index).source(Map.of("foo", "flush test " + i)), RequestOptions.DEFAULT);
+
+        // create 2 doc, doc 0 and doc 1 will be flushed
+        for (int i = 1; i <= 2; i++) {
+            highLevelClient().index(new IndexRequest(index).source(Map.of("foo", "multi flush test " + i)), RequestOptions.DEFAULT);
         }
-        Thread.sleep(10000);
-        highLevelClient().index(new IndexRequest(index).source(Map.of("foo", "flush test " + 27)), RequestOptions.DEFAULT);
-        assertEquals(21, getLocalCheckpoint(index));
-        assertEquals(27, getMaxSeqNo(index));
+        // wait for 10s for flush and create a doc to trigger flush
+        Thread.sleep(15000);
+        highLevelClient().index(new IndexRequest(index).source(Map.of("foo", "multi flush test 3")), RequestOptions.DEFAULT);
+
+        // checkpoint will be 0 or 1, in most case it will be 0
+        if (getLocalCheckpoint(index) == 0) {
+            // print log
+            logger.info("common case: checkpoint is 0");
+        } else if (getLocalCheckpoint(index) == 1) {
+            // print log
+            logger.info("corner case: checkpoint is 1");
+        } else {
+            fail("checkpoint should be 0 or 1, but get " + getLocalCheckpoint(index));
+        }
+
+        // check max_seq_no
+        assertEquals(3, getMaxSeqNo(index));
+
+        // wait for 6s and create 1 doc, doc 2 and doc 3 will be flushed
+        Thread.sleep(6000);
+        highLevelClient().index(new IndexRequest(index).source(Map.of("foo", "multi flush test 4")), RequestOptions.DEFAULT);
+        // wait for 10s for flush and create a doc to trigger flush
+        Thread.sleep(15000);
+        highLevelClient().index(new IndexRequest(index).source(Map.of("foo", "multi flush test 5")), RequestOptions.DEFAULT);
+
+        // checkpoint will be 2 or 3, in most case it will be 2
+        if (getLocalCheckpoint(index) == 2) {
+            // print log
+            logger.info("common case: checkpoint is 2");
+        } else if (getLocalCheckpoint(index) == 3) {
+            // print log
+            logger.info("corner case: checkpoint is 3");
+        } else {
+            fail("checkpoint should be 2 or 3, but get " + getLocalCheckpoint(index));
+        }
+
+        // create many docs
+        for (int i = 6; i <= 16; i++) {
+            highLevelClient().index(new IndexRequest(index).source(Map.of("foo", "multi flush test " + i)), RequestOptions.DEFAULT);
+        }
+
+        // wait for 6s and create 2 doc, doc 16 will be flushed, doc 17 maybe flushed
+        Thread.sleep(6000);
+        for (int i = 17; i <= 18; i++) {
+            highLevelClient().index(new IndexRequest(index).source(Map.of("foo", "multi flush test " + i)), RequestOptions.DEFAULT);
+        }
+        // wait for 15s for flush and create a doc to trigger flush
+        Thread.sleep(15000);
+        highLevelClient().index(new IndexRequest(index).source(Map.of("foo", "multi flush test 19")), RequestOptions.DEFAULT);
+
+        // checkpoint will be 15, 16 or 17, in most case it will be 15 or 16
+        if (getLocalCheckpoint(index) == 15) {
+            // print log
+            logger.info("common case: checkpoint is 15");
+        } else if (getLocalCheckpoint(index) == 16) {
+            // print log
+            logger.info("common case: checkpoint is 16");
+        } else if (getLocalCheckpoint(index) == 17) {
+            // print log
+            logger.info("corner case: checkpoint is 17");
+        } else {
+            fail("checkpoint should be 15, 16 or 17, but get " + getLocalCheckpoint(index));
+        }
+        // check max_seq_no
+        assertEquals(19, getMaxSeqNo(index));
 
         // delete index and HEAD index
         assertEquals(true, highLevelClient().indices().exists(new GetIndexRequest(index), RequestOptions.DEFAULT));
