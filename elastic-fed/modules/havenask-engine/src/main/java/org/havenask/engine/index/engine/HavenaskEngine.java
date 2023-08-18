@@ -236,15 +236,13 @@ public class HavenaskEngine extends InternalEngine {
             engineConfig.getIndexSettings().getSettings()
         );
         // 更新配置表信息
-        nativeProcessControlService.updateDataNodeTargetAsync();
-        nativeProcessControlService.updateIngestNodeTargetAsync();
+        nativeProcessControlService.updateTargetAsync();
     }
 
     private void checkTableStatus() throws IOException {
         long timeout = 60000;
         while (timeout > 0) {
             try {
-                Thread.sleep(5000);
                 // TODO 关闭searcher target的检查
                 // HeartbeatTargetResponse heartbeatTargetResponse = searcherHttpClient.getHeartbeatTarget();
                 // if (heartbeatTargetResponse.getSignature() == null) {
@@ -274,6 +272,11 @@ public class HavenaskEngine extends InternalEngine {
                     e
                 );
                 timeout -= 5000;
+                try {
+                    Thread.sleep(5000);
+                } catch (InterruptedException ex) {
+                    // pass
+                }
             }
         }
 
