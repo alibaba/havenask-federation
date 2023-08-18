@@ -104,7 +104,13 @@ import org.havenask.common.xcontent.XContentType;
 import org.havenask.engine.stop.searcher.action.SearcherStopAction;
 import org.havenask.engine.stop.searcher.action.SearcherStopRequest;
 import org.havenask.engine.stop.searcher.action.SearcherStopResponse;
-import org.havenask.rest.*;
+
+import org.havenask.rest.BaseRestHandler;
+import org.havenask.rest.BytesRestResponse;
+import org.havenask.rest.RestRequest;
+import org.havenask.rest.RestRequest.Method;
+import org.havenask.rest.RestResponse;
+import org.havenask.rest.RestStatus;
 import org.havenask.rest.action.RestBuilderListener;
 
 import java.util.List;
@@ -113,11 +119,11 @@ public class RestSearcherStop extends BaseRestHandler {
 
     @Override
     public String getName() {
-        return "havenask_stop_action";
+        return "havenask_stop_searcher_action";
     }
 
     public List<Route> routes() {
-        return List.of(new Route(RestRequest.Method.POST, "/_havenask/stop"));
+        return List.of(new Route(Method.POST, "/_havenask/stop/searcher"));
     }
 
     @Override

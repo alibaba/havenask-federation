@@ -61,7 +61,7 @@ import org.havenask.action.ActionType;
 public class SearcherStopAction extends ActionType<SearcherStopResponse> {
 
     public static final SearcherStopAction INSTANCE = new SearcherStopAction();
-    public static final String NAME = "indices:havenask/searcher/stop";
+    public static final String NAME = "indices:havenask/stop/searcher";
 
     private SearcherStopAction() {
         super(NAME, SearcherStopResponse::new);
