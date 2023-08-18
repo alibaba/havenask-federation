@@ -101,15 +101,12 @@ package org.havenask.engine.stop.searcher.rest;
 import org.havenask.client.node.NodeClient;
 import org.havenask.common.xcontent.XContentBuilder;
 import org.havenask.common.xcontent.XContentType;
-import org.havenask.engine.search.action.HavenaskSqlAction;
-import org.havenask.engine.search.action.HavenaskSqlResponse;
 import org.havenask.engine.stop.searcher.action.SearcherStopAction;
 import org.havenask.engine.stop.searcher.action.SearcherStopRequest;
 import org.havenask.engine.stop.searcher.action.SearcherStopResponse;
 import org.havenask.rest.*;
 import org.havenask.rest.action.RestBuilderListener;
 
-import java.io.IOException;
 import java.util.List;
 
 public class RestSearcherStop extends BaseRestHandler {

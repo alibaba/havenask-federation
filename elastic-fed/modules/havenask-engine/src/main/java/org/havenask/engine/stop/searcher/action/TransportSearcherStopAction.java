@@ -60,23 +60,16 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.message.ParameterizedMessage;
 import org.havenask.action.ActionListener;
-import org.havenask.action.ingest.IngestActionForwarder;
 import org.havenask.action.support.ActionFilters;
 import org.havenask.action.support.HandledTransportAction;
-import org.havenask.cluster.service.ClusterService;
 import org.havenask.common.inject.Inject;
-import org.havenask.common.io.stream.Writeable;
 import org.havenask.common.unit.TimeValue;
-import org.havenask.engine.NativeProcessControlService;
-import org.havenask.engine.rpc.http.QrsHttpClient;
-import org.havenask.engine.search.action.HavenaskSqlAction;
-import org.havenask.engine.search.action.HavenaskSqlRequest;
 import org.havenask.engine.search.action.TransportHavenaskSqlAction;
+import org.havenask.rest.RestStatus;
 import org.havenask.tasks.Task;
 import org.havenask.threadpool.ThreadPool;
 import org.havenask.transport.TransportService;
 
-import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.security.AccessController;
@@ -88,11 +81,9 @@ public class TransportSearcherStopAction extends HandledTransportAction<Searcher
     private static final Logger logger = LogManager.getLogger(TransportHavenaskSqlAction.class);
     private static final String stopSearcherCommand = "ps -ef | grep searcher | grep -v grep | awk '{print $2}' | xargs kill -9";
     private final TimeValue commandTimeout;
+
     @Inject
-    public TransportSearcherStopAction(
-            TransportService transportService,
-            ActionFilters actionFilters
-    ) {
+    public TransportSearcherStopAction(TransportService transportService, ActionFilters actionFilters) {
         super(SearcherStopAction.NAME, transportService, actionFilters, SearcherStopRequest::new, ThreadPool.Names.SEARCH);
         commandTimeout = TimeValue.timeValueSeconds(10);
     }
@@ -100,7 +91,17 @@ public class TransportSearcherStopAction extends HandledTransportAction<Searcher
     @Override
     protected void doExecute(Task task, SearcherStopRequest request, ActionListener<SearcherStopResponse> listener) {
         // use shell to kill the process
-        boolean state = runCommand(stopSearcherCommand);
+        try {
+            boolean success = runCommand(stopSearcherCommand);
+            if (success) {
+                listener.onResponse(new SearcherStopResponse("kill searcher success", RestStatus.OK.getStatus()));
+            } else {
+                listener.onResponse(new SearcherStopResponse("kill searcher failed", RestStatus.EXPECTATION_FAILED.getStatus()));
+            }
+        } catch (Exception e) {
+            listener.onResponse(new SearcherStopResponse("exception occur :" + e, RestStatus.EXPECTATION_FAILED.getStatus()));
+        }
+
     }
 
     private boolean runCommand(String command) {
@@ -125,9 +126,9 @@ public class TransportSearcherStopAction extends HandledTransportAction<Searcher
                 } else {
                     // logger success
                     logger.info(
-                            "run command success, cost [{}], command: [{}]",
-                            TimeValue.timeValueMillis(System.currentTimeMillis() - start),
-                            command
+                        "run command success, cost [{}], command: [{}]",
+                        TimeValue.timeValueMillis(System.currentTimeMillis() - start),
+                        command
                     );
                     return true;
                 }

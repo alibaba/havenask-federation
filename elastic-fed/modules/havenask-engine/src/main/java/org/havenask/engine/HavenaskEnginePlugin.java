@@ -254,9 +254,9 @@ public class HavenaskEnginePlugin extends Plugin
     @Override
     public List<ActionHandler<? extends ActionRequest, ? extends ActionResponse>> getActions() {
         return Arrays.asList(
-                new ActionHandler<>(HavenaskSqlAction.INSTANCE, TransportHavenaskSqlAction.class),
-                new ActionHandler<>(HavenaskSqlClientInfoAction.INSTANCE, TransportHavenaskSqlClientInfoAction.class),
-                new ActionHandler<>(SearcherStopAction.INSTANCE, TransportSearcherStopAction.class)
+            new ActionHandler<>(HavenaskSqlAction.INSTANCE, TransportHavenaskSqlAction.class),
+            new ActionHandler<>(HavenaskSqlClientInfoAction.INSTANCE, TransportHavenaskSqlClientInfoAction.class),
+            new ActionHandler<>(SearcherStopAction.INSTANCE, TransportSearcherStopAction.class)
         );
     }
 

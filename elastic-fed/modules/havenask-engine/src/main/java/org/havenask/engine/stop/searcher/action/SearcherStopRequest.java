@@ -62,11 +62,9 @@ import org.havenask.common.io.stream.StreamInput;
 
 public class SearcherStopRequest extends ActionRequest {
 
-    public SearcherStopRequest() {
-    }
+    public SearcherStopRequest() {}
 
-    public SearcherStopRequest(StreamInput streamInput) {
-    }
+    public SearcherStopRequest(StreamInput streamInput) {}
 
     @Override
     public ActionRequestValidationException validate() {
