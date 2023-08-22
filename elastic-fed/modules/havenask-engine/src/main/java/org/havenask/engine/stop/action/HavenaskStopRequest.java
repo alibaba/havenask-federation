@@ -40,7 +40,9 @@ public class HavenaskStopRequest extends ActionRequest {
     public ActionRequestValidationException validate() {
         ActionRequestValidationException validationException = null;
         // role must be "searcher", "qrs" or "all"
-        if (!role.equals("searcher") && !role.equals("qrs") && !role.equals("all")) {
+        if (role == null) {
+            validationException = addValidationError("role must be specified", validationException);
+        } else if (!role.equals("searcher") && !role.equals("qrs") && !role.equals("all")) {
             validationException = addValidationError("role must be \"searcher\", \"qrs\" or \"all\", but get " + role, validationException);
         }
         return validationException;

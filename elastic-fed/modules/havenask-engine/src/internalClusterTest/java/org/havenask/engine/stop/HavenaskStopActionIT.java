@@ -15,9 +15,6 @@
 package org.havenask.engine.stop;
 
 import com.carrotsearch.randomizedtesting.annotations.ThreadLeakFilters;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-import org.apache.logging.log4j.message.ParameterizedMessage;
 import org.havenask.ArpcThreadLeakFilter;
 import org.havenask.OkHttpThreadLeakFilter;
 import org.havenask.common.SuppressForbidden;
@@ -25,7 +22,6 @@ import org.havenask.common.settings.Settings;
 import org.havenask.engine.HavenaskEnginePlugin;
 import org.havenask.engine.HavenaskITTestCase;
 import org.havenask.engine.MockNativeProcessControlService;
-import org.havenask.engine.search.action.TransportHavenaskSqlAction;
 import org.havenask.engine.stop.action.HavenaskStopAction;
 import org.havenask.engine.stop.action.HavenaskStopRequest;
 import org.havenask.engine.stop.action.HavenaskStopResponse;
@@ -34,22 +30,16 @@ import org.havenask.test.HavenaskIntegTestCase;
 import org.havenask.transport.nio.MockNioTransportPlugin;
 import org.junit.After;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
-import java.security.AccessController;
-import java.security.PrivilegedAction;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Locale;
 import java.util.concurrent.TimeUnit;
+
+import static org.havenask.engine.NativeProcessControlService.checkProcessAlive;
 
 @SuppressForbidden(reason = "use a http server")
 @ThreadLeakFilters(filters = { OkHttpThreadLeakFilter.class, ArpcThreadLeakFilter.class })
 @HavenaskIntegTestCase.ClusterScope(numDataNodes = 1, numClientNodes = 0, scope = HavenaskIntegTestCase.Scope.TEST)
 public class HavenaskStopActionIT extends HavenaskITTestCase {
-
-    private static final Logger logger = LogManager.getLogger(TransportHavenaskSqlAction.class);
 
     @Override
     protected Settings nodeSettings(int nodeOrdinal) {
@@ -75,8 +65,6 @@ public class HavenaskStopActionIT extends HavenaskITTestCase {
     private String startQrsCommand = "sh " + startScript + " sap_server_d roleType=qrs &";
     private String stopHavenaskCommand = "sh " + stopScript;
     private long stopHavenaskTimeout = 3;
-    private static final String CHECK_HAVENASK_ALIVE_COMMAND =
-        "ps aux | grep sap_server_d | grep 'roleType=%s' | grep -v grep | awk '{print $2}'";
 
     @After
     public void tearDown() throws Exception {
@@ -169,62 +157,19 @@ public class HavenaskStopActionIT extends HavenaskITTestCase {
             client().execute(HavenaskStopAction.INSTANCE, request).actionGet();
             fail("should throw exception");
         } catch (Exception e) {
-            System.out.println(e.getMessage());
             assertTrue(e.getMessage().contains("role must be \"searcher\", \"qrs\" or \"all\", but get " + role + ";"));
         }
     }
 
-    /**
-     * 检测进程是否存活
-     *
-     * @param role 进程角色: searcher 或者 qrs
-     * @return 返回进程存活状态
-     */
-    boolean checkProcessAlive(String role) {
-        Process process = null;
-        String command = String.format(Locale.ROOT, CHECK_HAVENASK_ALIVE_COMMAND, role);
-        System.out.println(command);
+    // test null role
+    public void testNullRoleStop() throws Exception {
+        String role = null;
+        HavenaskStopRequest request = new HavenaskStopRequest(role);
         try {
-            process = AccessController.doPrivileged((PrivilegedAction<Process>) () -> {
-                try {
-                    return Runtime.getRuntime().exec(new String[] { "sh", "-c", command });
-                } catch (IOException e) {
-                    logger.warn(() -> new ParameterizedMessage("run check command error, command [{}]", command), e);
-                    return null;
-                }
-            });
-            if (process == null) {
-                logger.warn("run check command error, the process is null, don't know the process [{}] status", role);
-                return true;
-            }
-
-            try (InputStream inputStream = process.getInputStream()) {
-                byte[] bytes = inputStream.readAllBytes();
-                String result = new String(bytes, StandardCharsets.UTF_8);
-                if (result.trim().equals("")) {
-                    logger.info("[{}] pid not found, the process is not alive", role);
-                    return false;
-                }
-
-                try {
-                    if (Integer.valueOf(result.trim()) > 0) {
-                        return true;
-                    } else {
-                        logger.warn("check command get the process [{}] pid error, check result is [{}]", role, result);
-                        return false;
-                    }
-                } catch (NumberFormatException e) {
-                    logger.warn("check command get the process [{}] result format error, check result is [{}]", role, result);
-                    return false;
-                }
-            }
-        } catch (IOException e) {
-            logger.warn(() -> new ParameterizedMessage("check command get the process [{}] input error", role), e);
-        } finally {
-            if (process != null) {
-                process.destroy();
-            }
+            client().execute(HavenaskStopAction.INSTANCE, request).actionGet();
+            fail("should throw exception");
+        } catch (Exception e) {
+            assertTrue(e.getMessage().contains("role must be specified;"));
         }
-        return true;
     }
 }

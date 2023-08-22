@@ -291,7 +291,7 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
                     });
                     LOGGER.info("start searcher process...");
                     // 启动searcher
-                    runCommand(startSearcherCommand);
+                    runCommand(startSearcherCommand, commandTimeout);
                 }
             }
 
@@ -299,7 +299,7 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
                 if (false == checkProcessAlive(QRS_ROLE)) {
                     LOGGER.info("start qrs process...");
                     // 启动qrs
-                    runCommand(startQrsCommand);
+                    runCommand(startQrsCommand, commandTimeout);
                 }
             }
         }
@@ -323,7 +323,7 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
             LOGGER.info("start searcher process...");
             while (false == checkProcessAlive(SEARCHER_ROLE)) {
                 // 启动searcher
-                boolean runSearcherState = runCommand(startSearcherCommand);
+                boolean runSearcherState = runCommand(startSearcherCommand, commandTimeout);
                 if (!runSearcherState) {
                     try {
                         Thread.sleep(1000);
@@ -338,7 +338,7 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
             LOGGER.info("start qrs process...");
             while (false == checkProcessAlive(QRS_ROLE)) {
                 // 启动qrs
-                boolean runQrsState = runCommand(startQrsCommand);
+                boolean runQrsState = runCommand(startQrsCommand, commandTimeout);
                 if (!runQrsState) {
                     try {
                         Thread.sleep(1000);
@@ -356,7 +356,7 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
      * @param role 进程角色: searcher 或者 qrs
      * @return 返回进程存活状态
      */
-    boolean checkProcessAlive(String role) {
+    public static boolean checkProcessAlive(String role) {
         Process process = null;
         String command = String.format(Locale.ROOT, CHECK_HAVENASK_ALIVE_COMMAND, role);
         try {
@@ -428,7 +428,7 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
         if (isDataNode) {
             // 启动bs job
             final String finalStartBsJobCommand = startBsJobCommand + " " + indexName + " '" + realtimeInfo + "'";
-            runCommand(finalStartBsJobCommand);
+            runCommand(finalStartBsJobCommand, commandTimeout);
         }
     }
 
@@ -436,7 +436,7 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
         if (isDataNode) {
             // 启动bs job
             final String finalStartBsJobCommand = startBsJobCommand + " " + indexName;
-            runCommand(finalStartBsJobCommand);
+            runCommand(finalStartBsJobCommand, commandTimeout);
         }
     }
 
@@ -467,7 +467,7 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
     public synchronized void updateDataNodeTarget() {
         if (isDataNode && running) {
             // 更新datanode searcher的target
-            runCommand(updateSearcherCommand);
+            runCommand(updateSearcherCommand, commandTimeout);
         }
     }
 
@@ -487,7 +487,7 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
     public synchronized void updateIngestNodeTarget() {
         if (isIngestNode && running) {
             // 更新ingestnode qrs的target
-            runCommand(updateQrsCommand);
+            runCommand(updateQrsCommand, commandTimeout);
         }
     }
 
@@ -513,11 +513,11 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
                     }
                     if (isDataNode) {
                         // 更新datanode searcher的target
-                        runCommand(updateSearcherCommand);
+                        runCommand(updateSearcherCommand, commandTimeout);
                     }
                     if (isIngestNode) {
                         // 更新ingestnode qrs的target
-                        runCommand(updateQrsCommand);
+                        runCommand(updateQrsCommand, commandTimeout);
                     }
                 }
             });
@@ -556,7 +556,7 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
         });
     }
 
-    private boolean runCommand(String command) {
+    public static boolean runCommand(String command, TimeValue commandTimeout) {
         return AccessController.doPrivileged((PrivilegedAction<Boolean>) () -> {
             try {
                 LOGGER.debug("run command: {}", command);

@@ -38,12 +38,8 @@ public class RestHavenaskStop extends BaseRestHandler {
 
     @Override
     protected RestChannelConsumer prepareRequest(RestRequest request, NodeClient client) {
-
-        // for example, role can be "searcher", "qrs", "all"
+        // role can be "searcher", "qrs", "all"
         String role = request.param("role");
-        if (role == null) {
-            role = "all";
-        }
         HavenaskStopRequest havenaskStopRequest = new HavenaskStopRequest(role);
         return channel -> client.execute(HavenaskStopAction.INSTANCE, havenaskStopRequest, new RestToXContentListener<>(channel));
     }
