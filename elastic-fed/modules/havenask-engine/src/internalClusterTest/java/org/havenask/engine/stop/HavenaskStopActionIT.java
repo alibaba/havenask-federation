@@ -64,7 +64,7 @@ public class HavenaskStopActionIT extends HavenaskITTestCase {
     private String startSearcherCommand = "sh " + startScript + " sap_server_d roleType=searcher &";
     private String startQrsCommand = "sh " + startScript + " sap_server_d roleType=qrs &";
     private String stopHavenaskCommand = "sh " + stopScript;
-    private long stopHavenaskTimeout = 3;
+    private long maxWaitSeconds = 10;
 
     @After
     public void tearDown() throws Exception {
@@ -72,21 +72,20 @@ public class HavenaskStopActionIT extends HavenaskITTestCase {
         // stop all process
         Process process = Runtime.getRuntime().exec(new String[] { "sh", "-c", stopHavenaskCommand });
         // wait for stopping process finished
-        process.waitFor(stopHavenaskTimeout, TimeUnit.SECONDS);
+        process.waitFor(maxWaitSeconds, TimeUnit.SECONDS);
     }
 
     public void testLocalStartAndStop() throws Exception {
-        assertFalse(checkProcessAlive("searcher"));
-        assertFalse(checkProcessAlive("qrs"));
+        assertBusy(() -> assertFalse(checkProcessAlive("searcher")), maxWaitSeconds, TimeUnit.SECONDS);
+        assertBusy(() -> assertFalse(checkProcessAlive("qrs")), maxWaitSeconds, TimeUnit.SECONDS);
         Runtime.getRuntime().exec(new String[] { "sh", "-c", startSearcherCommand });
         Runtime.getRuntime().exec(new String[] { "sh", "-c", startQrsCommand });
-        assertTrue(checkProcessAlive("searcher"));
-        assertTrue(checkProcessAlive("qrs"));
-        Process process = Runtime.getRuntime().exec(new String[] { "sh", "-c", stopHavenaskCommand });
+        assertBusy(() -> assertTrue(checkProcessAlive("searcher")), maxWaitSeconds, TimeUnit.SECONDS);
+        assertBusy(() -> assertTrue(checkProcessAlive("qrs")), maxWaitSeconds, TimeUnit.SECONDS);
+        Runtime.getRuntime().exec(new String[] { "sh", "-c", stopHavenaskCommand });
         // wait for stopping process finished
-        process.waitFor(stopHavenaskTimeout, TimeUnit.SECONDS);
-        assertFalse(checkProcessAlive("searcher"));
-        assertFalse(checkProcessAlive("qrs"));
+        assertBusy(() -> assertFalse(checkProcessAlive("searcher")), maxWaitSeconds, TimeUnit.SECONDS);
+        assertBusy(() -> assertFalse(checkProcessAlive("qrs")), maxWaitSeconds, TimeUnit.SECONDS);
     }
 
     // test stop searcher process
@@ -97,7 +96,7 @@ public class HavenaskStopActionIT extends HavenaskITTestCase {
         // start searcher
         Runtime.getRuntime().exec(new String[] { "sh", "-c", startSearcherCommand });
         // check searcher process is running
-        assertTrue(checkProcessAlive(role));
+        assertBusy(() -> assertTrue(checkProcessAlive(role)), maxWaitSeconds, TimeUnit.SECONDS);
 
         HavenaskStopRequest request = new HavenaskStopRequest(role);
         HavenaskStopResponse response = client().execute(HavenaskStopAction.INSTANCE, request).actionGet();
@@ -114,7 +113,7 @@ public class HavenaskStopActionIT extends HavenaskITTestCase {
         // start qrs
         Runtime.getRuntime().exec(new String[] { "sh", "-c", startQrsCommand });
         // check qrs process is running
-        assertTrue(checkProcessAlive(role));
+        assertBusy(() -> assertTrue(checkProcessAlive(role)), maxWaitSeconds, TimeUnit.SECONDS);
 
         HavenaskStopRequest request = new HavenaskStopRequest(role);
         HavenaskStopResponse response = client().execute(HavenaskStopAction.INSTANCE, request).actionGet();
@@ -134,8 +133,8 @@ public class HavenaskStopActionIT extends HavenaskITTestCase {
         Runtime.getRuntime().exec(new String[] { "sh", "-c", startSearcherCommand });
         Runtime.getRuntime().exec(new String[] { "sh", "-c", startQrsCommand });
         // check searcher and qrs process is running
-        assertTrue(checkProcessAlive("searcher"));
-        assertTrue(checkProcessAlive("qrs"));
+        assertBusy(() -> assertTrue(checkProcessAlive("searcher")), maxWaitSeconds, TimeUnit.SECONDS);
+        assertBusy(() -> assertTrue(checkProcessAlive("qrs")), maxWaitSeconds, TimeUnit.SECONDS);
 
         HavenaskStopRequest request = new HavenaskStopRequest(role);
         HavenaskStopResponse response = client().execute(HavenaskStopAction.INSTANCE, request).actionGet();
