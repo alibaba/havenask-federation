@@ -31,11 +31,11 @@ public class CheckpointCalc {
 
     private long currentCheckpoint = -1;
 
-    private static final long DEFAULT_MILLIS_PER_SEGMENT = 6000;
+    private static final long DEFAULT_MILLIS_PER_SEGMENT = 1000;
 
     private static final long DEFAULT_TIME_GAP_MARGIN = 0;
 
-    private static final int DEFAULT_SEGMENT_SIZE = 100;
+    private static final int DEFAULT_SEGMENT_SIZE = 1000;
 
     public CheckpointCalc() {
         this(DEFAULT_MILLIS_PER_SEGMENT, DEFAULT_TIME_GAP_MARGIN, DEFAULT_SEGMENT_SIZE);
