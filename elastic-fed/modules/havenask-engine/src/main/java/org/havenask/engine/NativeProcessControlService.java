@@ -501,6 +501,60 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
         }
     }
 
+    public synchronized void updateTargetAsync() {
+        long start = System.currentTimeMillis();
+        Process searchProcess = null;
+        if (isDataNode && running) {
+            // 更新datanode searcher的target
+            searchProcess = runCommandAsync(updateSearcherCommand);
+        }
+
+        Process qrsProcess = null;
+        if (isIngestNode && running) {
+            // 更新ingestnode qrs的target
+            qrsProcess = runCommandAsync(updateQrsCommand);
+        }
+
+        try {
+            if (searchProcess != null) {
+                boolean timeout = searchProcess.waitFor(commandTimeout.seconds(), TimeUnit.SECONDS);
+                if (false == timeout) {
+                    LOGGER.warn("run search update target command timeout, command: {}", updateSearcherCommand);
+                    searchProcess.destroy();
+                    return;
+                }
+                if (searchProcess.exitValue() != 0) {
+                    return;
+                }
+                LOGGER.debug(
+                    "run search update target command success, cost [{}], command: [{}]",
+                    TimeValue.timeValueMillis(System.currentTimeMillis() - start),
+                    updateSearcherCommand
+                );
+            }
+
+            if (qrsProcess != null) {
+                boolean timeout = qrsProcess.waitFor(commandTimeout.seconds(), TimeUnit.SECONDS);
+                if (false == timeout) {
+                    LOGGER.warn("run qrs update target command timeout, command: {}", updateQrsCommand);
+                    qrsProcess.destroy();
+                    return;
+                }
+                if (qrsProcess.exitValue() != 0) {
+                    return;
+                }
+                LOGGER.debug(
+                    "run qrs update target command success, cost [{}], command: [{}]",
+                    TimeValue.timeValueMillis(System.currentTimeMillis() - start),
+                    updateQrsCommand
+                );
+            }
+        } catch (Exception e) {
+            LOGGER.warn(() -> new ParameterizedMessage("run async command unexpected failed"), e);
+        }
+
+    }
+
     /**
      * 异步更新target
      */
@@ -591,11 +645,11 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
         });
     }
 
-    private void runCommandAsync(String command) {
-        AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
+    private Process runCommandAsync(String command) {
+        return AccessController.doPrivileged((PrivilegedAction<Process>) () -> {
             try {
                 LOGGER.debug("run command async: {}", command);
-                Runtime.getRuntime().exec(new String[] { "sh", "-c", command });
+                return Runtime.getRuntime().exec(new String[] { "sh", "-c", command });
             } catch (Exception e) {
                 LOGGER.warn(() -> new ParameterizedMessage("run command async {} unexpected failed", command), e);
             }
