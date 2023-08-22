@@ -114,7 +114,7 @@ public class HavenaskStopActionIT extends HavenaskITTestCase {
         HavenaskStopRequest request = new HavenaskStopRequest(role);
         HavenaskStopResponse response = client().execute(HavenaskStopAction.INSTANCE, request).actionGet();
         assertEquals(200, response.getResultCode());
-        assertEquals("target stop role: searcher\nrun stopping searcher command success\n", response.getResult());
+        assertEquals("target stop role: searcher; run stopping searcher command success; ", response.getResult());
         // check searcher process is not running
         assertFalse(checkProcessAlive(role));
     }
@@ -131,7 +131,7 @@ public class HavenaskStopActionIT extends HavenaskITTestCase {
         HavenaskStopRequest request = new HavenaskStopRequest(role);
         HavenaskStopResponse response = client().execute(HavenaskStopAction.INSTANCE, request).actionGet();
         assertEquals(200, response.getResultCode());
-        assertEquals("target stop role: qrs\nrun stopping qrs command success\n", response.getResult());
+        assertEquals("target stop role: qrs; run stopping qrs command success; ", response.getResult());
         // check searcher process is not running
         assertFalse(checkProcessAlive(role));
     }
@@ -153,7 +153,7 @@ public class HavenaskStopActionIT extends HavenaskITTestCase {
         HavenaskStopResponse response = client().execute(HavenaskStopAction.INSTANCE, request).actionGet();
         assertEquals(200, response.getResultCode());
         assertEquals(
-            "target stop role: all\nrun stopping searcher command success\nrun stopping qrs command success\n",
+            "target stop role: all; run stopping searcher command success; run stopping qrs command success; ",
             response.getResult()
         );
         // check searcher and qrs process is not running
