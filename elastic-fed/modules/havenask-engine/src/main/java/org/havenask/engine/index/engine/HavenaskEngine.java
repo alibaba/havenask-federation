@@ -16,6 +16,7 @@ package org.havenask.engine.index.engine;
 
 import static org.havenask.engine.search.rest.RestHavenaskSqlAction.SQL_DATABASE;
 
+import java.io.Closeable;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.security.AccessController;
@@ -28,6 +29,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.function.BiFunction;
+import java.util.function.Function;
 import java.util.function.LongConsumer;
 import java.util.function.LongSupplier;
 
@@ -44,13 +46,20 @@ import org.apache.kafka.common.serialization.StringSerializer;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.message.ParameterizedMessage;
+import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexableField;
+import org.apache.lucene.search.QueryCache;
+import org.apache.lucene.search.QueryCachingPolicy;
+import org.apache.lucene.search.ReferenceManager;
+import org.apache.lucene.search.similarities.Similarity;
+import org.apache.lucene.store.AlreadyClosedException;
 import org.apache.lucene.util.BytesRef;
 import org.havenask.HavenaskException;
 import org.havenask.action.bulk.BackoffPolicy;
 import org.havenask.common.Nullable;
 import org.havenask.common.bytes.BytesArray;
 import org.havenask.common.bytes.BytesReference;
+import org.havenask.common.lucene.index.HavenaskDirectoryReader;
 import org.havenask.common.lucene.uid.VersionsAndSeqNoResolver.DocIdAndVersion;
 import org.havenask.common.settings.Settings;
 import org.havenask.common.unit.TimeValue;
@@ -68,6 +77,7 @@ import org.havenask.engine.rpc.SqlClientInfoResponse;
 import org.havenask.engine.rpc.WriteRequest;
 import org.havenask.engine.rpc.WriteResponse;
 import org.havenask.engine.util.Utils;
+import org.havenask.index.engine.Engine;
 import org.havenask.index.engine.EngineConfig;
 import org.havenask.index.engine.EngineException;
 import org.havenask.index.engine.InternalEngine;
@@ -83,6 +93,8 @@ import org.havenask.index.shard.ShardId;
 import org.havenask.index.translog.Translog;
 import org.havenask.index.translog.TranslogConfig;
 import org.havenask.index.translog.TranslogDeletionPolicy;
+import org.havenask.search.DefaultSearchContext;
+import org.havenask.search.internal.ContextIndexSearcher;
 
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
@@ -801,5 +813,42 @@ public class HavenaskEngine extends InternalEngine {
             logger.debug("havenask engine get doc stats error", e);
         }
         return docCount;
+    }
+
+    @Override
+    public Searcher acquireSearcher(String source, SearcherScope scope, Function<Searcher, Searcher> wrapper) throws EngineException {
+        try {
+            ReferenceManager<HavenaskDirectoryReader> referenceManager = getReferenceManager(scope);
+            HavenaskDirectoryReader acquire = referenceManager.acquire();
+            return new HavenaskSearcher(qrsHttpClient, shardId, source, acquire, engineConfig.getSimilarity(), engineConfig.getQueryCache(),
+                engineConfig.getQueryCachingPolicy(), () -> {});
+        }  catch (AlreadyClosedException ex) {
+            throw ex;
+        } catch (Exception ex) {
+            maybeFailEngine("acquire_reader", ex);
+            ensureOpen(ex); // throw EngineCloseException here if we are already closed
+            logger.error(() -> new ParameterizedMessage("failed to acquire reader"), ex);
+            throw new EngineException(shardId, "failed to acquire reader", ex);
+        }
+    }
+
+    public static class HavenaskSearcher extends Engine.Searcher {
+        private final QrsClient qrsHttpClient;
+        private final ShardId shardId;
+
+        public HavenaskSearcher(QrsClient qrsHttpClient, ShardId shardId, String source, IndexReader reader,
+            Similarity similarity, QueryCache queryCache, QueryCachingPolicy queryCachingPolicy,
+            Closeable onClose) {
+            super(source, reader, similarity, queryCache, queryCachingPolicy, onClose);
+            this.qrsHttpClient = qrsHttpClient;
+            this.shardId = shardId;
+        }
+
+        @Override
+        public ContextIndexSearcher createContextIndexSearcher(DefaultSearchContext
+        searchContext, boolean lowLevelCancellation) throws IOException {
+            return new HavenaskIndexSearcher(qrsHttpClient, shardId, searchContext, getIndexReader(), getSimilarity(),
+                getQueryCache(), getQueryCachingPolicy(), lowLevelCancellation);
+        }
     }
 }

@@ -39,6 +39,35 @@
 
 package org.havenask.index.engine;
 
+import static org.havenask.index.seqno.SequenceNumbers.UNASSIGNED_PRIMARY_TERM;
+import static org.havenask.index.seqno.SequenceNumbers.UNASSIGNED_SEQ_NO;
+
+import java.io.Closeable;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.file.NoSuchFileException;
+import java.util.Arrays;
+import java.util.Base64;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.function.BiFunction;
+import java.util.function.Function;
+import java.util.stream.Stream;
+
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.message.ParameterizedMessage;
 import org.apache.lucene.index.DirectoryReader;
@@ -95,36 +124,9 @@ import org.havenask.index.shard.ShardId;
 import org.havenask.index.store.Store;
 import org.havenask.index.translog.Translog;
 import org.havenask.index.translog.TranslogStats;
+import org.havenask.search.DefaultSearchContext;
+import org.havenask.search.internal.ContextIndexSearcher;
 import org.havenask.search.suggest.completion.CompletionStats;
-
-import java.io.Closeable;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.nio.file.NoSuchFileException;
-import java.util.Arrays;
-import java.util.Base64;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.locks.Condition;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
-import java.util.function.BiFunction;
-import java.util.function.Function;
-import java.util.stream.Stream;
-
-import static org.havenask.index.seqno.SequenceNumbers.UNASSIGNED_PRIMARY_TERM;
-import static org.havenask.index.seqno.SequenceNumbers.UNASSIGNED_SEQ_NO;
 
 public abstract class Engine implements Closeable {
 
@@ -1265,7 +1267,7 @@ public abstract class Engine implements Closeable {
         protected abstract Searcher acquireSearcherInternal(String source);
     }
 
-    public static final class Searcher extends IndexSearcher implements Releasable {
+    public static class Searcher extends IndexSearcher implements Releasable {
         private final String source;
         private final Closeable onClose;
 
@@ -1304,6 +1306,15 @@ public abstract class Engine implements Closeable {
                 // This means there's a bug somewhere: don't suppress it
                 throw new AssertionError(e);
             }
+        }
+
+        /**
+         *
+         * create a new searcher with the given source and the given low level cancellation
+         */
+        public ContextIndexSearcher createContextIndexSearcher(DefaultSearchContext searchContext, boolean lowLevelCancellation) throws IOException {
+            return new ContextIndexSearcher(getIndexReader(), getSimilarity(),
+                getQueryCache(), getQueryCachingPolicy(), lowLevelCancellation);
         }
     }
 

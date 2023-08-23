@@ -39,6 +39,15 @@
 
 package org.havenask.search;
 
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.function.LongSupplier;
+
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.BoostQuery;
@@ -95,16 +104,7 @@ import org.havenask.search.slice.SliceBuilder;
 import org.havenask.search.sort.SortAndFormats;
 import org.havenask.search.suggest.SuggestionSearchContext;
 
-import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.function.LongSupplier;
-
-final class DefaultSearchContext extends SearchContext {
+public final class DefaultSearchContext extends SearchContext {
 
     private final ReaderContext readerContext;
     private final Engine.Searcher engineSearcher;
@@ -198,8 +198,7 @@ final class DefaultSearchContext extends SearchContext {
         this.indexShard = readerContext.indexShard();
         this.clusterService = clusterService;
         this.engineSearcher = readerContext.acquireSearcher("search");
-        this.searcher = new ContextIndexSearcher(engineSearcher.getIndexReader(), engineSearcher.getSimilarity(),
-            engineSearcher.getQueryCache(), engineSearcher.getQueryCachingPolicy(), lowLevelCancellation);
+        this.searcher = engineSearcher.createContextIndexSearcher(this, lowLevelCancellation);
         this.relativeTimeSupplier = relativeTimeSupplier;
         this.timeout = timeout;
         this.minNodeVersion = minNodeVersion;
