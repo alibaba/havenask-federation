@@ -230,15 +230,14 @@ public class DocIT extends AbstractHavenaskRestTestCase {
         bulkRequest.add(new DeleteRequest(index, "3"));
         highLevelClient().bulk(bulkRequest, RequestOptions.DEFAULT);
 
-        //check data using sql search api
-        String sqlStr = "select * from "
-                + index
-                + " where seq=1 AND content='欢迎使用1'";
+        // check data using sql search api
+        String sqlStr = "select * from " + index + " where seq=1 AND content='欢迎使用1'";
         SqlResponse bulkSqlResponse = highLevelClient().havenask().sql(new SqlRequest(sqlStr), RequestOptions.DEFAULT);
         assertEquals(bulkSqlResponse.getRowCount(), 1);
         assertEquals(bulkSqlResponse.getSqlResult().getData()[0][1], "欢迎使用1");
         assertEquals(bulkSqlResponse.getSqlResult().getData()[0][4], 20230718);
         assertEquals(bulkSqlResponse.getSqlResult().getData()[0][6], 1);
+
         // delete index and HEAD index
         assertTrue(highLevelClient().indices().delete(new DeleteIndexRequest(index), RequestOptions.DEFAULT).isAcknowledged());
         assertEquals(false, highLevelClient().indices().exists(new GetIndexRequest(index), RequestOptions.DEFAULT));
