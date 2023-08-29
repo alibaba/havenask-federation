@@ -38,6 +38,20 @@
 
 package org.havenask.search.aggregations;
 
+import java.io.IOException;
+import java.net.InetAddress;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.function.Supplier;
+import java.util.stream.Collectors;
+
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.document.BinaryDocValuesField;
 import org.apache.lucene.document.Document;
@@ -133,7 +147,7 @@ import org.havenask.search.aggregations.pipeline.PipelineAggregator.PipelineTree
 import org.havenask.search.aggregations.support.CoreValuesSourceType;
 import org.havenask.search.aggregations.support.ValuesSourceRegistry;
 import org.havenask.search.aggregations.support.ValuesSourceType;
-import org.havenask.search.fetch.FetchPhase;
+import org.havenask.search.fetch.DefaultFetchPhase;
 import org.havenask.search.fetch.subphase.FetchDocValuesPhase;
 import org.havenask.search.fetch.subphase.FetchSourcePhase;
 import org.havenask.search.internal.ContextIndexSearcher;
@@ -144,26 +158,12 @@ import org.havenask.test.InternalAggregationTestCase;
 import org.junit.After;
 import org.junit.Before;
 
-import java.io.IOException;
-import java.net.InetAddress;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.function.Consumer;
-import java.util.function.Function;
-import java.util.function.Supplier;
-import java.util.stream.Collectors;
-
 import static java.util.Collections.emptyMap;
 import static java.util.Collections.singletonList;
 import static java.util.Collections.singletonMap;
-import static org.havenask.test.InternalAggregationTestCase.DEFAULT_MAX_BUCKETS;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.instanceOf;
+import static org.havenask.test.InternalAggregationTestCase.DEFAULT_MAX_BUCKETS;
 import static org.mockito.Matchers.anyObject;
 import static org.mockito.Matchers.anyString;
 import static org.mockito.Mockito.doAnswer;
@@ -315,7 +315,7 @@ public abstract class AggregatorTestCase extends HavenaskTestCase {
         when(searchContext.numberOfShards()).thenReturn(1);
         when(searchContext.searcher()).thenReturn(contextIndexSearcher);
         when(searchContext.fetchPhase())
-                .thenReturn(new FetchPhase(Arrays.asList(new FetchSourcePhase(), new FetchDocValuesPhase())));
+                .thenReturn(new DefaultFetchPhase(Arrays.asList(new FetchSourcePhase(), new FetchDocValuesPhase())));
         when(searchContext.bitsetFilterCache()).thenReturn(new BitsetFilterCache(indexSettings, mock(Listener.class)));
         IndexShard indexShard = mock(IndexShard.class);
         when(indexShard.shardId()).thenReturn(new ShardId("test", "test", 0));

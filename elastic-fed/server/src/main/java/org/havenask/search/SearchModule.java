@@ -39,6 +39,18 @@
 
 package org.havenask.search;
 
+import static java.util.Collections.unmodifiableList;
+import static java.util.Collections.unmodifiableMap;
+import static java.util.Objects.requireNonNull;
+import static org.havenask.index.query.CommonTermsQueryBuilder.COMMON_TERMS_QUERY_DEPRECATION_MSG;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+import java.util.function.Consumer;
+import java.util.function.Function;
+
 import org.apache.lucene.search.BooleanQuery;
 import org.havenask.common.NamedRegistry;
 import org.havenask.common.ParseField;
@@ -264,6 +276,7 @@ import org.havenask.search.aggregations.pipeline.StatsBucketPipelineAggregator;
 import org.havenask.search.aggregations.pipeline.SumBucketPipelineAggregationBuilder;
 import org.havenask.search.aggregations.pipeline.SumBucketPipelineAggregator;
 import org.havenask.search.aggregations.support.ValuesSourceRegistry;
+import org.havenask.search.fetch.DefaultFetchPhase;
 import org.havenask.search.fetch.FetchPhase;
 import org.havenask.search.fetch.FetchSubPhase;
 import org.havenask.search.fetch.subphase.ExplainPhase;
@@ -301,18 +314,6 @@ import org.havenask.search.suggest.phrase.StupidBackoff;
 import org.havenask.search.suggest.term.TermSuggestion;
 import org.havenask.search.suggest.term.TermSuggestionBuilder;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-import java.util.function.Consumer;
-import java.util.function.Function;
-
-import static java.util.Collections.unmodifiableList;
-import static java.util.Collections.unmodifiableMap;
-import static java.util.Objects.requireNonNull;
-import static org.havenask.index.query.CommonTermsQueryBuilder.COMMON_TERMS_QUERY_DEPRECATION_MSG;
-
 /**
  * Sets up things that can be done at search time like queries, aggregations, and suggesters.
  */
@@ -325,6 +326,7 @@ public class SearchModule {
     private final ParseFieldRegistry<MovAvgModel.AbstractModelParser> movingAverageModelParserRegistry = new ParseFieldRegistry<>(
             "moving_avg_model");
 
+    private final FetchPhase fetchPhase;
     private final List<FetchSubPhase> fetchSubPhases = new ArrayList<>();
 
     private final Settings settings;
@@ -356,6 +358,7 @@ public class SearchModule {
         registerMovingAverageModels(plugins);
         registerPipelineAggregations(plugins);
         registerFetchSubPhases(plugins);
+        fetchPhase = registerFetchSub(plugins);
         registerSearchExts(plugins);
         registerShapes();
         registerIntervalsSourceProviders();
@@ -842,6 +845,26 @@ public class SearchModule {
                 new NamedWriteableRegistry.Entry(MovAvgModel.class, movAvgModel.getName().getPreferredName(), movAvgModel.getReader()));
     }
 
+    private FetchPhase registerFetchSub(List<SearchPlugin> plugins) {
+        FetchPhase fetchPhase = null;
+        for (SearchPlugin p : plugins) {
+            if (fetchPhase == null) {
+                fetchPhase = p.getFetchPhase(fetchSubPhases);
+            } else {
+                FetchPhase other = p.getFetchPhase(fetchSubPhases);
+                if (other != null) {
+                    throw new IllegalStateException("More than one fetch phase registered: " + fetchPhase.getClass().getName() +
+                            " and " + other.getClass().getName());
+                }
+            }
+        }
+        if (fetchPhase != null) {
+            return fetchPhase;
+        } else {
+            return new DefaultFetchPhase(fetchSubPhases);
+        }
+    }
+
     private void registerFetchSubPhases(List<SearchPlugin> plugins) {
         registerFetchSubPhase(new ExplainPhase());
         registerFetchSubPhase(new FetchDocValuesPhase());
@@ -970,6 +993,6 @@ public class SearchModule {
     }
 
     public FetchPhase getFetchPhase() {
-        return new FetchPhase(fetchSubPhases);
+        return fetchPhase;
     }
 }

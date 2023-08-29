@@ -41,22 +41,22 @@ package org.havenask.search.fetch;
 
 import org.havenask.test.HavenaskTestCase;
 
-public class FetchPhaseTests extends HavenaskTestCase {
+public class DefaultFetchPhaseTests extends HavenaskTestCase {
     public void testSequentialDocs() {
-        FetchPhase.DocIdToIndex[] docs = new FetchPhase.DocIdToIndex[10];
+        DefaultFetchPhase.DocIdToIndex[] docs = new DefaultFetchPhase.DocIdToIndex[10];
         int start = randomIntBetween(0, Short.MAX_VALUE);
         for (int i = 0; i < 10; i++) {
-            docs[i] = new FetchPhase.DocIdToIndex(start, i);
+            docs[i] = new DefaultFetchPhase.DocIdToIndex(start, i);
             ++ start;
         }
-        assertTrue(FetchPhase.hasSequentialDocs(docs));
+        assertTrue(DefaultFetchPhase.hasSequentialDocs(docs));
 
         int from = randomIntBetween(0, 9);
         start = docs[from].docId;
         for (int i = from; i < 10; i++) {
             start += randomIntBetween(2, 10);
-            docs[i] = new FetchPhase.DocIdToIndex(start, i);
+            docs[i] = new DefaultFetchPhase.DocIdToIndex(start, i);
         }
-        assertFalse(FetchPhase.hasSequentialDocs(docs));
+        assertFalse(DefaultFetchPhase.hasSequentialDocs(docs));
     }
 }

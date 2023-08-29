@@ -39,6 +39,16 @@
 
 package org.havenask.plugins;
 
+import static java.util.Collections.emptyList;
+import static java.util.Collections.emptyMap;
+
+import java.io.IOException;
+import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
+import java.util.function.BiFunction;
+import java.util.function.Consumer;
+
 import org.apache.lucene.search.Query;
 import org.havenask.common.CheckedFunction;
 import org.havenask.common.ParseField;
@@ -65,6 +75,7 @@ import org.havenask.search.aggregations.pipeline.MovAvgModel;
 import org.havenask.search.aggregations.pipeline.MovAvgPipelineAggregator;
 import org.havenask.search.aggregations.pipeline.PipelineAggregator;
 import org.havenask.search.aggregations.support.ValuesSourceRegistry;
+import org.havenask.search.fetch.FetchPhase;
 import org.havenask.search.fetch.FetchSubPhase;
 import org.havenask.search.fetch.subphase.highlight.Highlighter;
 import org.havenask.search.rescore.Rescorer;
@@ -72,16 +83,6 @@ import org.havenask.search.rescore.RescorerBuilder;
 import org.havenask.search.suggest.Suggest;
 import org.havenask.search.suggest.Suggester;
 import org.havenask.search.suggest.SuggestionBuilder;
-
-import java.io.IOException;
-import java.util.List;
-import java.util.Map;
-import java.util.TreeMap;
-import java.util.function.BiFunction;
-import java.util.function.Consumer;
-
-import static java.util.Collections.emptyList;
-import static java.util.Collections.emptyMap;
 
 /**
  * Plugin for extending search time behavior.
@@ -107,6 +108,14 @@ public interface SearchPlugin {
     default List<SearchExtensionSpec<MovAvgModel, MovAvgModel.AbstractModelParser>> getMovingAverageModels() {
         return emptyList();
     }
+
+    /**
+     * The new {@link FetchPhase}s defined by this plugin.
+     */
+    default FetchPhase getFetchPhase(List<FetchSubPhase> fetchSubPhases) {
+        return null;
+    }
+
     /**
      * The new {@link FetchSubPhase}s defined by this plugin.
      */
