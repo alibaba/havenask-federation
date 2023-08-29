@@ -97,7 +97,7 @@ examples:
 
     def _updateSearchConfig(self):
         zoneNames = self._getNeedStartZoneName()
-        tableInfos, createCatalogRequest = self._genTargetInfos(zoneNames, replica = self.searcherReplica)
+        tableInfos = self._genTargetInfos(zoneNames, replica = self.searcherReplica)
         if 0 != self._loadSearcherTarget(tableInfos):
             return False
         return True
@@ -141,7 +141,7 @@ examples:
 
         if self.enableLocalAccess:
             zoneNames = self._getNeedStartZoneName()
-            targetInfos, createCatalogRequest = self._genTargetInfos(zoneNames, 1, True)
+            targetInfos = self._genTargetInfos(zoneNames, 1, True)
             tableInfos = targetInfos[0][3]["table_info"]
             zoneName = zoneNames[0]
             ret = self.createCatalog(createCatalogRequest)

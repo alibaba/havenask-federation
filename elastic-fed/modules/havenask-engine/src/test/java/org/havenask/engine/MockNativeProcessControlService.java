@@ -30,8 +30,8 @@ public class MockNativeProcessControlService extends NativeProcessControlService
         super(clusterService, threadPool, environment, nodeEnvironment, havenaskEngineEnvironment);
         String startScript = MockNativeProcessControlService.class.getResource("/fake_sap.sh").getPath();
         String stopScript = MockNativeProcessControlService.class.getResource("/stop_fake_sap.sh").getPath();
-        this.startSearcherCommand = "sh " + startScript + " sap_server_d roleType=searcher &";
-        this.startQrsCommand = "sh " + startScript + " sap_server_d roleType=qrs &";
+        this.startSearcherCommand = "sh " + startScript + " ha_sql roleType=searcher &";
+        this.startQrsCommand = "sh " + startScript + " ha_sql roleType=qrs &";
         this.stopHavenaskCommand = "sh " + stopScript;
     }
 }
