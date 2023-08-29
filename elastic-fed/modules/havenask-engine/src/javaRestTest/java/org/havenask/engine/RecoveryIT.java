@@ -73,7 +73,7 @@ public class RecoveryIT extends AbstractHavenaskRestTestCase {
 
     private final long testDocCount = 100;
 
-    public void testRecovery() throws Exception {
+    public void testRecoverySingleShard() throws Exception {
         // create index
         assertTrue(
             highLevelClient().indices()
