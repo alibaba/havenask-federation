@@ -598,7 +598,7 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
                     }
                     if (isDataNode) {
                         try {
-                            checkProcessAlive("searcher");
+                            checkAliveBeforeUpdateTarget("searcher");
                             // 更新datanode qrs的target
                             runCommand(updateSearcherCommand, commandTimeout);
                         } catch (Exception e) {
@@ -607,7 +607,7 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
                     }
                     if (isIngestNode) {
                         try {
-                            checkProcessAlive("qrs");
+                            checkAliveBeforeUpdateTarget("qrs");
                             // 更新ingestnode qrs的target
                             runCommand(updateQrsCommand, commandTimeout);
                         } catch (Exception e) {
