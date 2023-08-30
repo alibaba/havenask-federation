@@ -597,7 +597,6 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
                         return;
                     }
                     if (isDataNode) {
-                        // checkAliveBeforeUpdateTarget("searcher");
                         try {
                             checkProcessAlive("searcher");
                             // 更新datanode qrs的target
