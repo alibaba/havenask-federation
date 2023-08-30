@@ -40,7 +40,7 @@ class PortListItem:
         self.ports = None
         self.role = None
 
-class LocalSearchStartCmd(object):
+class GeneralSearchStartCmd(object):
     '''
 local_search_starter.py
     {-i index_dir           | --index=index_dir}
@@ -1307,7 +1307,7 @@ examples:
         return '{zoneName}_p{partId}_r{replicaId}'.format(zoneName = zoneName, partId = partId, replicaId = replicaId)
 
 if __name__ == '__main__':
-    cmd = LocalSearchStartCmd()
+    cmd = GeneralSearchStartCmd()
     if len(sys.argv) < 3:
         cmd.usage()
         sys.exit(-1)
