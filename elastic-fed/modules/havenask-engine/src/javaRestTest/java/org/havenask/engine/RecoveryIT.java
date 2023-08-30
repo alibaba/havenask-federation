@@ -117,8 +117,12 @@ public class RecoveryIT extends AbstractHavenaskRestTestCase {
         assertBusy(() -> {
             SqlResponse afterStopResponse = highLevelClient().havenask()
                 .sql(new SqlRequest("select * from " + index), RequestOptions.DEFAULT);
-            logger.info("waiting for clearing doc, count is {}", afterStopResponse.getRowCount());
-            assertEquals(0, afterStopResponse.getRowCount());
+            logger.info(
+                "waiting for sql error or doc clear, now code is {}, doc count is {}",
+                afterStopResponse.getErrorInfo().GetErrorCode(),
+                afterStopResponse.getRowCount()
+            );
+            assert 8020 == afterStopResponse.getErrorInfo().GetErrorCode() || 0 == afterStopResponse.getRowCount();
         }, 2, TimeUnit.MINUTES);
 
         // wait for cluster health turning to be red

@@ -61,6 +61,10 @@ public class SqlResponse {
             this.error = error;
             this.message = message;
         }
+
+        public int GetErrorCode() {
+            return errorCode;
+        }
     }
 
     public SqlResponse(double totalTime, boolean hasSoftFailure, int rowCount, SqlResult sqlResult, ErrorInfo errorInfo) {
