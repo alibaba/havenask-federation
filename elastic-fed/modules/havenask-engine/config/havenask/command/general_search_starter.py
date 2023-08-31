@@ -241,8 +241,6 @@ examples:
         if not os.path.exists(self.configPath):
            defaultConfigPath = sys.path[0] + "/config.tar.gz"
            os.system("mkdir %s && tar -zxvf %s --strip-components 1 -C %s" % (self.configPath, defaultConfigPath, self.configPath))
-           os.system("cp /ha3_install/usr/local/lib64/libaitheta_indexer.so %s/bizs/default/0/plugins/" % (self.configPath))
-           os.system("cp /ha3_install/usr/local/lib64/libaitheta_indexer.so %s/table/0/plugins/" % (self.configPath))
         if not os.path.exists(self.indexPath):
            defaultIndexPath = sys.path[0] + "/runtimedata.tar.gz"
            os.system("mkdir %s && tar -zxvf %s --strip-components 1 -C %s" % (self.indexPath, defaultIndexPath, self.indexPath))
@@ -1228,7 +1226,7 @@ examples:
     def _getMaxIndexVersion(self, path, clusterName, generationId, partition):
         files = os.listdir(os.path.join(path, clusterName, 'generation_' + str(generationId), 'partition_' + partition))
         versions = map(lambda x:int(x.split('.')[1]),
-                       filter(lambda x:x.startswith('version.'), files))
+                       filter(lambda x:x.startswith('version.') and False == ('publish' in x), files))
         if len(versions) > 0:
             return sorted(versions)[-1]
         return -1

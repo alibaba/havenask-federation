@@ -122,6 +122,8 @@ public class SchemaGenerator {
         Set<String> addedFields = new HashSet<>();
         Set<String> analyzers = getAnalyzers();
 
+        schema.indexs.add(new Schema.PRIMARYKEYIndex(IdFieldMapper.NAME, IdFieldMapper.NAME));
+
         for (MappedFieldType field : mapperService.fieldTypes()) {
             String haFieldType = Ha3FieldType.get(field.typeName());
             String fieldName = field.name();
@@ -181,7 +183,8 @@ public class SchemaGenerator {
                 Schema.Index index = null;
                 String indexName = fieldName;
                 if (fieldName.equals(IdFieldMapper.NAME)) {
-                    index = new Schema.PRIMARYKEYIndex(indexName, fieldName);
+                    //index = new Schema.PRIMARYKEYIndex(indexName, fieldName);
+                    continue;
                 } else if (field.typeName().equals("date")) {
                     index = new Schema.NormalIndex(indexName, "DATE", fieldName);
                 } else if (haFieldType.equals("TEXT")) { // TODO defualt pack index
@@ -237,13 +240,13 @@ public class SchemaGenerator {
         List<Schema.Field> indexFields = Arrays.asList(new Schema.Field(DUP_ID), new Schema.Field(dupFieldName));
         Map<String, String> parameter = new LinkedHashMap<>();
         parameter.put("dimension", String.valueOf(vectorField.getDims()));
-        parameter.put("build_metric_type", vectorField.getSimilarity().getAlias());
-        parameter.put("search_metric_type", vectorField.getSimilarity().getAlias());
+        parameter.put("enable_rt_build", "true");
+        parameter.put("distance_type", "InnerProduct");
 
         IndexOptions indexOptions = vectorField.getIndexOptions();
         if (indexOptions.type == Algorithm.HNSW) {
-            parameter.put("index_type", "graph");
-            parameter.put("proxima.graph.common.graph_type", "hnsw");
+            parameter.put("builder_name", "HnswBuilder");
+            parameter.put("searcher_name", "HnswSearcher");
             HnswIndexOptions hnswIndexOptions = (HnswIndexOptions) indexOptions;
             if (hnswIndexOptions.maxDocCnt != null) {
                 parameter.put("proxima.graph.common.max_doc_cnt", String.valueOf(hnswIndexOptions.maxDocCnt));
@@ -273,7 +276,6 @@ public class SchemaGenerator {
                 parameter.put("proxima.hnsw.searcher.max_scan_cnt", String.valueOf(hnswIndexOptions.maxScanCnt));
             }
         } else if (indexOptions.type == Algorithm.HC) {
-            parameter.put("index_type", "hc");
             HCIndexOptions hcIndexOptions = (HCIndexOptions) indexOptions;
             if (hcIndexOptions.numInLevel1 != null) {
                 parameter.put("proxima.hc.builder.num_in_level_1", String.valueOf(hcIndexOptions.numInLevel1));
@@ -307,7 +309,7 @@ public class SchemaGenerator {
             }
 
         } else {
-            parameter.put("index_type", "linear");
+            // parameter.put("index_type", "linear");
         }
         VectorIndex vectorIndex = new Schema.VectorIndex(fieldName, indexFields, parameter);
         schema.indexs.add(vectorIndex);
