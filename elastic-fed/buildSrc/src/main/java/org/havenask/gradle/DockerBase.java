@@ -43,7 +43,7 @@ package org.havenask.gradle;
  * This class models the different Docker base images that are used to build Docker distributions of Havenask.
  */
 public enum DockerBase {
-    HAVENASK("reg.docker.alibaba-inc.com/aios-open-source/ha3_runtime");
+    HAVENASK("registry.cn-hangzhou.aliyuncs.com/havenask/ha3_runtime");
 
     private final String image;
 
