@@ -30,9 +30,8 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.message.ParameterizedMessage;
 import org.havenask.HavenaskException;
-import org.havenask.action.admin.cluster.health.ClusterHealthRequest;
-import org.havenask.action.admin.cluster.reroute.ClusterRerouteRequest;
 import org.havenask.client.Client;
+import org.havenask.client.Requests;
 import org.havenask.cluster.health.ClusterHealthStatus;
 import org.havenask.cluster.node.DiscoveryNode;
 import org.havenask.cluster.service.ClusterService;
@@ -136,7 +135,6 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
     private ProcessControlTask processControlTask;
     private boolean running;
     private final Set<HavenaskEngine> havenaskEngines = new HashSet<>();
-
     private Client client;
 
     public NativeProcessControlService(
@@ -342,9 +340,9 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
                 }
             }
 
-            if (client.admin().cluster().health(new ClusterHealthRequest()).actionGet().getStatus() == ClusterHealthStatus.RED) {
+            if (client.admin().cluster().health(Requests.clusterHealthRequest()).actionGet().getStatus() == ClusterHealthStatus.RED) {
                 LOGGER.info("reroute cluster, set retryFailed to true");
-                client.admin().cluster().reroute(new ClusterRerouteRequest().setRetryFailed(true)).actionGet();
+                client.admin().cluster().reroute(Requests.clusterRerouteRequest().setRetryFailed(true)).actionGet();
             }
         }
 
