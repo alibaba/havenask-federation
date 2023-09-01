@@ -298,7 +298,16 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
                     });
                     LOGGER.info("start searcher process...");
                     // 启动searcher
-                    runCommand(startSearcherCommand, commandTimeout);
+                    boolean isRestart = runCommand(startSearcherCommand, commandTimeout);
+                    if (isRestart
+                        && client.admin()
+                            .cluster()
+                            .health(Requests.clusterHealthRequest())
+                            .actionGet()
+                            .getStatus() == ClusterHealthStatus.RED) {
+                        LOGGER.info("reroute cluster, set retryFailed to true");
+                        client.admin().cluster().reroute(Requests.clusterRerouteRequest().setRetryFailed(true)).actionGet();
+                    }
                 }
             }
 
@@ -338,11 +347,6 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
                         LOGGER.warn("start searcher process failed, sleep error", e);
                     }
                 }
-            }
-
-            if (client.admin().cluster().health(Requests.clusterHealthRequest()).actionGet().getStatus() == ClusterHealthStatus.RED) {
-                LOGGER.info("reroute cluster, set retryFailed to true");
-                client.admin().cluster().reroute(Requests.clusterRerouteRequest().setRetryFailed(true)).actionGet();
             }
         }
 
