@@ -32,7 +32,6 @@ import org.apache.logging.log4j.message.ParameterizedMessage;
 import org.havenask.HavenaskException;
 import org.havenask.client.Client;
 import org.havenask.client.Requests;
-import org.havenask.cluster.health.ClusterHealthStatus;
 import org.havenask.cluster.node.DiscoveryNode;
 import org.havenask.cluster.service.ClusterService;
 import org.havenask.common.component.AbstractLifecycleComponent;
@@ -299,12 +298,7 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
                     LOGGER.info("start searcher process...");
                     // 启动searcher
                     boolean isRestart = runCommand(startSearcherCommand, commandTimeout);
-                    if (isRestart
-                        && client.admin()
-                            .cluster()
-                            .health(Requests.clusterHealthRequest())
-                            .actionGet()
-                            .getStatus() == ClusterHealthStatus.RED) {
+                    if (isRestart) {
                         LOGGER.info("reroute cluster, set retryFailed to true");
                         client.admin().cluster().reroute(Requests.clusterRerouteRequest().setRetryFailed(true)).actionGet();
                     }
