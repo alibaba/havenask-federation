@@ -30,6 +30,8 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.message.ParameterizedMessage;
 import org.havenask.HavenaskException;
+import org.havenask.client.Client;
+import org.havenask.client.Requests;
 import org.havenask.cluster.node.DiscoveryNode;
 import org.havenask.cluster.service.ClusterService;
 import org.havenask.common.component.AbstractLifecycleComponent;
@@ -132,14 +134,17 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
     private ProcessControlTask processControlTask;
     private boolean running;
     private final Set<HavenaskEngine> havenaskEngines = new HashSet<>();
+    private Client client;
 
     public NativeProcessControlService(
+        Client client,
         ClusterService clusterService,
         ThreadPool threadPool,
         Environment environment,
         NodeEnvironment nodeEnvironment,
         HavenaskEngineEnvironment havenaskEngineEnvironment
     ) {
+        this.client = client;
         this.clusterService = clusterService;
         Settings settings = clusterService.getSettings();
         isDataNode = DiscoveryNode.isDataNode(settings);
@@ -292,7 +297,11 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
                     });
                     LOGGER.info("start searcher process...");
                     // 启动searcher
-                    runCommand(startSearcherCommand, commandTimeout);
+                    boolean isRestart = runCommand(startSearcherCommand, commandTimeout);
+                    if (isRestart) {
+                        LOGGER.info("reroute cluster, set retryFailed to true");
+                        client.admin().cluster().reroute(Requests.clusterRerouteRequest().setRetryFailed(true)).actionGet();
+                    }
                 }
             }
 

@@ -59,6 +59,7 @@ public class NativeProcessControlServiceTests extends HavenaskTestCase {
         Environment environment = TestEnvironment.newEnvironment(settings);
         NodeEnvironment nodeEnvironment = new NodeEnvironment(settings, environment);
         nativeProcessControlService = new MockNativeProcessControlService(
+            null,
             clusterService,
             threadPool,
             environment,

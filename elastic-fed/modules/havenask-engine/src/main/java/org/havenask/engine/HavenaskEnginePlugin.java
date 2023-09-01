@@ -199,6 +199,7 @@ public class HavenaskEnginePlugin extends Plugin
         Supplier<RepositoriesService> repositoriesServiceSupplier
     ) {
         NativeProcessControlService nativeProcessControlService = new NativeProcessControlService(
+            client,
             clusterService,
             threadPool,
             environment,
