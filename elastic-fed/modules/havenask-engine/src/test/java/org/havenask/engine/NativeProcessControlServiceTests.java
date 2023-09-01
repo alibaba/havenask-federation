@@ -59,6 +59,7 @@ public class NativeProcessControlServiceTests extends HavenaskTestCase {
         Environment environment = TestEnvironment.newEnvironment(settings);
         NodeEnvironment nodeEnvironment = new NodeEnvironment(settings, environment);
         nativeProcessControlService = new MockNativeProcessControlService(
+            null,
             clusterService,
             threadPool,
             environment,
@@ -82,14 +83,14 @@ public class NativeProcessControlServiceTests extends HavenaskTestCase {
         // 启动searcher
         nativeProcessControlService.start();
         assertBusy(() -> {
-            boolean alive = nativeProcessControlService.checkProcessAlive(NativeProcessControlService.SEARCHER_ROLE);
+            boolean alive = NativeProcessControlService.checkProcessAlive(NativeProcessControlService.SEARCHER_ROLE);
             assertTrue(alive);
         });
 
         // 关闭启动searcher
         nativeProcessControlService.stop();
         assertBusy(() -> {
-            boolean alive = nativeProcessControlService.checkProcessAlive(NativeProcessControlService.SEARCHER_ROLE);
+            boolean alive = NativeProcessControlService.checkProcessAlive(NativeProcessControlService.SEARCHER_ROLE);
             assertFalse(alive);
         });
     }
@@ -99,14 +100,14 @@ public class NativeProcessControlServiceTests extends HavenaskTestCase {
         // 启动qrs
         nativeProcessControlService.start();
         assertBusy(() -> {
-            boolean alive = nativeProcessControlService.checkProcessAlive(NativeProcessControlService.QRS_ROLE);
+            boolean alive = NativeProcessControlService.checkProcessAlive(NativeProcessControlService.QRS_ROLE);
             assertTrue(alive);
         });
 
         // 关闭启动qrs
         nativeProcessControlService.stop();
         assertBusy(() -> {
-            boolean alive = nativeProcessControlService.checkProcessAlive(NativeProcessControlService.QRS_ROLE);
+            boolean alive = NativeProcessControlService.checkProcessAlive(NativeProcessControlService.QRS_ROLE);
             assertFalse(alive);
         });
     }
@@ -115,13 +116,13 @@ public class NativeProcessControlServiceTests extends HavenaskTestCase {
     public void testCheckProcessAlive() throws Exception {
         // 传递错误的searcher名称
         {
-            boolean alive = nativeProcessControlService.checkProcessAlive("wrong_searcher");
+            boolean alive = NativeProcessControlService.checkProcessAlive("wrong_searcher");
             assertFalse(alive);
         }
 
         // searcher进程不存在
         {
-            boolean alive = nativeProcessControlService.checkProcessAlive(NativeProcessControlService.SEARCHER_ROLE);
+            boolean alive = NativeProcessControlService.checkProcessAlive(NativeProcessControlService.SEARCHER_ROLE);
             assertFalse(alive);
         }
 
@@ -134,7 +135,7 @@ public class NativeProcessControlServiceTests extends HavenaskTestCase {
                     return null;
                 }
             });
-            boolean alive = nativeProcessControlService.checkProcessAlive(NativeProcessControlService.SEARCHER_ROLE);
+            boolean alive = NativeProcessControlService.checkProcessAlive(NativeProcessControlService.SEARCHER_ROLE);
             assertTrue(alive);
         }
 
@@ -147,7 +148,7 @@ public class NativeProcessControlServiceTests extends HavenaskTestCase {
                     return null;
                 }
             });
-            boolean alive = nativeProcessControlService.checkProcessAlive(NativeProcessControlService.SEARCHER_ROLE);
+            boolean alive = NativeProcessControlService.checkProcessAlive(NativeProcessControlService.SEARCHER_ROLE);
             assertFalse(alive);
         }
 
@@ -161,7 +162,7 @@ public class NativeProcessControlServiceTests extends HavenaskTestCase {
                 }
             });
             assertBusy(() -> {
-                boolean alive = nativeProcessControlService.checkProcessAlive(NativeProcessControlService.SEARCHER_ROLE);
+                boolean alive = NativeProcessControlService.checkProcessAlive(NativeProcessControlService.SEARCHER_ROLE);
                 assertFalse(alive);
             });
         }

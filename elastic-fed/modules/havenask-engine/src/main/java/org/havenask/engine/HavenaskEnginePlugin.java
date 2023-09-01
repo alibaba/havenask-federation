@@ -44,7 +44,6 @@ import org.havenask.common.xcontent.NamedXContentRegistry;
 import org.havenask.engine.index.HavenaskIndexEventListener;
 import org.havenask.engine.index.engine.EngineSettings;
 import org.havenask.engine.index.engine.HavenaskEngine;
-import org.havenask.engine.index.mapper.DenseVectorFieldMapper;
 import org.havenask.engine.rpc.HavenaskClient;
 import org.havenask.engine.rpc.QrsClient;
 import org.havenask.engine.rpc.SearcherClient;
@@ -57,6 +56,9 @@ import org.havenask.engine.search.action.TransportHavenaskSqlAction;
 import org.havenask.engine.search.action.TransportHavenaskSqlClientInfoAction;
 import org.havenask.engine.search.rest.RestHavenaskSqlAction;
 import org.havenask.engine.search.rest.RestHavenaskSqlClientInfoAction;
+import org.havenask.engine.stop.action.HavenaskStopAction;
+import org.havenask.engine.stop.action.TransportHavenaskStopAction;
+import org.havenask.engine.stop.rest.RestHavenaskStop;
 import org.havenask.env.Environment;
 import org.havenask.env.NodeEnvironment;
 import org.havenask.index.IndexModule;
@@ -197,6 +199,7 @@ public class HavenaskEnginePlugin extends Plugin
         Supplier<RepositoriesService> repositoriesServiceSupplier
     ) {
         NativeProcessControlService nativeProcessControlService = new NativeProcessControlService(
+            client,
             clusterService,
             threadPool,
             environment,
@@ -252,7 +255,8 @@ public class HavenaskEnginePlugin extends Plugin
     public List<ActionHandler<? extends ActionRequest, ? extends ActionResponse>> getActions() {
         return Arrays.asList(
             new ActionHandler<>(HavenaskSqlAction.INSTANCE, TransportHavenaskSqlAction.class),
-            new ActionHandler<>(HavenaskSqlClientInfoAction.INSTANCE, TransportHavenaskSqlClientInfoAction.class)
+            new ActionHandler<>(HavenaskSqlClientInfoAction.INSTANCE, TransportHavenaskSqlClientInfoAction.class),
+            new ActionHandler<>(HavenaskStopAction.INSTANCE, TransportHavenaskStopAction.class)
         );
     }
 
@@ -266,7 +270,7 @@ public class HavenaskEnginePlugin extends Plugin
         IndexNameExpressionResolver indexNameExpressionResolver,
         Supplier<DiscoveryNodes> nodesInCluster
     ) {
-        return Arrays.asList(new RestHavenaskSqlAction(), new RestHavenaskSqlClientInfoAction());
+        return Arrays.asList(new RestHavenaskSqlAction(), new RestHavenaskSqlClientInfoAction(), new RestHavenaskStop());
     }
 
     @Override
@@ -304,6 +308,8 @@ public class HavenaskEnginePlugin extends Plugin
 
     @Override
     public Map<String, Mapper.TypeParser> getMappers() {
-        return Collections.singletonMap(DenseVectorFieldMapper.CONTENT_TYPE, new DenseVectorFieldMapper.TypeParser());
+        // TODO 暂时屏蔽向量索引字段,等使用havenask新版本再开放
+        // return Collections.singletonMap(DenseVectorFieldMapper.CONTENT_TYPE, new DenseVectorFieldMapper.TypeParser());
+        return Collections.emptyMap();
     }
 }
