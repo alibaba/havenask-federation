@@ -40,7 +40,20 @@ testClusters.all {
 yamlRestTest {
   if (System.getProperty("tests.engine") == "havenask") {
     systemProperty 'tests.rest.whitelist', [
-            'indices.create/*/*'
+            'delete/61_missing_with_types/Missing document with catch',
+            'delete/61_missing_with_types/Missing document with ignore',
+            'bulk/11_basic_with_types/empty action',
+            'indices.create/*/*',
+            'indices.delete/*/*',
+            'indices.exists/*/*',
+            'indices.clone/*/*',
+            'indices.get_mapping/20_missing_type/Non-existent type returns 404',
+            'indices.get_mapping/20_missing_type/Type missing when no types exist',
+            'indices.get_mapping/30_missing_index/*',
+            'indices.get_mapping/40_aliases/Getting mapping for aliases should return the real index as key',
+            'indices.get_mapping/50_wildcard_expansion/Get test-* with wildcard_expansion=closed',
+            'indices.get_mapping/50_wildcard_expansion/Get test-* with wildcard_expansion=open*',
+            'indices.get_field_mapping/60_mix_typeless_typeful/GET mapping with typeless API on an index that has types'
     ].join(",")
   }
 }
