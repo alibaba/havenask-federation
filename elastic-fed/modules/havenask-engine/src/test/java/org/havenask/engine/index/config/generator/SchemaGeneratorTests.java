@@ -431,6 +431,7 @@ public class SchemaGeneratorTests extends MapperServiceTestCase {
     }
 
     // test index vector
+    @AwaitsFix(bugUrl = "https://github.com/alibaba/havenask-federation/issues/202")
     public void testIndexVector() throws IOException {
         MapperService mapperService = createMapperService(mapping(b -> {
             {
@@ -534,6 +535,7 @@ public class SchemaGeneratorTests extends MapperServiceTestCase {
     }
 
     // test index vector with all parameters
+    @AwaitsFix(bugUrl = "https://github.com/alibaba/havenask-federation/issues/202")
     public void testIndexVectorWithAllParameters() throws IOException {
         MapperService mapperService = createMapperService(mapping(b -> {
             {

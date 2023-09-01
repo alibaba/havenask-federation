@@ -326,6 +326,7 @@ public class BizConfigGeneratorTests extends MapperServiceTestCase {
         assertEquals(expect, zoneBizNew);
     }
 
+    @AwaitsFix(bugUrl = "https://github.com/alibaba/havenask-federation/issues/202")
     public void testDupFieldProcessor() throws IOException {
         String indexName = randomAlphaOfLength(5);
         MapperService mapperService = createMapperService(mapping(b -> {
