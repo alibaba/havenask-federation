@@ -44,7 +44,6 @@ import org.havenask.common.xcontent.NamedXContentRegistry;
 import org.havenask.engine.index.HavenaskIndexEventListener;
 import org.havenask.engine.index.engine.EngineSettings;
 import org.havenask.engine.index.engine.HavenaskEngine;
-import org.havenask.engine.index.mapper.DenseVectorFieldMapper;
 import org.havenask.engine.rpc.HavenaskClient;
 import org.havenask.engine.rpc.QrsClient;
 import org.havenask.engine.rpc.SearcherClient;
@@ -308,6 +307,8 @@ public class HavenaskEnginePlugin extends Plugin
 
     @Override
     public Map<String, Mapper.TypeParser> getMappers() {
-        return Collections.singletonMap(DenseVectorFieldMapper.CONTENT_TYPE, new DenseVectorFieldMapper.TypeParser());
+        // TODO 暂时屏蔽向量索引字段,等使用havenask新版本再开放
+        // return Collections.singletonMap(DenseVectorFieldMapper.CONTENT_TYPE, new DenseVectorFieldMapper.TypeParser());
+        return Collections.emptyMap();
     }
 }

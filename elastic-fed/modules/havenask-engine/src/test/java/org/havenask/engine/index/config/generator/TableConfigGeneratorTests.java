@@ -248,6 +248,7 @@ public class TableConfigGeneratorTests extends MapperServiceTestCase {
         assertFalse(Files.exists(dataTablesPath));
     }
 
+    @AwaitsFix(bugUrl = "https://github.com/alibaba/havenask-federation/issues/202")
     public void testDupFieldProcessor() throws IOException {
         String indexName = randomAlphaOfLength(5);
         MapperService mapperService = createMapperService(mapping(b -> {
