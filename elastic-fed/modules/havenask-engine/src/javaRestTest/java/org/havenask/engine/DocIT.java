@@ -230,9 +230,13 @@ public class DocIT extends AbstractHavenaskRestTestCase {
         bulkRequest.add(new DeleteRequest(index, "3"));
         highLevelClient().bulk(bulkRequest, RequestOptions.DEFAULT);
 
-        // todo: check data using sql search api
-        SqlResponse bulkSqlResponse = highLevelClient().havenask().sql(new SqlRequest("select * from " + index), RequestOptions.DEFAULT);
-        assertEquals(bulkSqlResponse.getRowCount(), 3);
+        // check data using sql search api
+        String sqlStr = "select * from " + index + " where seq=1 AND content='欢迎使用1'";
+        SqlResponse bulkSqlResponse = highLevelClient().havenask().sql(new SqlRequest(sqlStr), RequestOptions.DEFAULT);
+        assertEquals(bulkSqlResponse.getRowCount(), 1);
+        assertEquals(bulkSqlResponse.getSqlResult().getData()[0][1], "欢迎使用1");
+        assertEquals(bulkSqlResponse.getSqlResult().getData()[0][4], 20230718);
+        assertEquals(bulkSqlResponse.getSqlResult().getData()[0][6], 1);
 
         // delete index and HEAD index
         assertTrue(highLevelClient().indices().delete(new DeleteIndexRequest(index), RequestOptions.DEFAULT).isAcknowledged());
@@ -340,6 +344,7 @@ public class DocIT extends AbstractHavenaskRestTestCase {
         SqlResponse bulkSqlResponse = highLevelClient().havenask().sql(new SqlRequest(sqlStr), RequestOptions.DEFAULT);
         assertEquals(bulkSqlResponse.getRowCount(), 1);
         assertEquals(bulkSqlResponse.getSqlResult().getData()[0][1], 1);
+        assertEquals(bulkSqlResponse.getSqlResult().getData()[0][2], 1577836800000L);
         assertEquals(bulkSqlResponse.getSqlResult().getData()[0][4], "text");
         assertEquals(bulkSqlResponse.getSqlResult().getData()[0][5], "keyword");
         assertEquals(bulkSqlResponse.getSqlResult().getData()[0][7], 1.5);
