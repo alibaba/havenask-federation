@@ -182,7 +182,7 @@ public class SchemaGenerator {
                 Schema.Index index = null;
                 String indexName = fieldName;
                 if (fieldName.equals(IdFieldMapper.NAME)) {
-                    //index = new Schema.PRIMARYKEYIndex(indexName, fieldName);
+                    // index = new Schema.PRIMARYKEYIndex(indexName, fieldName);
                     continue;
                 } else if (field.typeName().equals("date")) {
                     index = new Schema.NormalIndex(indexName, "DATE", fieldName);
