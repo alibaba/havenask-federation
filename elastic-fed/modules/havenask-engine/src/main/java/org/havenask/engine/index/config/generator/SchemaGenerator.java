@@ -82,7 +82,6 @@ public class SchemaGenerator {
         }
     }
 
-    public static final String DUP_ID = "DUP_id";
     public static final String DUP_PREFIX = "DUP_";
 
     Map<String, String> Ha3FieldType = Map.ofEntries(
@@ -212,7 +211,6 @@ public class SchemaGenerator {
         }
 
         if (schema.getDupFields().size() > 0) {
-            schema.fields.add(new FieldInfo(DUP_ID, "RAW"));
             schema.getDupFields().forEach((field) -> { schema.fields.add(new FieldInfo(DUP_PREFIX + field, "RAW")); });
         }
 
@@ -237,7 +235,7 @@ public class SchemaGenerator {
         schema.fields.add(new Schema.FieldInfo(fieldName, haFieldType));
         String dupFieldName = DUP_PREFIX + fieldName;
         schema.getDupFields().add(fieldName);
-        List<Schema.Field> indexFields = Arrays.asList(new Schema.Field(DUP_ID), new Schema.Field(dupFieldName));
+        List<Schema.Field> indexFields = Arrays.asList(new Schema.Field(IdFieldMapper.NAME), new Schema.Field(dupFieldName));
         Map<String, String> parameter = new LinkedHashMap<>();
         parameter.put("dimension", String.valueOf(vectorField.getDims()));
         parameter.put("enable_rt_build", "true");
