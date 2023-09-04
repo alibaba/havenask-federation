@@ -14,6 +14,10 @@
 
 package org.havenask.engine.stop;
 
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.concurrent.TimeUnit;
+
 import com.carrotsearch.randomizedtesting.annotations.ThreadLeakFilters;
 import org.havenask.ArpcThreadLeakFilter;
 import org.havenask.OkHttpThreadLeakFilter;
@@ -29,10 +33,6 @@ import org.havenask.plugins.Plugin;
 import org.havenask.test.HavenaskIntegTestCase;
 import org.havenask.transport.nio.MockNioTransportPlugin;
 import org.junit.After;
-
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.concurrent.TimeUnit;
 
 import static org.havenask.engine.NativeProcessControlService.checkProcessAlive;
 
@@ -61,8 +61,8 @@ public class HavenaskStopActionIT extends HavenaskITTestCase {
 
     private String startScript = HavenaskStopActionIT.class.getResource("/fake_sap.sh").getPath();
     String stopScript = MockNativeProcessControlService.class.getResource("/stop_fake_sap.sh").getPath();
-    private String startSearcherCommand = "sh " + startScript + " sap_server_d roleType=searcher &";
-    private String startQrsCommand = "sh " + startScript + " sap_server_d roleType=qrs &";
+    private String startSearcherCommand = "sh " + startScript + " ha_sql roleType=searcher &";
+    private String startQrsCommand = "sh " + startScript + " ha_sql roleType=qrs &";
     private String stopHavenaskCommand = "sh " + stopScript;
     private long maxWaitSeconds = 10;
 
