@@ -14,8 +14,6 @@
 
 package org.havenask.engine;
 
-import static org.havenask.discovery.DiscoveryModule.SINGLE_NODE_DISCOVERY_TYPE;
-
 import java.io.IOException;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
@@ -37,6 +35,8 @@ import org.havenask.threadpool.TestThreadPool;
 import org.havenask.threadpool.ThreadPool;
 import org.junit.After;
 import org.junit.Before;
+
+import static org.havenask.discovery.DiscoveryModule.SINGLE_NODE_DISCOVERY_TYPE;
 
 public class NativeProcessControlServiceTests extends HavenaskTestCase {
     private NativeProcessControlService nativeProcessControlService;

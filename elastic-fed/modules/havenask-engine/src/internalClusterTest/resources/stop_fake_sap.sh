@@ -13,4 +13,4 @@
 #
 
 
-ps -ef|grep 'fake_sap.sh sap_server_d roleType'|grep -v grep|grep -v PPID|awk '{ print $2}' | xargs kill -9
+ps -ef|grep 'fake_sap.sh ha_sql roleType'|grep -v grep|grep -v PPID|awk '{ print $2}' | xargs kill -9

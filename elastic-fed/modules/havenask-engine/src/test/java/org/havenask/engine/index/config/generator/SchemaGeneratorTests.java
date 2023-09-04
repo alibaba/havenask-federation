@@ -137,8 +137,7 @@ public class SchemaGeneratorTests extends MapperServiceTestCase {
             Locale.ROOT,
             "{\n"
                 + "\t\"attributes\":[\"date\",\"bool\",\"byte\",\"double\",\"long\",\"_seq_no\",\"object_age\","
-                + "\"price\","
-                + "\"short\",\"_id\",\"keyword\",\"_version\",\"age\",\"_primary_term\"],\n"
+                + "\"price\",\"short\",\"_id\",\"keyword\",\"_version\",\"age\",\"_primary_term\"],\n"
                 + "\t\"fields\":[{\n"
                 + "\t\t\"binary_field\":false,\n"
                 + "\t\t\"field_name\":\"_routing\",\n"
@@ -220,6 +219,12 @@ public class SchemaGeneratorTests extends MapperServiceTestCase {
                 + "\t\t\"field_type\":\"INT64\"\n"
                 + "\t}],\n"
                 + "\t\"indexs\":[{\n"
+                + "\t\t\"has_primary_key_attribute\":true,\n"
+                + "\t\t\"index_fields\":\"_id\",\n"
+                + "\t\t\"index_name\":\"_id\",\n"
+                + "\t\t\"index_type\":\"PRIMARYKEY64\",\n"
+                + "\t\t\"is_primary_key_sorted\":false\n"
+                + "\t},{\n"
                 + "\t\t\"index_fields\":\"_routing\",\n"
                 + "\t\t\"index_name\":\"_routing\",\n"
                 + "\t\t\"index_type\":\"STRING\"\n"
@@ -267,12 +272,6 @@ public class SchemaGeneratorTests extends MapperServiceTestCase {
                 + "\t\t\"index_fields\":\"short\",\n"
                 + "\t\t\"index_name\":\"short\",\n"
                 + "\t\t\"index_type\":\"NUMBER\"\n"
-                + "\t},{\n"
-                + "\t\t\"has_primary_key_attribute\":true,\n"
-                + "\t\t\"index_fields\":\"_id\",\n"
-                + "\t\t\"index_name\":\"_id\",\n"
-                + "\t\t\"index_type\":\"PRIMARYKEY64\",\n"
-                + "\t\t\"is_primary_key_sorted\":false\n"
                 + "\t},{\n"
                 + "\t\t\"doc_payload_flag\":1,\n"
                 + "\t\t\"index_fields\":\"text\",\n"
@@ -431,7 +430,6 @@ public class SchemaGeneratorTests extends MapperServiceTestCase {
     }
 
     // test index vector
-    @AwaitsFix(bugUrl = "https://github.com/alibaba/havenask-federation/issues/202")
     public void testIndexVector() throws IOException {
         MapperService mapperService = createMapperService(mapping(b -> {
             {
@@ -476,10 +474,6 @@ public class SchemaGeneratorTests extends MapperServiceTestCase {
                 + "\t\t\"field_type\":\"INT64\"\n"
                 + "\t},{\n"
                 + "\t\t\"binary_field\":false,\n"
-                + "\t\t\"field_name\":\"DUP_id\",\n"
-                + "\t\t\"field_type\":\"RAW\"\n"
-                + "\t},{\n"
-                + "\t\t\"binary_field\":false,\n"
                 + "\t\t\"field_name\":\"DUP_field\",\n"
                 + "\t\t\"field_type\":\"RAW\"\n"
                 + "\t},{\n"
@@ -488,6 +482,12 @@ public class SchemaGeneratorTests extends MapperServiceTestCase {
                 + "\t\t\"field_type\":\"INT64\"\n"
                 + "\t}],\n"
                 + "\t\"indexs\":[{\n"
+                + "\t\t\"has_primary_key_attribute\":true,\n"
+                + "\t\t\"index_fields\":\"_id\",\n"
+                + "\t\t\"index_name\":\"_id\",\n"
+                + "\t\t\"index_type\":\"PRIMARYKEY64\",\n"
+                + "\t\t\"is_primary_key_sorted\":false\n"
+                + "\t},{\n"
                 + "\t\t\"index_fields\":\"_routing\",\n"
                 + "\t\t\"index_name\":\"_routing\",\n"
                 + "\t\t\"index_type\":\"STRING\"\n"
@@ -499,7 +499,7 @@ public class SchemaGeneratorTests extends MapperServiceTestCase {
                 + "\t\t\"index_fields\":[\n"
                 + "\t\t\t{\n"
                 + "\t\t\t\t\"boost\":1,\n"
-                + "\t\t\t\t\"field_name\":\"DUP_id\"\n"
+                + "\t\t\t\t\"field_name\":\"_id\"\n"
                 + "\t\t\t},\n"
                 + "\t\t\t{\n"
                 + "\t\t\t\t\"boost\":1,\n"
@@ -508,20 +508,14 @@ public class SchemaGeneratorTests extends MapperServiceTestCase {
                 + "\t\t],\n"
                 + "\t\t\"index_name\":\"field\",\n"
                 + "\t\t\"index_type\":\"CUSTOMIZED\",\n"
-                + "\t\t\"indexer\":\"aitheta_indexer\",\n"
+                + "\t\t\"indexer\":\"aitheta2_indexer\",\n"
                 + "\t\t\"parameters\":{\n"
                 + "\t\t\t\"dimension\":\"128\",\n"
-                + "\t\t\t\"build_metric_type\":\"l2\",\n"
-                + "\t\t\t\"search_metric_type\":\"l2\",\n"
-                + "\t\t\t\"index_type\":\"graph\",\n"
-                + "\t\t\t\"proxima.graph.common.graph_type\":\"hnsw\"\n"
+                + "\t\t\t\"enable_rt_build\":\"true\",\n"
+                + "\t\t\t\"distance_type\":\"InnerProduct\",\n"
+                + "\t\t\t\"builder_name\":\"HnswBuilder\",\n"
+                + "\t\t\t\"searcher_name\":\"HnswSearcher\"\n"
                 + "\t\t}\n"
-                + "\t},{\n"
-                + "\t\t\"has_primary_key_attribute\":true,\n"
-                + "\t\t\"index_fields\":\"_id\",\n"
-                + "\t\t\"index_name\":\"_id\",\n"
-                + "\t\t\"index_type\":\"PRIMARYKEY64\",\n"
-                + "\t\t\"is_primary_key_sorted\":false\n"
                 + "\t}],\n"
                 + "\t\"summarys\":{\n"
                 + "\t\t\"summary_fields\":[\"_routing\",\"_source\",\"_id\"]\n"
@@ -535,7 +529,7 @@ public class SchemaGeneratorTests extends MapperServiceTestCase {
     }
 
     // test index vector with all parameters
-    @AwaitsFix(bugUrl = "https://github.com/alibaba/havenask-federation/issues/202")
+    @AwaitsFix(bugUrl = "https://github.com/alibaba/havenask-federation/issues/213")
     public void testIndexVectorWithAllParameters() throws IOException {
         MapperService mapperService = createMapperService(mapping(b -> {
             {
