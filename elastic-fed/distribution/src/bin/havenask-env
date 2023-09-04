@@ -36,17 +36,17 @@ HAVENASK_HOME=`dirname "$HAVENASK_HOME"`
 HAVENASK_CLASSPATH="$HAVENASK_HOME/lib/*"
 
 # now set the path to java
-if [ ! -z "$JAVA_HOME" ]; then
+if [ -e "$HAVENASK_HOME/jdk" ]; then
+    if [ "$(uname -s)" = "Darwin" ]; then
+      # macOS has a different structure
+      JAVA="$HAVENASK_HOME/jdk.app/Contents/Home/bin/java"
+    else
+      JAVA="$HAVENASK_HOME/jdk/bin/java"
+    fi
+    JAVA_TYPE="bundled jdk"
+elif [ ! -z "$JAVA_HOME" ]; then
   JAVA="$JAVA_HOME/bin/java"
   JAVA_TYPE="JAVA_HOME"
-else
-  if [ "$(uname -s)" = "Darwin" ]; then
-    # macOS has a different structure
-    JAVA="$HAVENASK_HOME/jdk.app/Contents/Home/bin/java"
-  else
-    JAVA="$HAVENASK_HOME/jdk/bin/java"
-  fi
-  JAVA_TYPE="bundled jdk"
 fi
 
 if [ ! -x "$JAVA" ]; then
