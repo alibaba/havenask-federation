@@ -434,7 +434,7 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
     }
 
     public void startBsJob(String indexName, String realtimeInfo) {
-        if (isDataNode) {
+        if (isDataNode && running) {
             // 启动bs job
             final String finalStartBsJobCommand = startBsJobCommand + " " + indexName + " '" + realtimeInfo + "'";
             runCommand(finalStartBsJobCommand, commandTimeout);
@@ -442,7 +442,7 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
     }
 
     public void startBsJob(String indexName) {
-        if (isDataNode) {
+        if (isDataNode && running) {
             // 启动bs job
             final String finalStartBsJobCommand = startBsJobCommand + " " + indexName;
             runCommand(finalStartBsJobCommand, commandTimeout);

@@ -15,8 +15,6 @@
 package org.havenask.engine.index.engine;
 
 import org.apache.lucene.search.Query;
-import org.havenask.engine.index.query.HnswQuery;
-import org.havenask.engine.index.query.LinearQuery;
 import org.havenask.engine.index.query.ProximaQuery;
 
 public class QueryTransformer {

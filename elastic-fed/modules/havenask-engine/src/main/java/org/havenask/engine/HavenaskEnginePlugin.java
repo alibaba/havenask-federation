@@ -51,6 +51,7 @@ import org.havenask.engine.rpc.SearcherClient;
 import org.havenask.engine.rpc.arpc.SearcherArpcClient;
 import org.havenask.engine.rpc.http.QrsHttpClient;
 import org.havenask.engine.rpc.http.SearcherHttpClient;
+import org.havenask.engine.search.HavenaskFetchPhase;
 import org.havenask.engine.search.action.HavenaskSqlAction;
 import org.havenask.engine.search.action.HavenaskSqlClientInfoAction;
 import org.havenask.engine.search.action.TransportHavenaskSqlAction;
@@ -79,6 +80,8 @@ import org.havenask.repositories.RepositoriesService;
 import org.havenask.rest.RestController;
 import org.havenask.rest.RestHandler;
 import org.havenask.script.ScriptService;
+import org.havenask.search.fetch.FetchPhase;
+import org.havenask.search.fetch.FetchSubPhase;
 import org.havenask.threadpool.ExecutorBuilder;
 import org.havenask.threadpool.ScalingExecutorBuilder;
 import org.havenask.threadpool.ThreadPool;
@@ -320,5 +323,10 @@ public class HavenaskEnginePlugin extends Plugin
     @Override
     public Map<String, Mapper.TypeParser> getMappers() {
         return Collections.singletonMap(DenseVectorFieldMapper.CONTENT_TYPE, new DenseVectorFieldMapper.TypeParser());
+    }
+
+    @Override
+    public FetchPhase getFetchPhase(List<FetchSubPhase> fetchSubPhases) {
+        return new HavenaskFetchPhase(fetchSubPhases);
     }
 }

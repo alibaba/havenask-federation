@@ -35,7 +35,26 @@ public abstract class HavenaskITTestCase extends HavenaskIntegTestCase {
             qrsServer = HttpServer.create(new InetSocketAddress(49200), 0);
             qrsServer.createContext("/sql", exchange -> {
                 exchange.sendResponseHeaders(200, 0);
-                String response = "sql result";
+                String response = "{\"total_time\":2.492,\"has_soft_failure\":false,\"covered_percent\":1.0,"
+                    + "\"row_count\":18,\"format_type\":\"full_json\",\"search_info\":{},\"rpc_info\":\"\","
+                    + "\"table_leader_info\":{},\"table_build_watermark\":{},\"sql_query\":\"query=select * from "
+                    + "test2&&kvpair=databaseName:general;format:full_json\",\"iquan_plan\":{\"error_code\":0,"
+                    + "\"error_message\":\"\",\"result\":{\"rel_plan_version\":\"\",\"rel_plan\":[],"
+                    + "\"exec_params\":{}}},\"navi_graph\":\"\",\"trace\":[],\"sql_result\":{\"data\":[[\"null\",0,"
+                    + "\"test2\",\"oxRlY4oBtIvm0jEEBeE2\",1,2],[\"null\",1,\"test2\",\"pBRlY4oBtIvm0jEEBuFW\",1,2],"
+                    + "[\"null\",2,\"test2\",\"pRRlY4oBtIvm0jEEB-Ev\",1,2],[\"null\",3,\"test2\","
+                    + "\"phRlY4oBtIvm0jEECOEL\",1,2],[\"null\",4,\"test2\",\"pxRlY4oBtIvm0jEECOHH\",1,2],[\"null\",5,"
+                    + "\"test2\",\"qBRlY4oBtIvm0jEECeF4\",1,2],[\"null\",6,\"test2\",\"qRRlY4oBtIvm0jEECuEy\",1,2],"
+                    + "[\"null\",7,\"test2\",\"qhRlY4oBtIvm0jEECuHu\",1,2],[\"null\",8,\"test2\","
+                    + "\"qxRlY4oBtIvm0jEEC-Gy\",1,2],[\"null\",9,\"test2\",\"rBRlY4oBtIvm0jEEDOF5\",1,2],[\"null\","
+                    + "10,\"test2\",\"rRRlY4oBtIvm0jEEDeEg\",1,2],[\"null\",11,\"test2\",\"rhRlY4oBtIvm0jEEDeHY\",1,"
+                    + "2],[\"null\",12,\"test2\",\"rxRlY4oBtIvm0jEEDuF9\",1,2],[\"null\",13,\"test2\","
+                    + "\"sBRlY4oBtIvm0jEED-Eo\",1,2],[\"null\",14,\"test2\",\"sRRlY4oBtIvm0jEED-HV\",1,2],[\"null\","
+                    + "15,\"test2\",\"shRlY4oBtIvm0jEEEOFm\",1,2],[\"null\",16,\"bar\",\"wBSgaYoBtIvm0jEE9OG2\",1,2],"
+                    + "[\"null\",17,\"bar\",\"wRSgaYoBtIvm0jEE9eGc\",1,2]],\"column_name\":[\"_routing\",\"_seq_no\","
+                    + "\"foo\",\"_id\",\"_version\",\"_primary_term\"],\"column_type\":[\"multi_char\",\"int64\","
+                    + "\"multi_char\",\"multi_char\",\"int64\",\"int64\"]},\"error_info\":{\"ErrorCode\":0,"
+                    + "\"Error\":\"ERROR_NONE\",\"Message\":\"\"}}";
                 OutputStream os = exchange.getResponseBody();
                 os.write(response.getBytes());
                 os.close();

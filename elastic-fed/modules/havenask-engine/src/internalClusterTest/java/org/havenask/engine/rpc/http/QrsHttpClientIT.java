@@ -38,7 +38,7 @@ public class QrsHttpClientIT extends HavenaskITTestCase {
         QrsSqlRequest request = new QrsSqlRequest(sql, null);
         QrsSqlResponse response = client.executeSql(request);
         assertEquals(200, response.getResultCode());
-        assertEquals("sql result", response.getResult());
+        assertThat(response.getResult(), containsString("total_time"));
     }
 
     public void testSqlClientInfo() throws IOException {
