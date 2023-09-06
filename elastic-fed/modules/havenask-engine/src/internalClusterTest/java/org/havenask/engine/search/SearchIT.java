@@ -38,6 +38,11 @@ public class SearchIT extends HavenaskITTestCase {
         return Arrays.asList(TestHavenaskEnginePlugin.class);
     }
 
+    @Override
+    protected boolean addMockInternalEngine() {
+        return false;
+    }
+
     public void testSearch() throws Exception {
         String index = "test2";
         assertTrue(
