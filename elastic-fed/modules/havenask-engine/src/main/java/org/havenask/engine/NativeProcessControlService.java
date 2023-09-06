@@ -29,6 +29,9 @@ import java.util.concurrent.TimeUnit;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.message.ParameterizedMessage;
+import org.havenask.HavenaskException;
+import org.havenask.client.Client;
+import org.havenask.client.Requests;
 import org.havenask.cluster.node.DiscoveryNode;
 import org.havenask.cluster.service.ClusterService;
 import org.havenask.common.component.AbstractLifecycleComponent;
@@ -57,11 +60,10 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
         + "%s -c %s -T in0 -p 30468,30480 --role searcher >> search.log 2>> search.error.log";
     private static final String UPDATE_QRS_COMMAND = "cd %s;python %s/havenask/command/general_search_updater.py -i "
         + "%s -c %s -T in0 -p 30468,30480 --role qrs >> qrs.log 2>> qrs.error.log";
-    private static final String STOP_HAVENASK_COMMAND =
-        "python /ha3_install/usr/local/lib/python/site-packages/ha_tools/local_search_stop.py"
-            + " -c /ha3_install/usr/local/etc/ha3/ha3_alog.conf >> search.log 2>> search.error.log";
+    private static final String STOP_HAVENASK_COMMAND = "python /ha3_install/usr/local/lib/python/site-packages/sql/local_search_stop.py"
+        + " -c /ha3_install/usr/local/etc/sql/sql_alog.conf >> search.log 2>> search.error.log";
     private static final String CHECK_HAVENASK_ALIVE_COMMAND =
-        "ps aux | grep sap_server_d | grep 'roleType=%s' | grep -v grep | awk '{print $2}'";
+        "ps aux | grep ha_sql | grep 'roleType=%s' | grep -v grep | awk '{print $2}'";
     private static final String START_BS_JOB_COMMAND = "python %s/havenask/command/bs_job_starter.py %s %s %s %s ";
     private static final String GET_TABLE_SIZE_COMMAND = "du -sk %s | awk '{print $1}'";
 
@@ -131,14 +133,17 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
     private ProcessControlTask processControlTask;
     private boolean running;
     private final Set<HavenaskEngine> havenaskEngines = new HashSet<>();
+    private Client client;
 
     public NativeProcessControlService(
+        Client client,
         ClusterService clusterService,
         ThreadPool threadPool,
         Environment environment,
         NodeEnvironment nodeEnvironment,
         HavenaskEngineEnvironment havenaskEngineEnvironment
     ) {
+        this.client = client;
         this.clusterService = clusterService;
         Settings settings = clusterService.getSettings();
         isDataNode = DiscoveryNode.isDataNode(settings);
@@ -291,7 +296,11 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
                     });
                     LOGGER.info("start searcher process...");
                     // 启动searcher
-                    runCommand(startSearcherCommand);
+                    boolean isRestart = runCommand(startSearcherCommand, commandTimeout);
+                    if (isRestart) {
+                        LOGGER.info("reroute cluster, set retryFailed to true");
+                        client.admin().cluster().reroute(Requests.clusterRerouteRequest().setRetryFailed(true)).actionGet();
+                    }
                 }
             }
 
@@ -299,7 +308,7 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
                 if (false == checkProcessAlive(QRS_ROLE)) {
                     LOGGER.info("start qrs process...");
                     // 启动qrs
-                    runCommand(startQrsCommand);
+                    runCommand(startQrsCommand, commandTimeout);
                 }
             }
         }
@@ -323,7 +332,7 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
             LOGGER.info("start searcher process...");
             while (false == checkProcessAlive(SEARCHER_ROLE)) {
                 // 启动searcher
-                boolean runSearcherState = runCommand(startSearcherCommand);
+                boolean runSearcherState = runCommand(startSearcherCommand, commandTimeout);
                 if (!runSearcherState) {
                     try {
                         Thread.sleep(1000);
@@ -338,7 +347,7 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
             LOGGER.info("start qrs process...");
             while (false == checkProcessAlive(QRS_ROLE)) {
                 // 启动qrs
-                boolean runQrsState = runCommand(startQrsCommand);
+                boolean runQrsState = runCommand(startQrsCommand, commandTimeout);
                 if (!runQrsState) {
                     try {
                         Thread.sleep(1000);
@@ -356,7 +365,7 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
      * @param role 进程角色: searcher 或者 qrs
      * @return 返回进程存活状态
      */
-    boolean checkProcessAlive(String role) {
+    public static boolean checkProcessAlive(String role) {
         Process process = null;
         String command = String.format(Locale.ROOT, CHECK_HAVENASK_ALIVE_COMMAND, role);
         try {
@@ -428,7 +437,7 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
         if (isDataNode && running) {
             // 启动bs job
             final String finalStartBsJobCommand = startBsJobCommand + " " + indexName + " '" + realtimeInfo + "'";
-            runCommand(finalStartBsJobCommand);
+            runCommand(finalStartBsJobCommand, commandTimeout);
         }
     }
 
@@ -436,7 +445,7 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
         if (isDataNode && running) {
             // 启动bs job
             final String finalStartBsJobCommand = startBsJobCommand + " " + indexName;
-            runCommand(finalStartBsJobCommand);
+            runCommand(finalStartBsJobCommand, commandTimeout);
         }
     }
 
@@ -466,8 +475,13 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
      */
     public synchronized void updateDataNodeTarget() {
         if (isDataNode && running) {
-            // 更新datanode searcher的target
-            runCommand(updateSearcherCommand);
+            try {
+                checkAliveBeforeUpdateTarget("searcher");
+                // 更新datanode searcher的target
+                runCommand(updateSearcherCommand, commandTimeout);
+            } catch (Exception e) {
+                LOGGER.warn(() -> new ParameterizedMessage("can't update searcher target before start "), e);
+            }
         }
     }
 
@@ -476,8 +490,13 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
      */
     public void updateDataNodeTargetAsync() {
         if (running && isDataNode) {
-            // 更新datanode searcher的target
-            runCommandAsync(updateSearcherCommand);
+            try {
+                checkAliveBeforeUpdateTarget("searcher");
+                // 更新datanode searcher的target
+                runCommandAsync(updateSearcherCommand);
+            } catch (Exception e) {
+                LOGGER.warn(() -> new ParameterizedMessage("can't update searcher target before start "), e);
+            }
         }
     }
 
@@ -486,8 +505,13 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
      */
     public synchronized void updateIngestNodeTarget() {
         if (isIngestNode && running) {
-            // 更新ingestnode qrs的target
-            runCommand(updateQrsCommand);
+            try {
+                checkAliveBeforeUpdateTarget("qrs");
+                // 更新ingestnode qrs的target
+                runCommand(updateQrsCommand, commandTimeout);
+            } catch (Exception e) {
+                LOGGER.warn(() -> new ParameterizedMessage("can't update qrs target before start "), e);
+            }
         }
     }
 
@@ -496,8 +520,13 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
      */
     public void updateIngestNodeTargetAsync() {
         if (running && isIngestNode) {
-            // 更新ingestnode qrs的target
-            runCommandAsync(updateQrsCommand);
+            try {
+                checkAliveBeforeUpdateTarget("qrs");
+                // 更新ingestnode qrs的target
+                runCommandAsync(updateQrsCommand);
+            } catch (Exception e) {
+                LOGGER.warn(() -> new ParameterizedMessage("can't update qrs target before start "), e);
+            }
         }
     }
 
@@ -505,14 +534,24 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
         long start = System.currentTimeMillis();
         Process searchProcess = null;
         if (isDataNode && running) {
-            // 更新datanode searcher的target
-            searchProcess = runCommandAsync(updateSearcherCommand);
+            try {
+                checkAliveBeforeUpdateTarget("searcher");
+                // 更新datanode searcher的target
+                searchProcess = runCommandAsync(updateSearcherCommand);
+            } catch (Exception e) {
+                LOGGER.warn(() -> new ParameterizedMessage("can't update searcher target before start "), e);
+            }
         }
 
         Process qrsProcess = null;
         if (isIngestNode && running) {
-            // 更新ingestnode qrs的target
-            qrsProcess = runCommandAsync(updateQrsCommand);
+            try {
+                checkAliveBeforeUpdateTarget("qrs");
+                // 更新ingestnode qrs的target
+                qrsProcess = runCommandAsync(updateQrsCommand);
+            } catch (Exception e) {
+                LOGGER.warn(() -> new ParameterizedMessage("can't update qrs target before start "), e);
+            }
         }
 
         try {
@@ -566,12 +605,22 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
                         return;
                     }
                     if (isDataNode) {
-                        // 更新datanode searcher的target
-                        runCommand(updateSearcherCommand);
+                        try {
+                            checkAliveBeforeUpdateTarget("searcher");
+                            // 更新datanode qrs的target
+                            runCommand(updateSearcherCommand, commandTimeout);
+                        } catch (Exception e) {
+                            LOGGER.warn(() -> new ParameterizedMessage("can't update searcher target before start "), e);
+                        }
                     }
                     if (isIngestNode) {
-                        // 更新ingestnode qrs的target
-                        runCommand(updateQrsCommand);
+                        try {
+                            checkAliveBeforeUpdateTarget("qrs");
+                            // 更新ingestnode qrs的target
+                            runCommand(updateQrsCommand, commandTimeout);
+                        } catch (Exception e) {
+                            LOGGER.warn(() -> new ParameterizedMessage("can't update qrs target before start "), e);
+                        }
                     }
                 }
             });
@@ -610,7 +659,7 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
         });
     }
 
-    private boolean runCommand(String command) {
+    public static boolean runCommand(String command, TimeValue commandTimeout) {
         return AccessController.doPrivileged((PrivilegedAction<Boolean>) () -> {
             try {
                 LOGGER.debug("run command: {}", command);
@@ -677,5 +726,11 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
     public void removeHavenaskEngine(HavenaskEngine engine) {
         LOGGER.debug("remove havenask engine, shardId: [{}]", engine.config().getShardId());
         havenaskEngines.remove(engine);
+    }
+
+    private void checkAliveBeforeUpdateTarget(String role) {
+        if (false == checkProcessAlive(role)) {
+            throw new HavenaskException("havenask" + role + "process is not alive, can't update target");
+        }
     }
 }

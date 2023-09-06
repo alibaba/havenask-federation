@@ -13,4 +13,7 @@
 #
 
 
-ps -ef|grep 'fake_sap.sh ha_sql roleType'|grep -v grep|grep -v PPID|awk '{ print $2}' | xargs kill -9
+for i in $(seq 1 30) :
+do
+    sleep 1
+done
