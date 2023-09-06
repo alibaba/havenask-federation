@@ -39,6 +39,15 @@
 
 package org.havenask.search.query;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.concurrent.ExecutorService;
+
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.lucene.document.LongPoint;
@@ -90,15 +99,6 @@ import org.havenask.search.sort.SortAndFormats;
 import org.havenask.search.suggest.SuggestPhase;
 import org.havenask.tasks.TaskCancelledException;
 import org.havenask.threadpool.ThreadPool;
-
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.concurrent.ExecutorService;
 
 import static org.havenask.search.query.QueryCollectorContext.createEarlyTerminationCollectorContext;
 import static org.havenask.search.query.QueryCollectorContext.createFilteredCollectorContext;
@@ -372,8 +372,10 @@ public class QueryPhase {
         if (searchContext.terminateAfter() != SearchContext.DEFAULT_TERMINATE_AFTER && queryResult.terminatedEarly() == null) {
             queryResult.terminatedEarly(false);
         }
-        for (QueryCollectorContext ctx : collectors) {
-            ctx.postProcess(queryResult);
+        if (false == searchContext.skipQueryCollectors()) {
+            for (QueryCollectorContext ctx : collectors) {
+                ctx.postProcess(queryResult);
+            }
         }
         return topDocsFactory.shouldRescore();
     }

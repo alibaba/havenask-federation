@@ -173,6 +173,7 @@ public final class DefaultSearchContext extends SearchContext {
     private final Map<Class<?>, Collector> queryCollectors = new HashMap<>();
     private final QueryShardContext queryShardContext;
     private final FetchPhase fetchPhase;
+    private boolean skipQueryCollectors;
 
     DefaultSearchContext(ReaderContext readerContext,
                          ShardSearchRequest request,
@@ -815,6 +816,17 @@ public final class DefaultSearchContext extends SearchContext {
     public QueryShardContext getQueryShardContext() {
         return queryShardContext;
     }
+
+    @Override
+    public boolean skipQueryCollectors() {
+        return skipQueryCollectors;
+    }
+
+    @Override
+    public void skipQueryCollectors(boolean skip) {
+        this.skipQueryCollectors = skip;
+    }
+
 
     @Override
     public Profilers getProfilers() {

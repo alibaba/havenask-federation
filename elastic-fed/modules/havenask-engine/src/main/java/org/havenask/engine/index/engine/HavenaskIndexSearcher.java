@@ -14,8 +14,6 @@
 
 package org.havenask.engine.index.engine;
 
-import static org.havenask.engine.search.rest.RestHavenaskSqlAction.SQL_DATABASE;
-
 import java.io.IOException;
 
 import org.apache.lucene.index.IndexReader;
@@ -39,13 +37,23 @@ import org.havenask.search.DocValueFormat;
 import org.havenask.search.internal.ContextIndexSearcher;
 import org.havenask.search.query.QuerySearchResult;
 
+import static org.havenask.engine.search.rest.RestHavenaskSqlAction.SQL_DATABASE;
+
 public class HavenaskIndexSearcher extends ContextIndexSearcher {
     private final QrsClient qrsHttpClient;
     private final ShardId shardId;
     private final DefaultSearchContext searchContext;
 
-    public HavenaskIndexSearcher(QrsClient qrsHttpClient, ShardId shardId, DefaultSearchContext searchContext, IndexReader reader, Similarity similarity,
-        QueryCache queryCache, QueryCachingPolicy queryCachingPolicy, boolean wrapWithExitableDirectoryReader) throws IOException {
+    public HavenaskIndexSearcher(
+        QrsClient qrsHttpClient,
+        ShardId shardId,
+        DefaultSearchContext searchContext,
+        IndexReader reader,
+        Similarity similarity,
+        QueryCache queryCache,
+        QueryCachingPolicy queryCachingPolicy,
+        boolean wrapWithExitableDirectoryReader
+    ) throws IOException {
         super(reader, similarity, queryCache, queryCachingPolicy, wrapWithExitableDirectoryReader);
         this.qrsHttpClient = qrsHttpClient;
         this.shardId = shardId;
@@ -61,6 +69,7 @@ public class HavenaskIndexSearcher extends ContextIndexSearcher {
         if (false == Strings.isNullOrEmpty(response.getResult())) {
             buildQuerySearchResult(searchContext.queryResult(), response.getResult());
         }
+        searchContext.skipQueryCollectors(true);
     }
 
     public static void buildQuerySearchResult(QuerySearchResult querySearchResult, String sqlResponse) {

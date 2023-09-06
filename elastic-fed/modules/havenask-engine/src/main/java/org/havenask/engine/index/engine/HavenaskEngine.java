@@ -14,10 +14,9 @@
 
 package org.havenask.engine.index.engine;
 
-import static org.havenask.engine.search.rest.RestHavenaskSqlAction.SQL_DATABASE;
-
 import java.io.Closeable;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
@@ -34,6 +33,10 @@ import java.util.function.LongConsumer;
 import java.util.function.LongSupplier;
 
 import javax.management.MBeanTrustPermission;
+
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONArray;
+import com.alibaba.fastjson.JSONObject;
 
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.DescribeTopicsResult;
@@ -95,12 +98,9 @@ import org.havenask.index.translog.TranslogConfig;
 import org.havenask.index.translog.TranslogDeletionPolicy;
 import org.havenask.search.DefaultSearchContext;
 import org.havenask.search.internal.ContextIndexSearcher;
-
-import com.alibaba.fastjson.JSON;
-import com.alibaba.fastjson.JSONArray;
-import com.alibaba.fastjson.JSONObject;
-
 import suez.service.proto.ErrorCode;
+
+import static org.havenask.engine.search.rest.RestHavenaskSqlAction.SQL_DATABASE;
 
 public class HavenaskEngine extends InternalEngine {
 
@@ -820,10 +820,58 @@ public class HavenaskEngine extends InternalEngine {
         try {
             ReferenceManager<HavenaskDirectoryReader> referenceManager = getReferenceManager(scope);
             HavenaskDirectoryReader acquire = referenceManager.acquire();
-            return new HavenaskSearcher(qrsHttpClient, shardId, source, acquire, engineConfig.getSimilarity(), engineConfig.getQueryCache(),
-                engineConfig.getQueryCachingPolicy(), () -> {});
-        }  catch (AlreadyClosedException ex) {
+            return new HavenaskSearcher(
+                qrsHttpClient,
+                shardId,
+                source,
+                acquire,
+                engineConfig.getSimilarity(),
+                engineConfig.getQueryCache(),
+                engineConfig.getQueryCachingPolicy(),
+                () -> {}
+            );
+        } catch (AlreadyClosedException ex) {
             throw ex;
+        } catch (Exception ex) {
+            maybeFailEngine("acquire_reader", ex);
+            ensureOpen(ex); // throw EngineCloseException here if we are already closed
+            logger.error(() -> new ParameterizedMessage("failed to acquire reader"), ex);
+            throw new EngineException(shardId, "failed to acquire reader", ex);
+        }
+    }
+
+    @Override
+    public SearcherSupplier acquireSearcherSupplier(Function<Searcher, Searcher> wrapper, SearcherScope scope) throws EngineException {
+        try {
+            ReferenceManager<HavenaskDirectoryReader> referenceManager = getReferenceManager(scope);
+            HavenaskDirectoryReader acquire = referenceManager.acquire();
+            return new SearcherSupplier(wrapper) {
+                @Override
+                public Searcher acquireSearcherInternal(String source) {
+                    return new HavenaskSearcher(
+                        qrsHttpClient,
+                        shardId,
+                        "search",
+                        acquire,
+                        engineConfig.getSimilarity(),
+                        engineConfig.getQueryCache(),
+                        engineConfig.getQueryCachingPolicy(),
+                        () -> {}
+                    );
+                }
+
+                @Override
+                public void doClose() {
+                    try {
+                        referenceManager.release(acquire);
+                    } catch (IOException e) {
+                        throw new UncheckedIOException("failed to close", e);
+                    } catch (AlreadyClosedException e) {
+                        // This means there's a bug somewhere: don't suppress it
+                        throw new AssertionError(e);
+                    }
+                }
+            };
         } catch (Exception ex) {
             maybeFailEngine("acquire_reader", ex);
             ensureOpen(ex); // throw EngineCloseException here if we are already closed
@@ -836,19 +884,34 @@ public class HavenaskEngine extends InternalEngine {
         private final QrsClient qrsHttpClient;
         private final ShardId shardId;
 
-        public HavenaskSearcher(QrsClient qrsHttpClient, ShardId shardId, String source, IndexReader reader,
-            Similarity similarity, QueryCache queryCache, QueryCachingPolicy queryCachingPolicy,
-            Closeable onClose) {
+        public HavenaskSearcher(
+            QrsClient qrsHttpClient,
+            ShardId shardId,
+            String source,
+            IndexReader reader,
+            Similarity similarity,
+            QueryCache queryCache,
+            QueryCachingPolicy queryCachingPolicy,
+            Closeable onClose
+        ) {
             super(source, reader, similarity, queryCache, queryCachingPolicy, onClose);
             this.qrsHttpClient = qrsHttpClient;
             this.shardId = shardId;
         }
 
         @Override
-        public ContextIndexSearcher createContextIndexSearcher(DefaultSearchContext
-        searchContext, boolean lowLevelCancellation) throws IOException {
-            return new HavenaskIndexSearcher(qrsHttpClient, shardId, searchContext, getIndexReader(), getSimilarity(),
-                getQueryCache(), getQueryCachingPolicy(), lowLevelCancellation);
+        public ContextIndexSearcher createContextIndexSearcher(DefaultSearchContext searchContext, boolean lowLevelCancellation)
+            throws IOException {
+            return new HavenaskIndexSearcher(
+                qrsHttpClient,
+                shardId,
+                searchContext,
+                getIndexReader(),
+                getSimilarity(),
+                getQueryCache(),
+                getQueryCachingPolicy(),
+                lowLevelCancellation
+            );
         }
     }
 }
