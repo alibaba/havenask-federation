@@ -39,9 +39,6 @@
 
 package org.havenask.index.engine;
 
-import static org.havenask.index.seqno.SequenceNumbers.UNASSIGNED_PRIMARY_TERM;
-import static org.havenask.index.seqno.SequenceNumbers.UNASSIGNED_SEQ_NO;
-
 import java.io.Closeable;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -127,6 +124,9 @@ import org.havenask.index.translog.TranslogStats;
 import org.havenask.search.DefaultSearchContext;
 import org.havenask.search.internal.ContextIndexSearcher;
 import org.havenask.search.suggest.completion.CompletionStats;
+
+import static org.havenask.index.seqno.SequenceNumbers.UNASSIGNED_PRIMARY_TERM;
+import static org.havenask.index.seqno.SequenceNumbers.UNASSIGNED_SEQ_NO;
 
 public abstract class Engine implements Closeable {
 
@@ -1312,7 +1312,8 @@ public abstract class Engine implements Closeable {
          *
          * create a new searcher with the given source and the given low level cancellation
          */
-        public ContextIndexSearcher createContextIndexSearcher(DefaultSearchContext searchContext, boolean lowLevelCancellation) throws IOException {
+        public ContextIndexSearcher createContextIndexSearcher(DefaultSearchContext searchContext,
+            boolean lowLevelCancellation) throws IOException {
             return new ContextIndexSearcher(getIndexReader(), getSimilarity(),
                 getQueryCache(), getQueryCachingPolicy(), lowLevelCancellation);
         }
