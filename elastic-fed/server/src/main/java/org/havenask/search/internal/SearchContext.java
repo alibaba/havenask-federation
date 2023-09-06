@@ -38,6 +38,12 @@
 
 package org.havenask.search.internal;
 
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.apache.lucene.search.Collector;
 import org.apache.lucene.search.FieldDoc;
@@ -77,13 +83,6 @@ import org.havenask.search.query.QuerySearchResult;
 import org.havenask.search.rescore.RescoreContext;
 import org.havenask.search.sort.SortAndFormats;
 import org.havenask.search.suggest.SuggestionSearchContext;
-
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * This class encapsulates the state needed to execute a search. It holds a reference to the
@@ -402,6 +401,16 @@ public abstract class SearchContext implements Releasable {
     public abstract Map<Class<?>, Collector> queryCollectors();
 
     public abstract QueryShardContext getQueryShardContext();
+
+    /**
+     * @return whether to skip query collectors processing.
+     */
+    public boolean skipQueryCollectors() {
+        return false;
+    }
+
+    public void skipQueryCollectors(boolean skip) {
+    }
 
     @Override
     public String toString() {

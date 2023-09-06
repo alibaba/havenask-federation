@@ -33,6 +33,8 @@ import org.havenask.plugins.Plugin;
 import org.havenask.test.HavenaskIntegTestCase;
 import org.havenask.transport.nio.MockNioTransportPlugin;
 
+import static org.hamcrest.CoreMatchers.containsString;
+
 @SuppressForbidden(reason = "use a http server")
 @ThreadLeakFilters(filters = { OkHttpThreadLeakFilter.class, ArpcThreadLeakFilter.class })
 @HavenaskIntegTestCase.ClusterScope(numDataNodes = 1, numClientNodes = 0, scope = HavenaskIntegTestCase.Scope.TEST)
@@ -60,7 +62,7 @@ public class SqlActionIT extends HavenaskITTestCase {
         HavenaskSqlRequest request = new HavenaskSqlRequest("select * from test", null);
         HavenaskSqlResponse response = client().execute(HavenaskSqlAction.INSTANCE, request).actionGet();
         assertEquals(200, response.getResultCode());
-        assertEquals("sql result", response.getResult());
+        assertThat(response.getResult(), containsString("total_time"));
     }
 
     // TODO 暂时注释该方法,可能导致server停掉后,其他tests失败
