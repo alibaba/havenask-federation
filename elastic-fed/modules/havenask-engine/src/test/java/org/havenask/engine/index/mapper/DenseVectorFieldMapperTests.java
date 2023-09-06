@@ -19,7 +19,6 @@ import java.util.Arrays;
 import java.util.Collection;
 
 import org.apache.lucene.index.IndexableField;
-import org.apache.lucene.util.LuceneTestCase.AwaitsFix;
 import org.havenask.common.settings.Settings;
 import org.havenask.common.xcontent.XContentBuilder;
 import org.havenask.engine.HavenaskEnginePlugin;
@@ -36,7 +35,6 @@ import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.instanceOf;
 
-@AwaitsFix(bugUrl = "https://github.com/alibaba/havenask-federation/issues/202")
 public class DenseVectorFieldMapperTests extends MapperTestCase {
 
     @Override

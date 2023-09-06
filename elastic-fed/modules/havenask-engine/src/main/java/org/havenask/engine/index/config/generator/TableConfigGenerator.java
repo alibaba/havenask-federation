@@ -31,7 +31,6 @@ import org.havenask.engine.index.config.Processor.ProcessorChainConfig;
 import org.havenask.engine.index.config.Schema;
 import org.havenask.engine.index.engine.EngineSettings;
 import org.havenask.engine.util.VersionUtils;
-import org.havenask.index.mapper.IdFieldMapper;
 import org.havenask.index.mapper.MapperService;
 
 public class TableConfigGenerator {
@@ -123,7 +122,6 @@ public class TableConfigGenerator {
             ProcessChain processChain = new ProcessChain();
             processChain.class_name = "DupFieldProcessor";
             processChain.parameters = new HashMap<>();
-            processChain.parameters.put(SchemaGenerator.DUP_ID, IdFieldMapper.NAME);
             schema.getDupFields().forEach((field) -> { processChain.parameters.put(SchemaGenerator.DUP_PREFIX + field, field); });
             processorChainConfig.document_processor_chain.add(processChain);
         }
