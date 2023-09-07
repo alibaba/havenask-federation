@@ -14,22 +14,17 @@
 
 package org.havenask.engine.index.query;
 
-import org.apache.lucene.search.IndexSearcher;
-import org.apache.lucene.search.ScoreMode;
-import org.apache.lucene.search.Weight;
-
 /**
  * @author kyra.wkh
  */
 public class LinearQuery extends ProximaQuery {
 
-    public LinearQuery(String field, Float[] queryVector, int topN, SearchFilter searchFilter) {
+    public LinearQuery(String field, float[] queryVector, int topN, SearchFilter searchFilter) {
         super(field, queryVector, searchFilter, topN);
     }
 
-   /* @Override
+    /* @Override
     public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost) {
         return new LinearWeight(this, boost);
     }*/
 }
-

@@ -35,31 +35,31 @@ public class HnswQueryBuilderTests extends AbstractQueryTestCase<HnswQueryBuilde
     @Override
     protected HnswQueryBuilder doCreateTestQueryBuilder() {
         String fieldName = "test";
-        Float[] vector = {1.5f, 2.5f};
+        float[] vector = { 1.5f, 2.5f };
         int size = 10;
         return new HnswQueryBuilder(fieldName, vector, size);
     }
+
     @Override
     protected void doAssertLuceneQuery(HnswQueryBuilder queryBuilder, Query query, QueryShardContext context) throws IOException {
-        return ;
+        return;
     }
 
     public void testFromJson() throws IOException {
-        String json =
-                "{\n" +
-                "    \"hnsw\": {\n" +
-                "      \"feature\": {\n" +
-                "        \"vector\": [1.5, 2.5],\n" +
-                "        \"size\": 10\n" +
-                "      }\n" +
-                "    }\n" +
-                "}";
+        String json = "{\n"
+            + "    \"hnsw\": {\n"
+            + "      \"feature\": {\n"
+            + "        \"vector\": [1.5, 2.5],\n"
+            + "        \"size\": 10\n"
+            + "      }\n"
+            + "    }\n"
+            + "}";
 
         HnswQueryBuilder parsed = (HnswQueryBuilder) parseQuery(json);
         assertEquals(json, "feature", parsed.getFieldName());
         assertEquals(10, parsed.getSize());
-        Float[] expectedVector = new Float[] {1.5f, 2.5f};
+        float[] expectedVector = new float[] { 1.5f, 2.5f };
         assertTrue(Arrays.equals(expectedVector, parsed.getVector()));
-        return ;
+        return;
     }
 }

@@ -315,7 +315,11 @@ public class HavenaskEnginePlugin extends Plugin
     @Override
     public List<QuerySpec<?>> getQueries() {
         QuerySpec<HnswQueryBuilder> hnsw = new QuerySpec<>(HnswQueryBuilder.NAME, HnswQueryBuilder::new, HnswQueryBuilder::fromXContent);
-        QuerySpec<LinearQueryBuilder> linear = new QuerySpec<>(LinearQueryBuilder.NAME, LinearQueryBuilder::new, LinearQueryBuilder::fromXContent);
+        QuerySpec<LinearQueryBuilder> linear = new QuerySpec<>(
+            LinearQueryBuilder.NAME,
+            LinearQueryBuilder::new,
+            LinearQueryBuilder::fromXContent
+        );
 
         return Arrays.asList(hnsw, linear);
     }

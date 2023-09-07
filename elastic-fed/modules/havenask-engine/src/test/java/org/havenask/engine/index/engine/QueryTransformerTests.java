@@ -14,6 +14,6 @@
 
 package org.havenask.engine.index.engine;
 
-public class QueryTransformerTests  {
+public class QueryTransformerTests {
 
 }

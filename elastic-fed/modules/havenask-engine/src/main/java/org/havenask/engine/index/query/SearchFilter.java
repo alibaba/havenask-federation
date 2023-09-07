@@ -30,27 +30,22 @@ package org.havenask.engine.index.query;
 
 import java.util.Arrays;
 
-public interface SearchFilter
-{
-    @Deprecated //not safe
-    static BitMapFilter getBitMapFilter(long[] bitMap)
-    {
+public interface SearchFilter {
+    @Deprecated // not safe
+    static BitMapFilter getBitMapFilter(long[] bitMap) {
         return new BitMapFilter(bitMap);
     }
 
-    static BitMapFilter getBitMapFilter(long[] bitMap, int size)
-    {
+    static BitMapFilter getBitMapFilter(long[] bitMap, int size) {
         return new BitMapFilter(bitMap, size);
     }
 
-    @Deprecated //not safe
-    static Feeder getFeeder(int[] docIds)
-    {
+    @Deprecated // not safe
+    static Feeder getFeeder(int[] docIds) {
         return new Feeder(docIds);
     }
 
-    static Feeder getFeeder(int[] docIds, int size)
-    {
+    static Feeder getFeeder(int[] docIds, int size) {
         return new Feeder(docIds, size);
     }
 
@@ -61,8 +56,7 @@ public interface SearchFilter
      * @param endExclude
      * @return
      */
-    static RangeFilter getRangeFiler(int startInclude, int endExclude)
-    {
+    static RangeFilter getRangeFiler(int startInclude, int endExclude) {
         return new RangeFilter(startInclude, endExclude);
     }
 
@@ -74,15 +68,12 @@ public interface SearchFilter
 
     boolean test(int doc);
 
-    class RangeFilter
-            implements SearchFilter
-    {
+    class RangeFilter implements SearchFilter {
         public int start;
         public int end;
         private int curIndex;
 
-        private RangeFilter(int start, int end)
-        {
+        private RangeFilter(int start, int end) {
             if (start > end || start < 0) {
                 throw new RuntimeException("RangeFilter illegal");
             }
@@ -92,20 +83,17 @@ public interface SearchFilter
         }
 
         @Override
-        public int cardinality()
-        {
+        public int cardinality() {
             return end - start;
         }
 
         @Override
-        public boolean test(int doc)
-        {
+        public boolean test(int doc) {
             return (doc >= start && doc < end);
         }
 
         @Override
-        public int pop()
-        {
+        public int pop() {
             curIndex++;
             if (curIndex >= end) {
                 return -1;
@@ -114,22 +102,18 @@ public interface SearchFilter
         }
 
         @Override
-        public void reset()
-        {
+        public void reset() {
             this.curIndex = start - 1;
         }
     }
 
-    class BitMapFilter
-            implements SearchFilter
-    {
+    class BitMapFilter implements SearchFilter {
         public long[] bitMap;
         private int size;
         private int curIndex = -1;
         private long curBits = 0;
 
-        private BitMapFilter(long[] bitMap)
-        {
+        private BitMapFilter(long[] bitMap) {
             if (bitMap == null || bitMap.length == 0) {
                 throw new RuntimeException("BitMapFilter illegal");
             }
@@ -137,8 +121,7 @@ public interface SearchFilter
             this.size = bitMap.length;
         }
 
-        private BitMapFilter(long[] bitMap, int size)
-        {
+        private BitMapFilter(long[] bitMap, int size) {
             if (bitMap == null || size <= 0 || bitMap.length < size) {
                 throw new RuntimeException("BitMapFilter illegal");
             }
@@ -147,8 +130,7 @@ public interface SearchFilter
         }
 
         @Override
-        public int cardinality()
-        {
+        public int cardinality() {
             int popCount = 0;
             for (int i = 0; i < size; ++i) {
                 popCount += Long.bitCount(bitMap[i]);
@@ -157,23 +139,20 @@ public interface SearchFilter
         }
 
         @Override
-        public boolean test(int doc)
-        {
+        public boolean test(int doc) {
             int wordIndex = doc / 64;
             long mark = 1l << (doc % 64);
             return wordIndex < size && ((bitMap[wordIndex] & mark) != 0l);
         }
 
         @Override
-        public void reset()
-        {
+        public void reset() {
             curIndex = -1;
             curBits = 0;
         }
 
         @Override
-        public int pop()
-        {
+        public int pop() {
             while (curBits == 0) {
                 curIndex++;
                 if (curIndex >= size) {
@@ -187,21 +166,17 @@ public interface SearchFilter
             return curIndex * 64 + Long.bitCount(t - 1);
         }
 
-        public int getNumWords()
-        {
+        public int getNumWords() {
             return size;
         }
     }
 
-    class Feeder
-            implements SearchFilter
-    {
+    class Feeder implements SearchFilter {
         public int[] docIds;
         private int curIndex = -1;
         private int size;
 
-        private Feeder(int[] docIds)
-        {
+        private Feeder(int[] docIds) {
             if (docIds == null || docIds.length == 0) {
                 throw new RuntimeException("Feeder illegal");
             }
@@ -209,8 +184,7 @@ public interface SearchFilter
             this.size = docIds.length;
         }
 
-        private Feeder(int[] docIds, int size)
-        {
+        private Feeder(int[] docIds, int size) {
             if (docIds == null || size <= 0 || docIds.length < size) {
                 throw new RuntimeException("Feeder illegal");
             }
@@ -219,26 +193,22 @@ public interface SearchFilter
         }
 
         @Override
-        public int cardinality()
-        {
+        public int cardinality() {
             return size;
         }
 
         @Override
-        public boolean test(int doc)
-        {
+        public boolean test(int doc) {
             return Arrays.binarySearch(docIds, 0, size, doc) >= 0;
         }
 
         @Override
-        public void reset()
-        {
+        public void reset() {
             curIndex = -1;
         }
 
         @Override
-        public int pop()
-        {
+        public int pop() {
             curIndex++;
             if (curIndex >= size) {
                 return -1;
@@ -246,8 +216,7 @@ public interface SearchFilter
             return docIds[curIndex];
         }
 
-        public int getNumIds()
-        {
+        public int getNumIds() {
             return size;
         }
     }

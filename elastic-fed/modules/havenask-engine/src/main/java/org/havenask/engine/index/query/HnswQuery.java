@@ -14,7 +14,6 @@
 
 package org.havenask.engine.index.query;
 
-
 /**
  * @author kyra.wkh
  */
@@ -26,10 +25,10 @@ public class HnswQuery extends ProximaQuery {
     public static final int DEFAULT_MAX_SCAN_NUM = 10 * 10000;
     public static final int DEFAULT_EF = 400;
 
-    public HnswQuery(String field, Float[] queryVector, int topN, SearchFilter searchFilter, Integer ef, Integer maxScanNum) {
+    public HnswQuery(String field, float[] queryVector, int topN, SearchFilter searchFilter, Integer ef, Integer maxScanNum) {
         super(field, queryVector, searchFilter, topN);
-        this.ef = (ef == null? DEFAULT_EF : ef);
-        this.maxScanNum = (maxScanNum == null? DEFAULT_MAX_SCAN_NUM : maxScanNum);
+        this.ef = (ef == null ? DEFAULT_EF : ef);
+        this.maxScanNum = (maxScanNum == null ? DEFAULT_MAX_SCAN_NUM : maxScanNum);
     }
 
     public int getEf() {
@@ -47,9 +46,7 @@ public class HnswQuery extends ProximaQuery {
 
     @Override
     public boolean equals(Object other) {
-        return sameClassAs(other) &&
-                super.equals(other) &&
-                equalsTo(getClass().cast(other));
+        return sameClassAs(other) && super.equals(other) && equalsTo(getClass().cast(other));
     }
 
     @Override
@@ -58,8 +55,6 @@ public class HnswQuery extends ProximaQuery {
     }
 
     private boolean equalsTo(HnswQuery other) {
-        return super.equals(other)
-                && this.maxScanNum == other.maxScanNum
-                && this.ef == other.ef;
+        return super.equals(other) && this.maxScanNum == other.maxScanNum && this.ef == other.ef;
     }
 }

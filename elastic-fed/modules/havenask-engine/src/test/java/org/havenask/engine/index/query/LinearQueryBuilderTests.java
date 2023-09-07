@@ -35,31 +35,31 @@ public class LinearQueryBuilderTests extends AbstractQueryTestCase<LinearQueryBu
     @Override
     protected LinearQueryBuilder doCreateTestQueryBuilder() {
         String fieldName = "test";
-        Float[] vector = {1.5f, 2.5f};
+        float[] vector = { 1.5f, 2.5f };
         int size = 10;
         return new LinearQueryBuilder(fieldName, vector, size);
     }
+
     @Override
     protected void doAssertLuceneQuery(LinearQueryBuilder queryBuilder, Query query, QueryShardContext context) throws IOException {
-        return ;
+        return;
     }
 
     public void testFromJson() throws IOException {
-        String json =
-                "{\n" +
-                        "    \"linear\": {\n" +
-                        "      \"feature\": {\n" +
-                        "        \"vector\": [1.5, 2.5],\n" +
-                        "        \"size\": 10\n" +
-                        "      }\n" +
-                        "    }\n" +
-                        "}";
+        String json = "{\n"
+            + "    \"linear\": {\n"
+            + "      \"feature\": {\n"
+            + "        \"vector\": [1.5, 2.5],\n"
+            + "        \"size\": 10\n"
+            + "      }\n"
+            + "    }\n"
+            + "}";
 
         LinearQueryBuilder parsed = (LinearQueryBuilder) parseQuery(json);
         assertEquals(json, "feature", parsed.getFieldName());
         assertEquals(10, parsed.getSize());
-        Float[] expectedVector = new Float[] {1.5f, 2.5f};
+        float[] expectedVector = new float[] { 1.5f, 2.5f };
         assertTrue(Arrays.equals(expectedVector, parsed.getVector()));
-        return ;
+        return;
     }
 }

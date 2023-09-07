@@ -44,12 +44,11 @@ public class HnswQueryBuilder extends ProximaQueryBuilder<HnswQueryBuilder> {
     private final Integer ef;
     private final Integer maxScanNum;
 
-
-    public HnswQueryBuilder(String fieldName, Float[] vector, int size) {
+    public HnswQueryBuilder(String fieldName, float[] vector, int size) {
         this(fieldName, vector, size, null, null, null);
     }
 
-    public HnswQueryBuilder(String fieldName, Float[] vector, int size, SearchFilter searchFilter, Integer ef, Integer maxScanNum) {
+    public HnswQueryBuilder(String fieldName, float[] vector, int size, SearchFilter searchFilter, Integer ef, Integer maxScanNum) {
         super(fieldName, vector, size, searchFilter);
         this.ef = ef;
         this.maxScanNum = maxScanNum;
@@ -135,17 +134,17 @@ public class HnswQueryBuilder extends ProximaQueryBuilder<HnswQueryBuilder> {
                             }
                         }
                     } else if (token.isValue() || token == XContentParser.Token.VALUE_NULL) {
-                        if (SIZE_FIELD.match(currentFieldName, parser.getDeprecationHandler()))  {
+                        if (SIZE_FIELD.match(currentFieldName, parser.getDeprecationHandler())) {
                             size = parser.intValue();
-                        } else if (SEARCH_FILTER_FIELD.match(currentFieldName, parser.getDeprecationHandler()))  {
+                        } else if (SEARCH_FILTER_FIELD.match(currentFieldName, parser.getDeprecationHandler())) {
                             if (token != XContentParser.Token.VALUE_NULL) {
                                 // TODO filter
                             }
-                        } else if (EF_FIELD.match(currentFieldName, parser.getDeprecationHandler()))  {
+                        } else if (EF_FIELD.match(currentFieldName, parser.getDeprecationHandler())) {
                             if (token != XContentParser.Token.VALUE_NULL) {
                                 ef = parser.intValue();
                             }
-                        } else if (MAX_SCAN_NUM_FIELD.match(currentFieldName, parser.getDeprecationHandler()))  {
+                        } else if (MAX_SCAN_NUM_FIELD.match(currentFieldName, parser.getDeprecationHandler())) {
                             if (token != XContentParser.Token.VALUE_NULL) {
                                 maxScanNum = parser.intValue();
                             }
@@ -154,12 +153,16 @@ public class HnswQueryBuilder extends ProximaQueryBuilder<HnswQueryBuilder> {
                         } else if (AbstractQueryBuilder.NAME_FIELD.match(currentFieldName, parser.getDeprecationHandler())) {
                             queryName = parser.text();
                         } else {
-                            throw new ParsingException(parser.getTokenLocation(),
-                                    "[" + NAME + "] query does not support [" + currentFieldName + "]");
+                            throw new ParsingException(
+                                parser.getTokenLocation(),
+                                "[" + NAME + "] query does not support [" + currentFieldName + "]"
+                            );
                         }
                     } else {
-                        throw new ParsingException(parser.getTokenLocation(),
-                                "[" + NAME + "] unknown token [" + token + "] after [" + currentFieldName + "]");
+                        throw new ParsingException(
+                            parser.getTokenLocation(),
+                            "[" + NAME + "] unknown token [" + token + "] after [" + currentFieldName + "]"
+                        );
                     }
                 }
             } else {
@@ -173,7 +176,11 @@ public class HnswQueryBuilder extends ProximaQueryBuilder<HnswQueryBuilder> {
             throw new IllegalArgumentException("vector can not be empty");
         }
 
-        Float[] array = vector.toArray(new Float[vector.size()]); // TODO: avoid arrayCopy?
+        float[] array = new float[vector.size()];
+        for (int i = 0; i < vector.size(); i++) {
+            array[i] = ((Number) vector.get(i)).floatValue();
+        }
+        // float[] array = vector.toArray(); // TODO: avoid arrayCopy?
         HnswQueryBuilder graphQuery = new HnswQueryBuilder(fieldName, array, size, searchFilter, ef, maxScanNum);
         graphQuery.queryName(queryName);
         graphQuery.boost(boost);

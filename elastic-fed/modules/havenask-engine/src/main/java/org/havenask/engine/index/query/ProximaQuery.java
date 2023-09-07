@@ -23,13 +23,13 @@ import java.util.Objects;
  */
 public abstract class ProximaQuery extends Query {
     private final String field;
-    private final Float[] queryVector;
+    private final float[] queryVector;
     private final SearchFilter searchFilter;
     private final int topN;
 
     public static final int DEFAULT_TOPN = 10;
 
-    public ProximaQuery(String field, Float[] queryVector, SearchFilter searchFilter, int topN) {
+    public ProximaQuery(String field, float[] queryVector, SearchFilter searchFilter, int topN) {
         this.field = field;
         this.queryVector = queryVector;
         this.searchFilter = searchFilter;
@@ -40,7 +40,7 @@ public abstract class ProximaQuery extends Query {
         return this.field;
     }
 
-    public Float[] getQueryVector() {
+    public float[] getQueryVector() {
         return this.queryVector;
     }
 
@@ -64,14 +64,13 @@ public abstract class ProximaQuery extends Query {
 
     @Override
     public boolean equals(Object other) {
-        return sameClassAs(other) &&
-                equalsTo(getClass().cast(other));
+        return sameClassAs(other) && equalsTo(getClass().cast(other));
     }
 
     private boolean equalsTo(ProximaQuery other) {
         return this.field.equals(other.getField())
-                && Objects.deepEquals(queryVector, other.queryVector)
-                && Objects.equals(this.searchFilter, other.getSearchFilter())
-                && this.topN == other.topN;
+            && Objects.deepEquals(queryVector, other.queryVector)
+            && Objects.equals(this.searchFilter, other.getSearchFilter())
+            && this.topN == other.topN;
     }
 }

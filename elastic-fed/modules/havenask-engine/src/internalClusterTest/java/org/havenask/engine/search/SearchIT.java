@@ -27,9 +27,12 @@ import org.havenask.action.admin.cluster.health.ClusterHealthResponse;
 import org.havenask.action.search.SearchResponse;
 import org.havenask.cluster.health.ClusterHealthStatus;
 import org.havenask.common.settings.Settings;
+import org.havenask.common.xcontent.XContentType;
 import org.havenask.engine.HavenaskITTestCase;
 import org.havenask.engine.index.engine.EngineSettings;
+import org.havenask.engine.index.query.HnswQueryBuilder;
 import org.havenask.plugins.Plugin;
+import org.havenask.search.builder.SearchSourceBuilder;
 
 @ThreadLeakFilters(filters = { OkHttpThreadLeakFilter.class, ArpcThreadLeakFilter.class })
 public class SearchIT extends HavenaskITTestCase {
@@ -45,6 +48,15 @@ public class SearchIT extends HavenaskITTestCase {
 
     public void testSearch() throws Exception {
         String index = "test2";
+        String mapping = "{\n"
+            + "  \"properties\": {\n"
+            + "    \"vector\": {\n"
+            + "      \"type\": \"dense_vector\",\n"
+            + "      \"dims\": 2\n"
+            + "    }\n"
+            + "  }\n"
+            + "}";
+
         assertTrue(
             client().admin()
                 .indices()
@@ -56,6 +68,7 @@ public class SearchIT extends HavenaskITTestCase {
                         .put(EngineSettings.ENGINE_TYPE_SETTING.getKey(), EngineSettings.ENGINE_HAVENASK)
                         .build()
                 )
+                .addMapping("_doc", mapping, XContentType.JSON)
                 .get()
                 .isAcknowledged()
         );
@@ -65,7 +78,10 @@ public class SearchIT extends HavenaskITTestCase {
             assertEquals(clusterHealthResponse.getStatus(), ClusterHealthStatus.GREEN);
         }, 2, TimeUnit.MINUTES);
 
-        SearchResponse searchResponse = client().prepareSearch(index).get();
+        SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+        HnswQueryBuilder hnswQueryBuilder = new HnswQueryBuilder("vector", new float[] { 1.5f, 2.5f }, 10);
+        searchSourceBuilder.query(hnswQueryBuilder);
+        SearchResponse searchResponse = client().prepareSearch(index).setSource(searchSourceBuilder).get();
         assertEquals(searchResponse.getHits().getTotalHits().value, 0);
     }
 }

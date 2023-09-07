@@ -35,12 +35,11 @@ public abstract class ProximaQueryBuilder<QB extends ProximaQueryBuilder<QB>> ex
     public static final ParseField SEARCH_FILTER_FIELD = new ParseField("filter");
 
     protected final String fieldName;
-    protected final Float[] vector;
+    protected final float[] vector;
     protected final int size;
-    protected SearchFilter searchFilter; //TODO: final
+    protected SearchFilter searchFilter; // TODO: final
 
-
-    public ProximaQueryBuilder(String fieldName, Float[] vector, int size, SearchFilter searchFilter) {
+    public ProximaQueryBuilder(String fieldName, float[] vector, int size, SearchFilter searchFilter) {
         if (Strings.isNullOrEmpty(fieldName)) {
             throw new IllegalArgumentException("[" + getName() + "] requires fieldName");
         }
@@ -62,13 +61,12 @@ public abstract class ProximaQueryBuilder<QB extends ProximaQueryBuilder<QB>> ex
         this.searchFilter = searchFilter;
     }
 
-
     public ProximaQueryBuilder(StreamInput in) throws IOException {
         super(in);
         this.fieldName = in.readString();
-        this.vector = (Float[])in.readGenericValue();
+        this.vector = in.readFloatArray();
         this.size = in.readInt();
-        //TODO searchFilter;
+        // TODO searchFilter;
     }
 
     public abstract String getName();
@@ -76,14 +74,13 @@ public abstract class ProximaQueryBuilder<QB extends ProximaQueryBuilder<QB>> ex
     @Override
     protected void doWriteTo(StreamOutput out) throws IOException {
         out.writeString(fieldName);
-        out.writeGenericValue(vector);
+        out.writeFloatArray(vector);
         out.writeInt(size);
         // TODO searchFilter;
         innerDoWriteTo(out);
     }
 
     protected abstract void innerDoWriteTo(StreamOutput out) throws IOException;
-
 
     @Override
     protected void doXContent(XContentBuilder builder, Params params) throws IOException {
@@ -105,10 +102,10 @@ public abstract class ProximaQueryBuilder<QB extends ProximaQueryBuilder<QB>> ex
         ProximaQueryBuilder proximaQueryBuilder = other;
 
         return Objects.equals(fieldName, proximaQueryBuilder.fieldName)
-                && Arrays.deepEquals(vector, proximaQueryBuilder.vector)
-                && Objects.equals(size, proximaQueryBuilder.size)
-                && Objects.equals(searchFilter, proximaQueryBuilder.searchFilter)
-                && innerDoEquals(other);
+            && Arrays.equals(vector, proximaQueryBuilder.vector)
+            && Objects.equals(size, proximaQueryBuilder.size)
+            && Objects.equals(searchFilter, proximaQueryBuilder.searchFilter)
+            && innerDoEquals(other);
     }
 
     protected abstract boolean innerDoEquals(QB other);
@@ -136,15 +133,13 @@ public abstract class ProximaQueryBuilder<QB extends ProximaQueryBuilder<QB>> ex
         return fieldName;
     }
 
-
-    public Object[] getVector() {
+    public float[] getVector() {
         return vector;
     }
 
     public SearchFilter getSearchFilter() {
         return searchFilter;
     }
-
 
     protected static Object parseVectorValue(XContentParser parser) throws IOException {
         return parser.floatValue(false);

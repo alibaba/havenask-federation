@@ -17,11 +17,13 @@ package org.havenask.engine.index.engine;
 import org.apache.lucene.search.Query;
 import org.havenask.engine.index.query.ProximaQuery;
 
+import java.io.IOException;
+
 public class QueryTransformer {
 
-    public static String toSql(String table, Query query) {
+    public static String toSql(String table, Query query) throws IOException {
         StringBuilder sqlQuery = new StringBuilder();
-        sqlQuery.append("select _id from" + table);
+        sqlQuery.append("select _id from " + table);
         if (query instanceof ProximaQuery) {
             ProximaQuery proximaQuery = (ProximaQuery) query;
             sqlQuery.append(" where MATCHINDEX('" + proximaQuery.getField() + "', '");
@@ -33,8 +35,8 @@ public class QueryTransformer {
             }
             sqlQuery.append("&n=" + proximaQuery.getTopN() + "')");
         } else {
-            //TODO reject unsupported DSL
-            return null;
+            // TODO reject unsupported DSL
+            throw new IOException("unsupported DSL:" + query);
         }
 
         return sqlQuery.toString();

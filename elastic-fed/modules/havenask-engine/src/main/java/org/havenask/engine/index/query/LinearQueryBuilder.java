@@ -31,16 +31,15 @@ import java.util.List;
 /**
  * @author kyra.wkh
  */
-public class LinearQueryBuilder extends ProximaQueryBuilder<LinearQueryBuilder>{
+public class LinearQueryBuilder extends ProximaQueryBuilder<LinearQueryBuilder> {
 
     public static final String NAME = "linear";
 
-
-    public LinearQueryBuilder(String fieldName, Float[] vector, int size) {
+    public LinearQueryBuilder(String fieldName, float[] vector, int size) {
         this(fieldName, vector, size, null);
     }
 
-    public LinearQueryBuilder(String fieldName, Float[] vector, int size, SearchFilter searchFilter) {
+    public LinearQueryBuilder(String fieldName, float[] vector, int size, SearchFilter searchFilter) {
         super(fieldName, vector, size, searchFilter);
     }
 
@@ -53,7 +52,6 @@ public class LinearQueryBuilder extends ProximaQueryBuilder<LinearQueryBuilder>{
         return NAME;
     }
 
-
     @Override
     protected void innerDoWriteTo(StreamOutput out) throws IOException {
 
@@ -63,7 +61,6 @@ public class LinearQueryBuilder extends ProximaQueryBuilder<LinearQueryBuilder>{
     protected void innerDoXContent(XContentBuilder builder, Params params) throws IOException {
 
     }
-
 
     @Override
     protected Query doToQuery(QueryShardContext context) throws IOException {
@@ -84,7 +81,6 @@ public class LinearQueryBuilder extends ProximaQueryBuilder<LinearQueryBuilder>{
     protected int innerDoHashCode() {
         return 0;
     }
-
 
     public static LinearQueryBuilder fromXContent(XContentParser parser) throws IOException {
         String fieldName = null;
@@ -112,9 +108,9 @@ public class LinearQueryBuilder extends ProximaQueryBuilder<LinearQueryBuilder>{
                             }
                         }
                     } else if (token.isValue() || token == XContentParser.Token.VALUE_NULL) {
-                        if (SIZE_FIELD.match(currentFieldName, parser.getDeprecationHandler()))  {
+                        if (SIZE_FIELD.match(currentFieldName, parser.getDeprecationHandler())) {
                             size = parser.intValue();
-                        } else if (SEARCH_FILTER_FIELD.match(currentFieldName, parser.getDeprecationHandler()))  {
+                        } else if (SEARCH_FILTER_FIELD.match(currentFieldName, parser.getDeprecationHandler())) {
                             if (token != XContentParser.Token.VALUE_NULL) {
                                 // TODO filter
                             }
@@ -123,12 +119,16 @@ public class LinearQueryBuilder extends ProximaQueryBuilder<LinearQueryBuilder>{
                         } else if (AbstractQueryBuilder.NAME_FIELD.match(currentFieldName, parser.getDeprecationHandler())) {
                             queryName = parser.text();
                         } else {
-                            throw new ParsingException(parser.getTokenLocation(),
-                                    "[" + NAME + "] query does not support [" + currentFieldName + "]");
+                            throw new ParsingException(
+                                parser.getTokenLocation(),
+                                "[" + NAME + "] query does not support [" + currentFieldName + "]"
+                            );
                         }
                     } else {
-                        throw new ParsingException(parser.getTokenLocation(),
-                                "[" + NAME + "] unknown token [" + token + "] after [" + currentFieldName + "]");
+                        throw new ParsingException(
+                            parser.getTokenLocation(),
+                            "[" + NAME + "] unknown token [" + token + "] after [" + currentFieldName + "]"
+                        );
                     }
                 }
             } else {
@@ -142,7 +142,11 @@ public class LinearQueryBuilder extends ProximaQueryBuilder<LinearQueryBuilder>{
             throw new IllegalArgumentException("vector can not be empty");
         }
 
-        Float[] array = vector.toArray(new Float[vector.size()]); // TODO: avoid arrayCopy?
+        float[] array = new float[vector.size()];
+        for (int i = 0; i < vector.size(); i++) {
+            array[i] = ((Number) vector.get(i)).floatValue();
+        }
+        // Float[] array = vector.toArray(new Float[vector.size()]); // TODO: avoid arrayCopy?
         LinearQueryBuilder linearQueryBuilder = new LinearQueryBuilder(fieldName, array, size, searchFilter);
         linearQueryBuilder.queryName(queryName);
         linearQueryBuilder.boost(boost);
