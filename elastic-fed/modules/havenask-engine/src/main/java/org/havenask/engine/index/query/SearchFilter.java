@@ -12,20 +12,6 @@
  *
  */
 
-/*
- * Copyright (c) 2021, Alibaba Group;
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *    http://www.apache.org/licenses/LICENSE-2.0
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- *
- */
-
 package org.havenask.engine.index.query;
 
 import java.util.Arrays;
@@ -49,13 +35,6 @@ public interface SearchFilter {
         return new Feeder(docIds, size);
     }
 
-    /**
-     * include start exclude end
-     *
-     * @param startInclude
-     * @param endExclude
-     * @return
-     */
     static RangeFilter getRangeFiler(int startInclude, int endExclude) {
         return new RangeFilter(startInclude, endExclude);
     }
@@ -141,8 +120,8 @@ public interface SearchFilter {
         @Override
         public boolean test(int doc) {
             int wordIndex = doc / 64;
-            long mark = 1l << (doc % 64);
-            return wordIndex < size && ((bitMap[wordIndex] & mark) != 0l);
+            long mark = 1L << (doc % 64);
+            return wordIndex < size && ((bitMap[wordIndex] & mark) != 0L);
         }
 
         @Override

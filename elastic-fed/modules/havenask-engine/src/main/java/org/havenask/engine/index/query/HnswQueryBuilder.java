@@ -31,9 +31,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-/**
- * @author kyra.wkh
- */
 public class HnswQueryBuilder extends ProximaQueryBuilder<HnswQueryBuilder> {
 
     public static final ParseField EF_FIELD = new ParseField("ef");

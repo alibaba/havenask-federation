@@ -26,9 +26,6 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Objects;
 
-/**
- * @author kyra.wkh
- */
 public abstract class ProximaQueryBuilder<QB extends ProximaQueryBuilder<QB>> extends AbstractQueryBuilder<QB> {
     public static final ParseField VECTOR_FIELD = new ParseField("vector");
     public static final ParseField SIZE_FIELD = new ParseField("size");
@@ -99,7 +96,7 @@ public abstract class ProximaQueryBuilder<QB extends ProximaQueryBuilder<QB>> ex
 
     @Override
     protected boolean doEquals(QB other) {
-        ProximaQueryBuilder proximaQueryBuilder = other;
+        ProximaQueryBuilder<QB> proximaQueryBuilder = other;
 
         return Objects.equals(fieldName, proximaQueryBuilder.fieldName)
             && Arrays.equals(vector, proximaQueryBuilder.vector)

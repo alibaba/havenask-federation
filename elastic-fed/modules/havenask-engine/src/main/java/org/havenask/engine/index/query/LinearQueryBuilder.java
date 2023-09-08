@@ -28,9 +28,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * @author kyra.wkh
- */
 public class LinearQueryBuilder extends ProximaQueryBuilder<LinearQueryBuilder> {
 
     public static final String NAME = "linear";

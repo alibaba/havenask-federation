@@ -16,11 +16,9 @@ package org.havenask.engine.index.query;
 
 import org.apache.lucene.search.Query;
 
+import java.util.Arrays;
 import java.util.Objects;
 
-/**
- * @author kyra.wkh
- */
 public abstract class ProximaQuery extends Query {
     private final String field;
     private final float[] queryVector;
@@ -59,7 +57,7 @@ public abstract class ProximaQuery extends Query {
 
     @Override
     public int hashCode() {
-        return field.hashCode() ^ Objects.hash(queryVector) ^ Objects.hashCode(searchFilter) ^ topN;
+        return field.hashCode() ^ Arrays.hashCode(queryVector) ^ Objects.hashCode(searchFilter) ^ topN;
     }
 
     @Override

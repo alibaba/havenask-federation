@@ -14,9 +14,6 @@
 
 package org.havenask.engine.index.query;
 
-/**
- * @author kyra.wkh
- */
 public class LinearQuery extends ProximaQuery {
 
     public LinearQuery(String field, float[] queryVector, int topN, SearchFilter searchFilter) {

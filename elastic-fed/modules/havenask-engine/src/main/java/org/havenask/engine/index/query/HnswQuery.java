@@ -14,9 +14,6 @@
 
 package org.havenask.engine.index.query;
 
-/**
- * @author kyra.wkh
- */
 public class HnswQuery extends ProximaQuery {
 
     private final int ef;

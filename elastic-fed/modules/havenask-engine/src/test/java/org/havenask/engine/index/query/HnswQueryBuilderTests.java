@@ -15,7 +15,11 @@
 package org.havenask.engine.index.query;
 
 import org.apache.lucene.search.Query;
+import org.havenask.common.Strings;
+import org.havenask.common.compress.CompressedXContent;
+import org.havenask.common.xcontent.XContentBuilder;
 import org.havenask.engine.HavenaskEnginePlugin;
+import org.havenask.index.mapper.MapperService;
 import org.havenask.index.query.QueryShardContext;
 import org.havenask.plugins.Plugin;
 import org.havenask.test.AbstractQueryTestCase;
@@ -25,16 +29,33 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collection;
 
-public class HnswQueryBuilderTests extends AbstractQueryTestCase<HnswQueryBuilder> {
+import static org.havenask.common.xcontent.XContentFactory.jsonBuilder;
 
+public class HnswQueryBuilderTests extends AbstractQueryTestCase<HnswQueryBuilder> {
     @Override
     protected Collection<Class<? extends Plugin>> getPlugins() {
         return Arrays.asList(HavenaskEnginePlugin.class, TestGeoShapeFieldMapperPlugin.class);
     }
 
     @Override
+    protected void initializeAdditionalMappings(MapperService mapperService) throws IOException {
+        XContentBuilder mapping = jsonBuilder().startObject()
+            .startObject("_doc")
+            .startObject("properties")
+            .startObject("vector")
+            .field("type", "dense_vector")
+            .field("dims", 2)
+            .endObject()
+            .endObject()
+            .endObject()
+            .endObject();
+
+        mapperService.merge("_doc", new CompressedXContent(Strings.toString(mapping)), MapperService.MergeReason.MAPPING_UPDATE);
+    }
+
+    @Override
     protected HnswQueryBuilder doCreateTestQueryBuilder() {
-        String fieldName = "test";
+        String fieldName = "vector";
         float[] vector = { 1.5f, 2.5f };
         int size = 10;
         return new HnswQueryBuilder(fieldName, vector, size);
