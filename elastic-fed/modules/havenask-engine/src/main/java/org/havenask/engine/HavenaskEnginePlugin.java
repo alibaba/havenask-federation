@@ -86,6 +86,8 @@ import org.havenask.threadpool.ExecutorBuilder;
 import org.havenask.threadpool.ScalingExecutorBuilder;
 import org.havenask.threadpool.ThreadPool;
 import org.havenask.watcher.ResourceWatcherService;
+import org.havenask.engine.index.query.HnswQueryBuilder;
+import org.havenask.engine.index.query.LinearQueryBuilder;
 
 import static org.havenask.discovery.DiscoveryModule.DISCOVERY_TYPE_SETTING;
 import static org.havenask.discovery.DiscoveryModule.SINGLE_NODE_DISCOVERY_TYPE;
@@ -308,6 +310,18 @@ public class HavenaskEnginePlugin extends Plugin
         if (EngineSettings.isHavenaskEngine(indexModule.getSettings())) {
             indexModule.addIndexEventListener(new HavenaskIndexEventListener(havenaskEngineEnvironmentSetOnce.get()));
         }
+    }
+
+    @Override
+    public List<QuerySpec<?>> getQueries() {
+        QuerySpec<HnswQueryBuilder> hnsw = new QuerySpec<>(HnswQueryBuilder.NAME, HnswQueryBuilder::new, HnswQueryBuilder::fromXContent);
+        QuerySpec<LinearQueryBuilder> linear = new QuerySpec<>(
+            LinearQueryBuilder.NAME,
+            LinearQueryBuilder::new,
+            LinearQueryBuilder::fromXContent
+        );
+
+        return Arrays.asList(hnsw, linear);
     }
 
     @Override

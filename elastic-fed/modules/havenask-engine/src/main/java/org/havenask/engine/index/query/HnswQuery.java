@@ -1,0 +1,57 @@
+/*
+ * Copyright (c) 2021, Alibaba Group;
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *
+ */
+
+package org.havenask.engine.index.query;
+
+public class HnswQuery extends ProximaQuery {
+
+    private final int ef;
+    private final int maxScanNum;
+
+    public static final int DEFAULT_MAX_SCAN_NUM = 10 * 10000;
+    public static final int DEFAULT_EF = 400;
+
+    public HnswQuery(String field, float[] queryVector, int topN, SearchFilter searchFilter, Integer ef, Integer maxScanNum) {
+        super(field, queryVector, searchFilter, topN);
+        this.ef = (ef == null ? DEFAULT_EF : ef);
+        this.maxScanNum = (maxScanNum == null ? DEFAULT_MAX_SCAN_NUM : maxScanNum);
+    }
+
+    public int getEf() {
+        return ef;
+    }
+
+    public int getMaxScanNum() {
+        return maxScanNum;
+    }
+
+    /*@Override
+    public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost) {
+        return new HnswWeight(this, boost);
+    }*/
+
+    @Override
+    public boolean equals(Object other) {
+        return sameClassAs(other) && super.equals(other) && equalsTo(getClass().cast(other));
+    }
+
+    @Override
+    public int hashCode() {
+        return super.hashCode() ^ ef ^ maxScanNum;
+    }
+
+    private boolean equalsTo(HnswQuery other) {
+        return super.equals(other) && this.maxScanNum == other.maxScanNum && this.ef == other.ef;
+    }
+}
