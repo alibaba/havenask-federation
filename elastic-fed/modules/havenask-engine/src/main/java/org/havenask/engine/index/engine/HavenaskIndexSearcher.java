@@ -48,6 +48,8 @@ import org.havenask.search.query.SqlResponse;
 import static org.havenask.engine.search.rest.RestHavenaskSqlAction.SQL_DATABASE;
 
 public class HavenaskIndexSearcher extends ContextIndexSearcher {
+
+    public static final String IDS_CONTEXT = "havenask_ids";
     private final QrsClient qrsHttpClient;
     private final ShardId shardId;
     private final DefaultSearchContext searchContext;
@@ -92,7 +94,7 @@ public class HavenaskIndexSearcher extends ContextIndexSearcher {
             queryFieldDoc[i] = new ScoreDoc(i, sqlResponse.getRowCount() - i);
             ids.add(String.valueOf(sqlResponse.getSqlResult().getData()[i][0]));
         }
-        readerContext.putInContext("ids", ids);
+        readerContext.putInContext(IDS_CONTEXT, ids);
         TopDocs topDocs = new TopDocs(new TotalHits(sqlResponse.getRowCount(), Relation.GREATER_THAN_OR_EQUAL_TO), queryFieldDoc);
         // TODO get maxScore
         TopDocsAndMaxScore topDocsAndMaxScore = new TopDocsAndMaxScore(topDocs, sqlResponse.getRowCount());
