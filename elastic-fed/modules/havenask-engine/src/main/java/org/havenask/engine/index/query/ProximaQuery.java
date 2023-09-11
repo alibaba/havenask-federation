@@ -34,6 +34,13 @@ public abstract class ProximaQuery extends Query {
         this.topN = topN;
     }
 
+    public ProximaQuery(String field, float[] queryVector, SearchFilter searchFilter) {
+        this.field = field;
+        this.queryVector = queryVector;
+        this.searchFilter = searchFilter;
+        this.topN = DEFAULT_TOPN;
+    }
+
     public String getField() {
         return this.field;
     }
