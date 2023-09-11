@@ -34,6 +34,7 @@ public class HavenaskIndexSearcherTests extends HavenaskTestCase {
             + "[\"wBSgaYoBtIvm0jEE9OG2\"],[\"shRlY4oBtIvm0jEEEOFm\"]],\"column_name\":[\"_id\"],"
             + "\"column_type\":[\"multi_char\"]},"
             + "\"error_info\":{\"ErrorCode\":0,\"Error\":\"ERROR_NONE\",\"Message\":\"\"}}  ";
+
         String sqlResponseStr2 = "{\"total_time\":1.811,\"has_soft_failure\":false,\"covered_percent\":1.0,"
             + "\"row_count\":4,\"format_type\":\"full_json\",\"search_info\":{},\"rpc_info\":\"\","
             + "\"table_leader_info\":{},\"table_build_watermark\":{},"
