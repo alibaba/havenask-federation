@@ -35,7 +35,7 @@ public abstract class HavenaskITTestCase extends HavenaskIntegTestCase {
             qrsServer = HttpServer.create(new InetSocketAddress(49200), 0);
             qrsServer.createContext("/sql", exchange -> {
                 exchange.sendResponseHeaders(200, 0);
-                String response = "{\"total_time\":2.492,\"has_soft_failure\":false,\"covered_percent\":1.0,"
+                String defaultResponse = "{\"total_time\":2.492,\"has_soft_failure\":false,\"covered_percent\":1.0,"
                     + "\"row_count\":18,\"format_type\":\"full_json\",\"search_info\":{},\"rpc_info\":\"\","
                     + "\"table_leader_info\":{},\"table_build_watermark\":{},\"sql_query\":\"query=select * from "
                     + "test2&&kvpair=databaseName:general;format:full_json\",\"iquan_plan\":{\"error_code\":0,"
@@ -55,8 +55,17 @@ public abstract class HavenaskITTestCase extends HavenaskIntegTestCase {
                     + "\"foo\",\"_id\",\"_version\",\"_primary_term\"],\"column_type\":[\"multi_char\",\"int64\","
                     + "\"multi_char\",\"multi_char\",\"int64\",\"int64\"]},\"error_info\":{\"ErrorCode\":0,"
                     + "\"Error\":\"ERROR_NONE\",\"Message\":\"\"}}";
+                String querySqlResponse = "{\"total_time\":2.016,\"has_soft_failure\":false,\"covered_percent\":1.0,"
+                    + "\"row_count\":3,\"format_type\":\"full_json\",\"search_info\":{},\"rpc_info\":\"\","
+                    + "\"table_leader_info\":{},\"table_build_watermark\":{},\"sql_query\":\"select _id from "
+                    + "in1&&kvpair=databaseName:database;formatType:full_json\",\"iquan_plan\":{\"error_code\":0,"
+                    + "\"error_message\":\"\",\"result\":{\"rel_plan_version\":\"\",\"rel_plan\":[],"
+                    + "\"exec_params\":{}}},\"navi_graph\":\"\",\"trace\":[],\"sql_result\":{\"data\":[[\"wRSgaYoBtIvm0jEE9eGc\"],"
+                    + "[\"wBSgaYoBtIvm0jEE9OG2\"],[\"shRlY4oBtIvm0jEEEOFm\"]],\"column_name\":[\"_id\"],"
+                    + "\"column_type\":[\"multi_char\"]},"
+                    + "\"error_info\":{\"ErrorCode\":0,\"Error\":\"ERROR_NONE\",\"Message\":\"\"}}  ";
                 OutputStream os = exchange.getResponseBody();
-                os.write(response.getBytes());
+                os.write(querySqlResponse.getBytes());
                 os.close();
             });
             qrsServer.createContext("/sqlClientInfo", exchange -> {
