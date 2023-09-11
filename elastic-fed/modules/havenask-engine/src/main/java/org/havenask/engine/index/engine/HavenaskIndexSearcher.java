@@ -15,15 +15,17 @@
 package org.havenask.engine.index.engine;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.search.Collector;
-import org.apache.lucene.search.FieldDoc;
-import org.apache.lucene.search.TopDocs;
-import org.apache.lucene.search.TotalHits;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryCache;
 import org.apache.lucene.search.QueryCachingPolicy;
+import org.apache.lucene.search.ScoreDoc;
+import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.search.TotalHits;
 import org.apache.lucene.search.TotalHits.Relation;
 import org.apache.lucene.search.similarities.Similarity;
 import org.havenask.common.Strings;
@@ -39,12 +41,15 @@ import org.havenask.index.shard.ShardId;
 import org.havenask.search.DefaultSearchContext;
 import org.havenask.search.DocValueFormat;
 import org.havenask.search.internal.ContextIndexSearcher;
+import org.havenask.search.internal.ReaderContext;
 import org.havenask.search.query.QuerySearchResult;
 import org.havenask.search.query.SqlResponse;
 
 import static org.havenask.engine.search.rest.RestHavenaskSqlAction.SQL_DATABASE;
 
 public class HavenaskIndexSearcher extends ContextIndexSearcher {
+
+    public static final String IDS_CONTEXT = "havenask_ids";
     private final QrsClient qrsHttpClient;
     private final ShardId shardId;
     private final DefaultSearchContext searchContext;
@@ -72,23 +77,24 @@ public class HavenaskIndexSearcher extends ContextIndexSearcher {
         QrsSqlRequest request = new QrsSqlRequest(sql, kvpair);
         QrsSqlResponse response = qrsHttpClient.executeSql(request);
         if (false == Strings.isNullOrEmpty(response.getResult())) {
-            buildQuerySearchResult(searchContext.queryResult(), response.getResult());
+            buildQuerySearchResult(searchContext.queryResult(), response.getResult(), searchContext.readerContext());
         }
         searchContext.skipQueryCollectors(true);
     }
 
-    public static void buildQuerySearchResult(QuerySearchResult querySearchResult, String sqlResponseStr) throws IOException {
+    public static void buildQuerySearchResult(QuerySearchResult querySearchResult, String sqlResponseStr, ReaderContext readerContext)
+        throws IOException {
         XContentParser parser = XContentType.JSON.xContent()
             .createParser(NamedXContentRegistry.EMPTY, DeprecationHandler.IGNORE_DEPRECATIONS, sqlResponseStr);
         SqlResponse sqlResponse = SqlResponse.fromXContent(parser);
-        FieldDoc[] queryFieldDoc = new FieldDoc[sqlResponse.getRowCount()];
+        ScoreDoc[] queryFieldDoc = new ScoreDoc[sqlResponse.getRowCount()];
+        List<String> ids = new ArrayList<>(sqlResponse.getRowCount());
         for (int i = 0; i < sqlResponse.getRowCount(); i++) {
             // TODO get doc's score
-            queryFieldDoc[i] = new FieldDoc(i, sqlResponse.getRowCount() - i);
-            queryFieldDoc[i].shardIndex = 0;
-            queryFieldDoc[i].fields = new Object[1];
-            queryFieldDoc[i].fields[0] = sqlResponse.getSqlResult().getData()[i][0];
+            queryFieldDoc[i] = new ScoreDoc(i, sqlResponse.getRowCount() - i);
+            ids.add(String.valueOf(sqlResponse.getSqlResult().getData()[i][0]));
         }
+        readerContext.putInContext(IDS_CONTEXT, ids);
         TopDocs topDocs = new TopDocs(new TotalHits(sqlResponse.getRowCount(), Relation.GREATER_THAN_OR_EQUAL_TO), queryFieldDoc);
         // TODO get maxScore
         TopDocsAndMaxScore topDocsAndMaxScore = new TopDocsAndMaxScore(topDocs, sqlResponse.getRowCount());
