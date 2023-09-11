@@ -45,40 +45,30 @@ public class HavenaskIndexSearcherTests extends HavenaskTestCase {
             + "\"column_name\":[\"_id\"],\"column_type\":[\"multi_char\"]},"
             + "\"error_info\":{\"ErrorCode\":0,\"Error\":\"ERROR_NONE\",\"Message\":\"\"}}   ";
 
+        String[] resStr1 = new String[] { "wRSgaYoBtIvm0jEE9eGc", "wBSgaYoBtIvm0jEE9OG2", "shRlY4oBtIvm0jEEEOFm" };
+        float[] resFloat1 = new float[] { 3.0F, 2.0F, 1.0F };
+        int rowNum1 = 3;
         HavenaskIndexSearcher.buildQuerySearchResult(querySearchResult, sqlResponseStr1);
         assertEquals(3L, querySearchResult.topDocs().topDocs.totalHits.value);
         assertEquals(3.0F, querySearchResult.getMaxScore(), delta);
-        assertEquals(3.0F, querySearchResult.topDocs().topDocs.scoreDocs[0].score, delta);
-        assertEquals(0, querySearchResult.topDocs().topDocs.scoreDocs[0].shardIndex);
-        assertEquals(0, querySearchResult.topDocs().topDocs.scoreDocs[0].doc);
-        assertEquals("wRSgaYoBtIvm0jEE9eGc", ((FieldDoc) querySearchResult.topDocs().topDocs.scoreDocs[0]).fields[0]);
-        assertEquals(2.0F, querySearchResult.topDocs().topDocs.scoreDocs[1].score, delta);
-        assertEquals(0, querySearchResult.topDocs().topDocs.scoreDocs[1].shardIndex);
-        assertEquals(1, querySearchResult.topDocs().topDocs.scoreDocs[1].doc);
-        assertEquals("wBSgaYoBtIvm0jEE9OG2", ((FieldDoc) querySearchResult.topDocs().topDocs.scoreDocs[1]).fields[0]);
-        assertEquals(1.0F, querySearchResult.topDocs().topDocs.scoreDocs[2].score, delta);
-        assertEquals(0, querySearchResult.topDocs().topDocs.scoreDocs[2].shardIndex);
-        assertEquals(2, querySearchResult.topDocs().topDocs.scoreDocs[2].doc);
-        assertEquals("shRlY4oBtIvm0jEEEOFm", ((FieldDoc) querySearchResult.topDocs().topDocs.scoreDocs[2]).fields[0]);
+        for (int i = 0; i < rowNum1; i++) {
+            assertEquals(resFloat1[i], querySearchResult.topDocs().topDocs.scoreDocs[i].score, delta);
+            assertEquals(0, querySearchResult.topDocs().topDocs.scoreDocs[i].shardIndex);
+            assertEquals(i, querySearchResult.topDocs().topDocs.scoreDocs[i].doc);
+            assertEquals(resStr1[i], ((FieldDoc) querySearchResult.topDocs().topDocs.scoreDocs[i]).fields[0]);
+        }
 
+        String[] resStr2 = new String[] { "qwerty", "asdfgh", "zxcvbn", "yuiopl" };
+        float[] resFloat2 = new float[] { 4.0F, 3.0F, 2.0F, 1.0F };
+        int rowNum2 = 4;
         HavenaskIndexSearcher.buildQuerySearchResult(querySearchResult, sqlResponseStr2);
         assertEquals(4L, querySearchResult.topDocs().topDocs.totalHits.value);
         assertEquals(4.0F, querySearchResult.getMaxScore(), delta);
-        assertEquals(4.0F, querySearchResult.topDocs().topDocs.scoreDocs[0].score, delta);
-        assertEquals(0, querySearchResult.topDocs().topDocs.scoreDocs[0].shardIndex);
-        assertEquals(0, querySearchResult.topDocs().topDocs.scoreDocs[0].doc);
-        assertEquals("qwerty", ((FieldDoc) querySearchResult.topDocs().topDocs.scoreDocs[0]).fields[0]);
-        assertEquals(3.0F, querySearchResult.topDocs().topDocs.scoreDocs[1].score, delta);
-        assertEquals(0, querySearchResult.topDocs().topDocs.scoreDocs[1].shardIndex);
-        assertEquals(1, querySearchResult.topDocs().topDocs.scoreDocs[1].doc);
-        assertEquals("asdfgh", ((FieldDoc) querySearchResult.topDocs().topDocs.scoreDocs[1]).fields[0]);
-        assertEquals(2.0F, querySearchResult.topDocs().topDocs.scoreDocs[2].score, delta);
-        assertEquals(0, querySearchResult.topDocs().topDocs.scoreDocs[2].shardIndex);
-        assertEquals(2, querySearchResult.topDocs().topDocs.scoreDocs[2].doc);
-        assertEquals("zxcvbn", ((FieldDoc) querySearchResult.topDocs().topDocs.scoreDocs[2]).fields[0]);
-        assertEquals(1.0F, querySearchResult.topDocs().topDocs.scoreDocs[3].score, delta);
-        assertEquals(0, querySearchResult.topDocs().topDocs.scoreDocs[3].shardIndex);
-        assertEquals(3, querySearchResult.topDocs().topDocs.scoreDocs[3].doc);
-        assertEquals("yuiopl", ((FieldDoc) querySearchResult.topDocs().topDocs.scoreDocs[3]).fields[0]);
+        for (int i = 0; i < rowNum2; i++) {
+            assertEquals(resFloat2[i], querySearchResult.topDocs().topDocs.scoreDocs[i].score, delta);
+            assertEquals(0, querySearchResult.topDocs().topDocs.scoreDocs[i].shardIndex);
+            assertEquals(i, querySearchResult.topDocs().topDocs.scoreDocs[i].doc);
+            assertEquals(resStr2[i], ((FieldDoc) querySearchResult.topDocs().topDocs.scoreDocs[i]).fields[0]);
+        }
     }
 }
