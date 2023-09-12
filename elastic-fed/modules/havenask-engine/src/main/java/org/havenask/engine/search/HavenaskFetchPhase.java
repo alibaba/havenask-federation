@@ -40,5 +40,6 @@ public class HavenaskFetchPhase implements FetchPhase {
         }
 
         // TODO add havenask fetch phase
+        defaultFetchPhase.execute(context);
     }
 }
