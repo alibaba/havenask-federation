@@ -77,8 +77,6 @@ tasks.named("thirdPartyAudit").configure {
           "javax.ws.rs.ext.MessageBodyReader",
           "javax.ws.rs.ext.MessageBodyWriter",
           "javax.ws.rs.ext.Providers",
-          "org.apache.commons.logging.Log",
-          "org.apache.commons.logging.LogFactory",
           "org.glassfish.jersey.CommonProperties",
           "org.glassfish.jersey.internal.spi.AutoDiscoverable",
           "org.glassfish.jersey.internal.util.PropertiesHelper",
