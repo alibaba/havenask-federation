@@ -20,7 +20,6 @@ import java.util.List;
 import org.havenask.search.internal.ReaderContext;
 import org.havenask.search.query.QuerySearchResult;
 import org.havenask.test.HavenaskTestCase;
-import java.util.List;
 import java.util.UUID;
 
 import org.apache.lucene.search.QueryCachingPolicy;
@@ -29,10 +28,7 @@ import org.havenask.index.IndexService;
 import org.havenask.index.query.QueryShardContext;
 import org.havenask.index.shard.IndexShard;
 import org.havenask.index.shard.ShardId;
-import org.havenask.search.internal.ReaderContext;
 import org.havenask.search.internal.ShardSearchContextId;
-import org.havenask.search.query.QuerySearchResult;
-import org.havenask.test.HavenaskTestCase;
 import org.havenask.threadpool.TestThreadPool;
 import org.havenask.threadpool.ThreadPool;
 

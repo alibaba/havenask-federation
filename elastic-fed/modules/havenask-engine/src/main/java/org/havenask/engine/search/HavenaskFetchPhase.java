@@ -19,6 +19,7 @@ import java.util.List;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.apache.lucene.search.TotalHits;
 import org.havenask.common.xcontent.DeprecationHandler;
 import org.havenask.common.xcontent.NamedXContentRegistry;
 import org.havenask.common.xcontent.XContentParser;
@@ -28,6 +29,8 @@ import org.havenask.engine.rpc.QrsClient;
 import org.havenask.engine.rpc.QrsSqlRequest;
 import org.havenask.engine.rpc.QrsSqlResponse;
 import org.havenask.search.SearchContextSourcePrinter;
+import org.havenask.search.SearchHit;
+import org.havenask.search.SearchHits;
 import org.havenask.search.fetch.DefaultFetchPhase;
 import org.havenask.search.fetch.FetchPhase;
 import org.havenask.search.fetch.FetchSubPhase;
@@ -71,25 +74,29 @@ public class HavenaskFetchPhase implements FetchPhase {
 
         List<String> ids = context.readerContext().getFromContext(IDS_CONTEXT);
         SqlResponse sqlResponse = fetchWithSql(ids, context);
+        TotalHits totalHits = context.queryResult().getTotalHits();
+        SearchHit[] hits = new SearchHit[sqlResponse.getRowCount()];
+        //TODO transfer sqlResponse2hits
+        context.fetchResult().hits(new SearchHits(hits, totalHits, context.queryResult().getMaxScore()));
     }
 
     private SqlResponse fetchWithSql(List<String> ids, SearchContext context) throws IOException {
         StringBuilder sqlQuery = new StringBuilder();
-        sqlQuery.append("select _id from " + context.readerContext().indexShard().shardId());
-        sqlQuery.append(" where _id in('");
+        sqlQuery.append("select _source,_id,_routing from " + context.readerContext().indexShard().shardId() + "_summary_");
+        sqlQuery.append(" where _id in(");
         for (int i = 0; i < ids.size(); i++) {
-            sqlQuery.append(ids.get(i));
+            sqlQuery.append("'" + ids.get(i) + "'");
             if (i < ids.size() - 1) {
                 sqlQuery.append(",");
             }
         }
-        String sql = "select * from" + context.readerContext().indexShard().shardId();
+        sqlQuery.append(")");
         String kvpair = "format:full_json;timeout:10000;databaseName:" + SQL_DATABASE;
-        QrsSqlRequest request = new QrsSqlRequest(sql, kvpair);
+        QrsSqlRequest request = new QrsSqlRequest(sqlQuery.toString(), kvpair);
         QrsSqlResponse response = qrsHttpClient.executeSql(request);
         XContentParser parser = XContentType.JSON.xContent()
             .createParser(NamedXContentRegistry.EMPTY, DeprecationHandler.IGNORE_DEPRECATIONS, response.getResult());
         SqlResponse sqlResponse = SqlResponse.fromXContent(parser);
-        return null;
+        return sqlResponse;
     }
 }
