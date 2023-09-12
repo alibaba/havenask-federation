@@ -28,12 +28,9 @@ import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TotalHits;
 import org.apache.lucene.search.TotalHits.Relation;
 import org.apache.lucene.search.similarities.Similarity;
+import org.havenask.client.ha.SqlResponse;
 import org.havenask.common.Strings;
 import org.havenask.common.lucene.search.TopDocsAndMaxScore;
-import org.havenask.common.xcontent.DeprecationHandler;
-import org.havenask.common.xcontent.NamedXContentRegistry;
-import org.havenask.common.xcontent.XContentParser;
-import org.havenask.common.xcontent.XContentType;
 import org.havenask.engine.rpc.QrsClient;
 import org.havenask.engine.rpc.QrsSqlRequest;
 import org.havenask.engine.rpc.QrsSqlResponse;
@@ -43,7 +40,6 @@ import org.havenask.search.DocValueFormat;
 import org.havenask.search.internal.ContextIndexSearcher;
 import org.havenask.search.internal.ReaderContext;
 import org.havenask.search.query.QuerySearchResult;
-import org.havenask.search.query.SqlResponse;
 
 import static org.havenask.engine.search.rest.RestHavenaskSqlAction.SQL_DATABASE;
 
@@ -84,9 +80,7 @@ public class HavenaskIndexSearcher extends ContextIndexSearcher {
 
     public static void buildQuerySearchResult(QuerySearchResult querySearchResult, String sqlResponseStr, ReaderContext readerContext)
         throws IOException {
-        XContentParser parser = XContentType.JSON.xContent()
-            .createParser(NamedXContentRegistry.EMPTY, DeprecationHandler.IGNORE_DEPRECATIONS, sqlResponseStr);
-        SqlResponse sqlResponse = SqlResponse.fromXContent(parser);
+        SqlResponse sqlResponse = SqlResponse.parse(sqlResponseStr);
         ScoreDoc[] queryFieldDoc = new ScoreDoc[sqlResponse.getRowCount()];
         List<String> ids = new ArrayList<>(sqlResponse.getRowCount());
         for (int i = 0; i < sqlResponse.getRowCount(); i++) {
