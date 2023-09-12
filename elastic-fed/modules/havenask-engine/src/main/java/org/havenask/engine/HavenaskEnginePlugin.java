@@ -331,6 +331,6 @@ public class HavenaskEnginePlugin extends Plugin
 
     @Override
     public FetchPhase getFetchPhase(List<FetchSubPhase> fetchSubPhases) {
-        return new HavenaskFetchPhase(fetchSubPhases);
+        return new HavenaskFetchPhase(qrsClientSetOnce.get(), fetchSubPhases);
     }
 }

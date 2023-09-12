@@ -41,10 +41,12 @@ package org.havenask.search.fetch;
 
 import org.havenask.search.internal.SearchContext;
 
+import java.io.IOException;
+
 /**
  * Fetch phase of a search request, used to fetch the actual top matching documents to be returned to the client, identified
  * after reducing all of the matches returned by the query phase
  */
 public interface FetchPhase {
-    void execute(SearchContext context);
+    void execute(SearchContext context) throws IOException;
 }
