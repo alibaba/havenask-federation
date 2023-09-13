@@ -14,10 +14,11 @@
 
 package org.havenask.engine.index.engine;
 
+import java.io.IOException;
+
+import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.Query;
 import org.havenask.engine.index.query.ProximaQuery;
-
-import java.io.IOException;
 
 public class QueryTransformer {
 
@@ -34,9 +35,11 @@ public class QueryTransformer {
                 }
             }
             sqlQuery.append("&n=" + proximaQuery.getTopN() + "')");
+        } else if (query instanceof MatchAllDocsQuery) {
+            // do nothing
         } else {
             // TODO reject unsupported DSL
-            throw new IOException("unsupported DSL:" + query);
+            throw new IOException("unsupported DSL query:" + query);
         }
 
         return sqlQuery.toString();

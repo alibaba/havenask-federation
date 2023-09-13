@@ -15,20 +15,26 @@
 package org.havenask.engine.search;
 
 import java.io.IOException;
+import java.util.Collections;
 import java.util.List;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.lucene.search.TotalHits;
 import org.havenask.client.ha.SqlResponse;
-import org.havenask.common.xcontent.DeprecationHandler;
-import org.havenask.common.xcontent.NamedXContentRegistry;
-import org.havenask.common.xcontent.XContentParser;
+import org.havenask.common.bytes.BytesReference;
+import org.havenask.common.text.Text;
+import org.havenask.common.xcontent.XContentBuilder;
 import org.havenask.common.xcontent.XContentType;
+import org.havenask.common.xcontent.XContentFactory;
+import org.havenask.common.xcontent.XContentParser;
+import org.havenask.common.xcontent.NamedXContentRegistry;
+import org.havenask.common.xcontent.DeprecationHandler;
 import org.havenask.engine.index.engine.EngineSettings;
 import org.havenask.engine.rpc.QrsClient;
 import org.havenask.engine.rpc.QrsSqlRequest;
 import org.havenask.engine.rpc.QrsSqlResponse;
+import org.havenask.index.mapper.MapperService;
 import org.havenask.search.SearchContextSourcePrinter;
 import org.havenask.search.SearchHit;
 import org.havenask.search.SearchHits;
@@ -76,7 +82,33 @@ public class HavenaskFetchPhase implements FetchPhase {
         SqlResponse sqlResponse = fetchWithSql(ids, context);
         TotalHits totalHits = context.queryResult().getTotalHits();
         SearchHit[] hits = new SearchHit[sqlResponse.getRowCount()];
-        // TODO transfer sqlResponse2hits
+
+        for (int i = 0; i < sqlResponse.getRowCount(); i++) {
+            StringBuilder curId = new StringBuilder();
+            for (int j = 0; j < sqlResponse.getSqlResult().getColumnName().length; j++) {
+                String curColumnName = sqlResponse.getSqlResult().getColumnName()[j];
+                SearchHit sourceHit = new SearchHit(-1);
+                switch (curColumnName) {
+                    case "_id":
+                        curId.append(sqlResponse.getSqlResult().getData()[i][j]);
+                        break;
+                    case "_source":
+                        sourceHit.sourceRef(transferObjects2BytesReference(sqlResponse.getSqlResult().getData()[i][j]));
+                        break;
+                    default:
+                        break;
+                    // TODO add case "_routing"
+                }
+                hits[i] = new SearchHit(
+                    i,
+                    curId.toString(),
+                    new Text(MapperService.SINGLE_MAPPING_NAME),
+                    Collections.emptyMap(),
+                    Collections.emptyMap()
+                );
+                hits[i].sourceRef(sourceHit.getSourceRef());
+            }
+        }
         context.fetchResult().hits(new SearchHits(hits, totalHits, context.queryResult().getMaxScore()));
     }
 
@@ -98,5 +130,13 @@ public class HavenaskFetchPhase implements FetchPhase {
             .createParser(NamedXContentRegistry.EMPTY, DeprecationHandler.IGNORE_DEPRECATIONS, response.getResult());
         SqlResponse sqlResponse = SqlResponse.fromXContent(parser);
         return sqlResponse;
+    }
+
+    private BytesReference transferObjects2BytesReference(Object data) throws IOException {
+        XContentBuilder builder = XContentFactory.jsonBuilder();
+        builder.startArray();
+        builder.value(data);
+        builder.endArray();
+        return BytesReference.bytes(builder);
     }
 }
