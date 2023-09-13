@@ -20,6 +20,7 @@ import java.util.List;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.lucene.search.TotalHits;
+import org.havenask.client.ha.SqlResponse;
 import org.havenask.common.xcontent.DeprecationHandler;
 import org.havenask.common.xcontent.NamedXContentRegistry;
 import org.havenask.common.xcontent.XContentParser;
@@ -35,7 +36,6 @@ import org.havenask.search.fetch.DefaultFetchPhase;
 import org.havenask.search.fetch.FetchPhase;
 import org.havenask.search.fetch.FetchSubPhase;
 import org.havenask.search.internal.SearchContext;
-import org.havenask.search.query.SqlResponse;
 import org.havenask.tasks.TaskCancelledException;
 
 import static org.havenask.engine.search.rest.RestHavenaskSqlAction.SQL_DATABASE;
@@ -76,7 +76,7 @@ public class HavenaskFetchPhase implements FetchPhase {
         SqlResponse sqlResponse = fetchWithSql(ids, context);
         TotalHits totalHits = context.queryResult().getTotalHits();
         SearchHit[] hits = new SearchHit[sqlResponse.getRowCount()];
-        //TODO transfer sqlResponse2hits
+        // TODO transfer sqlResponse2hits
         context.fetchResult().hits(new SearchHits(hits, totalHits, context.queryResult().getMaxScore()));
     }
 

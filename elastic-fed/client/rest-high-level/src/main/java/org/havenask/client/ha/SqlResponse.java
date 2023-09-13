@@ -18,7 +18,10 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.havenask.common.xcontent.DeprecationHandler;
+import org.havenask.common.xcontent.NamedXContentRegistry;
 import org.havenask.common.xcontent.XContentParser;
+import org.havenask.common.xcontent.XContentType;
 
 public class SqlResponse {
     private final double totalTime;
@@ -198,5 +201,11 @@ public class SqlResponse {
             }
         }
         return new SqlResponse(totalTime, hasSoftFailure, rowCount, sqlResult, errorInfo);
+    }
+
+    public static SqlResponse parse(String strResponse) throws IOException {
+        XContentParser parser = XContentType.JSON.xContent()
+            .createParser(NamedXContentRegistry.EMPTY, DeprecationHandler.IGNORE_DEPRECATIONS, strResponse);
+        return SqlResponse.fromXContent(parser);
     }
 }
