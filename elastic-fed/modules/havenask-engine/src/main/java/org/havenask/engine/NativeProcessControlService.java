@@ -60,7 +60,7 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
         + "%s -c %s -T in0 -p 30468,30480 --role searcher >> search.log 2>> search.error.log";
     private static final String UPDATE_QRS_COMMAND = "cd %s;python %s/havenask/command/general_search_updater.py -i "
         + "%s -c %s -T in0 -p 30468,30480 --role qrs >> qrs.log 2>> qrs.error.log";
-    private static final String STOP_HAVENASK_COMMAND = "python /ha3_install/usr/local/lib/python/site-packages/sql/local_search_stop.py"
+    private static final String STOP_HAVENASK_COMMAND = "python %s/havenask/command/general_search_stop.py"
         + " -c /ha3_install/usr/local/etc/sql/sql_alog.conf >> search.log 2>> search.error.log";
     private static final String CHECK_HAVENASK_ALIVE_COMMAND =
         "ps aux | grep ha_sql | grep 'roleType=%s' | grep -v grep | awk '{print $2}'";
