@@ -43,7 +43,7 @@ dependencies {
   implementation group: 'org.apache.kafka', name: 'kafka-clients', version: '2.8.0'
   api "org.slf4j:slf4j-api:${versions.slf4j}"
   api "org.apache.logging.log4j:log4j-slf4j-impl:${versions.log4j}"
-  javaRestTestImplementation project(':client:rest-high-level')
+  api project(':client:rest-high-level')
   javaRestTestImplementation project(':modules:havenask-engine')
   testImplementation project(path: ':server', configuration: 'testArtifacts')
 }
@@ -77,8 +77,6 @@ tasks.named("thirdPartyAudit").configure {
           "javax.ws.rs.ext.MessageBodyReader",
           "javax.ws.rs.ext.MessageBodyWriter",
           "javax.ws.rs.ext.Providers",
-          "org.apache.commons.logging.Log",
-          "org.apache.commons.logging.LogFactory",
           "org.glassfish.jersey.CommonProperties",
           "org.glassfish.jersey.internal.spi.AutoDiscoverable",
           "org.glassfish.jersey.internal.util.PropertiesHelper",
