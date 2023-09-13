@@ -22,52 +22,11 @@ import org.apache.lucene.search.TermQuery;
 import org.havenask.engine.index.query.HnswQuery;
 import org.havenask.test.HavenaskTestCase;
 
-/**
- *
- * public class QueryTransformer {
- *
- *     public static String toSql(String table, Query query) throws IOException {
- *         StringBuilder sqlQuery = new StringBuilder();
- *         sqlQuery.append("select _id from " + table);
- *         if (query instanceof ProximaQuery) {
- *             ProximaQuery proximaQuery = (ProximaQuery) query;
- *             sqlQuery.append(" where MATCHINDEX('" + proximaQuery.getField() + "', '");
- *             for (int i = 0; i < proximaQuery.getQueryVector().length; i++) {
- *                 sqlQuery.append(proximaQuery.getQueryVector()[i]);
- *                 if (i < proximaQuery.getQueryVector().length - 1) {
- *                     sqlQuery.append(",");
- *                 }
- *             }
- *             sqlQuery.append("&n=" + proximaQuery.getTopN() + "')");
- *         } else if (query instanceof MatchAllDocsQuery) {
- *             // do nothing
- *         } else {
- *             // TODO reject unsupported DSL
- *             throw new IOException("unsupported DSL:" + query);
- *         }
- *
- *         return sqlQuery.toString();
- *     }
- * }
- *
- */
-
 public class QueryTransformerTests extends HavenaskTestCase {
     public void testMatchAllDocsQuery() throws IOException {
         String sql = QueryTransformer.toSql("table", new MatchAllDocsQuery());
         assertEquals(sql, "select _id from table");
     }
-
-    /**
-     *
-     *     public HnswQuery(String field, float[] queryVector, int topN, SearchFilter searchFilter, Integer ef,
-     *     Integer maxScanNum) {
-     *         super(field, queryVector, searchFilter, topN);
-     *         this.ef = (ef == null ? DEFAULT_EF : ef);
-     *         this.maxScanNum = (maxScanNum == null ? DEFAULT_MAX_SCAN_NUM : maxScanNum);
-     *     }
-     *
-     */
 
     public void testProximaQuery() throws IOException {
         HnswQuery hnswQuery = new HnswQuery("field", new float[] { 1.0f, 2.0f }, 20, null, null, null);
