@@ -113,7 +113,6 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
     private final ThreadPool threadPool;
     private final boolean enabled;
     private final boolean isDataNode;
-    private final boolean isIngestNode;
     private final Environment environment;
     private final NodeEnvironment nodeEnvironment;
     private final HavenaskEngineEnvironment havenaskEngineEnvironment;
@@ -147,7 +146,6 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
         this.clusterService = clusterService;
         Settings settings = clusterService.getSettings();
         isDataNode = DiscoveryNode.isDataNode(settings);
-        isIngestNode = DiscoveryNode.isIngestNode(settings);
         enabled = HavenaskEnginePlugin.HAVENASK_ENGINE_ENABLED_SETTING.get(settings);
         this.threadPool = threadPool;
         this.environment = environment;
@@ -231,7 +229,7 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
             processControlTask = null;
         }
 
-        if (enabled && (isDataNode || isIngestNode)) {
+        if (enabled && isDataNode) {
             LOGGER.info("stop local searcher, qrs process");
             AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
                 try {
@@ -302,9 +300,7 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
                         client.admin().cluster().reroute(Requests.clusterRerouteRequest().setRetryFailed(true)).actionGet();
                     }
                 }
-            }
 
-            if (isIngestNode) {
                 if (false == checkProcessAlive(QRS_ROLE)) {
                     LOGGER.info("start qrs process...");
                     // 启动qrs
@@ -341,9 +337,7 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
                     }
                 }
             }
-        }
 
-        if (isIngestNode) {
             LOGGER.info("start qrs process...");
             while (false == checkProcessAlive(QRS_ROLE)) {
                 // 启动qrs
@@ -476,54 +470,17 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
     public synchronized void updateDataNodeTarget() {
         if (isDataNode && running) {
             try {
-                checkAliveBeforeUpdateTarget("searcher");
+                checkAliveBeforeUpdateTarget(SEARCHER_ROLE);
                 // 更新datanode searcher的target
                 runCommand(updateSearcherCommand, commandTimeout);
             } catch (Exception e) {
                 LOGGER.warn(() -> new ParameterizedMessage("can't update searcher target before start "), e);
             }
-        }
-    }
 
-    /**
-     * 异步更新 searcher target
-     */
-    public void updateDataNodeTargetAsync() {
-        if (running && isDataNode) {
             try {
-                checkAliveBeforeUpdateTarget("searcher");
-                // 更新datanode searcher的target
-                runCommandAsync(updateSearcherCommand);
-            } catch (Exception e) {
-                LOGGER.warn(() -> new ParameterizedMessage("can't update searcher target before start "), e);
-            }
-        }
-    }
-
-    /**
-     * 更新 qrs target
-     */
-    public synchronized void updateIngestNodeTarget() {
-        if (isIngestNode && running) {
-            try {
-                checkAliveBeforeUpdateTarget("qrs");
+                checkAliveBeforeUpdateTarget(QRS_ROLE);
                 // 更新ingestnode qrs的target
                 runCommand(updateQrsCommand, commandTimeout);
-            } catch (Exception e) {
-                LOGGER.warn(() -> new ParameterizedMessage("can't update qrs target before start "), e);
-            }
-        }
-    }
-
-    /**
-     * 异步更新 qrs target
-     */
-    public void updateIngestNodeTargetAsync() {
-        if (running && isIngestNode) {
-            try {
-                checkAliveBeforeUpdateTarget("qrs");
-                // 更新ingestnode qrs的target
-                runCommandAsync(updateQrsCommand);
             } catch (Exception e) {
                 LOGGER.warn(() -> new ParameterizedMessage("can't update qrs target before start "), e);
             }
@@ -533,20 +490,18 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
     public synchronized void updateTargetAsync() {
         long start = System.currentTimeMillis();
         Process searchProcess = null;
+        Process qrsProcess = null;
         if (isDataNode && running) {
             try {
-                checkAliveBeforeUpdateTarget("searcher");
+                checkAliveBeforeUpdateTarget(SEARCHER_ROLE);
                 // 更新datanode searcher的target
                 searchProcess = runCommandAsync(updateSearcherCommand);
             } catch (Exception e) {
                 LOGGER.warn(() -> new ParameterizedMessage("can't update searcher target before start "), e);
             }
-        }
 
-        Process qrsProcess = null;
-        if (isIngestNode && running) {
             try {
-                checkAliveBeforeUpdateTarget("qrs");
+                checkAliveBeforeUpdateTarget(QRS_ROLE);
                 // 更新ingestnode qrs的target
                 qrsProcess = runCommandAsync(updateQrsCommand);
             } catch (Exception e) {
@@ -598,7 +553,7 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
      * 异步更新target
      */
     public void asyncUpdateTarget() {
-        if (running && (isDataNode || isIngestNode)) {
+        if (running && isDataNode) {
             threadPool.executor(HavenaskEnginePlugin.HAVENASK_THREAD_POOL_NAME).execute(() -> {
                 synchronized (this) {
                     if (false == running) {
@@ -606,16 +561,15 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
                     }
                     if (isDataNode) {
                         try {
-                            checkAliveBeforeUpdateTarget("searcher");
+                            checkAliveBeforeUpdateTarget(SEARCHER_ROLE);
                             // 更新datanode qrs的target
                             runCommand(updateSearcherCommand, commandTimeout);
                         } catch (Exception e) {
                             LOGGER.warn(() -> new ParameterizedMessage("can't update searcher target before start "), e);
                         }
-                    }
-                    if (isIngestNode) {
+
                         try {
-                            checkAliveBeforeUpdateTarget("qrs");
+                            checkAliveBeforeUpdateTarget(QRS_ROLE);
                             // 更新ingestnode qrs的target
                             runCommand(updateQrsCommand, commandTimeout);
                         } catch (Exception e) {
