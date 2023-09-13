@@ -56,7 +56,6 @@ public class CheckTargetService extends AbstractLifecycleComponent {
     private final HavenaskClient searcherClient;
     private final boolean enabled;
     private final boolean isDataNode;
-    private final boolean isIngestNode;
 
     private CheckTask checkTask;
     private boolean running;
@@ -76,7 +75,6 @@ public class CheckTargetService extends AbstractLifecycleComponent {
 
         Settings settings = clusterService.getSettings();
         isDataNode = DiscoveryNode.isDataNode(settings);
-        isIngestNode = DiscoveryNode.isIngestNode(settings);
         enabled = HavenaskEnginePlugin.HAVENASK_ENGINE_ENABLED_SETTING.get(settings);
     }
 
@@ -133,14 +131,10 @@ public class CheckTargetService extends AbstractLifecycleComponent {
                 } catch (Exception e) {
                     LOGGER.warn("havenask check searcher heartbeat target failed", e);
                 }
-            }
 
-            if (isIngestNode) {
                 if (false == checkIngestNode(clusterState, client)) {
                     nativeProcessControlService.updateDataNodeTarget();
-                    nativeProcessControlService.updateIngestNodeTarget();
                 }
-
             }
         }
 
