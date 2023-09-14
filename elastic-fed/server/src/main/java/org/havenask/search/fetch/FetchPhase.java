@@ -48,5 +48,5 @@ import java.io.IOException;
  * after reducing all of the matches returned by the query phase
  */
 public interface FetchPhase {
-    void execute(SearchContext context) throws IOException;
+    void execute(SearchContext context);
 }
