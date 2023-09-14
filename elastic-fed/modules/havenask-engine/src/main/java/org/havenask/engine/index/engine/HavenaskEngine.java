@@ -110,6 +110,7 @@ public class HavenaskEngine extends InternalEngine {
     private final HavenaskEngineEnvironment env;
     private final NativeProcessControlService nativeProcessControlService;
     private final ShardId shardId;
+    private final String tableName;
     private final boolean realTimeEnable;
     private final String kafkaTopic;
     private int kafkaPartition;
@@ -133,6 +134,7 @@ public class HavenaskEngine extends InternalEngine {
         this.env = env;
         this.nativeProcessControlService = nativeProcessControlService;
         this.shardId = engineConfig.getShardId();
+        this.tableName = Utils.getHavenaskTableName(shardId);
         this.realTimeEnable = EngineSettings.HAVENASK_REALTIME_ENABLE.get(engineConfig.getIndexSettings().getSettings());
         this.kafkaTopic = realTimeEnable
             ? EngineSettings.HAVENASK_REALTIME_TOPIC_NAME.get(engineConfig.getIndexSettings().getSettings())
@@ -244,7 +246,7 @@ public class HavenaskEngine extends InternalEngine {
         RuntimeSegmentGenerator.generateRuntimeSegment(
             env,
             nativeProcessControlService,
-            shardId.getIndexName(),
+            tableName,
             engineConfig.getIndexSettings().getSettings()
         );
         // 更新配置表信息
@@ -274,7 +276,7 @@ public class HavenaskEngine extends InternalEngine {
                     .getJSONObject("default")
                     .getJSONObject("general")
                     .getJSONObject("tables")
-                    .containsKey(shardId.getIndexName())) {
+                    .containsKey(tableName)) {
                     throw new IOException("havenask table not found in qrs");
                 }
                 return;
@@ -438,7 +440,7 @@ public class HavenaskEngine extends InternalEngine {
             return new IndexResult(index.version(), index.primaryTerm(), index.seqNo(), true);
         } else {
             try {
-                WriteRequest writeRequest = buildWriteRequest(shardId.getIndexName(), index.id(), index.operationType(), haDoc);
+                WriteRequest writeRequest = buildWriteRequest(tableName, index.id(), index.operationType(), haDoc);
                 WriteResponse writeResponse = retryWrite(shardId, searcherClient, writeRequest);
                 if (writeResponse.getErrorCode() != null) {
                     throw new IOException(
@@ -477,7 +479,7 @@ public class HavenaskEngine extends InternalEngine {
             return new DeleteResult(delete.version(), delete.primaryTerm(), delete.seqNo(), true);
         } else {
             try {
-                WriteRequest writeRequest = buildWriteRequest(shardId.getIndexName(), delete.id(), delete.operationType(), haDoc);
+                WriteRequest writeRequest = buildWriteRequest(tableName, delete.id(), delete.operationType(), haDoc);
                 WriteResponse writeResponse = retryWrite(shardId, searcherClient, writeRequest);
                 if (writeResponse.getErrorCode() != null) {
                     throw new IOException(
@@ -547,7 +549,7 @@ public class HavenaskEngine extends InternalEngine {
             String sql = String.format(
                 Locale.ROOT,
                 "select _routing,_seq_no,_primary_term,_version,_source from %s_summary_ where _id='%s'",
-                shardId.getIndexName(),
+                tableName,
                 get.id()
             );
             String kvpair = "format:full_json;timeout:10000;databaseName:" + SQL_DATABASE;
@@ -637,7 +639,7 @@ public class HavenaskEngine extends InternalEngine {
         long checkpoint = getPersistedLocalCheckpoint();
         checkpointCalc.addCheckpoint(time, checkpoint);
 
-        Long havenaskTime = Utils.getIndexCheckpoint(env.getRuntimedataPath().resolve(shardId.getIndexName()));
+        Long havenaskTime = Utils.getIndexCheckpoint(env.getRuntimedataPath().resolve(tableName));
         long havenaskTimePoint;
 
         if (havenaskTime != null) {
@@ -787,16 +789,14 @@ public class HavenaskEngine extends InternalEngine {
         long docCount = getDocCount();
 
         // get total size from du command
-        long totalSize = nativeProcessControlService.getTableSize(
-            env.getRuntimedataPath().resolve(shardId.getIndexName()).toAbsolutePath()
-        );
+        long totalSize = nativeProcessControlService.getTableSize(env.getRuntimedataPath().resolve(tableName).toAbsolutePath());
         return new DocsStats(docCount, 0, totalSize);
     }
 
     long getDocCount() {
         long docCount = 0;
         try {
-            String sql = String.format(Locale.ROOT, "select count(*) from %s", shardId.getIndexName());
+            String sql = String.format(Locale.ROOT, "select count(*) from %s", tableName);
             String kvpair = "format:full_json;timeout:10000;databaseName:" + SQL_DATABASE;
             QrsSqlRequest request = new QrsSqlRequest(sql, kvpair);
             QrsSqlResponse response = qrsHttpClient.executeSql(request);

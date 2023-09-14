@@ -20,8 +20,9 @@ import org.havenask.HavenaskException;
 import org.havenask.engine.HavenaskEngineEnvironment;
 import org.havenask.engine.index.config.generator.BizConfigGenerator;
 import org.havenask.engine.index.config.generator.TableConfigGenerator;
-import org.havenask.index.IndexService;
+import org.havenask.engine.util.Utils;
 import org.havenask.index.shard.IndexEventListener;
+import org.havenask.index.shard.IndexShard;
 
 public class HavenaskIndexEventListener implements IndexEventListener {
 
@@ -32,18 +33,19 @@ public class HavenaskIndexEventListener implements IndexEventListener {
     }
 
     @Override
-    public void afterIndexMappingUpdate(IndexService indexService) {
+    public void afterIndexShardCreated(IndexShard indexShard) {
+        String tableName = Utils.getHavenaskTableName(indexShard.shardId());
         try {
             BizConfigGenerator.generateBiz(
-                indexService.index().getName(),
-                indexService.getIndexSettings().getSettings(),
-                indexService.mapperService(),
+                tableName,
+                indexShard.indexSettings().getSettings(),
+                indexShard.mapperService(),
                 env.getConfigPath()
             );
             TableConfigGenerator.generateTable(
-                indexService.index().getName(),
-                indexService.getIndexSettings().getSettings(),
-                indexService.mapperService(),
+                tableName,
+                indexShard.indexSettings().getSettings(),
+                indexShard.mapperService(),
                 env.getConfigPath()
             );
         } catch (IOException e) {

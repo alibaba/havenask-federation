@@ -132,9 +132,9 @@ public class CheckTargetService extends AbstractLifecycleComponent {
                     LOGGER.warn("havenask check searcher heartbeat target failed", e);
                 }
 
-                if (false == checkIngestNode(clusterState, client)) {
-                    nativeProcessControlService.updateDataNodeTarget();
-                }
+                // if (false == checkIngestNode(clusterState, client)) {
+                // nativeProcessControlService.updateDataNodeTarget();
+                // }
             }
         }
 

@@ -28,6 +28,7 @@ import org.havenask.core.internal.io.IOUtils;
 import org.havenask.engine.index.config.generator.BizConfigGenerator;
 import org.havenask.engine.index.config.generator.TableConfigGenerator;
 import org.havenask.engine.index.engine.EngineSettings;
+import org.havenask.engine.util.Utils;
 import org.havenask.env.Environment;
 import org.havenask.env.ShardLock;
 import org.havenask.index.Index;
@@ -126,20 +127,21 @@ public class HavenaskEngineEnvironment implements CustomEnvironment {
 
     @Override
     public void deleteIndexDirectoryUnderLock(Index index, IndexSettings indexSettings) throws IOException {
-        if (EngineSettings.isHavenaskEngine(indexSettings.getSettings()) == false) {
-            return;
-        }
-        BizConfigGenerator.removeBiz(index.getName(), configPath);
-        TableConfigGenerator.removeTable(index.getName(), configPath);
-        Path indexDir = runtimedataPath.resolve(index.getName());
-        IOUtils.rm(indexDir);
-        if (nativeProcessControlService != null) {
-            nativeProcessControlService.asyncUpdateTarget();
-        }
+        // do nothing
     }
 
     @Override
     public void deleteShardDirectoryUnderLock(ShardLock lock, IndexSettings indexSettings) throws IOException {
-        // TODO 删除shard先不做处理,在删除index的时候处理,后续支持多shard后再处理
+        if (EngineSettings.isHavenaskEngine(indexSettings.getSettings()) == false) {
+            return;
+        }
+        String tableName = Utils.getHavenaskTableName(lock.getShardId());
+        BizConfigGenerator.removeBiz(tableName, configPath);
+        TableConfigGenerator.removeTable(tableName, configPath);
+        Path indexDir = runtimedataPath.resolve(tableName);
+        IOUtils.rm(indexDir);
+        if (nativeProcessControlService != null) {
+            nativeProcessControlService.asyncUpdateTarget();
+        }
     }
 }

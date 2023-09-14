@@ -27,10 +27,13 @@ import org.havenask.common.settings.Settings;
 import org.havenask.discovery.DiscoveryModule;
 import org.havenask.engine.index.config.ZoneBiz;
 import org.havenask.engine.index.engine.EngineSettings;
+import org.havenask.engine.util.Utils;
 import org.havenask.env.Environment;
+import org.havenask.env.ShardLock;
 import org.havenask.env.TestEnvironment;
-import org.havenask.index.Index;
 import org.havenask.index.IndexSettings;
+import org.havenask.index.shard.ShardId;
+import org.havenask.test.DummyShardLock;
 import org.havenask.test.HavenaskTestCase;
 
 import static org.havenask.discovery.DiscoveryModule.SINGLE_NODE_DISCOVERY_TYPE;
@@ -40,8 +43,10 @@ import static org.havenask.engine.index.config.generator.BizConfigGenerator.DEFA
 import static org.havenask.engine.index.config.generator.TableConfigGenerator.TABLE_DIR;
 
 public class HavenaskEngineEnvironmentTests extends HavenaskTestCase {
-    // test deleteIndexDirectoryUnderLock
-    public void testDeleteIndexDirectoryUnderLock() throws IOException {
+    // test deleteShardDirectoryUnderLock
+    public void testDeleteShardDirectoryUnderLock() throws IOException {
+        ShardId shardId = new ShardId("indexFile", "indexFile", 0);
+        String tableName = Utils.getHavenaskTableName(shardId);
         Path workDir = createTempDir();
         Settings settings = Settings.builder()
             .put(Environment.PATH_HOME_SETTING.getKey(), workDir.toString())
@@ -51,7 +56,7 @@ public class HavenaskEngineEnvironmentTests extends HavenaskTestCase {
             .build();
         Path indexFile = workDir.resolve(HavenaskEngineEnvironment.DEFAULT_DATA_PATH)
             .resolve(HavenaskEngineEnvironment.HAVENASK_RUNTIMEDATA_PATH)
-            .resolve("indexFile");
+            .resolve(tableName);
         Files.createDirectories(indexFile);
         TestCase.assertTrue(Files.exists(indexFile));
 
@@ -73,10 +78,9 @@ public class HavenaskEngineEnvironmentTests extends HavenaskTestCase {
             .numberOfShards(1)
             .numberOfReplicas(0)
             .build();
-        havenaskEngineEnvironment.deleteIndexDirectoryUnderLock(
-            new Index("indexFile", "indexFile"),
-            new IndexSettings(build, Settings.EMPTY)
-        );
+
+        ShardLock shardLock = new DummyShardLock(shardId);
+        havenaskEngineEnvironment.deleteShardDirectoryUnderLock(shardLock, new IndexSettings(build, Settings.EMPTY));
         TestCase.assertFalse(Files.exists(indexFile));
     }
 }

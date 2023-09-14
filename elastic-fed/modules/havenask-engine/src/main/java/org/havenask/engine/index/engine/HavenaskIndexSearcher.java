@@ -34,6 +34,7 @@ import org.havenask.common.lucene.search.TopDocsAndMaxScore;
 import org.havenask.engine.rpc.QrsClient;
 import org.havenask.engine.rpc.QrsSqlRequest;
 import org.havenask.engine.rpc.QrsSqlResponse;
+import org.havenask.engine.util.Utils;
 import org.havenask.index.shard.ShardId;
 import org.havenask.search.DefaultSearchContext;
 import org.havenask.search.DocValueFormat;
@@ -48,6 +49,7 @@ public class HavenaskIndexSearcher extends ContextIndexSearcher {
     public static final String IDS_CONTEXT = "havenask_ids";
     private final QrsClient qrsHttpClient;
     private final ShardId shardId;
+    private final String tableName;
     private final DefaultSearchContext searchContext;
 
     public HavenaskIndexSearcher(
@@ -63,12 +65,13 @@ public class HavenaskIndexSearcher extends ContextIndexSearcher {
         super(reader, similarity, queryCache, queryCachingPolicy, wrapWithExitableDirectoryReader);
         this.qrsHttpClient = qrsHttpClient;
         this.shardId = shardId;
+        this.tableName = Utils.getHavenaskTableName(shardId);
         this.searchContext = searchContext;
     }
 
     @Override
     public void search(Query query, Collector collector) throws IOException {
-        String sql = QueryTransformer.toSql(shardId.getIndexName(), query);
+        String sql = QueryTransformer.toSql(tableName, query);
         String kvpair = "format:full_json;timeout:10000;databaseName:" + SQL_DATABASE;
         QrsSqlRequest request = new QrsSqlRequest(sql, kvpair);
         QrsSqlResponse response = qrsHttpClient.executeSql(request);

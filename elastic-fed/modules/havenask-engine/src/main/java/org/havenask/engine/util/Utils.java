@@ -20,6 +20,7 @@ import java.nio.file.Path;
 import java.security.AccessController;
 import java.security.PrivilegedActionException;
 import java.security.PrivilegedExceptionAction;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.stream.Stream;
 
@@ -29,6 +30,7 @@ import com.alibaba.fastjson.JSONObject;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.havenask.SpecialPermission;
+import org.havenask.index.shard.ShardId;
 
 public class Utils {
     public static <T> T doPrivileged(PrivilegedExceptionAction<T> operation) throws Exception {
@@ -193,5 +195,9 @@ public class Utils {
         if (c >= 'a' && c <= 'f') return c - 'a' + 10;
         if (c >= 'A' && c <= 'F') return c - 'A' + 10;
         throw new NumberFormatException("invalid hex char: " + c);
+    }
+
+    public static String getHavenaskTableName(ShardId shardId) {
+        return String.format(Locale.ROOT, "%s_%s", shardId.getIndexName(), shardId.id());
     }
 }
