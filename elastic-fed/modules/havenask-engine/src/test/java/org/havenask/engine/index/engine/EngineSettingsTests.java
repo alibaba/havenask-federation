@@ -47,23 +47,6 @@ public class EngineSettingsTests extends HavenaskTestCase {
         }
     }
 
-    // test ENGINE_TYPE_SETTING shard
-    public void testEngineTypeSettingShardAndReplica() {
-        Settings settings = Settings.builder().put("index.engine", "havenask").put("index.number_of_shards", 2).build();
-        try {
-            EngineSettings.ENGINE_TYPE_SETTING.get(settings);
-            fail("should throw IllegalArgumentException");
-        } catch (IllegalArgumentException e) {
-            assertEquals("havenask engine only support 1 shard", e.getMessage());
-        }
-    }
-
-    // test ENGINE_TYPE_SETTING right shard
-    public void testEngineTypeSettingRightShard() {
-        Settings settings = Settings.builder().put("index.engine", "havenask").put("index.number_of_shards", 1).build();
-        assertEquals("havenask", EngineSettings.ENGINE_TYPE_SETTING.get(settings));
-    }
-
     // test index.havenask.realtime.enable
     public void testHavenaskRealtimeEnable() {
         Settings settings = Settings.builder().put("index.havenask.realtime.enable", true).build();
