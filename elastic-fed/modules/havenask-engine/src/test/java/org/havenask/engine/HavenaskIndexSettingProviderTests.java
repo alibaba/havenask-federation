@@ -28,46 +28,22 @@ public class HavenaskIndexSettingProviderTests extends HavenaskTestCase {
     public void testGetAdditionalIndexSettings() {
         HavenaskIndexSettingProvider provider = new HavenaskIndexSettingProvider(Settings.EMPTY);
         Settings settings = provider.getAdditionalIndexSettings("test", false, Settings.builder().put("index.engine", "havenask").build());
-        int replicas = settings.getAsInt(SETTING_NUMBER_OF_REPLICAS, 2);
-        assertEquals(0, replicas);
         TimeValue refresh = settings.getAsTime("index.refresh_interval", null);
         assertEquals(TimeValue.timeValueSeconds(5), refresh);
-    }
-
-    // test for havenask engine only support 0 replica
-    public void testGetAdditionalIndexSettingsWithReplica() {
-        HavenaskIndexSettingProvider provider = new HavenaskIndexSettingProvider(Settings.EMPTY);
-        try {
-            provider.getAdditionalIndexSettings(
-                "test",
-                false,
-                Settings.builder().put("index.engine", "havenask").put(SETTING_NUMBER_OF_REPLICAS, 1).build()
-            );
-            fail("should throw IllegalArgumentException");
-        } catch (IllegalArgumentException e) {
-            assertEquals("havenask engine only support 0 replica", e.getMessage());
-        }
-    }
-
-    // test for havenask engine only support 0 replica
-    public void testGetAdditionalIndexSettingsWithReplica2() {
-        HavenaskIndexSettingProvider provider = new HavenaskIndexSettingProvider(Settings.EMPTY);
-        try {
-            provider.getAdditionalIndexSettings(
-                "test",
-                false,
-                Settings.builder().put("index.engine", "havenask").put(SETTING_NUMBER_OF_REPLICAS, 2).build()
-            );
-            fail("should throw IllegalArgumentException");
-        } catch (IllegalArgumentException e) {
-            assertEquals("havenask engine only support 0 replica", e.getMessage());
-        }
     }
 
     // test not havenask engine
     public void testGetAdditionalIndexSettingsWithNotHavenaskEngine() {
         HavenaskIndexSettingProvider provider = new HavenaskIndexSettingProvider(Settings.EMPTY);
         Settings settings = provider.getAdditionalIndexSettings("test", false, Settings.builder().build());
+        int replicas = settings.getAsInt(SETTING_NUMBER_OF_REPLICAS, 2);
+        assertEquals(2, replicas);
+    }
+
+    // test havenask engine
+    public void testGetAdditionalIndexSettingsWithHavenaskEngine() {
+        HavenaskIndexSettingProvider provider = new HavenaskIndexSettingProvider(Settings.EMPTY);
+        Settings settings = provider.getAdditionalIndexSettings("test", false, Settings.builder().put("index.engine", "havenask").build());
         int replicas = settings.getAsInt(SETTING_NUMBER_OF_REPLICAS, 2);
         assertEquals(2, replicas);
     }
@@ -146,8 +122,6 @@ public class HavenaskIndexSettingProviderTests extends HavenaskTestCase {
         Settings settings = provider.getAdditionalIndexSettings("test", false, Settings.builder().build());
         String engine = settings.get(EngineSettings.ENGINE_TYPE_SETTING.getKey());
         assertEquals(EngineSettings.ENGINE_HAVENASK, engine);
-        int replicas = settings.getAsInt(SETTING_NUMBER_OF_REPLICAS, 2);
-        assertEquals(0, replicas);
         TimeValue refresh = settings.getAsTime("index.refresh_interval", null);
         assertEquals(TimeValue.timeValueSeconds(5), refresh);
     }
