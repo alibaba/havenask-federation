@@ -88,6 +88,7 @@ import org.havenask.threadpool.ExecutorBuilder;
 import org.havenask.threadpool.ScalingExecutorBuilder;
 import org.havenask.threadpool.ThreadPool;
 import org.havenask.watcher.ResourceWatcherService;
+
 import static org.havenask.engine.NativeProcessControlService.HAVENASK_QRS_HTTP_PORT_SETTING;
 
 public class HavenaskEnginePlugin extends Plugin
