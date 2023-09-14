@@ -19,7 +19,6 @@ import org.havenask.common.unit.TimeValue;
 import org.havenask.engine.index.engine.EngineSettings;
 import org.havenask.index.shard.IndexSettingProvider;
 
-import static org.havenask.cluster.metadata.IndexMetadata.SETTING_NUMBER_OF_REPLICAS;
 import static org.havenask.engine.HavenaskEnginePlugin.HAVENASK_SET_DEFAULT_ENGINE_SETTING;
 import static org.havenask.index.IndexSettings.INDEX_REFRESH_INTERVAL_SETTING;
 
@@ -39,12 +38,6 @@ public class HavenaskIndexSettingProvider implements IndexSettingProvider {
         }
 
         if (defaultHavenaskEngine || EngineSettings.isHavenaskEngine(templateAndRequestSettings)) {
-            int replica = templateAndRequestSettings.getAsInt(SETTING_NUMBER_OF_REPLICAS, 0);
-            if (replica != 0) {
-                throw new IllegalArgumentException("havenask engine only support 0 replica");
-            }
-            builder.put(SETTING_NUMBER_OF_REPLICAS, 0);
-
             if (false == templateAndRequestSettings.hasValue(INDEX_REFRESH_INTERVAL_SETTING.getKey())) {
                 builder.put(INDEX_REFRESH_INTERVAL_SETTING.getKey(), DEFAULT_REFRESH_INTERVAL);
             } else {
