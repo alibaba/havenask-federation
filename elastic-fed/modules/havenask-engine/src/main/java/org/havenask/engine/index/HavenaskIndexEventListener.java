@@ -33,7 +33,7 @@ public class HavenaskIndexEventListener implements IndexEventListener {
     }
 
     @Override
-    public void afterIndexShardStarted(IndexShard indexShard) {
+    public void afterIndexShardCreated(IndexShard indexShard) {
         String tableName = Utils.getHavenaskTableName(indexShard.shardId());
         try {
             BizConfigGenerator.generateBiz(
