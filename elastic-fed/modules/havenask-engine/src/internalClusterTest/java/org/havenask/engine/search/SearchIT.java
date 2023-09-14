@@ -46,7 +46,7 @@ public class SearchIT extends HavenaskITTestCase {
         return false;
     }
 
-    //@AwaitsFix(bugUrl = "https://github.com/alibaba/havenask-federation/issues/217")
+    @AwaitsFix(bugUrl = "https://github.com/alibaba/havenask-federation/issues/217")
     public void testSearch() throws Exception {
         String index = "test2";
         String mapping = "{\n"

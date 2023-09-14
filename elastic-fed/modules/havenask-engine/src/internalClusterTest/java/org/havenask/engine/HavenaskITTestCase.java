@@ -65,109 +65,111 @@ public abstract class HavenaskITTestCase extends HavenaskIntegTestCase {
                         + "\"_source\"],\"column_type\":[\"multi_char\",\"int64\",\"int64\",\"int64\","
                         + "\"multi_char\"]},\"error_info\":{\"ErrorCode\":0,\"Error\":\"ERROR_NONE\",\"Message\":\"\"}}";
                 } else if (query.contains("MATCHINDEX")) {
-                    strResponse = "{\n" +
-                            "    \"total_time\": 3.771,\n" +
-                            "    \"has_soft_failure\": false,\n" +
-                            "    \"covered_percent\": 1.0,\n" +
-                            "    \"row_count\": 2,\n" +
-                            "    \"format_type\": \"full_json\",\n" +
-                            "    \"search_info\": {},\n" +
-                            "    \"rpc_info\": \"\",\n" +
-                            "    \"table_leader_info\": {\n" +
-                            "        \"knn_fetch_test\": true\n" +
-                            "    },\n" +
-                            "    \"table_build_watermark\": {},\n" +
-                            "    \"sql_query\": \"query=select _id from knn_fetch_test where _id " +
-                            "in('0QZYiYoBGeSNvliAKP4J', '0gZYiYoBGeSNvliAof4t')&&kvpair=format:full_json;databaseName:general\",\n" +
-                            "    \"iquan_plan\": {\n" +
-                            "        \"error_code\": 0,\n" +
-                            "        \"error_message\": \"\",\n" +
-                            "        \"result\": {\n" +
-                            "            \"rel_plan_version\": \"\",\n" +
-                            "            \"rel_plan\": [],\n" +
-                            "            \"exec_params\": {}\n" +
-                            "        }\n" +
-                            "    },\n" +
-                            "    \"navi_graph\": \"\",\n" +
-                            "    \"trace\": [],\n" +
-                            "    \"sql_result\": {\n" +
-                            "        \"data\": [\n" +
-                            "            [\n" +
-                            "                \"0QZYiYoBGeSNvliAKP4J\"\n" +
-                            "            ],\n" +
-                            "            [\n" +
-                            "                \"0gZYiYoBGeSNvliAof4t\"\n" +
-                            "            ]\n" +
-                            "        ],\n" +
-                            "        \"column_name\": [\n" +
-                            "            \"_id\"\n" +
-                            "        ],\n" +
-                            "        \"column_type\": [\n" +
-                            "            \"multi_char\"\n" +
-                            "        ]\n" +
-                            "    },\n" +
-                            "    \"error_info\": {\n" +
-                            "        \"ErrorCode\": 0,\n" +
-                            "        \"Error\": \"ERROR_NONE\",\n" +
-                            "        \"Message\": \"\"\n" +
-                            "    }\n" +
-                            "}";
+                    strResponse = "{\n"
+                        + "    \"total_time\": 3.771,\n"
+                        + "    \"has_soft_failure\": false,\n"
+                        + "    \"covered_percent\": 1.0,\n"
+                        + "    \"row_count\": 2,\n"
+                        + "    \"format_type\": \"full_json\",\n"
+                        + "    \"search_info\": {},\n"
+                        + "    \"rpc_info\": \"\",\n"
+                        + "    \"table_leader_info\": {\n"
+                        + "        \"knn_fetch_test\": true\n"
+                        + "    },\n"
+                        + "    \"table_build_watermark\": {},\n"
+                        + "    \"sql_query\": \"query=select _id from knn_fetch_test where _id "
+                        + "in('0QZYiYoBGeSNvliAKP4J', '0gZYiYoBGeSNvliAof4t')&&kvpair=format:full_json;databaseName:general\",\n"
+                        + "    \"iquan_plan\": {\n"
+                        + "        \"error_code\": 0,\n"
+                        + "        \"error_message\": \"\",\n"
+                        + "        \"result\": {\n"
+                        + "            \"rel_plan_version\": \"\",\n"
+                        + "            \"rel_plan\": [],\n"
+                        + "            \"exec_params\": {}\n"
+                        + "        }\n"
+                        + "    },\n"
+                        + "    \"navi_graph\": \"\",\n"
+                        + "    \"trace\": [],\n"
+                        + "    \"sql_result\": {\n"
+                        + "        \"data\": [\n"
+                        + "            [\n"
+                        + "                \"0QZYiYoBGeSNvliAKP4J\"\n"
+                        + "            ],\n"
+                        + "            [\n"
+                        + "                \"0gZYiYoBGeSNvliAof4t\"\n"
+                        + "            ]\n"
+                        + "        ],\n"
+                        + "        \"column_name\": [\n"
+                        + "            \"_id\"\n"
+                        + "        ],\n"
+                        + "        \"column_type\": [\n"
+                        + "            \"multi_char\"\n"
+                        + "        ]\n"
+                        + "    },\n"
+                        + "    \"error_info\": {\n"
+                        + "        \"ErrorCode\": 0,\n"
+                        + "        \"Error\": \"ERROR_NONE\",\n"
+                        + "        \"Message\": \"\"\n"
+                        + "    }\n"
+                        + "}";
                 } else if (query.contains("select _source,_id from")) {
-                    strResponse = "{\n" +
-                            "    \"total_time\": 3.979,\n" +
-                            "    \"has_soft_failure\": false,\n" +
-                            "    \"covered_percent\": 1.0,\n" +
-                            "    \"row_count\": 2,\n" +
-                            "    \"format_type\": \"full_json\",\n" +
-                            "    \"search_info\": {},\n" +
-                            "    \"rpc_info\": \"\",\n" +
-                            "    \"table_leader_info\": {\n" +
-                            "        \"knn_fetch_test\": true\n" +
-                            "    },\n" +
-                            "    \"table_build_watermark\": {},\n" +
-                            "    \"sql_query\": \"query=select _source,_id,_routing from knn_fetch_test_summary_ where _id" +
-                            " in('0QZYiYoBGeSNvliAKP4J', '0gZYiYoBGeSNvliAof4t')&&kvpair=format:full_json;databaseName:general\",\n" +
-                            "    \"iquan_plan\": {\n" +
-                            "        \"error_code\": 0,\n" +
-                            "        \"error_message\": \"\",\n" +
-                            "        \"result\": {\n" +
-                            "            \"rel_plan_version\": \"\",\n" +
-                            "            \"rel_plan\": [],\n" +
-                            "            \"exec_params\": {}\n" +
-                            "        }\n" +
-                            "    },\n" +
-                            "    \"navi_graph\": \"\",\n" +
-                            "    \"trace\": [],\n" +
-                            "    \"sql_result\": {\n" +
-                            "        \"data\": [\n" +
-                            "            [\n" +
-                            "                \"{\\n  \\\"key1\\\" :\\\"doc1\\\",\\n  \\\"name\\\" :\\\"alice\\\",\\n  \\\"length\\\":1\\n}\\n\",\n" +
-                            "                \"0QZYiYoBGeSNvliAKP4J\",\n" +
-                            "                \"\"\n" +
-                            "            ],\n" +
-                            "            [\n" +
-                            "                \"{\\n  \\\"key1\\\" :\\\"doc2\\\",\\n  \\\"name\\\" :\\\"bob\\\",\\n  \\\"length\\\":2\\n}\\n\",\n" +
-                            "                \"0gZYiYoBGeSNvliAof4t\",\n" +
-                            "                \"\"\n" +
-                            "            ]\n" +
-                            "        ],\n" +
-                            "        \"column_name\": [\n" +
-                            "            \"_source\",\n" +
-                            "            \"_id\",\n" +
-                            "            \"_routing\"\n" +
-                            "        ],\n" +
-                            "        \"column_type\": [\n" +
-                            "            \"multi_char\",\n" +
-                            "            \"multi_char\",\n" +
-                            "            \"multi_char\"\n" +
-                            "        ]\n" +
-                            "    },\n" +
-                            "    \"error_info\": {\n" +
-                            "        \"ErrorCode\": 0,\n" +
-                            "        \"Error\": \"ERROR_NONE\",\n" +
-                            "        \"Message\": \"\"\n" +
-                            "    }\n" +
-                            "}";
+                    strResponse = "{\n"
+                        + "    \"total_time\": 3.979,\n"
+                        + "    \"has_soft_failure\": false,\n"
+                        + "    \"covered_percent\": 1.0,\n"
+                        + "    \"row_count\": 2,\n"
+                        + "    \"format_type\": \"full_json\",\n"
+                        + "    \"search_info\": {},\n"
+                        + "    \"rpc_info\": \"\",\n"
+                        + "    \"table_leader_info\": {\n"
+                        + "        \"knn_fetch_test\": true\n"
+                        + "    },\n"
+                        + "    \"table_build_watermark\": {},\n"
+                        + "    \"sql_query\": \"query=select _source,_id,_routing from knn_fetch_test_summary_ where _id"
+                        + " in('0QZYiYoBGeSNvliAKP4J', '0gZYiYoBGeSNvliAof4t')&&kvpair=format:full_json;databaseName:general\",\n"
+                        + "    \"iquan_plan\": {\n"
+                        + "        \"error_code\": 0,\n"
+                        + "        \"error_message\": \"\",\n"
+                        + "        \"result\": {\n"
+                        + "            \"rel_plan_version\": \"\",\n"
+                        + "            \"rel_plan\": [],\n"
+                        + "            \"exec_params\": {}\n"
+                        + "        }\n"
+                        + "    },\n"
+                        + "    \"navi_graph\": \"\",\n"
+                        + "    \"trace\": [],\n"
+                        + "    \"sql_result\": {\n"
+                        + "        \"data\": [\n"
+                        + "            [\n"
+                        + "                \"{\\n  \\\"key1\\\" :\\\"doc1\\\",\\n  \\\"name\\\" :\\\"alice\\\",\\n  "
+                        + "\\\"length\\\":1\\n}\\n\",\n"
+                        + "                \"0QZYiYoBGeSNvliAKP4J\",\n"
+                        + "                \"\"\n"
+                        + "            ],\n"
+                        + "            [\n"
+                        + "                \"{\\n  \\\"key1\\\" :\\\"doc2\\\",\\n  \\\"name\\\" :\\\"bob\\\",\\n  "
+                        + "\\\"length\\\":2\\n}\\n\",\n"
+                        + "                \"0gZYiYoBGeSNvliAof4t\",\n"
+                        + "                \"\"\n"
+                        + "            ]\n"
+                        + "        ],\n"
+                        + "        \"column_name\": [\n"
+                        + "            \"_source\",\n"
+                        + "            \"_id\",\n"
+                        + "            \"_routing\"\n"
+                        + "        ],\n"
+                        + "        \"column_type\": [\n"
+                        + "            \"multi_char\",\n"
+                        + "            \"multi_char\",\n"
+                        + "            \"multi_char\"\n"
+                        + "        ]\n"
+                        + "    },\n"
+                        + "    \"error_info\": {\n"
+                        + "        \"ErrorCode\": 0,\n"
+                        + "        \"Error\": \"ERROR_NONE\",\n"
+                        + "        \"Message\": \"\"\n"
+                        + "    }\n"
+                        + "}";
                 } else {
                     strResponse = "{\"total_time\":2.016,\"has_soft_failure\":false,\"covered_percent\":1.0,"
                         + "\"row_count\":3,\"format_type\":\"full_json\",\"search_info\":{},\"rpc_info\":\"\","
