@@ -40,6 +40,7 @@
 package org.havenask.search.fetch;
 
 import org.havenask.search.internal.SearchContext;
+
 /**
  * Fetch phase of a search request, used to fetch the actual top matching documents to be returned to the client, identified
  * after reducing all of the matches returned by the query phase
