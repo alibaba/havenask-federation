@@ -45,6 +45,8 @@ import org.havenask.engine.index.HavenaskIndexEventListener;
 import org.havenask.engine.index.engine.EngineSettings;
 import org.havenask.engine.index.engine.HavenaskEngine;
 import org.havenask.engine.index.mapper.DenseVectorFieldMapper;
+import org.havenask.engine.index.query.HnswQueryBuilder;
+import org.havenask.engine.index.query.LinearQueryBuilder;
 import org.havenask.engine.rpc.HavenaskClient;
 import org.havenask.engine.rpc.QrsClient;
 import org.havenask.engine.rpc.SearcherClient;
@@ -86,11 +88,6 @@ import org.havenask.threadpool.ExecutorBuilder;
 import org.havenask.threadpool.ScalingExecutorBuilder;
 import org.havenask.threadpool.ThreadPool;
 import org.havenask.watcher.ResourceWatcherService;
-import org.havenask.engine.index.query.HnswQueryBuilder;
-import org.havenask.engine.index.query.LinearQueryBuilder;
-
-import static org.havenask.discovery.DiscoveryModule.DISCOVERY_TYPE_SETTING;
-import static org.havenask.discovery.DiscoveryModule.SINGLE_NODE_DISCOVERY_TYPE;
 
 public class HavenaskEnginePlugin extends Plugin
     implements
@@ -113,27 +110,6 @@ public class HavenaskEnginePlugin extends Plugin
     public static final Setting<Boolean> HAVENASK_ENGINE_ENABLED_SETTING = Setting.boolSetting(
         "havenask.engine.enabled",
         false,
-        new Setting.Validator<>() {
-            @Override
-            public void validate(Boolean value) {}
-
-            @Override
-            public void validate(Boolean value, Map<Setting<?>, Object> settings) {
-                // DISCOVERY_TYPE_SETTING must be single-node when havenask engine is enabled
-                if (value) {
-                    String discoveryType = (String) settings.get(DISCOVERY_TYPE_SETTING);
-                    if (false == SINGLE_NODE_DISCOVERY_TYPE.equals(discoveryType)) {
-                        throw new IllegalArgumentException("havenask engine can only be enabled when discovery type is single-node");
-                    }
-                }
-            }
-
-            @Override
-            public Iterator<Setting<?>> settings() {
-                List<Setting<?>> settings = List.of(DISCOVERY_TYPE_SETTING);
-                return settings.iterator();
-            }
-        },
         Property.NodeScope,
         Setting.Property.Final
     );
