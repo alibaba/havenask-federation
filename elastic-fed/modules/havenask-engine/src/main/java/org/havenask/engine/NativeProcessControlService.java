@@ -60,7 +60,7 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
         + "%s -c %s -T in0 -p 30468,30480 --role searcher >> search.log 2>> search.error.log";
     private static final String UPDATE_QRS_COMMAND = "cd %s;python %s/havenask/command/general_search_updater.py -i "
         + "%s -c %s -T in0 -p 30468,30480 --role qrs >> qrs.log 2>> qrs.error.log";
-    private static final String STOP_HAVENASK_COMMAND = "python %s/havenask/command/general_search_stop.py"
+    private static final String STOP_HAVENASK_COMMAND = "cd %s;python %s/havenask/command/general_search_stop.py"
         + " -c /ha3_install/usr/local/etc/sql/sql_alog.conf >> search.log 2>> search.error.log";
     private static final String CHECK_HAVENASK_ALIVE_COMMAND =
         "ps aux | grep ha_sql | grep 'roleType=%s' | grep -v grep | awk '{print $2}'";
@@ -194,7 +194,12 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
             havenaskEngineEnvironment.getRuntimedataPath(),
             havenaskEngineEnvironment.getConfigPath()
         );
-        this.stopHavenaskCommand = String.format(Locale.ROOT, STOP_HAVENASK_COMMAND, environment.configFile().toAbsolutePath());
+        this.stopHavenaskCommand = String.format(
+            Locale.ROOT,
+            STOP_HAVENASK_COMMAND,
+            havenaskEngineEnvironment.getDataPath().toAbsolutePath(),
+            environment.configFile().toAbsolutePath()
+        );
         this.startBsJobCommand = String.format(
             Locale.ROOT,
             START_BS_JOB_COMMAND,
@@ -239,7 +244,7 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
                         try (InputStream inputStream = process.getInputStream()) {
                             byte[] bytes = inputStream.readAllBytes();
                             String result = new String(bytes, StandardCharsets.UTF_8);
-                            LOGGER.warn("stop searcher, qrs failed, failed reason: {}", result);
+                            LOGGER.warn("stop searcher, qrs failed, exit code: {} failed reason: {}", process.exitValue(), result);
                         }
                     } else {
                         LOGGER.info("stop searcher, qrs success");
