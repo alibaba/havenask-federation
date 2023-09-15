@@ -45,7 +45,7 @@ public class SearchIT extends HavenaskITTestCase {
     protected boolean addMockInternalEngine() {
         return false;
     }
-    
+
     public void testSearch() throws Exception {
         String index = "test2";
         String mapping = "{\n"
