@@ -89,6 +89,8 @@ import org.havenask.threadpool.ScalingExecutorBuilder;
 import org.havenask.threadpool.ThreadPool;
 import org.havenask.watcher.ResourceWatcherService;
 
+import static org.havenask.engine.NativeProcessControlService.HAVENASK_QRS_HTTP_PORT_SETTING;
+
 public class HavenaskEnginePlugin extends Plugin
     implements
         EnginePlugin,
@@ -190,10 +192,8 @@ public class HavenaskEnginePlugin extends Plugin
         );
         nativeProcessControlServiceSetOnce.set(nativeProcessControlService);
         HavenaskClient havenaskClient = new SearcherHttpClient(nativeProcessControlService.getSearcherHttpPort());
-        QrsClient qrsClient = new QrsHttpClient(nativeProcessControlService.getQrsHttpPort());
         SearcherClient searcherClient = new SearcherArpcClient(nativeProcessControlService.getSearcherTcpPort());
         searcherClientSetOnce.set(havenaskClient);
-        qrsClientSetOnce.set(qrsClient);
         searcherArpcClientSetOnce.set(searcherClient);
         CheckTargetService checkTargetService = new CheckTargetService(
             clusterService,
@@ -228,7 +228,7 @@ public class HavenaskEnginePlugin extends Plugin
             NativeProcessControlService.HAVENASK_SEARCHER_HTTP_PORT_SETTING,
             NativeProcessControlService.HAVENASK_SEARCHER_TCP_PORT_SETTING,
             NativeProcessControlService.HAVENASK_SEARCHER_GRPC_PORT_SETTING,
-            NativeProcessControlService.HAVENASK_QRS_HTTP_PORT_SETTING,
+            HAVENASK_QRS_HTTP_PORT_SETTING,
             NativeProcessControlService.HAVENASK_QRS_TCP_PORT_SETTING
         );
     }
@@ -307,6 +307,9 @@ public class HavenaskEnginePlugin extends Plugin
 
     @Override
     public FetchPhase getFetchPhase(List<FetchSubPhase> fetchSubPhases) {
-        return new HavenaskFetchPhase(fetchSubPhases);
+        int port = HAVENASK_QRS_HTTP_PORT_SETTING.get(settings);
+        QrsClient qrsClient = new QrsHttpClient(port);
+        qrsClientSetOnce.set(qrsClient);
+        return new HavenaskFetchPhase(qrsClientSetOnce.get(), fetchSubPhases);
     }
 }

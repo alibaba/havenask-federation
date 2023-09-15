@@ -84,15 +84,15 @@ public class HavenaskIndexSearcher extends ContextIndexSearcher {
     public static void buildQuerySearchResult(QuerySearchResult querySearchResult, String sqlResponseStr, ReaderContext readerContext)
         throws IOException {
         SqlResponse sqlResponse = SqlResponse.parse(sqlResponseStr);
-        ScoreDoc[] queryFieldDoc = new ScoreDoc[sqlResponse.getRowCount()];
+        ScoreDoc[] queryScoreDocs = new ScoreDoc[sqlResponse.getRowCount()];
         List<String> ids = new ArrayList<>(sqlResponse.getRowCount());
         for (int i = 0; i < sqlResponse.getRowCount(); i++) {
             // TODO get doc's score
-            queryFieldDoc[i] = new ScoreDoc(i, sqlResponse.getRowCount() - i);
+            queryScoreDocs[i] = new ScoreDoc(i, sqlResponse.getRowCount() - i);
             ids.add(String.valueOf(sqlResponse.getSqlResult().getData()[i][0]));
         }
         readerContext.putInContext(IDS_CONTEXT, ids);
-        TopDocs topDocs = new TopDocs(new TotalHits(sqlResponse.getRowCount(), Relation.GREATER_THAN_OR_EQUAL_TO), queryFieldDoc);
+        TopDocs topDocs = new TopDocs(new TotalHits(sqlResponse.getRowCount(), Relation.GREATER_THAN_OR_EQUAL_TO), queryScoreDocs);
         // TODO get maxScore
         TopDocsAndMaxScore topDocsAndMaxScore = new TopDocsAndMaxScore(topDocs, sqlResponse.getRowCount());
         querySearchResult.topDocs(topDocsAndMaxScore, new DocValueFormat[] { DocValueFormat.RAW });

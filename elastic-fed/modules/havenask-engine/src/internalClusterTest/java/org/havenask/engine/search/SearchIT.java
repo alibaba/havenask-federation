@@ -83,6 +83,6 @@ public class SearchIT extends HavenaskITTestCase {
         HnswQueryBuilder hnswQueryBuilder = new HnswQueryBuilder("vector", new float[] { 1.5f, 2.5f }, 10);
         searchSourceBuilder.query(hnswQueryBuilder);
         SearchResponse searchResponse = client().prepareSearch(index).setSource(searchSourceBuilder).get();
-        assertEquals(searchResponse.getHits().getTotalHits().value, 0);
+        assertEquals(searchResponse.getHits().getTotalHits().value, 2);
     }
 }
