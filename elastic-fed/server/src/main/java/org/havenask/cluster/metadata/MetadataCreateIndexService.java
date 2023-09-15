@@ -39,13 +39,35 @@
 
 package org.havenask.cluster.metadata;
 
+import java.io.IOException;
+import java.io.UnsupportedEncodingException;
+import java.nio.file.Path;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.BiConsumer;
+import java.util.function.BiFunction;
+import java.util.function.Function;
+import java.util.function.Predicate;
+import java.util.function.Supplier;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+
 import com.carrotsearch.hppc.cursors.ObjectObjectCursor;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.message.ParameterizedMessage;
-import org.havenask.LegacyESVersion;
 import org.havenask.HavenaskException;
+import org.havenask.LegacyESVersion;
 import org.havenask.ResourceAlreadyExistsException;
 import org.havenask.Version;
 import org.havenask.action.ActionListener;
@@ -99,28 +121,6 @@ import org.havenask.indices.ShardLimitValidator;
 import org.havenask.indices.SystemIndexDescriptor;
 import org.havenask.indices.SystemIndices;
 import org.havenask.threadpool.ThreadPool;
-
-import java.io.IOException;
-import java.io.UnsupportedEncodingException;
-import java.nio.file.Path;
-import java.time.Instant;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.BiConsumer;
-import java.util.function.BiFunction;
-import java.util.function.Function;
-import java.util.function.Predicate;
-import java.util.function.Supplier;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
 import static java.util.Collections.singletonMap;
 import static java.util.stream.Collectors.toList;
@@ -807,7 +807,8 @@ public class MetadataCreateIndexService {
          * that will be used to create this index.
          */
         shardLimitValidator.validateShardLimit(indexSettings, currentState);
-        if (indexSettings.getAsBoolean(IndexSettings.INDEX_SOFT_DELETES_SETTING.getKey(), true) == false) {
+        if (indexSettings.getAsBoolean(IndexSettings.INDEX_SOFT_DELETES_SETTING.getKey(), true) == false &&
+            false == "havenask".equals(indexSettings.get("index.engine"))) {
             DEPRECATION_LOGGER.deprecate("soft_deletes_disabled",
                 "Creating indices with soft-deletes disabled is deprecated and will be removed in future Havenask versions. " +
                     "Please do not specify value for setting [index.soft_deletes.enabled] of index [" + request.index() + "].");

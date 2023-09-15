@@ -17,6 +17,7 @@ package org.havenask.engine;
 import org.havenask.common.settings.Settings;
 import org.havenask.common.unit.TimeValue;
 import org.havenask.engine.index.engine.EngineSettings;
+import org.havenask.index.IndexSettings;
 import org.havenask.index.shard.IndexSettingProvider;
 
 import static org.havenask.engine.HavenaskEnginePlugin.HAVENASK_SET_DEFAULT_ENGINE_SETTING;
@@ -38,6 +39,12 @@ public class HavenaskIndexSettingProvider implements IndexSettingProvider {
         }
 
         if (defaultHavenaskEngine || EngineSettings.isHavenaskEngine(templateAndRequestSettings)) {
+            boolean softDelete = templateAndRequestSettings.getAsBoolean(IndexSettings.INDEX_SOFT_DELETES_SETTING.getKey(), false);
+            if (softDelete) {
+                throw new IllegalArgumentException("havenask engine not support soft delete");
+            }
+            builder.put(IndexSettings.INDEX_SOFT_DELETES_SETTING.getKey(), false);
+
             if (false == templateAndRequestSettings.hasValue(INDEX_REFRESH_INTERVAL_SETTING.getKey())) {
                 builder.put(INDEX_REFRESH_INTERVAL_SETTING.getKey(), DEFAULT_REFRESH_INTERVAL);
             } else {
