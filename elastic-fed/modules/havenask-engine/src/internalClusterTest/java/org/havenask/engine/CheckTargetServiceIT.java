@@ -84,7 +84,7 @@ public class CheckTargetServiceIT extends HavenaskITTestCase {
             ).actionGet();
             Set<String> havenaskIndices = new HashSet<>();
             if (sqlInfoResponse.getResult() != null && sqlInfoResponse.getResult().isEmpty() == false) {
-                havenaskIndices.add("test2");
+                havenaskIndices.add("test2_0");
             }
 
             boolean result = CheckTargetService.checkIngestNodeEquals(sqlInfoResponse, havenaskIndices);
