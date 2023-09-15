@@ -101,7 +101,6 @@ public class HavenaskFetchPhase implements FetchPhase {
 
     private SqlResponse fetchWithSql(DocIdToIndex[] docs, List<String> ids, SearchContext context) throws IOException {
         StringBuilder sqlQuery = new StringBuilder();
-        context.queryResult().topDocs();
         String tableName = Utils.getHavenaskTableName(context.indexShard().shardId());
         sqlQuery.append("select _source,_id from " + tableName + "_summary_");
         sqlQuery.append(" where _id in(");
