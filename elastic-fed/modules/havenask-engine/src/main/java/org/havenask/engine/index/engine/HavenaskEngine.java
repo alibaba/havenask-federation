@@ -250,7 +250,7 @@ public class HavenaskEngine extends InternalEngine {
             engineConfig.getIndexSettings().getSettings()
         );
         // 更新配置表信息
-        nativeProcessControlService.updateTargetAsync();
+        nativeProcessControlService.updateDataNodeTarget();
     }
 
     private void checkTableStatus() throws IOException {
