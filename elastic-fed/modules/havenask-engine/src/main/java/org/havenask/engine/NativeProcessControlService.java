@@ -194,10 +194,7 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
             havenaskEngineEnvironment.getRuntimedataPath(),
             havenaskEngineEnvironment.getConfigPath()
         );
-        this.stopHavenaskCommand = String.format(
-            Locale.ROOT,
-            STOP_HAVENASK_COMMAND,
-            havenaskEngineEnvironment.getConfigPath());
+        this.stopHavenaskCommand = String.format(Locale.ROOT, STOP_HAVENASK_COMMAND, environment.configFile().toAbsolutePath());
         this.startBsJobCommand = String.format(
             Locale.ROOT,
             START_BS_JOB_COMMAND,
