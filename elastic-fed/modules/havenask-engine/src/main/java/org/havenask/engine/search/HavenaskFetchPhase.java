@@ -30,6 +30,7 @@ import org.havenask.engine.index.engine.HavenaskIndexSearcher;
 import org.havenask.engine.rpc.QrsClient;
 import org.havenask.engine.rpc.QrsSqlRequest;
 import org.havenask.engine.rpc.QrsSqlResponse;
+import org.havenask.engine.util.Utils;
 import org.havenask.index.mapper.MapperService;
 import org.havenask.search.SearchContextSourcePrinter;
 import org.havenask.search.SearchHit;
@@ -101,7 +102,8 @@ public class HavenaskFetchPhase implements FetchPhase {
     private SqlResponse fetchWithSql(DocIdToIndex[] docs, List<String> ids, SearchContext context) throws IOException {
         StringBuilder sqlQuery = new StringBuilder();
         context.queryResult().topDocs();
-        sqlQuery.append("select _source,_id from " + context.readerContext().indexShard().shardId().getIndexName() + "_summary_");
+        String tableName = Utils.getHavenaskTableName(context.indexShard().shardId());
+        sqlQuery.append("select _source,_id from " + tableName + "_summary_");
         sqlQuery.append(" where _id in(");
         for (int index = 0; index < context.docIdsToLoadSize(); index++) {
             if (context.isCancelled()) {
