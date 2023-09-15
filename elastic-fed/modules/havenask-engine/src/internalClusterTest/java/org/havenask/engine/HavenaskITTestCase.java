@@ -191,9 +191,9 @@ public abstract class HavenaskITTestCase extends HavenaskIntegTestCase {
                 if (randomBoolean()) {
                     response = "{\"error_message\":\"execute failed\",\"error_code\":400}";
                 } else {
-                    response = "{\"error_message\":\"\",\"result\":{\"default\":{\"general\":{\"tables\":{\"test2"
+                    response = "{\"error_message\":\"\",\"result\":{\"default\":{\"general\":{\"tables\":{\"test2_0"
                         + "\":{\"catalog_name\":\"default\",\"database_name\":\"general\",\"version\":1,"
-                        + "\"content\":{\"valid\":true,\"table_name\":\"test2\",\"table_type\":\"normal\","
+                        + "\"content\":{\"valid\":true,\"table_name\":\"test2_0\",\"table_type\":\"normal\","
                         + "\"fields\":[{\"valid\":true,\"field_name\":\"_routing\","
                         + "\"field_type\":{\"fieldType\":\"FT_STRING\",\"valid\":true,\"type\":\"STRING\","
                         + "\"extend_infos\":{},\"key_type\":null,\"value_type\":null,\"record_types\":null},"
@@ -218,9 +218,9 @@ public abstract class HavenaskITTestCase extends HavenaskIntegTestCase {
                         + "\"record_types\":null},\"index_type\":\"\",\"index_name\":\"\"}],\"sub_tables\":[],"
                         + "\"distribution\":{\"valid\":true,\"partition_cnt\":1,\"hash_fields\":[\"_id\"],"
                         + "\"hash_function\":\"HASH\",\"hash_params\":{}},\"join_info\":{\"valid\":true,\"table_name\":\"\","
-                        + "\"join_field\":\"\"},\"properties\":{}}},\"test2_summary_\":{\"catalog_name\":\"default\","
+                        + "\"join_field\":\"\"},\"properties\":{}}},\"test2_0_summary_\":{\"catalog_name\":\"default\","
                         + "\"database_name\":\"general\",\"version\":1,\"content\":{\"valid\":true,"
-                        + "\"table_name\":\"test2_summary_\",\"table_type\":\"summary\",\"fields\":[{\"valid\":true,"
+                        + "\"table_name\":\"test2_0_summary_\",\"table_type\":\"summary\",\"fields\":[{\"valid\":true,"
                         + "\"field_name\":\"_routing\",\"field_type\":{\"fieldType\":\"FT_STRING\",\"valid\":true,"
                         + "\"type\":\"STRING\",\"extend_infos\":{},\"key_type\":null,\"value_type\":null,"
                         + "\"record_types\":null},\"index_type\":\"STRING\",\"index_name\":\"_routing\"},{\"valid\":true,"

@@ -83,7 +83,7 @@ public class SqlActionIT extends HavenaskITTestCase {
             assertEquals("", response.getErrorMessage());
             Map<String, Object> exceptResult = XContentHelper.convertToMap(
                 JsonXContent.jsonXContent,
-                "{\"default\":{\"general\":{\"tables\":{\"test2\":{\"catalog_name\":\"default\","
+                "{\"default\":{\"general\":{\"tables\":{\"test2_0\":{\"catalog_name\":\"default\","
                     + "\"database_name\":\"general\",\"version\":1,\"content\":{\"valid\":true,"
                     + "\"join_info\":{\"valid\":true,\"table_name\":\"\",\"join_field\":\"\"},\"sub_tables\":[],"
                     + "\"fields\":[{\"valid\":true,\"field_type\":{\"valid\":true,\"value_type\":null,\"key_type\":null,"
@@ -108,8 +108,8 @@ public class SqlActionIT extends HavenaskITTestCase {
                     + "\"fieldType\":\"FT_INT64\",\"record_types\":null},\"index_name\":\"\","
                     + "\"field_name\":\"_primary_term\",\"index_type\":\"\"}],\"distribution\":{\"valid\":true,"
                     + "\"hash_fields\":[\"_id\"],\"hash_function\":\"HASH\",\"hash_params\":{},\"partition_cnt\":1},"
-                    + "\"table_name\":\"test2\",\"properties\":{},\"table_type\":\"normal\"}},"
-                    + "\"test2_summary_\":{\"catalog_name\":\"default\",\"database_name\":\"general\",\"version\":1,"
+                    + "\"table_name\":\"test2_0\",\"properties\":{},\"table_type\":\"normal\"}},"
+                    + "\"test2_0_summary_\":{\"catalog_name\":\"default\",\"database_name\":\"general\",\"version\":1,"
                     + "\"content\":{\"valid\":true,\"join_info\":{\"valid\":true,\"table_name\":\"\","
                     + "\"join_field\":\"\"},\"sub_tables\":[],\"fields\":[{\"valid\":true,\"field_type\":{\"valid\":true,"
                     + "\"value_type\":null,\"key_type\":null,\"extend_infos\":{},\"type\":\"STRING\","
@@ -136,7 +136,7 @@ public class SqlActionIT extends HavenaskITTestCase {
                     + "\"fieldType\":\"FT_INT64\",\"record_types\":null},\"index_name\":\"\","
                     + "\"field_name\":\"_primary_term\",\"index_type\":\"\"}],\"distribution\":{\"valid\":true,"
                     + "\"hash_fields\":[\"_id\"],\"hash_function\":\"HASH\",\"hash_params\":{},\"partition_cnt\":1},"
-                    + "\"table_name\":\"test2_summary_\",\"properties\":{},\"table_type\":\"summary\"}}},"
+                    + "\"table_name\":\"test2_0_summary_\",\"properties\":{},\"table_type\":\"summary\"}}},"
                     + "\"functions\":{\"printTableTvf\":{\"isDeterministic\":true,\"name\":\"printTableTvf\","
                     + "\"type\":\"TVF\",\"version\":1,\"signatures\":[\"(,TABLE_auto{})TVF_printTableTvf(string,"
                     + "TABLE_auto{})\"]},\"distinctTopNTvf\":{\"isDeterministic\":true,\"name\":\"distinctTopNTvf\","

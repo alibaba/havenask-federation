@@ -45,8 +45,7 @@ public class SearchIT extends HavenaskITTestCase {
     protected boolean addMockInternalEngine() {
         return false;
     }
-
-    @AwaitsFix(bugUrl = "https://github.com/alibaba/havenask-federation/issues/217")
+    
     public void testSearch() throws Exception {
         String index = "test2";
         String mapping = "{\n"
