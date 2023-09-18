@@ -78,7 +78,7 @@ examples:
                 cmd = "kill -9 %s" % str(pid)
                 print(cmd)
                 os.system(cmd)
-        return "", "process exit timeout {}s, force kill, dirs: {}".format(raw_timeout, force_killed_workdirs), 1
+        return "", "process exit timeout {}s, force kill, dirs: {}".format(raw_timeout, force_killed_workdirs), 0
 
     def _getPid(self, port):
         p = subprocess.Popen(['netstat','-plant'],stdout=subprocess.PIPE)
