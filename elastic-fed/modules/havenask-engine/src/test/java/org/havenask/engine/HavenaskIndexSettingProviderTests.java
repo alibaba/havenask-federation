@@ -17,6 +17,7 @@ package org.havenask.engine;
 import org.havenask.common.settings.Settings;
 import org.havenask.common.unit.TimeValue;
 import org.havenask.engine.index.engine.EngineSettings;
+import org.havenask.index.IndexSettings;
 import org.havenask.test.HavenaskTestCase;
 
 import static org.havenask.cluster.metadata.IndexMetadata.SETTING_NUMBER_OF_REPLICAS;
@@ -29,7 +30,24 @@ public class HavenaskIndexSettingProviderTests extends HavenaskTestCase {
         HavenaskIndexSettingProvider provider = new HavenaskIndexSettingProvider(Settings.EMPTY);
         Settings settings = provider.getAdditionalIndexSettings("test", false, Settings.builder().put("index.engine", "havenask").build());
         TimeValue refresh = settings.getAsTime("index.refresh_interval", null);
+        boolean softDelete = settings.getAsBoolean(IndexSettings.INDEX_SOFT_DELETES_SETTING.getKey(), true);
+        assertEquals(softDelete, false);
         assertEquals(TimeValue.timeValueSeconds(5), refresh);
+    }
+
+    // test for havenask engine not support soft delete
+    public void testGetAdditionalIndexSettingsWithSoftDelete() {
+        try {
+            HavenaskIndexSettingProvider provider = new HavenaskIndexSettingProvider(Settings.EMPTY);
+            provider.getAdditionalIndexSettings(
+                "test",
+                false,
+                Settings.builder().put("index.engine", "havenask").put(IndexSettings.INDEX_SOFT_DELETES_SETTING.getKey(), true).build()
+            );
+            fail("havenask engine not support soft delete");
+        } catch (IllegalArgumentException e) {
+            assertEquals("havenask engine not support soft delete", e.getMessage());
+        }
     }
 
     // test not havenask engine
