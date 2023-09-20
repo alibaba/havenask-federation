@@ -42,6 +42,9 @@
 
 package org.havenask.engine;
 
+import java.io.IOException;
+import java.util.concurrent.TimeUnit;
+
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.havenask.action.admin.cluster.health.ClusterHealthRequest;
@@ -62,9 +65,6 @@ import org.havenask.common.xcontent.XContentType;
 import org.havenask.engine.index.engine.EngineSettings;
 import org.junit.AfterClass;
 
-import java.io.IOException;
-import java.util.concurrent.TimeUnit;
-
 public class RecoveryIT extends AbstractHavenaskRestTestCase {
 
     private static final String index = "index_recovery";
@@ -79,7 +79,10 @@ public class RecoveryIT extends AbstractHavenaskRestTestCase {
             highLevelClient().indices()
                 .create(
                     new CreateIndexRequest(index).settings(
-                        Settings.builder().put(EngineSettings.ENGINE_TYPE_SETTING.getKey(), EngineSettings.ENGINE_HAVENASK).build()
+                        Settings.builder()
+                            .put(EngineSettings.ENGINE_TYPE_SETTING.getKey(), EngineSettings.ENGINE_HAVENASK)
+                            .put("number_of_replicas", 0)
+                            .build()
                     ).mapping(Map.of("properties", Map.of("foo", Map.of("type", "keyword")))),
                     RequestOptions.DEFAULT
                 )
@@ -104,7 +107,7 @@ public class RecoveryIT extends AbstractHavenaskRestTestCase {
         // waiting for finishing writing
         assertBusy(() -> {
             SqlResponse beforeStopResponse = highLevelClient().havenask()
-                .sql(new SqlRequest("select * from " + index), RequestOptions.DEFAULT);
+                .sql(new SqlRequest("select * from " + index + "_0"), RequestOptions.DEFAULT);
             logger.info("waiting for finishing writing, now count is {}", beforeStopResponse.getRowCount());
             assertEquals(testDocCount, beforeStopResponse.getRowCount());
         }, 2, TimeUnit.MINUTES);
@@ -116,7 +119,7 @@ public class RecoveryIT extends AbstractHavenaskRestTestCase {
         // waiting for clearing doc
         assertBusy(() -> {
             SqlResponse afterStopResponse = highLevelClient().havenask()
-                .sql(new SqlRequest("select * from " + index), RequestOptions.DEFAULT);
+                .sql(new SqlRequest("select * from " + index + "_0"), RequestOptions.DEFAULT);
             logger.info(
                 "waiting for sql error or doc clear, now code is {}, doc count is {}",
                 afterStopResponse.getErrorInfo().GetErrorCode(),
@@ -142,7 +145,8 @@ public class RecoveryIT extends AbstractHavenaskRestTestCase {
         }, 2, TimeUnit.MINUTES);
 
         // check recovery result
-        SqlResponse recoveryResponse = highLevelClient().havenask().sql(new SqlRequest("select * from " + index), RequestOptions.DEFAULT);
+        SqlResponse recoveryResponse = highLevelClient().havenask()
+            .sql(new SqlRequest("select * from " + index + "_0"), RequestOptions.DEFAULT);
         assertEquals(testDocCount, recoveryResponse.getRowCount());
     }
 

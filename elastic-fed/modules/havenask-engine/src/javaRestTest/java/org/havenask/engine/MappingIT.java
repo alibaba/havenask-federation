@@ -14,6 +14,10 @@
 
 package org.havenask.engine;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.concurrent.TimeUnit;
+
 import org.havenask.action.admin.cluster.health.ClusterHealthRequest;
 import org.havenask.action.admin.cluster.health.ClusterHealthResponse;
 import org.havenask.action.admin.indices.delete.DeleteIndexRequest;
@@ -25,10 +29,6 @@ import org.havenask.common.collect.Map;
 import org.havenask.common.settings.Settings;
 import org.havenask.engine.index.engine.EngineSettings;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.concurrent.TimeUnit;
-
 public class MappingIT extends AbstractHavenaskRestTestCase {
     // test supported data type
     public void testSupportedDataType() throws Exception {
@@ -38,7 +38,10 @@ public class MappingIT extends AbstractHavenaskRestTestCase {
             highLevelClient().indices()
                 .create(
                     new CreateIndexRequest(index).settings(
-                        Settings.builder().put(EngineSettings.ENGINE_TYPE_SETTING.getKey(), EngineSettings.ENGINE_HAVENASK).build()
+                        Settings.builder()
+                            .put(EngineSettings.ENGINE_TYPE_SETTING.getKey(), EngineSettings.ENGINE_HAVENASK)
+                            .put("number_of_replicas", 0)
+                            .build()
                     )
                         .mapping(
                             Map.of(
@@ -137,7 +140,10 @@ public class MappingIT extends AbstractHavenaskRestTestCase {
                 () -> highLevelClient().indices()
                     .create(
                         new CreateIndexRequest(index).settings(
-                            Settings.builder().put(EngineSettings.ENGINE_TYPE_SETTING.getKey(), EngineSettings.ENGINE_HAVENASK).build()
+                            Settings.builder()
+                                .put(EngineSettings.ENGINE_TYPE_SETTING.getKey(), EngineSettings.ENGINE_HAVENASK)
+                                .put("number_of_replicas", 0)
+                                .build()
                         ).mapping(Map.of("properties", Map.of("curDataType", Map.of("type", curDataType)))),
                         RequestOptions.DEFAULT
                     )
