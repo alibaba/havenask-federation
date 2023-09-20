@@ -16,32 +16,55 @@ package org.havenask.engine.index.engine;
 
 import java.io.IOException;
 
-import org.apache.lucene.search.MatchAllDocsQuery;
-import org.apache.lucene.search.Query;
-import org.havenask.engine.index.query.ProximaQuery;
+import org.havenask.engine.index.query.ProximaQueryBuilder;
+import org.havenask.index.query.MatchAllQueryBuilder;
+import org.havenask.index.query.MatchQueryBuilder;
+import org.havenask.index.query.QueryBuilder;
+import org.havenask.index.query.TermQueryBuilder;
+import org.havenask.search.builder.SearchSourceBuilder;
 
 public class QueryTransformer {
-
-    public static String toSql(String table, Query query) throws IOException {
+    public static String toSql(String table, SearchSourceBuilder dsl) throws IOException {
         StringBuilder sqlQuery = new StringBuilder();
         sqlQuery.append("select _id from " + table);
-        if (query instanceof ProximaQuery) {
-            ProximaQuery proximaQuery = (ProximaQuery) query;
-            sqlQuery.append(" where MATCHINDEX('" + proximaQuery.getField() + "', '");
-            for (int i = 0; i < proximaQuery.getQueryVector().length; i++) {
-                sqlQuery.append(proximaQuery.getQueryVector()[i]);
-                if (i < proximaQuery.getQueryVector().length - 1) {
-                    sqlQuery.append(",");
+        QueryBuilder queryBuilder = dsl.query();
+        StringBuilder where = new StringBuilder();
+        if (queryBuilder != null) {
+            if (queryBuilder instanceof MatchAllQueryBuilder) {
+
+            } else if (queryBuilder instanceof ProximaQueryBuilder) {
+                ProximaQueryBuilder<?> proximaQueryBuilder = (ProximaQueryBuilder<?>) queryBuilder;
+                where.append(" where MATCHINDEX('" + proximaQueryBuilder.getFieldName() + "', '");
+                for (int i = 0; i < proximaQueryBuilder.getVector().length; i++) {
+                    where.append(proximaQueryBuilder.getVector()[i]);
+                    if (i < proximaQueryBuilder.getVector().length - 1) {
+                        where.append(",");
+                    }
                 }
+                where.append("&n=" + proximaQueryBuilder.getSize() + "')");
+            } else if (queryBuilder instanceof TermQueryBuilder) {
+                TermQueryBuilder termQueryBuilder = (TermQueryBuilder) queryBuilder;
+                where.append(" where " + termQueryBuilder.fieldName() + "='" + termQueryBuilder.value() + "'");
+            } else if (queryBuilder instanceof MatchQueryBuilder) {
+                MatchQueryBuilder matchQueryBuilder = (MatchQueryBuilder) queryBuilder;
+                where.append(" where MATCHINDEX('" + matchQueryBuilder.fieldName() + "', '" + matchQueryBuilder.value() + "')");
+            } else {
+                // TODO reject unsupported DSL
+                throw new IOException("unsupported DSL: " + dsl);
             }
-            sqlQuery.append("&n=" + proximaQuery.getTopN() + "')");
-        } else if (query instanceof MatchAllDocsQuery) {
-            // do nothing
-        } else {
-            // TODO reject unsupported DSL
-            throw new IOException("unsupported DSL query:" + query);
+        }
+        sqlQuery.append(where);
+        int size = 0;
+        if (dsl.size() >= 0) {
+            size += dsl.size();
+            if (dsl.from() >= 0) {
+                size += dsl.from();
+            }
         }
 
+        if (size > 0) {
+            sqlQuery.append(" limit " + size);
+        }
         return sqlQuery.toString();
     }
 }

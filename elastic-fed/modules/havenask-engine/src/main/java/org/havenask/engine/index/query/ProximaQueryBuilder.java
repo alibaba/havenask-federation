@@ -14,6 +14,10 @@
 
 package org.havenask.engine.index.query;
 
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.Objects;
+
 import org.havenask.common.ParseField;
 import org.havenask.common.Strings;
 import org.havenask.common.io.stream.StreamInput;
@@ -21,10 +25,6 @@ import org.havenask.common.io.stream.StreamOutput;
 import org.havenask.common.xcontent.XContentBuilder;
 import org.havenask.common.xcontent.XContentParser;
 import org.havenask.index.query.AbstractQueryBuilder;
-
-import java.io.IOException;
-import java.util.Arrays;
-import java.util.Objects;
 
 public abstract class ProximaQueryBuilder<QB extends ProximaQueryBuilder<QB>> extends AbstractQueryBuilder<QB> {
     public static final ParseField VECTOR_FIELD = new ParseField("vector");
@@ -122,11 +122,11 @@ public abstract class ProximaQueryBuilder<QB extends ProximaQueryBuilder<QB>> ex
     /**
      * for test
      */
-    protected int getSize() {
+    public int getSize() {
         return size;
     }
 
-    protected String getFieldName() {
+    public String getFieldName() {
         return fieldName;
     }
 
