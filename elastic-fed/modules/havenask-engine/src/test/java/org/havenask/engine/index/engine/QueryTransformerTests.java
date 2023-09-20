@@ -16,30 +16,78 @@ package org.havenask.engine.index.engine;
 
 import java.io.IOException;
 
-import org.apache.lucene.index.Term;
-import org.apache.lucene.search.MatchAllDocsQuery;
-import org.apache.lucene.search.TermQuery;
-import org.havenask.engine.index.query.HnswQuery;
+import org.havenask.engine.index.query.HnswQueryBuilder;
+import org.havenask.index.query.QueryBuilders;
+import org.havenask.search.builder.SearchSourceBuilder;
 import org.havenask.test.HavenaskTestCase;
 
 public class QueryTransformerTests extends HavenaskTestCase {
     public void testMatchAllDocsQuery() throws IOException {
-        String sql = QueryTransformer.toSql("table", new MatchAllDocsQuery());
+        SearchSourceBuilder builder = new SearchSourceBuilder();
+        builder.query(QueryBuilders.matchAllQuery());
+        String sql = QueryTransformer.toSql("table", builder);
         assertEquals(sql, "select _id from table");
     }
 
     public void testProximaQuery() throws IOException {
-        HnswQuery hnswQuery = new HnswQuery("field", new float[] { 1.0f, 2.0f }, 20, null, null, null);
-        String sql = QueryTransformer.toSql("table", hnswQuery);
+        SearchSourceBuilder builder = new SearchSourceBuilder();
+        builder.query(new HnswQueryBuilder("field", new float[] { 1.0f, 2.0f }, 20));
+        String sql = QueryTransformer.toSql("table", builder);
         assertEquals(sql, "select _id from table where MATCHINDEX('field', '1.0,2.0&n=20')");
     }
 
-    public void testUnsupportedDSL() throws IOException {
+    public void testUnsupportedDSL() {
         try {
-            QueryTransformer.toSql("table", new TermQuery(new Term("field", "value")));
+            SearchSourceBuilder builder = new SearchSourceBuilder();
+            builder.query(QueryBuilders.existsQuery("field"));
+            QueryTransformer.toSql("table", builder);
             fail();
         } catch (IOException e) {
-            assertEquals(e.getMessage(), "unsupported DSL query:field:value");
+            assertEquals(e.getMessage(), "unsupported DSL: {\"query\":{\"exists\":{\"field\":\"field\",\"boost\":1.0}}}");
         }
+    }
+
+    // test term query
+    public void testTermQuery() throws IOException {
+        SearchSourceBuilder builder = new SearchSourceBuilder();
+        builder.query(QueryBuilders.termQuery("field", "value"));
+        String sql = QueryTransformer.toSql("table", builder);
+        assertEquals(sql, "select _id from table where field='value'");
+    }
+
+    // test match query
+    public void testMatchQuery() throws IOException {
+        SearchSourceBuilder builder = new SearchSourceBuilder();
+        builder.query(QueryBuilders.matchQuery("field", "value"));
+        String sql = QueryTransformer.toSql("table", builder);
+        assertEquals(sql, "select _id from table where MATCHINDEX('field', 'value')");
+    }
+
+    // test limit
+    public void testLimit() throws IOException {
+        SearchSourceBuilder builder = new SearchSourceBuilder();
+        builder.query(QueryBuilders.matchAllQuery());
+        builder.from(10);
+        builder.size(10);
+        String sql = QueryTransformer.toSql("table", builder);
+        assertEquals(sql, "select _id from table limit 20");
+    }
+
+    // test no from
+    public void testNoFrom() throws IOException {
+        SearchSourceBuilder builder = new SearchSourceBuilder();
+        builder.query(QueryBuilders.matchAllQuery());
+        builder.size(10);
+        String sql = QueryTransformer.toSql("table", builder);
+        assertEquals(sql, "select _id from table limit 10");
+    }
+
+    // test no size
+    public void testNoSize() throws IOException {
+        SearchSourceBuilder builder = new SearchSourceBuilder();
+        builder.query(QueryBuilders.matchAllQuery());
+        builder.from(10);
+        String sql = QueryTransformer.toSql("table", builder);
+        assertEquals(sql, "select _id from table");
     }
 }
