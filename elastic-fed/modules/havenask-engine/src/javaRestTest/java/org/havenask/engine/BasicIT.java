@@ -38,7 +38,10 @@ public class BasicIT extends AbstractHavenaskRestTestCase {
             highLevelClient().indices()
                 .create(
                     new CreateIndexRequest(index).settings(
-                        Settings.builder().put(EngineSettings.ENGINE_TYPE_SETTING.getKey(), EngineSettings.ENGINE_HAVENASK).build()
+                        Settings.builder()
+                            .put(EngineSettings.ENGINE_TYPE_SETTING.getKey(), EngineSettings.ENGINE_HAVENASK)
+                            .put("number_of_replicas", 0)
+                            .build()
                     ),
                     RequestOptions.DEFAULT
                 )
@@ -66,7 +69,7 @@ public class BasicIT extends AbstractHavenaskRestTestCase {
         java.util.Map<String, Object> tables = (java.util.Map<String, Object>) ((java.util.Map<String, Object>) (((java.util.Map<
             String,
             Object>) (sqlClientInfoResponse.getResult().get("default"))).get("general"))).get("tables");
-        assertTrue(tables.containsKey(index));
+        assertTrue(tables.containsKey(index+"_0"));
 
         assertTrue(highLevelClient().indices().delete(new DeleteIndexRequest(index), RequestOptions.DEFAULT).isAcknowledged());
     }
@@ -79,7 +82,10 @@ public class BasicIT extends AbstractHavenaskRestTestCase {
             highLevelClient().indices()
                 .create(
                     new CreateIndexRequest(index).settings(
-                        Settings.builder().put(EngineSettings.ENGINE_TYPE_SETTING.getKey(), EngineSettings.ENGINE_HAVENASK).build()
+                        Settings.builder()
+                            .put(EngineSettings.ENGINE_TYPE_SETTING.getKey(), EngineSettings.ENGINE_HAVENASK)
+                            .put("number_of_replicas", 0)
+                            .build()
                     )
                         .mapping(
                             Map.of(

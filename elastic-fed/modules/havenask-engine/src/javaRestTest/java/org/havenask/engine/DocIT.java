@@ -14,7 +14,10 @@
 
 package org.havenask.engine;
 
+import java.util.concurrent.TimeUnit;
+
 import com.alibaba.fastjson.JSONObject;
+
 import org.apache.http.util.EntityUtils;
 import org.havenask.action.admin.cluster.health.ClusterHealthRequest;
 import org.havenask.action.admin.cluster.health.ClusterHealthResponse;
@@ -38,8 +41,6 @@ import org.havenask.common.settings.Settings;
 import org.havenask.common.xcontent.XContentType;
 import org.havenask.engine.index.engine.EngineSettings;
 
-import java.util.concurrent.TimeUnit;
-
 public class DocIT extends AbstractHavenaskRestTestCase {
     // test document api, PUT/POST/DELETE and bulk
     public void testDocMethod() throws Exception {
@@ -49,7 +50,10 @@ public class DocIT extends AbstractHavenaskRestTestCase {
             highLevelClient().indices()
                 .create(
                     new CreateIndexRequest(index).settings(
-                        Settings.builder().put(EngineSettings.ENGINE_TYPE_SETTING.getKey(), EngineSettings.ENGINE_HAVENASK).build()
+                        Settings.builder()
+                            .put(EngineSettings.ENGINE_TYPE_SETTING.getKey(), EngineSettings.ENGINE_HAVENASK)
+                            .put("number_of_replicas", 0)
+                            .build()
                     )
                         .mapping(
                             Map.of(
@@ -114,7 +118,7 @@ public class DocIT extends AbstractHavenaskRestTestCase {
         );
 
         /// get index data count
-        SqlResponse sqlResponse = highLevelClient().havenask().sql(new SqlRequest("select count(*) from " + index), RequestOptions.DEFAULT);
+        SqlResponse sqlResponse = highLevelClient().havenask().sql(new SqlRequest("select count(*) from " + index+"_0"), RequestOptions.DEFAULT);
         assertEquals(sqlResponse.getRowCount(), 1);
         assertEquals(sqlResponse.getSqlResult().getData().length, 1);
         assertEquals(sqlResponse.getSqlResult().getColumnName().length, 1);
@@ -231,7 +235,7 @@ public class DocIT extends AbstractHavenaskRestTestCase {
         highLevelClient().bulk(bulkRequest, RequestOptions.DEFAULT);
 
         // check data using sql search api
-        String sqlStr = "select * from " + index + " where seq=1 AND content='欢迎使用1'";
+        String sqlStr = "select * from " + index + "_0 where seq=1 AND content='欢迎使用1'";
         SqlResponse bulkSqlResponse = highLevelClient().havenask().sql(new SqlRequest(sqlStr), RequestOptions.DEFAULT);
         assertEquals(bulkSqlResponse.getRowCount(), 1);
         assertEquals(bulkSqlResponse.getSqlResult().getData()[0][1], "欢迎使用1");
@@ -251,7 +255,10 @@ public class DocIT extends AbstractHavenaskRestTestCase {
             highLevelClient().indices()
                 .create(
                     new CreateIndexRequest(index).settings(
-                        Settings.builder().put(EngineSettings.ENGINE_TYPE_SETTING.getKey(), EngineSettings.ENGINE_HAVENASK).build()
+                        Settings.builder()
+                            .put(EngineSettings.ENGINE_TYPE_SETTING.getKey(), EngineSettings.ENGINE_HAVENASK)
+                            .put("number_of_replicas", 0)
+                            .build()
                     )
                         .mapping(
                             Map.of(
@@ -340,7 +347,7 @@ public class DocIT extends AbstractHavenaskRestTestCase {
         // check data using sql search api
         String sqlStr = "select * from "
             + index
-            + " where my_keyword='keyword' AND my_text='text' AND my_integer=1 AND my_double=1.5 AND my_boolean='T' ";
+            + "_0 where my_keyword='keyword' AND my_text='text' AND my_integer=1 AND my_double=1.5 AND my_boolean='T' ";
         SqlResponse bulkSqlResponse = highLevelClient().havenask().sql(new SqlRequest(sqlStr), RequestOptions.DEFAULT);
         assertEquals(bulkSqlResponse.getRowCount(), 1);
         assertEquals(bulkSqlResponse.getSqlResult().getData()[0][1], 1);

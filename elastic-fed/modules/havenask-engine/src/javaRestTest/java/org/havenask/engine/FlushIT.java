@@ -28,7 +28,11 @@
 
 package org.havenask.engine;
 
+import java.io.IOException;
+import java.util.concurrent.TimeUnit;
+
 import com.alibaba.fastjson.JSONObject;
+
 import org.apache.http.util.EntityUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -48,9 +52,6 @@ import org.havenask.common.xcontent.XContentType;
 import org.havenask.engine.index.engine.EngineSettings;
 import org.junit.AfterClass;
 import org.junit.Before;
-
-import java.io.IOException;
-import java.util.concurrent.TimeUnit;
 
 public class FlushIT extends AbstractHavenaskRestTestCase {
 
@@ -110,6 +111,7 @@ public class FlushIT extends AbstractHavenaskRestTestCase {
                                 new CreateIndexRequest(index.name).settings(
                                     Settings.builder()
                                         .put(EngineSettings.ENGINE_TYPE_SETTING.getKey(), EngineSettings.ENGINE_HAVENASK)
+                                        .put("number_of_replicas", 0)
                                         .put("refresh_interval", "200ms")
                                         .put("index.havenask.flush.max_doc_count", index.maxDocCount)
                                         .build()
