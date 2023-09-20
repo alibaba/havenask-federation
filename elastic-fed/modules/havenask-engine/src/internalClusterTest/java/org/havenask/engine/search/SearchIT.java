@@ -84,4 +84,47 @@ public class SearchIT extends HavenaskITTestCase {
         SearchResponse searchResponse = client().prepareSearch(index).setSource(searchSourceBuilder).get();
         assertEquals(searchResponse.getHits().getTotalHits().value, 2);
     }
+
+    public void testSourceFilter() throws Exception {
+        String index = "test2";
+        String mapping = "{\n"
+            + "  \"properties\": {\n"
+            + "    \"vector\": {\n"
+            + "      \"type\": \"dense_vector\",\n"
+            + "      \"dims\": 2\n"
+            + "    }\n"
+            + "  }\n"
+            + "}";
+
+        assertTrue(
+            client().admin()
+                .indices()
+                .prepareCreate(index)
+                .setSettings(
+                    Settings.builder()
+                        .put("index.number_of_shards", 1)
+                        .put("index.number_of_replicas", 0)
+                        .put(EngineSettings.ENGINE_TYPE_SETTING.getKey(), EngineSettings.ENGINE_HAVENASK)
+                        .build()
+                )
+                .addMapping("_doc", mapping, XContentType.JSON)
+                .get()
+                .isAcknowledged()
+        );
+
+        assertBusy(() -> {
+            ClusterHealthResponse clusterHealthResponse = client().admin().cluster().health(new ClusterHealthRequest(index)).get();
+            assertEquals(clusterHealthResponse.getStatus(), ClusterHealthStatus.GREEN);
+        }, 2, TimeUnit.MINUTES);
+
+        String[] include = new String[] { "name", "key1" };
+        String[] exclude = new String[] {};
+
+        SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+        HnswQueryBuilder hnswQueryBuilder = new HnswQueryBuilder("vector", new float[] { 1.5f, 2.5f }, 10);
+        searchSourceBuilder.query(hnswQueryBuilder);
+        searchSourceBuilder.fetchSource(include, exclude);
+        SearchResponse searchResponse = client().prepareSearch(index).setSource(searchSourceBuilder).get();
+        assertEquals(searchResponse.getHits().getTotalHits().value, 2);
+    }
 }
