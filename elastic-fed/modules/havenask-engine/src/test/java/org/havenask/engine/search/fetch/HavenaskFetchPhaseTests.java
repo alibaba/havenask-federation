@@ -30,15 +30,27 @@ import static org.mockito.Mockito.when;
 public class HavenaskFetchPhaseTests extends HavenaskTestCase {
     public void testHitExecute() throws IOException {
         String indexName = "test";
-        String[][] includes = new String[][] { { "name" }, {}, { "key1", "length" } };
-        String[][] excludes = new String[][] { {}, { "key1" }, {} };
+        Boolean[] needFilter = new Boolean[] { true, true, true, true, false, true, true };
+        String[][] includes = new String[][] {
+            { "name" },
+            {},
+            { "key1", "length" },
+            { "name", "length" },
+            {},
+            { "na*" },
+            { "na*", "len*" } };
+        String[][] excludes = new String[][] { {}, { "key1" }, {}, { "name" }, {}, {}, { "name" } };
         String[] resSourceStr = new String[] {
             "{\"name\":\"alice\"}",
             "{\"name\":\"alice\",\"length\":1}",
-            "{\"key1\":\"doc1\",\"length\":1}" };
+            "{\"key1\":\"doc1\",\"length\":1}",
+            "{\"length\":1}",
+            "",
+            "{\"name\":\"alice\"}",
+            "{\"length\":1}" };
 
         for (int i = 0; i < includes.length; i++) {
-            FetchSourceContext fetchSourceContext = new FetchSourceContext(true, includes[i], excludes[i]);
+            FetchSourceContext fetchSourceContext = new FetchSourceContext(needFilter[i], includes[i], excludes[i]);
 
             SearchHit searchHit = new SearchHit(-1);
             String sourceStr = "{\n" + "  \"key1\" :\"doc1\",\n" + "  \"name\" :\"alice\",\n" + "  \"length\":1\n" + "}\n";
@@ -56,7 +68,11 @@ public class HavenaskFetchPhaseTests extends HavenaskTestCase {
 
             searchContext.fetchSourceContext(fetchSourceContext);
             FetchSubPhaseProcessor processor = new FetchSourcePhase().getProcessor(searchContext);
-            processor.process(hit);
+            if (processor != null) {
+                processor.process(hit);
+            } else {
+                continue;
+            }
 
             SearchHit res = hit.getHit();
             assertEquals(resSourceStr[i], res.getSourceAsString());
