@@ -15,9 +15,10 @@
 package org.havenask.engine.search;
 
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Arrays;
+import java.util.ArrayList;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -30,33 +31,44 @@ import org.havenask.engine.index.engine.HavenaskIndexSearcher;
 import org.havenask.engine.rpc.QrsClient;
 import org.havenask.engine.rpc.QrsSqlRequest;
 import org.havenask.engine.rpc.QrsSqlResponse;
+import org.havenask.engine.search.fetch.FetchSourcePhase;
+import org.havenask.engine.search.fetch.FetchSubPhaseProcessor;
 import org.havenask.engine.util.Utils;
 import org.havenask.index.mapper.MapperService;
 import org.havenask.search.SearchContextSourcePrinter;
 import org.havenask.search.SearchHit;
 import org.havenask.search.SearchHits;
+import org.havenask.search.SearchShardTarget;
 import org.havenask.search.fetch.DefaultFetchPhase;
 import org.havenask.search.fetch.FetchPhase;
 import org.havenask.search.fetch.FetchPhaseExecutionException;
 import org.havenask.search.fetch.FetchSubPhase;
 import org.havenask.search.internal.SearchContext;
 import org.havenask.tasks.TaskCancelledException;
+import org.havenask.engine.search.fetch.FetchSubPhase.HitContent;
 
 import static org.havenask.engine.search.rest.RestHavenaskSqlAction.SQL_DATABASE;
 
 public class HavenaskFetchPhase implements FetchPhase {
     private final QrsClient qrsHttpClient;
+    private static final int SOURCE_POS = 0;
+    private static final int ID_POS = 1;
 
     private static final Logger LOGGER = LogManager.getLogger(FetchPhase.class);
 
     // TODO fetchSubPhases
     private final List<FetchSubPhase> fetchSubPhases;
     private final DefaultFetchPhase defaultFetchPhase;
+    private final List<org.havenask.engine.search.fetch.FetchSubPhase> HavenaskFetchSubPhases;
 
     public HavenaskFetchPhase(QrsClient qrsHttpClient, List<FetchSubPhase> fetchSubPhases) {
         this.qrsHttpClient = qrsHttpClient;
         this.fetchSubPhases = fetchSubPhases;
         this.defaultFetchPhase = new DefaultFetchPhase(fetchSubPhases);
+
+        // TODO 目前仅支持source过滤，未来增加更多的subPhase并考虑以plugin形式去支持
+        this.HavenaskFetchSubPhases = new ArrayList<>();
+        this.HavenaskFetchSubPhases.add(new FetchSourcePhase());
     }
 
     @Override
@@ -90,13 +102,11 @@ public class HavenaskFetchPhase implements FetchPhase {
             Arrays.sort(docs);
 
             List<String> ids = context.readerContext().getFromContext(HavenaskIndexSearcher.IDS_CONTEXT);
-            context.queryResult();
             SqlResponse sqlResponse = fetchWithSql(docs, ids, context);
-            transferSqlResponse2FetchResult(sqlResponse, context);
+            transferSqlResponse2FetchResult(docs, sqlResponse, context);
         } catch (IOException e) {
             throw new FetchPhaseExecutionException(context.shardTarget(), "Error running havenask fetch phase", e);
         }
-        ;
     }
 
     private SqlResponse fetchWithSql(DocIdToIndex[] docs, List<String> ids, SearchContext context) throws IOException {
@@ -121,23 +131,49 @@ public class HavenaskFetchPhase implements FetchPhase {
         return SqlResponse.parse(response.getResult());
     }
 
-    private void transferSqlResponse2FetchResult(SqlResponse sqlResponse, SearchContext context) {
+    private void transferSqlResponse2FetchResult(DocIdToIndex[] docs, SqlResponse sqlResponse, SearchContext context) throws IOException {
         TotalHits totalHits = context.queryResult().getTotalHits();
         SearchHit[] hits = new SearchHit[sqlResponse.getRowCount()];
 
+        List<FetchSubPhaseProcessor> processors = getProcessors(context.shardTarget(), context);
+
         for (int i = 0; i < sqlResponse.getRowCount(); i++) {
             // TODO add _routing
-            hits[i] = new SearchHit(
-                i,
-                (String) sqlResponse.getSqlResult().getData()[i][1],
+            SearchHit searchHit = new SearchHit(
+                docs[i].docId,
+                (String) sqlResponse.getSqlResult().getData()[i][ID_POS],
                 new Text(MapperService.SINGLE_MAPPING_NAME),
                 Collections.emptyMap(),
                 Collections.emptyMap()
             );
-            hits[i].sourceRef(new BytesArray((String) sqlResponse.getSqlResult().getData()[i][0]));
+            HitContent hit = new HitContent(searchHit, sqlResponse.getSqlResult().getData()[i][SOURCE_POS]);
+            if (processors != null && processors.size() > 0) {
+                for (FetchSubPhaseProcessor processor : processors) {
+                    processor.process(hit);
+                }
+                hits[i] = hit.getHit();
+            } else {
+                hits[i] = hit.getHit();
+                hits[i].sourceRef(new BytesArray((String) sqlResponse.getSqlResult().getData()[i][SOURCE_POS]));
+            }
         }
 
         context.fetchResult().hits(new SearchHits(hits, totalHits, context.queryResult().getMaxScore()));
+    }
+
+    List<FetchSubPhaseProcessor> getProcessors(SearchShardTarget target, SearchContext context) {
+        try {
+            List<FetchSubPhaseProcessor> processors = new ArrayList<>();
+            for (org.havenask.engine.search.fetch.FetchSubPhase fsp : HavenaskFetchSubPhases) {
+                FetchSubPhaseProcessor processor = fsp.getProcessor(context);
+                if (processor != null) {
+                    processors.add(processor);
+                }
+            }
+            return processors;
+        } catch (Exception e) {
+            throw new FetchPhaseExecutionException(target, "Error building fetch sub-phases", e);
+        }
     }
 
     static class DocIdToIndex implements Comparable<DocIdToIndex> {

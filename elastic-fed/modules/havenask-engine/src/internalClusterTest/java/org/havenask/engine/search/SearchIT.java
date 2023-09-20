@@ -84,4 +84,57 @@ public class SearchIT extends HavenaskITTestCase {
         SearchResponse searchResponse = client().prepareSearch(index).setSource(searchSourceBuilder).get();
         assertEquals(searchResponse.getHits().getTotalHits().value, 2);
     }
+
+    public void testSourceFilter() throws Exception {
+        String index = "test2";
+        String mapping = "{\n"
+            + "  \"properties\": {\n"
+            + "    \"vector\": {\n"
+            + "      \"type\": \"dense_vector\",\n"
+            + "      \"dims\": 2\n"
+            + "    }\n"
+            + "  }\n"
+            + "}";
+
+        assertTrue(
+            client().admin()
+                .indices()
+                .prepareCreate(index)
+                .setSettings(
+                    Settings.builder()
+                        .put("index.number_of_shards", 1)
+                        .put("index.number_of_replicas", 0)
+                        .put(EngineSettings.ENGINE_TYPE_SETTING.getKey(), EngineSettings.ENGINE_HAVENASK)
+                        .build()
+                )
+                .addMapping("_doc", mapping, XContentType.JSON)
+                .get()
+                .isAcknowledged()
+        );
+
+        assertBusy(() -> {
+            ClusterHealthResponse clusterHealthResponse = client().admin().cluster().health(new ClusterHealthRequest(index)).get();
+            assertEquals(clusterHealthResponse.getStatus(), ClusterHealthStatus.GREEN);
+        }, 2, TimeUnit.MINUTES);
+
+        String[] include1 = new String[] { "name", "key1" };
+        String[] exclude1 = new String[] {};
+
+        SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+        HnswQueryBuilder hnswQueryBuilder = new HnswQueryBuilder("vector", new float[] { 1.5f, 2.5f }, 10);
+        searchSourceBuilder.query(hnswQueryBuilder);
+        searchSourceBuilder.fetchSource(include1, exclude1);
+        SearchResponse searchResponse = client().prepareSearch(index).setSource(searchSourceBuilder).get();
+        assertEquals(searchResponse.getHits().getTotalHits().value, 2);
+
+        String[] include2 = new String[] {};
+        String[] exclude2 = new String[] { "key1" };
+
+        SearchSourceBuilder searchSourceBuilder2 = new SearchSourceBuilder();
+        HnswQueryBuilder hnswQueryBuilder2 = new HnswQueryBuilder("vector", new float[] { 1.5f, 2.5f }, 10);
+        searchSourceBuilder2.query(hnswQueryBuilder2);
+        searchSourceBuilder2.fetchSource(include2, exclude2);
+        SearchResponse searchResponse2 = client().prepareSearch(index).setSource(searchSourceBuilder2).get();
+        assertEquals(searchResponse2.getHits().getTotalHits().value, 2);
+    }
 }
