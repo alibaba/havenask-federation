@@ -69,7 +69,7 @@ public class BasicIT extends AbstractHavenaskRestTestCase {
         java.util.Map<String, Object> tables = (java.util.Map<String, Object>) ((java.util.Map<String, Object>) (((java.util.Map<
             String,
             Object>) (sqlClientInfoResponse.getResult().get("default"))).get("general"))).get("tables");
-        assertTrue(tables.containsKey(index+"_0"));
+        assertTrue(tables.containsKey(index + "_0"));
 
         assertTrue(highLevelClient().indices().delete(new DeleteIndexRequest(index), RequestOptions.DEFAULT).isAcknowledged());
     }

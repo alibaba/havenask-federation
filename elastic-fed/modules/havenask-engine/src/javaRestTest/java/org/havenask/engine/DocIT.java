@@ -118,7 +118,8 @@ public class DocIT extends AbstractHavenaskRestTestCase {
         );
 
         /// get index data count
-        SqlResponse sqlResponse = highLevelClient().havenask().sql(new SqlRequest("select count(*) from " + index+"_0"), RequestOptions.DEFAULT);
+        SqlResponse sqlResponse = highLevelClient().havenask()
+            .sql(new SqlRequest("select count(*) from " + index + "_0"), RequestOptions.DEFAULT);
         assertEquals(sqlResponse.getRowCount(), 1);
         assertEquals(sqlResponse.getSqlResult().getData().length, 1);
         assertEquals(sqlResponse.getSqlResult().getColumnName().length, 1);

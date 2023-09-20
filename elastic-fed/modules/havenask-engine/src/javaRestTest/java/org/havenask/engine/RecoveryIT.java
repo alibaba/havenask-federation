@@ -145,7 +145,8 @@ public class RecoveryIT extends AbstractHavenaskRestTestCase {
         }, 2, TimeUnit.MINUTES);
 
         // check recovery result
-        SqlResponse recoveryResponse = highLevelClient().havenask().sql(new SqlRequest("select * from " + index +"_0"), RequestOptions.DEFAULT);
+        SqlResponse recoveryResponse = highLevelClient().havenask()
+            .sql(new SqlRequest("select * from " + index + "_0"), RequestOptions.DEFAULT);
         assertEquals(testDocCount, recoveryResponse.getRowCount());
     }
 
