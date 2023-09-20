@@ -49,11 +49,11 @@ public final class FetchSourcePhase implements FetchSubPhase {
     }
 
     private void hitExecute(String indexName, FetchSourceContext fetchSourceContext, HitContent hitContent) {
-        BytesReference sourceAsBytes = new BytesArray((String) hitContent.sqlResponse.getSqlResult().getData()[hitContent.index][0]);
+        BytesReference sourceAsBytes = new BytesArray((String) hitContent.source);
         SourceContent sourceContent = loadSource(sourceAsBytes);
 
         // If source is disabled in the mapping, then attempt to return early.
-        if (sourceContent.source == null && sourceContent.sourceAsBytes == null) {
+        if (sourceContent.getSourceAsMap() == null && sourceContent.getSourceAsBytes() == null) {
             if (containsFilters(fetchSourceContext)) {
                 throw new IllegalArgumentException(
                     "unable to fetch fields from _source field: _source is disabled in the mappings " + "for index [" + indexName + "]"
@@ -63,11 +63,11 @@ public final class FetchSourcePhase implements FetchSubPhase {
         }
 
         // filter the source and add it to the hit.
-        Object value = fetchSourceContext.getFilter().apply(sourceContent.getSource());
+        Object value = fetchSourceContext.getFilter().apply(sourceContent.getSourceAsMap());
         try {
             final int initialCapacity = Math.min(1024, sourceAsBytes.length());
             BytesStreamOutput streamOutput = new BytesStreamOutput(initialCapacity);
-            XContentBuilder builder = new XContentBuilder(sourceContent.sourceContentType.xContent(), streamOutput);
+            XContentBuilder builder = new XContentBuilder(sourceContent.getSourceContentType().xContent(), streamOutput);
             if (value != null) {
                 builder.value(value);
             } else {
@@ -94,12 +94,12 @@ public final class FetchSourcePhase implements FetchSubPhase {
 
     public class SourceContent {
         private BytesReference sourceAsBytes;
-        private Map<String, Object> source;
+        private Map<String, Object> sourceAsMap;
         private XContentType sourceContentType;
 
         public SourceContent(BytesReference sourceAsBytes, Map<String, Object> source, XContentType sourceContentType) {
             this.sourceAsBytes = sourceAsBytes;
-            this.source = source;
+            this.sourceAsMap = source;
             this.sourceContentType = sourceContentType;
         }
 
@@ -107,8 +107,8 @@ public final class FetchSourcePhase implements FetchSubPhase {
             return sourceAsBytes;
         }
 
-        public Map<String, Object> getSource() {
-            return source;
+        public Map<String, Object> getSourceAsMap() {
+            return sourceAsMap;
         }
 
         public XContentType getSourceContentType() {

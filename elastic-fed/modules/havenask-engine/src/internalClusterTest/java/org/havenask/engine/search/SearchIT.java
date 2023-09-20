@@ -117,14 +117,24 @@ public class SearchIT extends HavenaskITTestCase {
             assertEquals(clusterHealthResponse.getStatus(), ClusterHealthStatus.GREEN);
         }, 2, TimeUnit.MINUTES);
 
-        String[] include = new String[] { "name", "key1" };
-        String[] exclude = new String[] {};
+        String[] include1 = new String[] { "name", "key1" };
+        String[] exclude1 = new String[] {};
 
         SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
         HnswQueryBuilder hnswQueryBuilder = new HnswQueryBuilder("vector", new float[] { 1.5f, 2.5f }, 10);
         searchSourceBuilder.query(hnswQueryBuilder);
-        searchSourceBuilder.fetchSource(include, exclude);
+        searchSourceBuilder.fetchSource(include1, exclude1);
         SearchResponse searchResponse = client().prepareSearch(index).setSource(searchSourceBuilder).get();
         assertEquals(searchResponse.getHits().getTotalHits().value, 2);
+
+        String[] include2 = new String[] {};
+        String[] exclude2 = new String[] { "key1" };
+
+        SearchSourceBuilder searchSourceBuilder2 = new SearchSourceBuilder();
+        HnswQueryBuilder hnswQueryBuilder2 = new HnswQueryBuilder("vector", new float[] { 1.5f, 2.5f }, 10);
+        searchSourceBuilder2.query(hnswQueryBuilder2);
+        searchSourceBuilder2.fetchSource(include2, exclude2);
+        SearchResponse searchResponse2 = client().prepareSearch(index).setSource(searchSourceBuilder2).get();
+        assertEquals(searchResponse2.getHits().getTotalHits().value, 2);
     }
 }
