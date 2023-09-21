@@ -39,6 +39,16 @@
 
 package org.havenask.index.query;
 
+import java.io.IOException;
+import java.math.BigInteger;
+import java.nio.CharBuffer;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Objects;
+
 import org.apache.lucene.search.BoostQuery;
 import org.apache.lucene.search.MatchNoDocsQuery;
 import org.apache.lucene.search.Query;
@@ -57,16 +67,6 @@ import org.havenask.common.xcontent.SuggestingErrorOnUnknown;
 import org.havenask.common.xcontent.XContentBuilder;
 import org.havenask.common.xcontent.XContentLocation;
 import org.havenask.common.xcontent.XContentParser;
-
-import java.io.IOException;
-import java.math.BigInteger;
-import java.nio.CharBuffer;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Objects;
 
 /**
  * Base class for all classes producing lucene queries.
@@ -270,14 +270,14 @@ public abstract class AbstractQueryBuilder<QB extends AbstractQueryBuilder<QB>> 
         return getWriteableName();
     }
 
-    static void writeQueries(StreamOutput out, List<? extends QueryBuilder> queries) throws IOException {
+    protected static void writeQueries(StreamOutput out, List<? extends QueryBuilder> queries) throws IOException {
         out.writeVInt(queries.size());
         for (QueryBuilder query : queries) {
             out.writeNamedWriteable(query);
         }
     }
 
-    static List<QueryBuilder> readQueries(StreamInput in) throws IOException {
+    protected static List<QueryBuilder> readQueries(StreamInput in) throws IOException {
         int size = in.readVInt();
         List<QueryBuilder> queries = new ArrayList<>(size);
         for (int i = 0; i < size; i++) {
