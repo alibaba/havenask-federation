@@ -231,9 +231,7 @@ public class SchemaGenerator {
             schema.minFloatLong = Long.MIN_VALUE / schema.floatToLongMul;
         }
 
-        vectorIndices.forEach(vectorIndex -> {
-            schema.indexs.add(vectorIndex);
-        });
+        vectorIndices.forEach(vectorIndex -> { schema.indexs.add(vectorIndex); });
 
         return schema;
     }
