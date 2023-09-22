@@ -141,23 +141,6 @@ public class KnnSearchBuilder extends SearchExtBuilder implements Writeable, ToX
         this.similarity = similarity;
     }
 
-    private KnnSearchBuilder(
-        String field,
-        Supplier<float[]> querySupplier,
-        int k,
-        int numCands,
-        List<QueryBuilder> filterQueries,
-        Float similarity
-    ) {
-        this.field = field;
-        this.queryVector = new float[0];
-        this.k = k;
-        this.numCands = numCands;
-        this.filterQueries = filterQueries;
-        this.querySupplier = querySupplier;
-        this.similarity = similarity;
-    }
-
     public KnnSearchBuilder(StreamInput in) throws IOException {
         this.field = in.readString();
         this.k = in.readVInt();

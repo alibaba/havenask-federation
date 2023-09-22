@@ -283,7 +283,7 @@ public final class SearchSourceBuilder implements Writeable, ToXContentObject, R
             seqNoAndPrimaryTerm = null;
         }
         // 解决版本兼容性问题, knnsearch放在ext列表中
-        List<SearchExtBuilder> mixedExtBuilders = in.readNamedWriteableList(SearchExtBuilder.class);
+        List<SearchExtBuilder> mixedExtBuilders = new ArrayList<>(in.readNamedWriteableList(SearchExtBuilder.class));
         mixedExtBuilders.removeIf(ext -> {
             if (ext instanceof KnnSearchBuilder) {
                 knnSearch.add((KnnSearchBuilder) ext);
@@ -367,7 +367,7 @@ public final class SearchSourceBuilder implements Writeable, ToXContentObject, R
             out.writeOptionalBoolean(seqNoAndPrimaryTerm);
         }
 
-        List<SearchExtBuilder> mixedExtBuilders = extBuilders;
+        List<SearchExtBuilder> mixedExtBuilders = new ArrayList<>(extBuilders);
         mixedExtBuilders.addAll(knnSearch);
         out.writeNamedWriteableList(mixedExtBuilders);
         out.writeBoolean(profile);
