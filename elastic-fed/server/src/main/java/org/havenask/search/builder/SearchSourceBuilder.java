@@ -1099,7 +1099,8 @@ public final class SearchSourceBuilder implements Writeable, ToXContentObject, R
                 || aggregations != this.aggregations || rescoreBuilders != this.rescoreBuilders || sorts != this.sorts ||
                 this.highlightBuilder != highlightBuilder;
         if (rewritten) {
-            return shallowCopy(queryBuilder, postQueryBuilder, knnSearch, aggregations, this.sliceBuilder, sorts, rescoreBuilders, highlightBuilder);
+            return shallowCopy(queryBuilder, postQueryBuilder, knnSearch, aggregations, this.sliceBuilder, sorts,
+                rescoreBuilders, highlightBuilder);
         }
         return this;
     }
@@ -1115,9 +1116,10 @@ public final class SearchSourceBuilder implements Writeable, ToXContentObject, R
      * Create a shallow copy of this source replaced {@link #queryBuilder}, {@link #postQueryBuilder}, and {@link #sliceBuilder}. Used by
      * {@link #rewrite(QueryRewriteContext)}}.
      */
-    private SearchSourceBuilder shallowCopy(QueryBuilder queryBuilder, QueryBuilder postQueryBuilder, List<KnnSearchBuilder> knnSearch,
-                                            AggregatorFactories.Builder aggregations, SliceBuilder slice, List<SortBuilder<?>> sorts,
-                                            List<RescorerBuilder> rescoreBuilders, HighlightBuilder highlightBuilder) {
+    private SearchSourceBuilder shallowCopy(QueryBuilder queryBuilder, QueryBuilder postQueryBuilder,
+        List<KnnSearchBuilder> knnSearch,
+        AggregatorFactories.Builder aggregations, SliceBuilder slice, List<SortBuilder<?>> sorts,
+        List<RescorerBuilder> rescoreBuilders, HighlightBuilder highlightBuilder) {
         SearchSourceBuilder rewrittenBuilder = new SearchSourceBuilder();
         rewrittenBuilder.aggregations = aggregations;
         rewrittenBuilder.explain = explain;
