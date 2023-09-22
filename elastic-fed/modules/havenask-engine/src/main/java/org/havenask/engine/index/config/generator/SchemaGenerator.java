@@ -32,6 +32,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
@@ -123,6 +124,7 @@ public class SchemaGenerator {
 
         schema.indexs.add(new Schema.PRIMARYKEYIndex(IdFieldMapper.NAME, IdFieldMapper.NAME));
 
+        List<VectorIndex> vectorIndices = new ArrayList<>();
         for (MappedFieldType field : mapperService.fieldTypes()) {
             String haFieldType = Ha3FieldType.get(field.typeName());
             String fieldName = field.name();
@@ -147,7 +149,8 @@ public class SchemaGenerator {
             // deal vector index
             if (field instanceof DenseVectorFieldType) {
                 DenseVectorFieldType vectorField = (DenseVectorFieldType) field;
-                indexVectorField(vectorField, fieldName, schema, haFieldType);
+                VectorIndex vectorIndex = indexVectorField(vectorField, fieldName, schema, haFieldType);
+                vectorIndices.add(vectorIndex);
                 continue;
             }
 
@@ -228,10 +231,12 @@ public class SchemaGenerator {
             schema.minFloatLong = Long.MIN_VALUE / schema.floatToLongMul;
         }
 
+        vectorIndices.forEach(vectorIndex -> { schema.indexs.add(vectorIndex); });
+
         return schema;
     }
 
-    private void indexVectorField(DenseVectorFieldType vectorField, String fieldName, Schema schema, String haFieldType) {
+    private VectorIndex indexVectorField(DenseVectorFieldType vectorField, String fieldName, Schema schema, String haFieldType) {
         schema.fields.add(new Schema.FieldInfo(fieldName, haFieldType));
         String dupFieldName = DUP_PREFIX + fieldName;
         schema.getDupFields().add(fieldName);
@@ -309,8 +314,7 @@ public class SchemaGenerator {
         } else {
             // parameter.put("index_type", "linear");
         }
-        VectorIndex vectorIndex = new Schema.VectorIndex(fieldName, indexFields, parameter);
-        schema.indexs.add(vectorIndex);
+        return new Schema.VectorIndex(fieldName, indexFields, parameter);
     }
 
     // TODO: understand these flags.
