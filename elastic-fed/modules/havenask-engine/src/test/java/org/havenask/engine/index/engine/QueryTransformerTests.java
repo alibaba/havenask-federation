@@ -113,10 +113,7 @@ public class QueryTransformerTests extends HavenaskTestCase {
             )
         );
         String sql = QueryTransformer.toSql("table", builder);
-        assertEquals(
-            sql,
-            "select _id from table where MATCHINDEX('field1', '1.0,2.0&n=20') or MATCHINDEX('field2', '3.0,4.0&n=10')"
-        );
+        assertEquals(sql, "select _id from table where MATCHINDEX('field1', '1.0,2.0&n=20') or MATCHINDEX('field2', '3.0,4.0&n=10')");
     }
 
     // test unsupported knn dsl
