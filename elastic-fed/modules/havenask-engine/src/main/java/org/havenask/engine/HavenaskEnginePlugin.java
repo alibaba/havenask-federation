@@ -46,7 +46,6 @@ import org.havenask.engine.index.engine.EngineSettings;
 import org.havenask.engine.index.engine.HavenaskEngine;
 import org.havenask.engine.index.mapper.DenseVectorFieldMapper;
 import org.havenask.engine.index.query.HnswQueryBuilder;
-import org.havenask.engine.index.query.KnnSearchBuilder;
 import org.havenask.engine.index.query.LinearQueryBuilder;
 import org.havenask.engine.rpc.HavenaskClient;
 import org.havenask.engine.rpc.QrsClient;
@@ -83,7 +82,6 @@ import org.havenask.repositories.RepositoriesService;
 import org.havenask.rest.RestController;
 import org.havenask.rest.RestHandler;
 import org.havenask.script.ScriptService;
-import org.havenask.search.SearchExtBuilder;
 import org.havenask.search.fetch.FetchPhase;
 import org.havenask.search.fetch.FetchSubPhase;
 import org.havenask.threadpool.ExecutorBuilder;
@@ -313,13 +311,5 @@ public class HavenaskEnginePlugin extends Plugin
         QrsClient qrsClient = new QrsHttpClient(port);
         qrsClientSetOnce.set(qrsClient);
         return new HavenaskFetchPhase(qrsClientSetOnce.get(), fetchSubPhases);
-    }
-
-    /**
-     * The new {@link SearchExtBuilder}s defined by this plugin.
-     */
-    @Override
-    public List<SearchExtSpec<?>> getSearchExts() {
-        return Collections.singletonList(new SearchExtSpec<>(KnnSearchBuilder.NAME, KnnSearchBuilder::new, KnnSearchBuilder::fromXContent));
     }
 }

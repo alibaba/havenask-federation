@@ -18,8 +18,8 @@ import java.io.IOException;
 
 import org.havenask.common.collect.List;
 import org.havenask.engine.index.query.HnswQueryBuilder;
-import org.havenask.engine.index.query.KnnSearchBuilder;
 import org.havenask.index.query.QueryBuilders;
+import org.havenask.search.builder.KnnSearchBuilder;
 import org.havenask.search.builder.SearchSourceBuilder;
 import org.havenask.test.HavenaskTestCase;
 
@@ -97,92 +97,26 @@ public class QueryTransformerTests extends HavenaskTestCase {
     public void testKnnDsl() throws IOException {
         SearchSourceBuilder builder = new SearchSourceBuilder();
         builder.query(QueryBuilders.matchAllQuery());
-        builder.ext(List.of(new KnnSearchBuilder("field", new float[] { 1.0f, 2.0f }, 20, 20, null)));
+        builder.knnSearch(List.of(new KnnSearchBuilder("field", new float[] { 1.0f, 2.0f }, 20, 20, null)));
         String sql = QueryTransformer.toSql("table", builder);
         assertEquals(sql, "select _id from table where MATCHINDEX('field', '1.0,2.0&n=20')");
     }
-
-    /**
-     * public class QueryTransformer {
-     *     public static String toSql(String table, SearchSourceBuilder dsl) throws IOException {
-     *         StringBuilder sqlQuery = new StringBuilder();
-     *         sqlQuery.append("select _id from " + table);
-     *         QueryBuilder queryBuilder = dsl.query();
-     *         StringBuilder where = new StringBuilder();
-     *         if (dsl.ext().size() > 0) {
-     *             for (SearchExtBuilder ext : dsl.ext()) {
-     *                 if (ext instanceof KnnSearchBuilder) {
-     *                     KnnSearchBuilder knnSearchBuilder = (KnnSearchBuilder) ext;
-     *                     if (knnSearchBuilder.getFilterQueries().size() > 0 || knnSearchBuilder.getSimilarity() !=
-     *                     null) {
-     *                         throw new IOException("unsupported knn parameter: " + dsl);
-     *                     }
-     *
-     *                     where.append(" where MATCHINDEX('" + knnSearchBuilder.getField() + "', '");
-     *                     for (int i = 0; i < knnSearchBuilder.getQueryVector().length; i++) {
-     *                         where.append(knnSearchBuilder.getQueryVector()[i]);
-     *                         if (i < knnSearchBuilder.getQueryVector().length - 1) {
-     *                             where.append(",");
-     *                         }
-     *                     }
-     *                     where.append("&n=" + knnSearchBuilder.k() + "')");
-     *                     break;
-     *                 }
-     *             }
-     *         } else if (queryBuilder != null) {
-     *             if (queryBuilder instanceof MatchAllQueryBuilder) {
-     *
-     *             } else if (queryBuilder instanceof ProximaQueryBuilder) {
-     *                 ProximaQueryBuilder<?> proximaQueryBuilder = (ProximaQueryBuilder<?>) queryBuilder;
-     *                 where.append(" where MATCHINDEX('" + proximaQueryBuilder.getFieldName() + "', '");
-     *                 for (int i = 0; i < proximaQueryBuilder.getVector().length; i++) {
-     *                     where.append(proximaQueryBuilder.getVector()[i]);
-     *                     if (i < proximaQueryBuilder.getVector().length - 1) {
-     *                         where.append(",");
-     *                     }
-     *                 }
-     *                 where.append("&n=" + proximaQueryBuilder.getSize() + "')");
-     *             } else if (queryBuilder instanceof TermQueryBuilder) {
-     *                 TermQueryBuilder termQueryBuilder = (TermQueryBuilder) queryBuilder;
-     *                 where.append(" where " + termQueryBuilder.fieldName() + "='" + termQueryBuilder.value() + "'");
-     *             } else if (queryBuilder instanceof MatchQueryBuilder) {
-     *                 MatchQueryBuilder matchQueryBuilder = (MatchQueryBuilder) queryBuilder;
-     *                 where.append(" where MATCHINDEX('" + matchQueryBuilder.fieldName() + "', '" +
-     *                 matchQueryBuilder.value() + "')");
-     *             } else {
-     *                 // TODO reject unsupported DSL
-     *                 throw new IOException("unsupported DSL: " + dsl);
-     *             }
-     *         }
-     *         sqlQuery.append(where);
-     *         int size = 0;
-     *         if (dsl.size() >= 0) {
-     *             size += dsl.size();
-     *             if (dsl.from() >= 0) {
-     *                 size += dsl.from();
-     *             }
-     *         }
-     *
-     *         if (size > 0) {
-     *             sqlQuery.append(" limit " + size);
-     *         }
-     *         return sqlQuery.toString();
-     *     }
-     * }
-     */
 
     // test unsupported knn dsl
     public void testUnsupportedKnnDsl() {
         try {
             SearchSourceBuilder builder = new SearchSourceBuilder();
             builder.query(QueryBuilders.matchAllQuery());
-            builder.ext(List.of(new KnnSearchBuilder("field", new float[] { 1.0f, 2.0f }, 20, 20, 1.0f)));
+            builder.knnSearch(List.of(new KnnSearchBuilder("field", new float[] { 1.0f, 2.0f }, 20, 20, 1.0f)));
             QueryTransformer.toSql("table", builder);
             fail();
         } catch (IOException e) {
-            assertEquals(e.getMessage(), "unsupported knn parameter: {\"query\":{\"match_all\":{\"boost\":1.0}},"
-                + "\"ext\":{\"field\":\"field\",\"k\":20,\"num_candidates\":20,\"query_vector\":[1.0,2.0],"
-                + "\"similarity\":1.0}}");
+            assertEquals(
+                e.getMessage(),
+                "unsupported knn parameter: {\"query\":{\"match_all\":{\"boost\":1.0}},"
+                    + "\"knn\":[{\"field\":\"field\",\"k\":20,\"num_candidates\":20,\"query_vector\":[1.0,2.0],"
+                    + "\"similarity\":1.0}]}"
+            );
         }
 
         // unsupported getFilterQueries
@@ -191,13 +125,16 @@ public class QueryTransformerTests extends HavenaskTestCase {
             builder.query(QueryBuilders.matchAllQuery());
             KnnSearchBuilder knnSearchBuilder = new KnnSearchBuilder("field", new float[] { 1.0f, 2.0f }, 20, 20, null);
             knnSearchBuilder.addFilterQuery(QueryBuilders.matchAllQuery());
-            builder.ext(List.of(knnSearchBuilder));
+            builder.knnSearch(List.of(knnSearchBuilder));
             QueryTransformer.toSql("table", builder);
             fail();
         } catch (IOException e) {
-            assertEquals(e.getMessage(), "unsupported knn parameter: {\"query\":{\"match_all\":{\"boost\":1.0}},"
-                + "\"ext\":{\"field\":\"field\",\"k\":20,\"num_candidates\":20,\"query_vector\":[1.0,2.0],"
-                + "\"filter\":[{\"match_all\":{\"boost\":1.0}}]}}");
+            assertEquals(
+                e.getMessage(),
+                "unsupported knn parameter: {\"query\":{\"match_all\":{\"boost\":1.0}},"
+                    + "\"knn\":[{\"field\":\"field\",\"k\":20,\"num_candidates\":20,\"query_vector\":[1.0,2.0],"
+                    + "\"filter\":[{\"match_all\":{\"boost\":1.0}}]}]}"
+            );
         }
     }
 }
