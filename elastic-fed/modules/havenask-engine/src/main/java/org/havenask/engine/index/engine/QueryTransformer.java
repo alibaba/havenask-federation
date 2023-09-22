@@ -31,12 +31,22 @@ public class QueryTransformer {
         QueryBuilder queryBuilder = dsl.query();
         StringBuilder where = new StringBuilder();
         if (dsl.knnSearch().size() > 0) {
+            where.append(" where ");
+            boolean first = true;
             for (KnnSearchBuilder knnSearchBuilder : dsl.knnSearch()) {
                 if (knnSearchBuilder.getFilterQueries().size() > 0 || knnSearchBuilder.getSimilarity() != null) {
                     throw new IOException("unsupported knn parameter: " + dsl);
                 }
 
-                where.append(" where MATCHINDEX('" + knnSearchBuilder.getField() + "', '");
+                if (false == first) {
+                    where.append(" or ");
+                }
+
+                if (first) {
+                    first = false;
+                }
+
+                where.append("MATCHINDEX('" + knnSearchBuilder.getField() + "', '");
                 for (int i = 0; i < knnSearchBuilder.getQueryVector().length; i++) {
                     where.append(knnSearchBuilder.getQueryVector()[i]);
                     if (i < knnSearchBuilder.getQueryVector().length - 1) {
@@ -44,7 +54,6 @@ public class QueryTransformer {
                     }
                 }
                 where.append("&n=" + knnSearchBuilder.k() + "')");
-                break;
             }
         } else if (queryBuilder != null) {
             if (queryBuilder instanceof MatchAllQueryBuilder) {

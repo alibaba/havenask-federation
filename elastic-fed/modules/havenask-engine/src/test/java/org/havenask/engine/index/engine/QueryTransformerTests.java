@@ -102,6 +102,23 @@ public class QueryTransformerTests extends HavenaskTestCase {
         assertEquals(sql, "select _id from table where MATCHINDEX('field', '1.0,2.0&n=20')");
     }
 
+    // test multi knn dsl
+    public void testMultiKnnDsl() throws IOException {
+        SearchSourceBuilder builder = new SearchSourceBuilder();
+        builder.query(QueryBuilders.matchAllQuery());
+        builder.knnSearch(
+            List.of(
+                new KnnSearchBuilder("field1", new float[] { 1.0f, 2.0f }, 20, 20, null),
+                new KnnSearchBuilder("field2", new float[] { 3.0f, 4.0f }, 10, 10, null)
+            )
+        );
+        String sql = QueryTransformer.toSql("table", builder);
+        assertEquals(
+            sql,
+            "select _id from table where MATCHINDEX('field1', '1.0,2.0&n=20') or MATCHINDEX('field2', '3.0,4.0&n=10')"
+        );
+    }
+
     // test unsupported knn dsl
     public void testUnsupportedKnnDsl() {
         try {
