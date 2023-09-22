@@ -71,7 +71,7 @@ public class KnnSearchBuilder extends SearchExtBuilder implements Writeable, ToX
             (String) args[0],
             vectorArray,
             (int) args[2],
-            (int) args[3],
+            args[3] != null ? (int) args[3] : (int) args[2],
             (Float) args[4]
         );
     });
@@ -80,7 +80,7 @@ public class KnnSearchBuilder extends SearchExtBuilder implements Writeable, ToX
         PARSER.declareString(constructorArg(), FIELD_FIELD);
         PARSER.declareFloatArray(optionalConstructorArg(), QUERY_VECTOR_FIELD);
         PARSER.declareInt(constructorArg(), K_FIELD);
-        PARSER.declareInt(constructorArg(), NUM_CANDS_FIELD);
+        PARSER.declareInt(optionalConstructorArg(), NUM_CANDS_FIELD);
         PARSER.declareFloat(optionalConstructorArg(), VECTOR_SIMILARITY);
         PARSER.declareFieldArray(
             KnnSearchBuilder::addFilterQueries,
