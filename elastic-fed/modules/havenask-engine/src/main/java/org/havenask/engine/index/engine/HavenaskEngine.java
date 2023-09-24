@@ -642,12 +642,14 @@ public class HavenaskEngine extends InternalEngine {
 
         Tuple<Long, Long> tuple = Utils.getVersionAndIndexCheckpoint(env.getRuntimedataPath().resolve(tableName));
         if (tuple == null) {
-            logger.debug("havenask engine maybeRefresh failed, checkpoint not found, source: {}, time: {}, checkpoint: {}, havenask time point: {}, current checkpoint: {}",
+            logger.debug(
+                "havenask engine maybeRefresh failed, checkpoint not found, source: {}, time: {}, checkpoint: {}, havenask time point: {}, current checkpoint: {}",
                 source,
                 time,
                 checkpoint,
                 -1,
-                -1);
+                -1
+            );
             return false;
         }
 
