@@ -641,6 +641,16 @@ public class HavenaskEngine extends InternalEngine {
         checkpointCalc.addCheckpoint(time, checkpoint);
 
         Tuple<Long, Long> tuple = Utils.getVersionAndIndexCheckpoint(env.getRuntimedataPath().resolve(tableName));
+        if (tuple == null) {
+            logger.debug("havenask engine maybeRefresh failed, checkpoint not found, source: {}, time: {}, checkpoint: {}, havenask time point: {}, current checkpoint: {}",
+                source,
+                time,
+                checkpoint,
+                -1,
+                -1);
+            return false;
+        }
+
         long segmentVersion = tuple.v1();
         Long havenaskTime = tuple.v2();
         long havenaskTimePoint;
