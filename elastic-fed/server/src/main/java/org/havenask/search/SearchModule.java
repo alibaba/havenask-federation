@@ -39,11 +39,6 @@
 
 package org.havenask.search;
 
-import static java.util.Collections.unmodifiableList;
-import static java.util.Collections.unmodifiableMap;
-import static java.util.Objects.requireNonNull;
-import static org.havenask.index.query.CommonTermsQueryBuilder.COMMON_TERMS_QUERY_DEPRECATION_MSG;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -276,6 +271,7 @@ import org.havenask.search.aggregations.pipeline.StatsBucketPipelineAggregator;
 import org.havenask.search.aggregations.pipeline.SumBucketPipelineAggregationBuilder;
 import org.havenask.search.aggregations.pipeline.SumBucketPipelineAggregator;
 import org.havenask.search.aggregations.support.ValuesSourceRegistry;
+import org.havenask.search.builder.KnnSearchBuilder;
 import org.havenask.search.fetch.DefaultFetchPhase;
 import org.havenask.search.fetch.FetchPhase;
 import org.havenask.search.fetch.FetchSubPhase;
@@ -313,6 +309,11 @@ import org.havenask.search.suggest.phrase.SmoothingModel;
 import org.havenask.search.suggest.phrase.StupidBackoff;
 import org.havenask.search.suggest.term.TermSuggestion;
 import org.havenask.search.suggest.term.TermSuggestionBuilder;
+
+import static java.util.Collections.unmodifiableList;
+import static java.util.Collections.unmodifiableMap;
+import static java.util.Objects.requireNonNull;
+import static org.havenask.index.query.CommonTermsQueryBuilder.COMMON_TERMS_QUERY_DEPRECATION_MSG;
 
 /**
  * Sets up things that can be done at search time like queries, aggregations, and suggesters.
@@ -882,6 +883,7 @@ public class SearchModule {
     }
 
     private void registerSearchExts(List<SearchPlugin> plugins) {
+        registerSearchExt(new SearchExtSpec<>(KnnSearchBuilder.NAME, KnnSearchBuilder::new, KnnSearchBuilder::fromXContent));
         registerFromPlugin(plugins, SearchPlugin::getSearchExts, this::registerSearchExt);
     }
 

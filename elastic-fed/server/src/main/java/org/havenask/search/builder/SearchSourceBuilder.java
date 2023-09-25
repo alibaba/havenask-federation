@@ -39,8 +39,16 @@
 
 package org.havenask.search.builder;
 
-import org.havenask.LegacyESVersion;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.Objects;
+import java.util.stream.Collectors;
+
 import org.havenask.HavenaskException;
+import org.havenask.LegacyESVersion;
 import org.havenask.common.Booleans;
 import org.havenask.common.Nullable;
 import org.havenask.common.ParseField;
@@ -55,6 +63,7 @@ import org.havenask.common.xcontent.ToXContentFragment;
 import org.havenask.common.xcontent.ToXContentObject;
 import org.havenask.common.xcontent.XContentBuilder;
 import org.havenask.common.xcontent.XContentHelper;
+import org.havenask.common.xcontent.XContentParseException;
 import org.havenask.common.xcontent.XContentParser;
 import org.havenask.common.xcontent.XContentType;
 import org.havenask.index.query.QueryBuilder;
@@ -80,13 +89,6 @@ import org.havenask.search.sort.SortBuilders;
 import org.havenask.search.sort.SortOrder;
 import org.havenask.search.suggest.SuggestBuilder;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Objects;
-import java.util.stream.Collectors;
-
 import static org.havenask.index.query.AbstractQueryBuilder.parseInnerQueryBuilder;
 import static org.havenask.search.internal.SearchContext.TRACK_TOTAL_HITS_ACCURATE;
 import static org.havenask.search.internal.SearchContext.TRACK_TOTAL_HITS_DISABLED;
@@ -107,6 +109,7 @@ public final class SearchSourceBuilder implements Writeable, ToXContentObject, R
     public static final ParseField TERMINATE_AFTER_FIELD = new ParseField("terminate_after");
     public static final ParseField QUERY_FIELD = new ParseField("query");
     public static final ParseField POST_FILTER_FIELD = new ParseField("post_filter");
+    public static final ParseField KNN_FIELD = new ParseField("knn");
     public static final ParseField MIN_SCORE_FIELD = new ParseField("min_score");
     public static final ParseField VERSION_FIELD = new ParseField("version");
     public static final ParseField SEQ_NO_PRIMARY_TERM_FIELD = new ParseField("seq_no_primary_term");
@@ -162,6 +165,8 @@ public final class SearchSourceBuilder implements Writeable, ToXContentObject, R
     private QueryBuilder queryBuilder;
 
     private QueryBuilder postQueryBuilder;
+
+    private List<KnnSearchBuilder> knnSearch = new ArrayList<>();
 
     private int from = -1;
 
@@ -277,7 +282,17 @@ public final class SearchSourceBuilder implements Writeable, ToXContentObject, R
         } else {
             seqNoAndPrimaryTerm = null;
         }
-        extBuilders = in.readNamedWriteableList(SearchExtBuilder.class);
+        // 解决版本兼容性问题, knnsearch放在ext列表中
+        List<SearchExtBuilder> mixedExtBuilders = new ArrayList<>(in.readNamedWriteableList(SearchExtBuilder.class));
+        mixedExtBuilders.removeIf(ext -> {
+            if (ext instanceof KnnSearchBuilder) {
+                knnSearch.add((KnnSearchBuilder) ext);
+                return true;
+            }
+            return false;
+        });
+        extBuilders = mixedExtBuilders;
+
         profile = in.readBoolean();
         searchAfterBuilder = in.readOptionalWriteable(SearchAfterBuilder::new);
         sliceBuilder = in.readOptionalWriteable(SliceBuilder::new);
@@ -351,7 +366,10 @@ public final class SearchSourceBuilder implements Writeable, ToXContentObject, R
         if (out.getVersion().onOrAfter(LegacyESVersion.V_6_7_0)) {
             out.writeOptionalBoolean(seqNoAndPrimaryTerm);
         }
-        out.writeNamedWriteableList(extBuilders);
+
+        List<SearchExtBuilder> mixedExtBuilders = new ArrayList<>(extBuilders);
+        mixedExtBuilders.addAll(knnSearch);
+        out.writeNamedWriteableList(mixedExtBuilders);
         out.writeBoolean(profile);
         out.writeOptionalWriteable(searchAfterBuilder);
         out.writeOptionalWriteable(sliceBuilder);
@@ -404,6 +422,22 @@ public final class SearchSourceBuilder implements Writeable, ToXContentObject, R
      */
     public QueryBuilder postFilter() {
         return postQueryBuilder;
+    }
+
+    /**
+     * Defines a kNN search. If a query is also provided, the kNN hits
+     * are combined with the query hits.
+     */
+    public SearchSourceBuilder knnSearch(List<KnnSearchBuilder> knnSearch) {
+        this.knnSearch = Objects.requireNonNull(knnSearch);
+        return this;
+    }
+
+    /**
+     * An optional kNN search definition.
+     */
+    public List<KnnSearchBuilder> knnSearch() {
+        return Collections.unmodifiableList(knnSearch);
     }
 
     /**
@@ -1011,7 +1045,7 @@ public final class SearchSourceBuilder implements Writeable, ToXContentObject, R
      */
     public boolean isSuggestOnly() {
         return suggestBuilder != null
-            && queryBuilder == null && aggregations == null;
+            && queryBuilder == null && knnSearch.isEmpty() && aggregations == null;
     }
 
     /**
@@ -1037,7 +1071,7 @@ public final class SearchSourceBuilder implements Writeable, ToXContentObject, R
      */
     @Override
     public SearchSourceBuilder rewrite(QueryRewriteContext context) throws IOException {
-        assert (this.equals(shallowCopy(queryBuilder, postQueryBuilder, aggregations, sliceBuilder, sorts, rescoreBuilders,
+        assert (this.equals(shallowCopy(queryBuilder, postQueryBuilder, knnSearch, aggregations, sliceBuilder, sorts, rescoreBuilders,
             highlightBuilder)));
         QueryBuilder queryBuilder = null;
         if (this.queryBuilder != null) {
@@ -1047,6 +1081,7 @@ public final class SearchSourceBuilder implements Writeable, ToXContentObject, R
         if (this.postQueryBuilder != null) {
             postQueryBuilder = this.postQueryBuilder.rewrite(context);
         }
+        List<KnnSearchBuilder> knnSearch = Rewriteable.rewrite(this.knnSearch, context);
         AggregatorFactories.Builder aggregations = null;
         if (this.aggregations != null) {
             aggregations = this.aggregations.rewrite(context);
@@ -1060,10 +1095,12 @@ public final class SearchSourceBuilder implements Writeable, ToXContentObject, R
         }
 
         boolean rewritten = queryBuilder != this.queryBuilder || postQueryBuilder != this.postQueryBuilder
+                || knnSearch != this.knnSearch
                 || aggregations != this.aggregations || rescoreBuilders != this.rescoreBuilders || sorts != this.sorts ||
                 this.highlightBuilder != highlightBuilder;
         if (rewritten) {
-            return shallowCopy(queryBuilder, postQueryBuilder, aggregations, this.sliceBuilder, sorts, rescoreBuilders, highlightBuilder);
+            return shallowCopy(queryBuilder, postQueryBuilder, knnSearch, aggregations, this.sliceBuilder, sorts,
+                rescoreBuilders, highlightBuilder);
         }
         return this;
     }
@@ -1072,7 +1109,7 @@ public final class SearchSourceBuilder implements Writeable, ToXContentObject, R
      * Create a shallow copy of this builder with a new slice configuration.
      */
     public SearchSourceBuilder shallowCopy() {
-        return shallowCopy(queryBuilder, postQueryBuilder, aggregations, sliceBuilder, sorts, rescoreBuilders, highlightBuilder);
+        return shallowCopy(queryBuilder, postQueryBuilder, knnSearch, aggregations, sliceBuilder, sorts, rescoreBuilders, highlightBuilder);
     }
 
     /**
@@ -1080,8 +1117,9 @@ public final class SearchSourceBuilder implements Writeable, ToXContentObject, R
      * {@link #rewrite(QueryRewriteContext)}}.
      */
     private SearchSourceBuilder shallowCopy(QueryBuilder queryBuilder, QueryBuilder postQueryBuilder,
-                                            AggregatorFactories.Builder aggregations, SliceBuilder slice, List<SortBuilder<?>> sorts,
-                                            List<RescorerBuilder> rescoreBuilders, HighlightBuilder highlightBuilder) {
+        List<KnnSearchBuilder> knnSearch,
+        AggregatorFactories.Builder aggregations, SliceBuilder slice, List<SortBuilder<?>> sorts,
+        List<RescorerBuilder> rescoreBuilders, HighlightBuilder highlightBuilder) {
         SearchSourceBuilder rewrittenBuilder = new SearchSourceBuilder();
         rewrittenBuilder.aggregations = aggregations;
         rewrittenBuilder.explain = explain;
@@ -1095,6 +1133,7 @@ public final class SearchSourceBuilder implements Writeable, ToXContentObject, R
         rewrittenBuilder.indexBoosts = indexBoosts;
         rewrittenBuilder.minScore = minScore;
         rewrittenBuilder.postQueryBuilder = postQueryBuilder;
+        rewrittenBuilder.knnSearch = knnSearch;
         rewrittenBuilder.profile = profile;
         rewrittenBuilder.queryBuilder = queryBuilder;
         rewrittenBuilder.rescoreBuilders = rescoreBuilders;
@@ -1182,6 +1221,8 @@ public final class SearchSourceBuilder implements Writeable, ToXContentObject, R
                     queryBuilder = parseInnerQueryBuilder(parser);
                 } else if (POST_FILTER_FIELD.match(currentFieldName, parser.getDeprecationHandler())) {
                     postQueryBuilder = parseInnerQueryBuilder(parser);
+                } else if (KNN_FIELD.match(currentFieldName, parser.getDeprecationHandler())) {
+                    knnSearch = Arrays.asList(KnnSearchBuilder.fromXContent(parser));
                 } else if (_SOURCE_FIELD.match(currentFieldName, parser.getDeprecationHandler())) {
                     fetchSourceContext = FetchSourceContext.fromXContent(parser);
                 } else if (SCRIPT_FIELDS_FIELD.match(currentFieldName, parser.getDeprecationHandler())) {
@@ -1278,6 +1319,18 @@ public final class SearchSourceBuilder implements Writeable, ToXContentObject, R
                     fetchSourceContext = FetchSourceContext.fromXContent(parser);
                 } else if (SEARCH_AFTER.match(currentFieldName, parser.getDeprecationHandler())) {
                     searchAfterBuilder = SearchAfterBuilder.fromXContent(parser);
+                } else if (KNN_FIELD.match(currentFieldName, parser.getDeprecationHandler())) {
+                    knnSearch = new ArrayList<>();
+                    while ((token = parser.nextToken()) != XContentParser.Token.END_ARRAY) {
+                        if (token == XContentParser.Token.START_OBJECT) {
+                            knnSearch.add(KnnSearchBuilder.fromXContent(parser));
+                        } else {
+                            throw new XContentParseException(
+                                parser.getTokenLocation(),
+                                "malformed knn format, within the knn search array only objects are allowed; found " + token
+                            );
+                        }
+                    }
                 } else {
                     throw new ParsingException(parser.getTokenLocation(), "Unknown key for a " + token + " in [" + currentFieldName + "].",
                             parser.getTokenLocation());
@@ -1317,6 +1370,16 @@ public final class SearchSourceBuilder implements Writeable, ToXContentObject, R
 
         if (postQueryBuilder != null) {
             builder.field(POST_FILTER_FIELD.getPreferredName(), postQueryBuilder);
+        }
+
+        if (knnSearch.isEmpty() == false) {
+            builder.startArray(KNN_FIELD.getPreferredName());
+            for (KnnSearchBuilder knnSearchBuilder : knnSearch) {
+                builder.startObject();
+                knnSearchBuilder.toXContent(builder, params);
+                builder.endObject();
+            }
+            builder.endArray();
         }
 
         if (minScore != null) {
@@ -1653,7 +1716,7 @@ public final class SearchSourceBuilder implements Writeable, ToXContentObject, R
     @Override
     public int hashCode() {
         return Objects.hash(aggregations, explain, fetchSourceContext, fetchFields, docValueFields, storedFieldsContext, from,
-            highlightBuilder, indexBoosts, minScore, postQueryBuilder, queryBuilder, rescoreBuilders, scriptFields, size,
+            highlightBuilder, indexBoosts, minScore, postQueryBuilder, knnSearch, queryBuilder, rescoreBuilders, scriptFields, size,
             sorts, searchAfterBuilder, sliceBuilder, stats, suggestBuilder, terminateAfter, timeout, trackScores, version,
             seqNoAndPrimaryTerm, profile, extBuilders, collapse, trackTotalHitsUpTo, pointInTimeBuilder);
     }
@@ -1678,6 +1741,7 @@ public final class SearchSourceBuilder implements Writeable, ToXContentObject, R
                 && Objects.equals(indexBoosts, other.indexBoosts)
                 && Objects.equals(minScore, other.minScore)
                 && Objects.equals(postQueryBuilder, other.postQueryBuilder)
+                && Objects.equals(knnSearch, other.knnSearch)
                 && Objects.equals(queryBuilder, other.queryBuilder)
                 && Objects.equals(rescoreBuilders, other.rescoreBuilders)
                 && Objects.equals(scriptFields, other.scriptFields)

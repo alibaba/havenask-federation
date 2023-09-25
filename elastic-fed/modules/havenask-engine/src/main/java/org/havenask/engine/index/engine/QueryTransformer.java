@@ -21,6 +21,7 @@ import org.havenask.index.query.MatchAllQueryBuilder;
 import org.havenask.index.query.MatchQueryBuilder;
 import org.havenask.index.query.QueryBuilder;
 import org.havenask.index.query.TermQueryBuilder;
+import org.havenask.search.builder.KnnSearchBuilder;
 import org.havenask.search.builder.SearchSourceBuilder;
 
 public class QueryTransformer {
@@ -29,7 +30,32 @@ public class QueryTransformer {
         sqlQuery.append("select _id from " + table);
         QueryBuilder queryBuilder = dsl.query();
         StringBuilder where = new StringBuilder();
-        if (queryBuilder != null) {
+        if (dsl.knnSearch().size() > 0) {
+            where.append(" where ");
+            boolean first = true;
+            for (KnnSearchBuilder knnSearchBuilder : dsl.knnSearch()) {
+                if (knnSearchBuilder.getFilterQueries().size() > 0 || knnSearchBuilder.getSimilarity() != null) {
+                    throw new IOException("unsupported knn parameter: " + dsl);
+                }
+
+                if (false == first) {
+                    where.append(" or ");
+                }
+
+                if (first) {
+                    first = false;
+                }
+
+                where.append("MATCHINDEX('" + knnSearchBuilder.getField() + "', '");
+                for (int i = 0; i < knnSearchBuilder.getQueryVector().length; i++) {
+                    where.append(knnSearchBuilder.getQueryVector()[i]);
+                    if (i < knnSearchBuilder.getQueryVector().length - 1) {
+                        where.append(",");
+                    }
+                }
+                where.append("&n=" + knnSearchBuilder.k() + "')");
+            }
+        } else if (queryBuilder != null) {
             if (queryBuilder instanceof MatchAllQueryBuilder) {
 
             } else if (queryBuilder instanceof ProximaQueryBuilder) {
