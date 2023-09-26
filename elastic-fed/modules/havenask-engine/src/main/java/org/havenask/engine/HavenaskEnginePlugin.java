@@ -335,7 +335,7 @@ public class HavenaskEnginePlugin extends Plugin
 
             @Override
             public Store newStore(ShardId shardId, IndexSettings indexSettings, Directory directory, ShardLock shardLock, OnClose onClose) {
-                return new HavenaskStore(shardId, indexSettings, directory, shardLock, onClose);
+                return new HavenaskStore(shardId, indexSettings, directory, shardLock, onClose, havenaskEngineEnvironmentSetOnce.get());
             }
         });
     }

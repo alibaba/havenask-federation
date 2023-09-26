@@ -33,6 +33,7 @@ import org.havenask.env.Environment;
 import org.havenask.env.ShardLock;
 import org.havenask.index.Index;
 import org.havenask.index.IndexSettings;
+import org.havenask.index.shard.ShardId;
 import org.havenask.plugins.NodeEnvironmentPlugin.CustomEnvironment;
 
 import static org.havenask.env.Environment.PATH_HOME_SETTING;
@@ -119,6 +120,16 @@ public class HavenaskEngineEnvironment implements CustomEnvironment {
      */
     public Path getBsWorkPath() {
         return bsWorkPath;
+    }
+
+    /**
+     * get table config path
+     * @param shardId shardId
+     * @return tablePath
+     */
+    public Path getShardPath(ShardId shardId) {
+        String tableName = Utils.getHavenaskTableName(shardId);
+        return runtimedataPath.resolve(tableName);
     }
 
     public void setNativeProcessControlService(NativeProcessControlService nativeProcessControlService) {
