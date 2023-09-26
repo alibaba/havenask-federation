@@ -14,14 +14,96 @@
 
 package org.havenask.engine.index.store;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.Map;
+
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONObject;
+
+import org.apache.lucene.index.IndexCommit;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.util.Version;
+import org.havenask.common.Strings;
+import org.havenask.engine.HavenaskEngineEnvironment;
+import org.havenask.engine.index.config.EntryTable;
+import org.havenask.engine.index.engine.EngineSettings;
+import org.havenask.engine.index.engine.HavenaskEngine.HavenaskCommitInfo;
 import org.havenask.env.ShardLock;
 import org.havenask.index.IndexSettings;
 import org.havenask.index.shard.ShardId;
 import org.havenask.index.store.Store;
+import org.havenask.index.store.StoreFileMetadata;
+
+import static org.havenask.engine.util.Utils.INDEX_SUB_PATH;
 
 public class HavenaskStore extends Store {
-    public HavenaskStore(ShardId shardId, IndexSettings indexSettings, Directory directory, ShardLock shardLock, OnClose onClose) {
+
+    private final HavenaskEngineEnvironment env;
+    public static final Version havenaskVersion = Version.fromBits(1, 0, 0);
+    private static final String HAVENASK_VERSION_FILE_PREFIX = "version.";
+    private static final String HAVENASK_ENTRY_TABLE_FILE_PREFIX = "entry_table.";
+
+    public HavenaskStore(
+        ShardId shardId,
+        IndexSettings indexSettings,
+        Directory directory,
+        ShardLock shardLock,
+        OnClose onClose,
+        HavenaskEngineEnvironment env
+    ) {
         super(shardId, indexSettings, directory, shardLock, onClose);
+        this.env = env;
+    }
+
+    @Override
+    public MetadataSnapshot getMetadata(IndexCommit commit) throws IOException {
+        MetadataSnapshot luceneSnapshot = super.getMetadata(commit, false);
+        Map<String, StoreFileMetadata> metadata = new HashMap<>(luceneSnapshot.asMap());
+        if (EngineSettings.isHavenaskEngine(indexSettings.getSettings())) {
+            metadata.putAll(getHavenaskMetadata(commit));
+        }
+        return new MetadataSnapshot(metadata, luceneSnapshot.getCommitUserData(), luceneSnapshot.getNumDocs());
+    }
+
+    Map<String, StoreFileMetadata> getHavenaskMetadata(IndexCommit commit) throws IOException {
+        if (commit == null) {
+            return new LinkedHashMap<>();
+        }
+
+        long commitVersion = commit.getUserData().containsKey(HavenaskCommitInfo.COMMIT_VERSION_KEY)
+            ? Long.valueOf(commit.getUserData().get(HavenaskCommitInfo.COMMIT_VERSION_KEY))
+            : 0;
+        String versionFile = HAVENASK_VERSION_FILE_PREFIX + commitVersion;
+        Path shardPath = env.getShardPath(shardId).resolve(INDEX_SUB_PATH);
+        String content = Files.readString(shardPath.resolve(versionFile));
+        JSONObject jsonObject = JSON.parseObject(content);
+        String fenceName = jsonObject.getString("fence_name");
+
+        String entryTableFile = HAVENASK_ENTRY_TABLE_FILE_PREFIX + commitVersion;
+        Path entryTablePath = shardPath.resolve(entryTableFile);
+        if (false == Strings.isEmpty(fenceName)) {
+            entryTablePath = shardPath.resolve(fenceName).resolve(entryTableFile);
+        }
+        String entryTableContent = Files.readString(entryTablePath);
+        EntryTable entryTable = EntryTable.parse(entryTableContent);
+
+        // TODO 如何处理目录
+        Map<String, StoreFileMetadata> metadata = new LinkedHashMap<>();
+        entryTable.files.forEach((name, file) -> {
+            if (file.type == EntryTable.Type.FILE) {
+                StoreFileMetadata storeFileMetadata = new StoreFileMetadata(file.name, file.length, "", havenaskVersion);
+                metadata.put(file.name, storeFileMetadata);
+            }
+        });
+
+        return metadata;
+    }
+
+    public static boolean isHavenaskFile(Version version) {
+        return version.major == havenaskVersion.major;
     }
 }
