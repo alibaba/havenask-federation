@@ -64,7 +64,6 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
         + " -c /ha3_install/usr/local/etc/sql/sql_alog.conf >> search.log 2>> search.error.log";
     private static final String CHECK_HAVENASK_ALIVE_COMMAND =
         "ps aux | grep ha_sql | grep 'roleType=%s' | grep -v grep | awk '{print $2}'";
-    private static final String START_BS_JOB_COMMAND = "python %s/havenask/command/bs_job_starter.py %s %s %s %s ";
     private static final String GET_TABLE_SIZE_COMMAND = "du -sk %s | awk '{print $1}'";
 
     public static final Setting<Integer> HAVENASK_SEARCHER_HTTP_PORT_SETTING = Setting.intSetting(
@@ -199,15 +198,6 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
             STOP_HAVENASK_COMMAND,
             havenaskEngineEnvironment.getDataPath().toAbsolutePath(),
             environment.configFile().toAbsolutePath()
-        );
-        this.startBsJobCommand = String.format(
-            Locale.ROOT,
-            START_BS_JOB_COMMAND,
-            environment.configFile().toAbsolutePath(),
-            havenaskEngineEnvironment.getConfigPath().toAbsolutePath(),
-            havenaskEngineEnvironment.getDataPath().toAbsolutePath(),
-            havenaskEngineEnvironment.getBsWorkPath().toAbsolutePath(),
-            havenaskEngineEnvironment.getRuntimedataPath().toAbsolutePath()
         );
         this.commandTimeout = HAVENASK_COMMAND_TIMEOUT_SETTING.get(settings);
         clusterService.getClusterSettings().addSettingsUpdateConsumer(HAVENASK_COMMAND_TIMEOUT_SETTING, this::setCommandTimeout);
@@ -430,22 +420,6 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
      */
     public int getQrsHttpPort() {
         return qrsHttpPort;
-    }
-
-    public void startBsJob(String indexName, String realtimeInfo) {
-        if (isDataNode && running) {
-            // 启动bs job
-            final String finalStartBsJobCommand = startBsJobCommand + " " + indexName + " '" + realtimeInfo + "'";
-            runCommand(finalStartBsJobCommand, commandTimeout);
-        }
-    }
-
-    public void startBsJob(String indexName) {
-        if (isDataNode && running) {
-            // 启动bs job
-            final String finalStartBsJobCommand = startBsJobCommand + " " + indexName;
-            runCommand(finalStartBsJobCommand, commandTimeout);
-        }
     }
 
     public long getTableSize(Path tablePath) {

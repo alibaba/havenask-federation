@@ -34,63 +34,6 @@ public class RuntimeSegmentGeneratorTests extends MapperServiceTestCase {
         return singletonList(new HavenaskEnginePlugin(Settings.EMPTY));
     }
 
-    /**
-     *
-     *     public void generate() throws IOException {
-     *         Path dataPath = runtimedataPath.resolve(indexName).resolve("generation_0").resolve("partition_0_65535");
-     *         if (Files.exists(dataPath)) {
-     *             return;
-     *         }
-     *
-     *         Files.createDirectories(dataPath);
-     *         Files.write(
-     *             dataPath.resolve(VERSION_FILE_NAME),
-     *             VERSION_FILE_CONTENT.getBytes(),
-     *             StandardOpenOption.CREATE,
-     *             StandardOpenOption.TRUNCATE_EXISTING
-     *         );
-     *
-     *         Files.write(
-     *             dataPath.resolve(INDEX_FORMAT_VERSION_FILE_NAME),
-     *             INDEX_FORMAT_VERSION_FILE_CONTENT.getBytes(),
-     *             StandardOpenOption.CREATE,
-     *             StandardOpenOption.TRUNCATE_EXISTING
-     *         );
-     *
-     *         Files.write(
-     *             dataPath.resolve(INDEX_PARTITION_META_FILE_NAME),
-     *             INDEX_PARTITION_META_FILE_CONTENT.getBytes(),
-     *             StandardOpenOption.CREATE,
-     *             StandardOpenOption.TRUNCATE_EXISTING
-     *         );
-     *
-     *         SchemaGenerator schemaGenerator = new SchemaGenerator();
-     *         Schema schema = schemaGenerator.getSchema(indexName, indexSettings, mapperService);
-     *         String strSchema = schema.toString();
-     *         Files.write(
-     *             dataPath.resolve(SCHEMA_FILE_NAME),
-     *             strSchema.getBytes(StandardCharsets.UTF_8),
-     *             StandardOpenOption.CREATE,
-     *             StandardOpenOption.TRUNCATE_EXISTING
-     *         );
-     *
-     *         String strDeployMeta = String.format(DEPLOY_META_FILE_CONTENT_TEMPLATE, strSchema.length());
-     *         Files.write(
-     *             dataPath.resolve(DEPLOY_META_FILE_NAME),
-     *             strDeployMeta.getBytes(),
-     *             StandardOpenOption.CREATE,
-     *             StandardOpenOption.TRUNCATE_EXISTING
-     *         );
-     *
-     *         Files.write(
-     *             dataPath.resolve(ENTRY_TABLE_FILE_NAME),
-     *             String.format(ENTRY_TABLE_FILE_CONTENT, strDeployMeta.length(), strSchema.length()).getBytes(),
-     *             StandardOpenOption.CREATE,
-     *             StandardOpenOption.TRUNCATE_EXISTING
-     *         );
-     *     }
-     */
-
     public void testBasic() throws IOException {
         String indexName = randomAlphaOfLength(5);
         MapperService mapperService = createMapperService(fieldMapping(b -> b.field("type", "keyword")));
