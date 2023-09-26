@@ -14,6 +14,7 @@
 
 package org.havenask.engine;
 
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
@@ -25,6 +26,7 @@ import java.util.function.Supplier;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.SetOnce;
 import org.havenask.action.ActionRequest;
 import org.havenask.action.ActionResponse;
@@ -47,6 +49,7 @@ import org.havenask.engine.index.engine.HavenaskEngine;
 import org.havenask.engine.index.mapper.DenseVectorFieldMapper;
 import org.havenask.engine.index.query.HnswQueryBuilder;
 import org.havenask.engine.index.query.LinearQueryBuilder;
+import org.havenask.engine.index.store.HavenaskStore;
 import org.havenask.engine.rpc.HavenaskClient;
 import org.havenask.engine.rpc.QrsClient;
 import org.havenask.engine.rpc.SearcherClient;
@@ -65,15 +68,22 @@ import org.havenask.engine.stop.action.TransportHavenaskStopAction;
 import org.havenask.engine.stop.rest.RestHavenaskStop;
 import org.havenask.env.Environment;
 import org.havenask.env.NodeEnvironment;
+import org.havenask.env.ShardLock;
 import org.havenask.index.IndexModule;
 import org.havenask.index.IndexSettings;
 import org.havenask.index.engine.EngineFactory;
 import org.havenask.index.mapper.Mapper;
 import org.havenask.index.shard.IndexMappingProvider;
 import org.havenask.index.shard.IndexSettingProvider;
+import org.havenask.index.shard.ShardId;
+import org.havenask.index.shard.ShardPath;
+import org.havenask.index.store.FsDirectoryFactory;
+import org.havenask.index.store.Store;
+import org.havenask.index.store.Store.OnClose;
 import org.havenask.plugins.ActionPlugin;
 import org.havenask.plugins.AnalysisPlugin;
 import org.havenask.plugins.EnginePlugin;
+import org.havenask.plugins.IndexStorePlugin;
 import org.havenask.plugins.MapperPlugin;
 import org.havenask.plugins.NodeEnvironmentPlugin;
 import org.havenask.plugins.Plugin;
@@ -90,6 +100,7 @@ import org.havenask.threadpool.ThreadPool;
 import org.havenask.watcher.ResourceWatcherService;
 
 import static org.havenask.engine.NativeProcessControlService.HAVENASK_QRS_HTTP_PORT_SETTING;
+import static org.havenask.engine.index.engine.EngineSettings.ENGINE_HAVENASK;
 
 public class HavenaskEnginePlugin extends Plugin
     implements
@@ -98,7 +109,8 @@ public class HavenaskEnginePlugin extends Plugin
         ActionPlugin,
         SearchPlugin,
         NodeEnvironmentPlugin,
-        MapperPlugin {
+        MapperPlugin,
+        IndexStorePlugin {
     private static Logger logger = LogManager.getLogger(HavenaskEnginePlugin.class);
     private final SetOnce<HavenaskEngineEnvironment> havenaskEngineEnvironmentSetOnce = new SetOnce<>();
     private final SetOnce<NativeProcessControlService> nativeProcessControlServiceSetOnce = new SetOnce<>();
@@ -311,5 +323,20 @@ public class HavenaskEnginePlugin extends Plugin
         QrsClient qrsClient = new QrsHttpClient(port);
         qrsClientSetOnce.set(qrsClient);
         return new HavenaskFetchPhase(qrsClientSetOnce.get(), fetchSubPhases);
+    }
+
+    @Override
+    public Map<String, DirectoryFactory> getDirectoryFactories() {
+        return Collections.singletonMap(ENGINE_HAVENASK, new DirectoryFactory() {
+            @Override
+            public Directory newDirectory(IndexSettings indexSettings, ShardPath shardPath) throws IOException {
+                return new FsDirectoryFactory().newDirectory(indexSettings, shardPath);
+            }
+
+            @Override
+            public Store newStore(ShardId shardId, IndexSettings indexSettings, Directory directory, ShardLock shardLock, OnClose onClose) {
+                return new HavenaskStore(shardId, indexSettings, directory, shardLock, onClose);
+            }
+        });
     }
 }

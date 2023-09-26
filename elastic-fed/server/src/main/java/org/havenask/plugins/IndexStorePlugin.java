@@ -39,17 +39,21 @@
 
 package org.havenask.plugins;
 
+import java.io.IOException;
+import java.util.Collections;
+import java.util.Map;
+
 import org.apache.lucene.store.Directory;
 import org.havenask.cluster.node.DiscoveryNode;
 import org.havenask.cluster.routing.ShardRouting;
 import org.havenask.common.Nullable;
+import org.havenask.env.ShardLock;
 import org.havenask.index.IndexSettings;
+import org.havenask.index.shard.ShardId;
 import org.havenask.index.shard.ShardPath;
+import org.havenask.index.store.Store;
+import org.havenask.index.store.Store.OnClose;
 import org.havenask.indices.recovery.RecoveryState;
-
-import java.io.IOException;
-import java.util.Collections;
-import java.util.Map;
 
 /**
  * A plugin that provides alternative directory implementations.
@@ -59,7 +63,6 @@ public interface IndexStorePlugin {
     /**
      * An interface that describes how to create a new directory instance per shard.
      */
-    @FunctionalInterface
     interface DirectoryFactory {
         /**
          * Creates a new directory per shard. This method is called once per shard on shard creation.
@@ -69,6 +72,11 @@ public interface IndexStorePlugin {
          * @throws IOException if an IOException occurs while opening the directory
          */
         Directory newDirectory(IndexSettings indexSettings, ShardPath shardPath) throws IOException;
+
+        default Store newStore(ShardId shardId, IndexSettings indexSettings, Directory directory, ShardLock shardLock,
+            OnClose onClose) {
+            return new Store(shardId, indexSettings, directory, shardLock, onClose);
+        }
     }
 
     /**
