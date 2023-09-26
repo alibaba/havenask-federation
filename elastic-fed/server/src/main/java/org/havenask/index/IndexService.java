@@ -39,6 +39,25 @@
 
 package org.havenask.index;
 
+import java.io.Closeable;
+import java.io.IOException;
+import java.nio.file.Path;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.BooleanSupplier;
+import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.function.LongSupplier;
+import java.util.function.Supplier;
+
 import org.apache.logging.log4j.message.ParameterizedMessage;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
@@ -105,25 +124,6 @@ import org.havenask.plugins.IndexStorePlugin;
 import org.havenask.script.ScriptService;
 import org.havenask.search.aggregations.support.ValuesSourceRegistry;
 import org.havenask.threadpool.ThreadPool;
-
-import java.io.Closeable;
-import java.io.IOException;
-import java.nio.file.Path;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.BooleanSupplier;
-import java.util.function.Consumer;
-import java.util.function.Function;
-import java.util.function.LongSupplier;
-import java.util.function.Supplier;
 
 import static java.util.Collections.emptyMap;
 import static java.util.Collections.unmodifiableMap;
@@ -478,7 +478,7 @@ public class IndexService extends AbstractIndexComponent implements IndicesClust
                 }
             };
             Directory directory = directoryFactory.newDirectory(this.indexSettings, path);
-            store = new Store(shardId, this.indexSettings, directory, lock,
+            store = directoryFactory.newStore(shardId, this.indexSettings, directory, lock,
                     new StoreCloseListener(shardId, () -> eventListener.onStoreClosed(shardId)));
             eventListener.onStoreCreated(shardId);
             indexShard = new IndexShard(
