@@ -70,7 +70,6 @@ import org.havenask.common.unit.TimeValue;
 import org.havenask.common.xcontent.XContentHelper;
 import org.havenask.engine.HavenaskEngineEnvironment;
 import org.havenask.engine.NativeProcessControlService;
-import org.havenask.engine.index.config.generator.RuntimeSegmentGenerator;
 import org.havenask.engine.index.mapper.VectorField;
 import org.havenask.engine.rpc.HavenaskClient;
 import org.havenask.engine.rpc.QrsClient;
@@ -243,13 +242,6 @@ public class HavenaskEngine extends InternalEngine {
      * @throws IOException TODO
      */
     private void activeTable() throws IOException {
-        // 初始化segment信息
-        RuntimeSegmentGenerator.generateRuntimeSegment(
-            env,
-            nativeProcessControlService,
-            tableName,
-            engineConfig.getIndexSettings().getSettings()
-        );
         // 更新配置表信息
         nativeProcessControlService.updateDataNodeTarget();
     }

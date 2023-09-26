@@ -14,60 +14,234 @@
 
 package org.havenask.engine.index.config.generator;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
+import java.util.Locale;
 
+import org.havenask.common.Nullable;
 import org.havenask.common.settings.Settings;
-import org.havenask.engine.HavenaskEngineEnvironment;
-import org.havenask.engine.NativeProcessControlService;
-import org.havenask.engine.index.config.RealtimeInfo;
-import org.havenask.engine.index.engine.EngineSettings;
+import org.havenask.engine.index.config.Schema;
+import org.havenask.index.mapper.MapperService;
 
-/**
- * TODO 后续将该流程调整在shard目录创建\删除的流程中
- */
 public class RuntimeSegmentGenerator {
+    public static final String VERSION_FILE_NAME = "version.0";
+    public static final String VERSION_FILE_CONTENT = "{\n"
+        + "\"description\":\n"
+        + "  {\n"
+        + "  },\n"
+        + "\"format_version\":\n"
+        + "  2,\n"
+        + "\"last_segmentid\":\n"
+        + "  -1,\n"
+        + "\"level_info\":\n"
+        + "  {\n"
+        + "  \"level_metas\":\n"
+        + "    [\n"
+        + "      {\n"
+        + "      \"cursor\":\n"
+        + "        0,\n"
+        + "      \"level_idx\":\n"
+        + "        0,\n"
+        + "      \"segments\":\n"
+        + "        [\n"
+        + "        ],\n"
+        + "      \"topology\":\n"
+        + "        \"sequence\"\n"
+        + "      }\n"
+        + "    ]\n"
+        + "  },\n"
+        + "\"locator\":\n"
+        + "  \"\",\n"
+        + "\"schema_version\":\n"
+        + "  0,\n"
+        + "\"segments\":\n"
+        + "  [\n"
+        + "  ],\n"
+        + "\"timestamp\":\n"
+        + "  -1,\n"
+        + "\"versionid\":\n"
+        + "  0\n"
+        + "}";
 
-    private final NativeProcessControlService nativeProcessControlService;
-    private final HavenaskEngineEnvironment havenaskEngineEnvironment;
+    public static final String INDEX_FORMAT_VERSION_FILE_NAME = "index_format_version";
+    public static final String INDEX_FORMAT_VERSION_FILE_CONTENT = "{\n"
+        + "\"index_format_version\":\n"
+        + "  \"2.1.2\",\n"
+        + "\"inverted_index_binary_format_version\":\n"
+        + "  1\n"
+        + "}";
+    public static final String INDEX_PARTITION_META_FILE_NAME = "index_partition_meta";
+    public static final String INDEX_PARTITION_META_FILE_CONTENT = "{\n" + "\"PartitionMeta\":\n" + "  [\n" + "  ]\n" + "}";
+    public static final String DEPLOY_META_FILE_NAME = "deploy_meta.0";
+    public static final String DEPLOY_META_FILE_CONTENT_TEMPLATE = "{\n"
+        + "\"deploy_file_metas\":\n"
+        + "  [\n"
+        + "    {\n"
+        + "    \"file_length\":\n"
+        + "      82,\n"
+        + "    \"modify_time\":\n"
+        + "      18446744073709551615,\n"
+        + "    \"path\":\n"
+        + "      \"index_format_version\"\n"
+        + "    },\n"
+        + "    {\n"
+        + "    \"file_length\":\n"
+        + "      %d,\n"
+        + "    \"modify_time\":\n"
+        + "      18446744073709551615,\n"
+        + "    \"path\":\n"
+        + "      \"schema.json\"\n"
+        + "    },\n"
+        + "    {\n"
+        + "    \"file_length\":\n"
+        + "      28,\n"
+        + "    \"modify_time\":\n"
+        + "      18446744073709551615,\n"
+        + "    \"path\":\n"
+        + "      \"index_partition_meta\"\n"
+        + "    },\n"
+        + "    {\n"
+        + "    \"file_length\":\n"
+        + "      -1,\n"
+        + "    \"modify_time\":\n"
+        + "      18446744073709551615,\n"
+        + "    \"path\":\n"
+        + "      \"deploy_meta.0\"\n"
+        + "    }\n"
+        + "  ],\n"
+        + "\"final_deploy_file_metas\":\n"
+        + "  [\n"
+        + "    {\n"
+        + "    \"file_length\":\n"
+        + "      372,\n"
+        + "    \"modify_time\":\n"
+        + "      18446744073709551615,\n"
+        + "    \"path\":\n"
+        + "      \"version.0\"\n"
+        + "    }\n"
+        + "  ],\n"
+        + "\"lifecycle\":\n"
+        + "  \"\"\n"
+        + "}";
+
+    public static final String ENTRY_TABLE_FILE_NAME = "entry_table.0";
+    public static final String ENTRY_TABLE_FILE_CONTENT = "{\n"
+        + "\"files\":\n"
+        + "  {\n"
+        + "  \"\":\n"
+        + "    {\n"
+        + "    \"deploy_meta.0\":\n"
+        + "      {\n"
+        + "      \"length\":\n"
+        + "        %d\n"
+        + "      },\n"
+        + "    \"index_format_version\":\n"
+        + "      {\n"
+        + "      \"length\":\n"
+        + "        82\n"
+        + "      },\n"
+        + "    \"index_partition_meta\":\n"
+        + "      {\n"
+        + "      \"length\":\n"
+        + "        28\n"
+        + "      },\n"
+        + "    \"schema.json\":\n"
+        + "      {\n"
+        + "      \"length\":\n"
+        + "        %d\n"
+        + "      },\n"
+        + "    \"version.0\":\n"
+        + "      {\n"
+        + "      \"length\":\n"
+        + "        372\n"
+        + "      }\n"
+        + "    }\n"
+        + "  },\n"
+        + "\"package_files\":\n"
+        + "  {\n"
+        + "  }\n"
+        + "}";
+
+    public static final String SCHEMA_FILE_NAME = "schema.json";
+
+    private final Path runtimedataPath;
     private final String indexName;
+    private final Settings indexSettings;
+    private final MapperService mapperService;
 
-    public RuntimeSegmentGenerator(
-        HavenaskEngineEnvironment havenaskEngineEnvironment,
-        NativeProcessControlService nativeProcessControlService,
-        String indexName
-    ) {
-        this.havenaskEngineEnvironment = havenaskEngineEnvironment;
+    public RuntimeSegmentGenerator(String indexName, Settings indexSettings, @Nullable MapperService mapperService, Path runtimedataPath) {
         this.indexName = indexName;
-        this.nativeProcessControlService = nativeProcessControlService;
+        this.indexSettings = indexSettings;
+        this.mapperService = mapperService;
+        this.runtimedataPath = runtimedataPath;
     }
 
-    public void generate(Settings settings) {
-        if (false == Files.exists(havenaskEngineEnvironment.getRuntimedataPath().resolve(indexName))) {
-            boolean realTime = EngineSettings.HAVENASK_REALTIME_ENABLE.get(settings);
-            if (realTime) {
-                String topic = EngineSettings.HAVENASK_REALTIME_TOPIC_NAME.get(settings);
-                String bootstrapServers = EngineSettings.HAVENASK_REALTIME_BOOTSTRAP_SERVERS.get(settings);
-                long kafkaStartTimestamp = EngineSettings.HAVENASK_REALTIME_KAFKA_START_TIMESTAMP.get(settings);
-                RealtimeInfo realtimeInfo = new RealtimeInfo(indexName, topic, bootstrapServers, kafkaStartTimestamp);
-
-                nativeProcessControlService.startBsJob(indexName, realtimeInfo.toString());
-            } else {
-                nativeProcessControlService.startBsJob(indexName);
-            }
+    public void generate() throws IOException {
+        Path dataPath = runtimedataPath.resolve(indexName).resolve("generation_0").resolve("partition_0_65535");
+        if (Files.exists(dataPath)) {
+            return;
         }
+
+        Files.createDirectories(dataPath);
+        Files.write(
+            dataPath.resolve(VERSION_FILE_NAME),
+            VERSION_FILE_CONTENT.getBytes(StandardCharsets.UTF_8),
+            StandardOpenOption.CREATE,
+            StandardOpenOption.TRUNCATE_EXISTING
+        );
+
+        Files.write(
+            dataPath.resolve(INDEX_FORMAT_VERSION_FILE_NAME),
+            INDEX_FORMAT_VERSION_FILE_CONTENT.getBytes(StandardCharsets.UTF_8),
+            StandardOpenOption.CREATE,
+            StandardOpenOption.TRUNCATE_EXISTING
+        );
+
+        Files.write(
+            dataPath.resolve(INDEX_PARTITION_META_FILE_NAME),
+            INDEX_PARTITION_META_FILE_CONTENT.getBytes(StandardCharsets.UTF_8),
+            StandardOpenOption.CREATE,
+            StandardOpenOption.TRUNCATE_EXISTING
+        );
+
+        SchemaGenerator schemaGenerator = new SchemaGenerator();
+        Schema schema = schemaGenerator.getSchema(indexName, indexSettings, mapperService);
+        String strSchema = schema.toString();
+        Files.write(
+            dataPath.resolve(SCHEMA_FILE_NAME),
+            strSchema.getBytes(StandardCharsets.UTF_8),
+            StandardOpenOption.CREATE,
+            StandardOpenOption.TRUNCATE_EXISTING
+        );
+
+        String strDeployMeta = String.format(Locale.ROOT, DEPLOY_META_FILE_CONTENT_TEMPLATE, strSchema.length());
+        Files.write(
+            dataPath.resolve(DEPLOY_META_FILE_NAME),
+            strDeployMeta.getBytes(StandardCharsets.UTF_8),
+            StandardOpenOption.CREATE,
+            StandardOpenOption.TRUNCATE_EXISTING
+        );
+
+        Files.write(
+            dataPath.resolve(ENTRY_TABLE_FILE_NAME),
+            String.format(Locale.ROOT, ENTRY_TABLE_FILE_CONTENT, strDeployMeta.length(), strSchema.length())
+                .getBytes(StandardCharsets.UTF_8),
+            StandardOpenOption.CREATE,
+            StandardOpenOption.TRUNCATE_EXISTING
+        );
     }
 
-    public static void generateRuntimeSegment(
-        HavenaskEngineEnvironment havenaskEngineEnvironment,
-        NativeProcessControlService nativeProcessControlService,
-        String indexName,
-        Settings settings
-    ) {
+    public static void generateRuntimeSegment(String indexName, Settings indexSettings, MapperService mapperService, Path runtimedataPath)
+        throws IOException {
         RuntimeSegmentGenerator runtimeSegmentGenerator = new RuntimeSegmentGenerator(
-            havenaskEngineEnvironment,
-            nativeProcessControlService,
-            indexName
+            indexName,
+            indexSettings,
+            mapperService,
+            runtimedataPath
         );
-        runtimeSegmentGenerator.generate(settings);
+        runtimeSegmentGenerator.generate();
     }
 }
