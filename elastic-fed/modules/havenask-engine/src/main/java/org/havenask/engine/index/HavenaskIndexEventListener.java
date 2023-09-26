@@ -19,6 +19,7 @@ import java.io.IOException;
 import org.havenask.HavenaskException;
 import org.havenask.engine.HavenaskEngineEnvironment;
 import org.havenask.engine.index.config.generator.BizConfigGenerator;
+import org.havenask.engine.index.config.generator.RuntimeSegmentGenerator;
 import org.havenask.engine.index.config.generator.TableConfigGenerator;
 import org.havenask.engine.util.Utils;
 import org.havenask.index.shard.IndexEventListener;
@@ -47,6 +48,14 @@ public class HavenaskIndexEventListener implements IndexEventListener {
                 indexShard.indexSettings().getSettings(),
                 indexShard.mapperService(),
                 env.getConfigPath()
+            );
+
+            // 初始化segment信息
+            RuntimeSegmentGenerator.generateRuntimeSegment(
+                tableName,
+                indexShard.indexSettings().getSettings(),
+                indexShard.mapperService(),
+                env.getRuntimedataPath()
             );
         } catch (IOException e) {
             throw new HavenaskException("generate havenask config error", e);
