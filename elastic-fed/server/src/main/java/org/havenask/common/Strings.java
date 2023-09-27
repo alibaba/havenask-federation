@@ -39,15 +39,6 @@
 
 package org.havenask.common;
 
-import org.apache.lucene.util.BytesRefBuilder;
-import org.havenask.HavenaskException;
-import org.havenask.ExceptionsHelper;
-import org.havenask.common.bytes.BytesReference;
-import org.havenask.common.util.CollectionUtils;
-import org.havenask.common.xcontent.ToXContent;
-import org.havenask.common.xcontent.XContentBuilder;
-import org.havenask.common.xcontent.json.JsonXContent;
-
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.StringReader;
@@ -58,10 +49,20 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 import java.util.StringTokenizer;
 import java.util.TreeSet;
 import java.util.function.Supplier;
+
+import org.apache.lucene.util.BytesRefBuilder;
+import org.havenask.ExceptionsHelper;
+import org.havenask.HavenaskException;
+import org.havenask.common.bytes.BytesReference;
+import org.havenask.common.util.CollectionUtils;
+import org.havenask.common.xcontent.ToXContent;
+import org.havenask.common.xcontent.XContentBuilder;
+import org.havenask.common.xcontent.json.JsonXContent;
 
 import static java.util.Collections.unmodifiableSet;
 import static org.havenask.common.util.set.Sets.newHashSet;
@@ -912,5 +913,23 @@ public class Strings {
             }
         }
         return out.toString();
+    }
+
+    /**
+     * Returns a formatted string using the specified format string and
+     * arguments.
+     * <p>
+     * This method calls {@link String#format(Locale, String, Object...)}
+     * with Locale.ROOT
+     * If format is incorrect the function will return format without populating
+     * its variable placeholders.
+     */
+    public static String format(String format, Object... args) {
+        try {
+            return String.format(Locale.ROOT, format, args);
+        } catch (Exception e) {
+            assert false : "Exception thrown when formatting [" + format + "]. " + e.getClass().getCanonicalName() + ". " + e.getMessage();
+            return format;
+        }
     }
 }

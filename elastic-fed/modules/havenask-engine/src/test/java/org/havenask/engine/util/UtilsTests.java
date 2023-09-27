@@ -28,13 +28,14 @@
 
 package org.havenask.engine.util;
 
-import org.havenask.test.HavenaskTestCase;
-
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Locale;
+
+import org.havenask.common.collect.Tuple;
+import org.havenask.test.HavenaskTestCase;
 
 import static org.havenask.engine.util.Utils.INDEX_SUB_PATH;
 
@@ -123,9 +124,10 @@ public class UtilsTests extends HavenaskTestCase {
         writeTestFile(dirPath, "version.8a", prefix + "0600000000000000" + suffix);
         writeTestFile(dirPath, "version.a9", prefix + "0700000000000000" + suffix);
 
-        Long timeStamp = Utils.getIndexCheckpoint(indexPath);
-        assert timeStamp != null;
-        assertEquals(2, timeStamp.longValue());
+        long version = Utils.getVersionAndIndexCheckpoint(indexPath).v1();
+        long timeStamp = Utils.getVersionAndIndexCheckpoint(indexPath).v2();
+        assertEquals(7, version);
+        assertEquals(2, timeStamp);
     }
 
     // test get index checkpoint in the case of version number is big
@@ -140,9 +142,10 @@ public class UtilsTests extends HavenaskTestCase {
         // 9223372036854775807 is the max value of long type
         writeTestFile(dirPath, "version.9223372036854775807", prefix + "ffff000000000000" + suffix);
 
-        Long timeStamp = Utils.getIndexCheckpoint(indexPath);
-        assert timeStamp != null;
-        assertEquals(65535, timeStamp.longValue());
+        long version = Utils.getVersionAndIndexCheckpoint(indexPath).v1();
+        long timeStamp = Utils.getVersionAndIndexCheckpoint(indexPath).v2();
+        assertEquals(9223372036854775807L, version);
+        assertEquals(65535, timeStamp);
     }
 
     // test get index checkpoint in the case of multi index, and some index number is negative
@@ -161,18 +164,22 @@ public class UtilsTests extends HavenaskTestCase {
 
         writeTestFile(dirPath_in3, "version.-1", prefix + "ffff000000000000" + suffix);
 
-        Long timeStamp2 = Utils.getIndexCheckpoint(indexPath2);
-        Long timeStamp3 = Utils.getIndexCheckpoint(indexPath3);
+        long version2 = Utils.getVersionAndIndexCheckpoint(indexPath2).v1();
+        Long timeStamp2 = Utils.getVersionAndIndexCheckpoint(indexPath2).v2();
+        assertEquals(1, version2);
         assertNull(timeStamp2);
-        assertNull(timeStamp3);
+
+        Tuple<Long, Long> tuple = Utils.getVersionAndIndexCheckpoint(indexPath3);
+        assertNull(tuple);
     }
 
     // test get index checkpoint in the case of no index directory
     public void testGetIndexCheckpointNoDir() {
         String testIndex = "in4";
         Path indexPath = configPath.resolve(testIndex);
-        Long timeStamp = Utils.getIndexCheckpoint(indexPath);
-        assertNull(timeStamp);
+
+        Tuple<Long, Long> tuple = Utils.getVersionAndIndexCheckpoint(indexPath);
+        assertNull(tuple);
     }
 
     // test get index checkpoint in the case of no version file
@@ -182,8 +189,8 @@ public class UtilsTests extends HavenaskTestCase {
 
         mkIndexDir(testIndex);
 
-        Long timeStamp = Utils.getIndexCheckpoint(indexPath);
-        assertNull(timeStamp);
+        Tuple<Long, Long> tuple = Utils.getVersionAndIndexCheckpoint(indexPath);
+        assertNull(tuple);
     }
 
     // test getLocatorCheckpoint

@@ -62,6 +62,7 @@ import org.havenask.action.bulk.BackoffPolicy;
 import org.havenask.common.Nullable;
 import org.havenask.common.bytes.BytesArray;
 import org.havenask.common.bytes.BytesReference;
+import org.havenask.common.collect.Tuple;
 import org.havenask.common.lucene.index.HavenaskDirectoryReader;
 import org.havenask.common.lucene.uid.VersionsAndSeqNoResolver.DocIdAndVersion;
 import org.havenask.common.settings.Settings;
@@ -69,7 +70,6 @@ import org.havenask.common.unit.TimeValue;
 import org.havenask.common.xcontent.XContentHelper;
 import org.havenask.engine.HavenaskEngineEnvironment;
 import org.havenask.engine.NativeProcessControlService;
-import org.havenask.engine.index.config.generator.RuntimeSegmentGenerator;
 import org.havenask.engine.index.mapper.VectorField;
 import org.havenask.engine.rpc.HavenaskClient;
 import org.havenask.engine.rpc.QrsClient;
@@ -155,7 +155,7 @@ public class HavenaskEngine extends InternalEngine {
             : -1L;
         long commitVersion = getLastCommittedSegmentInfos().userData.containsKey(HavenaskCommitInfo.COMMIT_VERSION_KEY)
             ? Long.valueOf(getLastCommittedSegmentInfos().userData.get(HavenaskCommitInfo.COMMIT_VERSION_KEY))
-            : -1L;
+            : 0;
         long commitCheckpoint = getLastCommittedSegmentInfos().userData.containsKey(SequenceNumbers.LOCAL_CHECKPOINT_KEY)
             ? Long.valueOf(getLastCommittedSegmentInfos().userData.get(SequenceNumbers.LOCAL_CHECKPOINT_KEY))
             : -1L;
@@ -242,13 +242,6 @@ public class HavenaskEngine extends InternalEngine {
      * @throws IOException TODO
      */
     private void activeTable() throws IOException {
-        // 初始化segment信息
-        RuntimeSegmentGenerator.generateRuntimeSegment(
-            env,
-            nativeProcessControlService,
-            tableName,
-            engineConfig.getIndexSettings().getSettings()
-        );
         // 更新配置表信息
         nativeProcessControlService.updateDataNodeTarget();
     }
@@ -639,7 +632,22 @@ public class HavenaskEngine extends InternalEngine {
         long checkpoint = getPersistedLocalCheckpoint();
         checkpointCalc.addCheckpoint(time, checkpoint);
 
-        Long havenaskTime = Utils.getIndexCheckpoint(env.getRuntimedataPath().resolve(tableName));
+        Tuple<Long, Long> tuple = Utils.getVersionAndIndexCheckpoint(env.getRuntimedataPath().resolve(tableName));
+        if (tuple == null) {
+            logger.debug(
+                "havenask engine maybeRefresh failed, checkpoint not found, source: {}, time: {}, checkpoint: {}, "
+                    + "havenask time point: {}, current checkpoint: {}",
+                source,
+                time,
+                checkpoint,
+                -1,
+                -1
+            );
+            return false;
+        }
+
+        long segmentVersion = tuple.v1();
+        Long havenaskTime = tuple.v2();
         long havenaskTimePoint;
 
         if (havenaskTime != null) {
@@ -666,7 +674,7 @@ public class HavenaskEngine extends InternalEngine {
                 currentCheckpoint,
                 lastCommitInfo.getCommitCheckpoint()
             );
-            refreshCommitInfo(havenaskTimePoint, 0, currentCheckpoint);
+            refreshCommitInfo(havenaskTimePoint, segmentVersion, currentCheckpoint);
             return true;
         }
         return false;

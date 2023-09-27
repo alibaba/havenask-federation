@@ -30,6 +30,7 @@ import com.alibaba.fastjson.JSONObject;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.havenask.SpecialPermission;
+import org.havenask.common.collect.Tuple;
 import org.havenask.index.shard.ShardId;
 
 public class Utils {
@@ -86,9 +87,9 @@ public class Utils {
     public static final String INDEX_SUB_PATH = "generation_0/partition_0_65535";
 
     /**
-     * return the locator timestamp in the max version file under the certain index directory
+     * return max version and the locator timestamp in the max version file under the certain index directory
      */
-    public static Long getIndexCheckpoint(Path indexPath) {
+    public static Tuple<Long, Long> getVersionAndIndexCheckpoint(Path indexPath) {
         Path versionFilePath = indexPath.resolve(INDEX_SUB_PATH);
         String maxIndexVersionFile = getIndexMaxVersion(versionFilePath);
         // no version file or directory not exists
@@ -101,7 +102,8 @@ public class Utils {
         Path filePath = indexPath.resolve(INDEX_SUB_PATH).resolve(maxIndexVersionFile);
         String locator = getIndexLocator(filePath);
 
-        return getLocatorCheckpoint(locator);
+        Long version = Long.parseLong(maxIndexVersionFile.substring(maxIndexVersionFile.indexOf('.') + 1));
+        return new Tuple<>(version, getLocatorCheckpoint(locator));
     }
 
     /**
@@ -199,5 +201,9 @@ public class Utils {
 
     public static String getHavenaskTableName(ShardId shardId) {
         return String.format(Locale.ROOT, "%s_%s", shardId.getIndexName(), shardId.id());
+    }
+
+    public static String getVersionFile(Integer version) {
+        return String.format(Locale.ROOT, "version.%s", version);
     }
 }

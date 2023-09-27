@@ -32,6 +32,7 @@ import org.havenask.engine.HavenaskITTestCase;
 import org.havenask.engine.index.engine.EngineSettings;
 import org.havenask.engine.index.query.HnswQueryBuilder;
 import org.havenask.plugins.Plugin;
+import org.havenask.search.builder.KnnSearchBuilder;
 import org.havenask.search.builder.SearchSourceBuilder;
 
 @ThreadLeakFilters(filters = { OkHttpThreadLeakFilter.class, ArpcThreadLeakFilter.class })
@@ -48,6 +49,32 @@ public class SearchIT extends HavenaskITTestCase {
 
     public void testSearch() throws Exception {
         String index = "test2";
+        prepareIndex(index);
+
+        assertBusy(() -> {
+            ClusterHealthResponse clusterHealthResponse = client().admin().cluster().health(new ClusterHealthRequest(index)).get();
+            assertEquals(clusterHealthResponse.getStatus(), ClusterHealthStatus.GREEN);
+        }, 2, TimeUnit.MINUTES);
+
+        SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+        HnswQueryBuilder hnswQueryBuilder = new HnswQueryBuilder("vector", new float[] { 1.5f, 2.5f }, 10);
+        searchSourceBuilder.query(hnswQueryBuilder);
+        SearchResponse searchResponse = client().prepareSearch(index).setSource(searchSourceBuilder).get();
+        assertEquals(searchResponse.getHits().getTotalHits().value, 2);
+    }
+
+    public void testKnnSearch() throws Exception {
+        String index = "test2";
+        prepareIndex(index);
+
+        SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+        KnnSearchBuilder knnSearchBuilder = new KnnSearchBuilder("vector", new float[] { 1.5f, 2.5f }, 10, 10, null);
+        searchSourceBuilder.knnSearch(Arrays.asList(knnSearchBuilder));
+        SearchResponse searchResponse = client().prepareSearch(index).setSource(searchSourceBuilder).get();
+        assertEquals(searchResponse.getHits().getTotalHits().value, 2);
+    }
+
+    private void prepareIndex(String index) throws Exception {
         String mapping = "{\n"
             + "  \"properties\": {\n"
             + "    \"vector\": {\n"
@@ -77,12 +104,6 @@ public class SearchIT extends HavenaskITTestCase {
             ClusterHealthResponse clusterHealthResponse = client().admin().cluster().health(new ClusterHealthRequest(index)).get();
             assertEquals(clusterHealthResponse.getStatus(), ClusterHealthStatus.GREEN);
         }, 2, TimeUnit.MINUTES);
-
-        SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-        HnswQueryBuilder hnswQueryBuilder = new HnswQueryBuilder("vector", new float[] { 1.5f, 2.5f }, 10);
-        searchSourceBuilder.query(hnswQueryBuilder);
-        SearchResponse searchResponse = client().prepareSearch(index).setSource(searchSourceBuilder).get();
-        assertEquals(searchResponse.getHits().getTotalHits().value, 2);
     }
 
     public void testSourceFilter() throws Exception {

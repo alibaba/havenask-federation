@@ -9,15 +9,15 @@
 
 # Havenask-federation架构
 
-Havenask-federation承担三种角色：master、data、coordinate，其中data角色负责管理Havenask的Searcher进程，coordinate角色负责管理Havenask的Qrs进程，Havenask-federation进程可以同时承担master、data、coordinate角色。
+Havenask-federation承担三种角色：master、data、coordinate，其中data角色负责管理Havenask的Searcher\Qrs进程，Havenask-federation进程可以同时承担master、data、coordinate角色。
 
 ## 分布式架构
 
-![image](https://user-images.githubusercontent.com/5070449/226837096-99f50ae0-f391-48a7-af85-5a916bd335c8.png)
+![image](https://github.com/alibaba/havenask-federation/assets/5070449/4e882155-0509-4351-bfe8-9468073ad7e9)
 
 ## 单机架构
 
-![image](https://user-images.githubusercontent.com/5070449/226837197-3d591392-9b24-4032-877b-fc4534c2c64a.png)
+![image](https://github.com/alibaba/havenask-federation/assets/5070449/3e0f9062-924a-437c-9f9d-8a785234179c)
 
 
 # 使用说明
