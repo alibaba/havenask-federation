@@ -192,7 +192,7 @@ public class MetaDataSyncer extends AbstractLifecycleComponent {
                         syncTimes = 0;
                         return;
                     }
-                } catch (IOException e) {
+                } catch (Throwable e) {
                     LOGGER.error("update heartbeat target failed", e);
                 }
 
