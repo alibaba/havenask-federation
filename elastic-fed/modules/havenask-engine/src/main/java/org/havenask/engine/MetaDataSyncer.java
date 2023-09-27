@@ -174,6 +174,8 @@ public class MetaDataSyncer extends AbstractLifecycleComponent {
             // 3. syncTimes小于MAX_SYNC_TIMES
             if (synced.get() == false || pending.getAndSet(false) == true || syncTimes > MAX_SYNC_TIMES) {
                 // update heartbeat target
+                LOGGER.info("update heartbeat target, synced: {}, pending: {}, syncTimes: {}", synced.get(), pending.get(), syncTimes);
+
                 try {
                     // TODO qrs每次request都变化,此处是否正常同步成功
                     UpdateHeartbeatTargetRequest qrsTargetRequest = createQrsUpdateHeartbeatTargetRequest();
@@ -191,6 +193,9 @@ public class MetaDataSyncer extends AbstractLifecycleComponent {
                         searcherTargetInfo.set(searchResponse.getCustomInfo());
                         syncTimes = 0;
                         return;
+                    } else {
+                        LOGGER.trace("update heartbeat target failed, qrsTargetRequest: {}, qrsResponse: {}, searcherTargetRequest: {}, searchResponse: {}",
+                            qrsTargetRequest, qrsResponse, searcherTargetRequest, searchResponse);
                     }
                 } catch (Throwable e) {
                     LOGGER.error("update heartbeat target failed", e);
