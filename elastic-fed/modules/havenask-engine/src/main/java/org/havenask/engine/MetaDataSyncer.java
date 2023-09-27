@@ -54,6 +54,7 @@ import static org.havenask.engine.HavenaskEnginePlugin.HAVENASK_THREAD_POOL_NAME
 public class MetaDataSyncer extends AbstractLifecycleComponent {
     private static final Logger LOGGER = LogManager.getLogger(MetaDataSyncer.class);
 
+    private static final int MAX_SYNC_TIMES = 30;
     private static final int TARGET_VERSION = 1651870394;
     private static final int DEFAULT_PART_COUNT = 1;
     private static final int DEFAULT_PART_ID = 0;
@@ -102,6 +103,7 @@ public class MetaDataSyncer extends AbstractLifecycleComponent {
     private AtomicBoolean synced = new AtomicBoolean(false);
     private AtomicBoolean pending = new AtomicBoolean(false);
     private AtomicReference<TargetInfo> searcherTargetInfo = new AtomicReference<>();
+    private int syncTimes = 0;
 
     public MetaDataSyncer(
         ClusterService clusterService,
@@ -166,7 +168,11 @@ public class MetaDataSyncer extends AbstractLifecycleComponent {
                 return;
             }
 
-            if (synced.get() == false || pending.getAndSet(false) == true) {
+            // 同步元数据,触发条件:
+            // 1. synced为false
+            // 2. pending为true
+            // 3. syncTimes小于MAX_SYNC_TIMES
+            if (synced.get() == false || pending.getAndSet(false) == true || syncTimes > MAX_SYNC_TIMES) {
                 // update heartbeat target
                 try {
                     // TODO qrs每次request都变化,此处是否正常同步成功
@@ -183,6 +189,7 @@ public class MetaDataSyncer extends AbstractLifecycleComponent {
 
                         synced.set(true);
                         searcherTargetInfo.set(searchResponse.getCustomInfo());
+                        syncTimes = 0;
                         return;
                     }
                 } catch (IOException e) {
@@ -190,6 +197,8 @@ public class MetaDataSyncer extends AbstractLifecycleComponent {
                 }
 
                 synced.set(false);
+            } else {
+                syncTimes++;
             }
         }
 
