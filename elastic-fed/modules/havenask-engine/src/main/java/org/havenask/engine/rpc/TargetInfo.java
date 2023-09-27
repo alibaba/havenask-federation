@@ -30,19 +30,19 @@ public class TargetInfo {
     public ServiceInfo service_info;
     public Map<String, Map<String, TableInfo>> table_info;
     public Boolean clean_disk;
-    public int target_version;
+    public Integer target_version;
     public String catalog_address;
 
     public static class AppInfo {
         public String config_path;
-        public int keep_count;
+        public Integer keep_count;
     }
 
     public static class BizInfo {
         public static class Biz {
             public String config_path;
             public CustomBizInfo custom_biz_info;
-            public int keep_count;
+            public Integer keep_count;
         }
 
         public static class CustomBizInfo {
@@ -74,20 +74,20 @@ public class TargetInfo {
         public Service cm2;
 
         public String zone_name;
-        public int part_id;
-        public int part_count;
-        public int version;
-        public Map<String, List<cm2Config>> cm2_config;
+        public Integer part_id;
+        public Integer part_count;
+        public Integer version;
+        public Map<String, List<Cm2Config>> cm2_config;
 
-        public static class cm2Config {
-            public int part_count;
+        public static class Cm2Config {
+            public Integer part_count;
             public String biz_name;
             public String ip;
-            public int version;
-            public int part_id;
-            public int tcp_port;
-            public boolean support_heartbeat;
-            public int grpc_port;
+            public Integer version;
+            public Integer part_id;
+            public Integer tcp_port;
+            public Boolean support_heartbeat;
+            public Integer grpc_port;
         }
 
         public ServiceInfo() {
@@ -111,47 +111,47 @@ public class TargetInfo {
     public static class TableInfo {
         public static class Partition {
             public static class DeployStatus {
-                public int deploy_status;
+                public Integer deploy_status;
                 public String local_config_path;
             }
 
             public String check_index_path;
-            public int deploy_status;
+            public Integer deploy_status;
             public List<List<Object>> deploy_status_map;
-            public int inc_version;
-            public int keep_count;
+            public Integer inc_version;
+            public Integer keep_count;
             public String loaded_config_path;
             public String loaded_index_root;
             public String local_index_path;
-            public int rt_status;
-            public int schema_version;
-            public int table_load_type;
-            public int table_status;
-            public int table_type;
+            public Integer rt_status;
+            public Integer schema_version;
+            public Integer table_load_type;
+            public Integer table_status;
+            public Integer table_type;
         }
 
-        public int table_mode;
-        public int table_type;
-        public int total_partition_count;
+        public Integer table_mode;
+        public Integer table_type;
+        public Integer total_partition_count;
         public String config_path;
-        public boolean force_online;
+        public Boolean force_online;
         public String group_name;
         public String index_root;
         public Map<String, Partition> partitions;
         public String raw_index_root;
-        public int rt_status;
-        public long timestamp_to_skip;
+        public Integer rt_status;
+        public Long timestamp_to_skip;
 
         public TableInfo() {
 
         }
 
         public TableInfo(
-            int tableMode,
-            int tableType,
+            Integer tableMode,
+            Integer tableType,
             String configPath,
             String indexRoot,
-            int totalPartitionCount,
+            Integer totalPartitionCount,
             String curPartitionName,
             Partition curPartition
         ) {

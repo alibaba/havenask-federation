@@ -91,16 +91,16 @@ public class MetaDataSyncer {
         TargetInfo qrsTargetInfo = new TargetInfo();
         qrsTargetInfo.clean_disk = CLEAN_DISK;
         qrsTargetInfo.target_version = TARGET_VERSION;
-        qrsTargetInfo.service_info = new TargetInfo.ServiceInfo(QRS_ZONE_NAME, DEFAULT_PART_COUNT, DEFAULT_PART_ID);
+        qrsTargetInfo.service_info = new TargetInfo.ServiceInfo(QRS_ZONE_NAME, DEFAULT_PART_ID, DEFAULT_PART_COUNT);
         qrsTargetInfo.table_info = new HashMap<>();
         qrsTargetInfo.biz_info = new TargetInfo.BizInfo(defaultBizsPath);
         qrsTargetInfo.catalog_address = ip + ":" + qrsTcpPort;
 
         Random random = new Random();
         int randomVersion = random.nextInt(100000) + 1;
-        List<TargetInfo.ServiceInfo.cm2Config> cm2ConfigLocalVal = new ArrayList<>();
+        List<TargetInfo.ServiceInfo.Cm2Config> cm2ConfigLocalVal = new ArrayList<>();
         for (String bizName : cm2ConfigBizNames) {
-            TargetInfo.ServiceInfo.cm2Config curCm2Config = new TargetInfo.ServiceInfo.cm2Config();
+            TargetInfo.ServiceInfo.Cm2Config curCm2Config = new TargetInfo.ServiceInfo.Cm2Config();
             curCm2Config.part_count = DEFAULT_PART_COUNT;
             curCm2Config.biz_name = bizName;
             curCm2Config.ip = ip;
