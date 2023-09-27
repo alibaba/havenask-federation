@@ -189,7 +189,7 @@ public class MetaDataSyncer extends AbstractLifecycleComponent {
 
                     // TODO check target info equals method
                     if (qrsTargetRequest.getTargetInfo().equals(qrsResponse.getSignature())
-                        && searcherTargetRequest.getTargetInfo().equals(qrsResponse.getSignature())) {
+                        && searcherTargetRequest.getTargetInfo().equals(searchResponse.getSignature())) {
                         LOGGER.info("update heartbeat target success");
 
                         synced.set(true);
