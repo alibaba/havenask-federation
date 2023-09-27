@@ -14,6 +14,8 @@
 
 package org.havenask.engine.rpc;
 
+import java.nio.file.Path;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -28,6 +30,8 @@ public class TargetInfo {
     public ServiceInfo service_info;
     public Map<String, Map<String, TableInfo>> table_info;
     public Boolean clean_disk;
+    public int target_version;
+    public String catalog_address;
 
     public static class AppInfo {
         public String config_path;
@@ -47,6 +51,15 @@ public class TargetInfo {
 
         @JSONField(name = "default")
         public Biz default_biz;
+
+        public BizInfo() {
+
+        }
+
+        public BizInfo(Path defaultConfigPath) {
+            default_biz = new Biz();
+            default_biz.config_path = defaultConfigPath.toString();
+        }
     }
 
     public static class CustomAppInfo {
@@ -59,6 +72,40 @@ public class TargetInfo {
         }
 
         public Service cm2;
+
+        public String zone_name;
+        public int part_id;
+        public int part_count;
+        public int version;
+        public Map<String, List<cm2Config>> cm2_config;
+
+        public static class cm2Config {
+            public int part_count;
+            public String biz_name;
+            public String ip;
+            public int version;
+            public int part_id;
+            public int tcp_port;
+            public boolean support_heartbeat;
+            public int grpc_port;
+        }
+
+        public ServiceInfo() {
+
+        }
+
+        public ServiceInfo(String zone_name, int part_id, int part_count, int version) {
+            this.zone_name = zone_name;
+            this.part_id = part_id;
+            this.part_count = part_count;
+            this.version = version;
+        }
+
+        public ServiceInfo(String zone_name, int part_id, int part_count) {
+            this.zone_name = zone_name;
+            this.part_id = part_id;
+            this.part_count = part_count;
+        }
     }
 
     public static class TableInfo {
@@ -83,6 +130,9 @@ public class TargetInfo {
             public int table_type;
         }
 
+        public int table_mode;
+        public int table_type;
+        public int total_partition_count;
         public String config_path;
         public boolean force_online;
         public String group_name;
@@ -91,6 +141,32 @@ public class TargetInfo {
         public String raw_index_root;
         public int rt_status;
         public long timestamp_to_skip;
+
+        public TableInfo() {
+
+        }
+
+        public TableInfo(
+            int tableMode,
+            int tableType,
+            String configPath,
+            String indexRoot,
+            int totalPartitionCount,
+            String curPartitionName,
+            Partition curPartition
+        ) {
+            table_mode = tableMode;
+            table_type = tableType;
+            config_path = configPath;
+            index_root = indexRoot;
+            total_partition_count = totalPartitionCount;
+            partitions = new HashMap<>();
+            partitions.put(curPartitionName, curPartition);
+        }
+    }
+
+    public static class CatalogAddress {
+        public String catalog_address;
     }
 
     public static TargetInfo parse(String json) {

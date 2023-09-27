@@ -426,10 +426,24 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
     }
 
     /**
+     * @return searcher启动的grpc port
+     */
+    public int getSearcherGrpcPort() {
+        return searcherGrpcPort;
+    }
+
+    /**
      * @return qrs启动的http port
      */
     public int getQrsHttpPort() {
         return qrsHttpPort;
+    }
+
+    /**
+     * @return qrs启动的tcp port
+     */
+    public int getQrsTcpPort() {
+        return qrsTcpPort;
     }
 
     public void startBsJob(String indexName, String realtimeInfo) {
