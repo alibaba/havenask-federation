@@ -357,5 +357,6 @@ public class SearcherHttpClientIT extends HavenaskITTestCase {
         assertEquals(signatureStr, response.getSignature().toString());
         assertEquals(responseTargetStr, response.getCustomInfo().toString());
         assertEquals(serviceInfoStr, response.getServiceInfo());
+        assertEquals(targetInfo, response.getSignature());
     }
 }
