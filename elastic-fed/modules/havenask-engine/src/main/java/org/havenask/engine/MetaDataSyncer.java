@@ -33,6 +33,8 @@ import java.util.regex.Pattern;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.havenask.cluster.ClusterState;
+import org.havenask.cluster.metadata.IndexMetadata;
+import org.havenask.cluster.metadata.Metadata;
 import org.havenask.cluster.node.DiscoveryNode;
 import org.havenask.cluster.routing.RoutingNode;
 import org.havenask.cluster.routing.ShardRouting;
@@ -42,6 +44,7 @@ import org.havenask.common.component.AbstractLifecycleComponent;
 import org.havenask.common.settings.Settings;
 import org.havenask.common.unit.TimeValue;
 import org.havenask.common.util.concurrent.AbstractAsyncTask;
+import org.havenask.engine.index.engine.EngineSettings;
 import org.havenask.engine.rpc.HavenaskClient;
 import org.havenask.engine.rpc.HeartbeatTargetResponse;
 import org.havenask.engine.rpc.TargetInfo;
@@ -276,6 +279,7 @@ public class MetaDataSyncer extends AbstractLifecycleComponent {
     public UpdateHeartbeatTargetRequest createSearcherUpdateHeartbeatTargetRequest() throws IOException {
         Path indexRootPath = env.getDataPath().resolve(INDEX_ROOT_POSTFIX);
         ClusterState state = clusterService.state();
+        Metadata metadata = state.metadata();
 
         TargetInfo searcherTargetInfo = new TargetInfo();
         searcherTargetInfo.clean_disk = CLEAN_DISK;
@@ -296,7 +300,10 @@ public class MetaDataSyncer extends AbstractLifecycleComponent {
         }
 
         for (ShardRouting shardRouting : localRoutingNode) {
-            subDirNames.add(shardRouting.getIndexName());
+            IndexMetadata indexMetadata = metadata.index(shardRouting.getIndexName());
+            if (EngineSettings.isHavenaskEngine(indexMetadata.getSettings())) {
+                subDirNames.add(Utils.getHavenaskTableName(shardRouting.shardId()));
+            }
         }
 
         searcherTargetInfo.table_info = new HashMap<>();
