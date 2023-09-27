@@ -194,8 +194,13 @@ public class MetaDataSyncer extends AbstractLifecycleComponent {
                         syncTimes = 0;
                         return;
                     } else {
-                        LOGGER.trace("update heartbeat target failed, qrsTargetRequest: {}, qrsResponse: {}, searcherTargetRequest: {}, searchResponse: {}",
-                            qrsTargetRequest, qrsResponse, searcherTargetRequest, searchResponse);
+                        LOGGER.trace(
+                            "update heartbeat target failed, qrsTargetRequest: {}, qrsResponse: {}, searcherTargetRequest: {}, searchResponse: {}",
+                            qrsTargetRequest,
+                            qrsResponse,
+                            searcherTargetRequest,
+                            searchResponse
+                        );
                     }
                 } catch (Throwable e) {
                     LOGGER.error("update heartbeat target failed", e);
