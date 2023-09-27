@@ -18,6 +18,7 @@ import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 import com.alibaba.fastjson.annotation.JSONField;
 
@@ -176,5 +177,23 @@ public class TargetInfo {
     @Override
     public String toString() {
         return JsonPrettyFormatter.toJsonString(this);
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {return true;}
+        if (o == null || getClass() != o.getClass()) {return false;}
+        TargetInfo that = (TargetInfo)o;
+        return target_version == that.target_version && Objects.equals(app_info, that.app_info)
+            && Objects.equals(biz_info, that.biz_info) && Objects.equals(custom_app_info,
+            that.custom_app_info) && Objects.equals(service_info, that.service_info) && Objects.equals(
+            table_info, that.table_info) && Objects.equals(clean_disk, that.clean_disk)
+            && Objects.equals(catalog_address, that.catalog_address);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(app_info, biz_info, custom_app_info, service_info, table_info, clean_disk, target_version,
+            catalog_address);
     }
 }

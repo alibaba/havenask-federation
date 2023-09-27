@@ -27,6 +27,10 @@ public class UpdateHeartbeatTargetRequest implements ToXContentObject {
     public static final ParseField CUSTOM_INFO_FIELD = new ParseField("customInfo");
     public static final ParseField GLOBAL_CUSTOM_INFO_FIELD = new ParseField("globalCustomInfo");
 
+    public TargetInfo getTargetInfo() {
+        return targetInfo;
+    }
+
     private final TargetInfo targetInfo;
 
     public UpdateHeartbeatTargetRequest(TargetInfo targetInfo) {

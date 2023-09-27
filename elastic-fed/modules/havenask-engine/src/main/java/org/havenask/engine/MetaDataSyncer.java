@@ -14,29 +14,46 @@
 
 package org.havenask.engine;
 
-import org.havenask.cluster.ClusterState;
-import org.havenask.cluster.routing.RoutingNode;
-import org.havenask.cluster.routing.ShardRouting;
-import org.havenask.common.SuppressForbidden;
-import org.havenask.engine.rpc.TargetInfo;
-import org.havenask.engine.rpc.UpdateHeartbeatTargetRequest;
-import org.havenask.engine.util.Utils;
-
 import java.io.IOException;
 import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.nio.file.Path;
-import java.util.HashMap;
-import java.util.Random;
-import java.util.List;
 import java.util.ArrayList;
-import java.util.Map;
 import java.util.Enumeration;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Random;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public class MetaDataSyncer {
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.havenask.cluster.ClusterState;
+import org.havenask.cluster.node.DiscoveryNode;
+import org.havenask.cluster.routing.RoutingNode;
+import org.havenask.cluster.routing.ShardRouting;
+import org.havenask.cluster.service.ClusterService;
+import org.havenask.common.SuppressForbidden;
+import org.havenask.common.component.AbstractLifecycleComponent;
+import org.havenask.common.settings.Settings;
+import org.havenask.common.unit.TimeValue;
+import org.havenask.common.util.concurrent.AbstractAsyncTask;
+import org.havenask.engine.rpc.HavenaskClient;
+import org.havenask.engine.rpc.HeartbeatTargetResponse;
+import org.havenask.engine.rpc.TargetInfo;
+import org.havenask.engine.rpc.UpdateHeartbeatTargetRequest;
+import org.havenask.engine.util.Utils;
+import org.havenask.threadpool.ThreadPool;
+
+import static org.havenask.engine.HavenaskEnginePlugin.HAVENASK_THREAD_POOL_NAME;
+
+public class MetaDataSyncer extends AbstractLifecycleComponent {
+    private static final Logger LOGGER = LogManager.getLogger(MetaDataSyncer.class);
+
     private static final int TARGET_VERSION = 1651870394;
     private static final int DEFAULT_PART_COUNT = 1;
     private static final int DEFAULT_PART_ID = 0;
@@ -68,17 +85,126 @@ public class MetaDataSyncer {
     private final Path defaultBizsPath;
     private final Path defaultTablePath;
     private final Path defaultRuntimeDataPath;
-    private final ClusterState state;
+    private final ClusterService clusterService;
+    private final ThreadPool threadPool;
     private final HavenaskEngineEnvironment env;
     private final NativeProcessControlService nativeProcessControlService;
+    private final HavenaskClient searcherClient;
+    private final HavenaskClient qrsClient;
 
-    public MetaDataSyncer(ClusterState state, HavenaskEngineEnvironment env, NativeProcessControlService nativeProcessControlService) {
-        this.state = state;
+    private SyncTask syncTask;
+    private boolean running;
+    private final boolean enabled;
+    private final boolean isDataNode;
+
+    // synced标识metadata当前是否已经同步
+    // pending标识是否需要同步, 解决元数据并发修改和更新的同步问题, 由于同步是异步的, 所以需要pending标识是否需要同步
+    private AtomicBoolean synced = new AtomicBoolean(false);
+    private AtomicBoolean pending = new AtomicBoolean(false);
+    private AtomicReference<TargetInfo> searcherTargetInfo = new AtomicReference<>();
+
+    public MetaDataSyncer(ClusterService clusterService,ThreadPool threadPool, HavenaskEngineEnvironment env,
+        NativeProcessControlService nativeProcessControlService, HavenaskClient searcherClient,
+        HavenaskClient qrsClient) {
+        this.clusterService = clusterService;
+        this.threadPool = threadPool;
         this.env = env;
         this.nativeProcessControlService = nativeProcessControlService;
+        this.searcherClient = searcherClient;
+        this.qrsClient = qrsClient;
         this.defaultBizsPath = env.getBizsPath().resolve(BIZS_PATH_POSTFIX);
         this.defaultTablePath = env.getTablePath().resolve(TABLE_PATH_POSTFIX);
         this.defaultRuntimeDataPath = env.getRuntimedataPath();
+
+        Settings settings = clusterService.getSettings();
+        isDataNode = DiscoveryNode.isDataNode(settings);
+        enabled = HavenaskEnginePlugin.HAVENASK_ENGINE_ENABLED_SETTING.get(settings);
+    }
+
+    @Override
+    protected void doStart() {
+        if (enabled && isDataNode && syncTask == null) {
+            syncTask = new SyncTask(threadPool, TimeValue.timeValueSeconds(1));
+            syncTask.rescheduleIfNecessary();
+            running = true;
+        }
+    }
+
+    @Override
+    protected void doStop() {
+        if (syncTask != null) {
+            syncTask.close();
+            syncTask = null;
+        }
+    }
+
+    @Override
+    protected void doClose() throws IOException {
+
+    }
+
+    public class SyncTask extends AbstractAsyncTask {
+
+        public SyncTask(ThreadPool threadPool, TimeValue interval) {
+            super(LOGGER, threadPool, interval, true);
+        }
+
+        @Override
+        protected boolean mustReschedule() {
+            return true;
+        }
+
+        @Override
+        protected void runInternal() {
+            if (false == running) {
+                return;
+            }
+
+            if (synced.get() == false || pending.getAndSet(false) == true) {
+                // update heartbeat target
+                try {
+                    // TODO qrs每次request都变化,此处是否正常同步成功
+                    UpdateHeartbeatTargetRequest qrsTargetRequest = createQrsUpdateHeartbeatTargetRequest();
+                    HeartbeatTargetResponse qrsResponse = qrsClient.updateHeartbeatTarget(qrsTargetRequest);
+
+                    UpdateHeartbeatTargetRequest searcherTargetRequest = createSearcherUpdateHeartbeatTargetRequest();
+                    HeartbeatTargetResponse searchResponse = searcherClient.updateHeartbeatTarget(searcherTargetRequest);
+
+                    // TODO check target info equals method
+                    if (qrsTargetRequest.getTargetInfo().equals(qrsResponse.getSignature())
+                        && searcherTargetRequest.getTargetInfo().equals(qrsResponse.getSignature())) {
+                        LOGGER.info("update heartbeat target success");
+
+                        synced.set(true);
+                        searcherTargetInfo.set(searchResponse.getCustomInfo());
+                        return ;
+                    }
+                } catch (IOException e) {
+                    LOGGER.error("update heartbeat target failed", e);
+                }
+
+                synced.set(false);
+            }
+        }
+
+        protected String getThreadPool() {
+            return HAVENASK_THREAD_POOL_NAME;
+        }
+    }
+
+    /**
+     * 获取searcher target info
+     * @return searcher target info
+     */
+    public TargetInfo getSearcherTargetInfo() {
+        return searcherTargetInfo.get();
+    }
+
+    /**
+     * 设置sync metadata
+     */
+    public void setPendingSync() {
+        pending.set(true);
     }
 
     public UpdateHeartbeatTargetRequest createQrsUpdateHeartbeatTargetRequest() throws IOException {
@@ -123,6 +249,7 @@ public class MetaDataSyncer {
 
     public UpdateHeartbeatTargetRequest createSearcherUpdateHeartbeatTargetRequest() throws IOException {
         Path indexRootPath = env.getDataPath().resolve(INDEX_ROOT_POSTFIX);
+        ClusterState state = clusterService.state();
 
         TargetInfo searcherTargetInfo = new TargetInfo();
         searcherTargetInfo.clean_disk = CLEAN_DISK;

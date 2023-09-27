@@ -118,6 +118,7 @@ public class HavenaskEnginePlugin extends Plugin
     private final SetOnce<HavenaskClient> searcherClientSetOnce = new SetOnce<>();
     private final SetOnce<QrsClient> qrsClientSetOnce = new SetOnce<>();
     private final SetOnce<SearcherClient> searcherArpcClientSetOnce = new SetOnce<>();
+    private final SetOnce<MetaDataSyncer> metaDataSyncerSetOnce = new SetOnce<>();
     private final Settings settings;
 
     public static final String HAVENASK_THREAD_POOL_NAME = "havenask";
@@ -172,7 +173,8 @@ public class HavenaskEnginePlugin extends Plugin
                     qrsClientSetOnce.get(),
                     searcherArpcClientSetOnce.get(),
                     havenaskEngineEnvironmentSetOnce.get(),
-                    nativeProcessControlServiceSetOnce.get()
+                    nativeProcessControlServiceSetOnce.get(),
+                    metaDataSyncerSetOnce.get()
                 )
             );
         }
@@ -215,11 +217,17 @@ public class HavenaskEnginePlugin extends Plugin
             havenaskClient
         );
         checkTargetServiceSetOnce.set(checkTargetService);
+
+        MetaDataSyncer metaDataSyncer = new MetaDataSyncer(clusterService, threadPool, havenaskEngineEnvironmentSetOnce.get(),
+            nativeProcessControlService, havenaskClient, qrsClientSetOnce.get());
+        metaDataSyncerSetOnce.set(metaDataSyncer);
+
         return Arrays.asList(
             nativeProcessControlServiceSetOnce.get(),
             havenaskEngineEnvironmentSetOnce.get(),
             searcherClientSetOnce.get(),
-            checkTargetServiceSetOnce.get()
+            checkTargetServiceSetOnce.get(),
+            metaDataSyncerSetOnce.get()
         );
     }
 
