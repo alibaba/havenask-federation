@@ -82,8 +82,8 @@ public class HavenaskEngineEnvironment implements CustomEnvironment {
         configPath = dataPath.resolve(HAVENASK_CONFIG_PATH);
         runtimedataPath = dataPath.resolve(HAVENASK_RUNTIMEDATA_PATH);
         bsWorkPath = dataPath.resolve(HAVENASK_BS_WORK_PATH);
-        tablePath = dataPath.resolve(HAVENASK_TABLE_CONFIG_PATH);
-        bizsPath = dataPath.resolve(HAVENASK_BIZS_CONFIG_PATH);
+        tablePath = configPath.resolve(HAVENASK_TABLE_CONFIG_PATH);
+        bizsPath = configPath.resolve(HAVENASK_BIZS_CONFIG_PATH);
     }
 
     /**
@@ -102,6 +102,24 @@ public class HavenaskEngineEnvironment implements CustomEnvironment {
      */
     public Path getConfigPath() {
         return configPath;
+    }
+
+    /**
+     * get table path
+     *
+     * @return tablePath
+     */
+    public Path getTablePath() {
+        return tablePath;
+    }
+
+    /**
+     * get bizs path
+     *
+     * @return bizsPath
+     */
+    public Path getBizsPath() {
+        return bizsPath;
     }
 
     /**

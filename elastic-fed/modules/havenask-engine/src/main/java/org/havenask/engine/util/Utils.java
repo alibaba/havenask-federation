@@ -109,7 +109,7 @@ public class Utils {
     /**
      * return the max version file name under the certain index directory
      */
-    private static String getIndexMaxVersion(Path versionFilePath) {
+    public static String getIndexMaxVersion(Path versionFilePath) {
         try (Stream<Path> stream = Files.list(versionFilePath)) {
             String maxVersionFile = stream.map(path1 -> path1.getFileName().toString())
                 .filter(s -> s.matches("version\\.\\d+"))
