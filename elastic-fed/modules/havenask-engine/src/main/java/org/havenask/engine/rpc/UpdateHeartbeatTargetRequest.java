@@ -17,9 +17,10 @@ package org.havenask.engine.rpc;
 import java.io.IOException;
 
 import org.havenask.common.ParseField;
-import org.havenask.common.collect.Map;
+import org.havenask.common.Strings;
 import org.havenask.common.xcontent.ToXContentObject;
 import org.havenask.common.xcontent.XContentBuilder;
+import org.havenask.common.xcontent.json.JsonXContent;
 
 public class UpdateHeartbeatTargetRequest implements ToXContentObject {
 
@@ -42,7 +43,13 @@ public class UpdateHeartbeatTargetRequest implements ToXContentObject {
         builder.startObject();
         builder.field(SIGNATURE_FIELD.getPreferredName(), targetInfo.toString());
         builder.field(CUSTOM_INFO_FIELD.getPreferredName(), targetInfo.toString());
-        builder.field(GLOBAL_CUSTOM_INFO_FIELD.getPreferredName(), Map.of(CUSTOM_INFO_FIELD.getPreferredName(), targetInfo.toString()));
+
+        XContentBuilder customBuilder = JsonXContent.contentBuilder();
+        customBuilder.startObject();
+        customBuilder.field(CUSTOM_INFO_FIELD.getPreferredName(), targetInfo.toString());
+        customBuilder.endObject();
+
+        builder.field(GLOBAL_CUSTOM_INFO_FIELD.getPreferredName(), Strings.toString(customBuilder));
         builder.endObject();
         return builder;
     }
