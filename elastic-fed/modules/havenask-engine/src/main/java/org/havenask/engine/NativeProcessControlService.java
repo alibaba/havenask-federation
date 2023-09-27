@@ -29,7 +29,6 @@ import java.util.concurrent.TimeUnit;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.message.ParameterizedMessage;
-import org.havenask.HavenaskException;
 import org.havenask.client.Client;
 import org.havenask.client.Requests;
 import org.havenask.cluster.node.DiscoveryNode;
@@ -123,11 +122,8 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
     private TimeValue commandTimeout;
 
     protected String startSearcherCommand;
-    protected String updateSearcherCommand;
     protected String startQrsCommand;
-    protected String updateQrsCommand;
     protected String stopHavenaskCommand;
-    protected String startBsJobCommand;
     private ProcessControlTask processControlTask;
     private boolean running;
     private final Set<HavenaskEngine> havenaskEngines = new HashSet<>();
@@ -150,7 +146,6 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
         this.environment = environment;
         this.nodeEnvironment = nodeEnvironment;
         this.havenaskEngineEnvironment = havenaskEngineEnvironment;
-        havenaskEngineEnvironment.setNativeProcessControlService(this);
         this.searcherHttpPort = HAVENASK_SEARCHER_HTTP_PORT_SETTING.get(settings);
         this.searcherTcpPort = HAVENASK_SEARCHER_TCP_PORT_SETTING.get(settings);
         this.searcherGrpcPort = HAVENASK_SEARCHER_GRPC_PORT_SETTING.get(settings);
@@ -167,14 +162,6 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
             searcherTcpPort,
             searcherGrpcPort
         );
-        this.updateSearcherCommand = String.format(
-            Locale.ROOT,
-            UPDATE_SEARCHER_COMMAND,
-            havenaskEngineEnvironment.getDataPath().toAbsolutePath(),
-            environment.configFile().toAbsolutePath(),
-            havenaskEngineEnvironment.getRuntimedataPath(),
-            havenaskEngineEnvironment.getConfigPath()
-        );
         this.startQrsCommand = String.format(
             Locale.ROOT,
             START_QRS_COMMAND,
@@ -184,14 +171,6 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
             havenaskEngineEnvironment.getConfigPath(),
             qrsHttpPort,
             qrsTcpPort
-        );
-        this.updateQrsCommand = String.format(
-            Locale.ROOT,
-            UPDATE_QRS_COMMAND,
-            havenaskEngineEnvironment.getDataPath().toAbsolutePath(),
-            environment.configFile().toAbsolutePath(),
-            havenaskEngineEnvironment.getRuntimedataPath(),
-            havenaskEngineEnvironment.getConfigPath()
         );
         this.stopHavenaskCommand = String.format(
             Locale.ROOT,
@@ -457,38 +436,6 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
         return 0;
     }
 
-    /**
-     * 异步更新target
-     */
-    public void asyncUpdateTarget() {
-        if (running && isDataNode) {
-            threadPool.executor(HavenaskEnginePlugin.HAVENASK_THREAD_POOL_NAME).execute(() -> {
-                synchronized (this) {
-                    if (false == running) {
-                        return;
-                    }
-                    if (isDataNode) {
-                        try {
-                            checkAliveBeforeUpdateTarget(SEARCHER_ROLE);
-                            // 更新datanode qrs的target
-                            runCommand(updateSearcherCommand, commandTimeout);
-                        } catch (Exception e) {
-                            LOGGER.warn(() -> new ParameterizedMessage("can't update searcher target before start "), e);
-                        }
-
-                        try {
-                            checkAliveBeforeUpdateTarget(QRS_ROLE);
-                            // 更新ingestnode qrs的target
-                            runCommand(updateQrsCommand, commandTimeout);
-                        } catch (Exception e) {
-                            LOGGER.warn(() -> new ParameterizedMessage("can't update qrs target before start "), e);
-                        }
-                    }
-                }
-            });
-        }
-    }
-
     private String runCommandWithResult(String command) {
         return AccessController.doPrivileged((PrivilegedAction<String>) () -> {
             try {
@@ -556,18 +503,6 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
         });
     }
 
-    private Process runCommandAsync(String command) {
-        return AccessController.doPrivileged((PrivilegedAction<Process>) () -> {
-            try {
-                LOGGER.debug("run command async: {}", command);
-                return Runtime.getRuntime().exec(new String[] { "sh", "-c", command });
-            } catch (Exception e) {
-                LOGGER.warn(() -> new ParameterizedMessage("run command async {} unexpected failed", command), e);
-            }
-            return null;
-        });
-    }
-
     public void setCommandTimeout(TimeValue commandTimeout) {
         this.commandTimeout = commandTimeout;
     }
@@ -588,11 +523,5 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
     public void removeHavenaskEngine(HavenaskEngine engine) {
         LOGGER.debug("remove havenask engine, shardId: [{}]", engine.config().getShardId());
         havenaskEngines.remove(engine);
-    }
-
-    private void checkAliveBeforeUpdateTarget(String role) {
-        if (false == checkProcessAlive(role)) {
-            throw new HavenaskException("havenask" + role + "process is not alive, can't update target");
-        }
     }
 }

@@ -103,12 +103,18 @@ public class MetaDataSyncer extends AbstractLifecycleComponent {
     private AtomicBoolean pending = new AtomicBoolean(false);
     private AtomicReference<TargetInfo> searcherTargetInfo = new AtomicReference<>();
 
-    public MetaDataSyncer(ClusterService clusterService,ThreadPool threadPool, HavenaskEngineEnvironment env,
-        NativeProcessControlService nativeProcessControlService, HavenaskClient searcherClient,
-        HavenaskClient qrsClient) {
+    public MetaDataSyncer(
+        ClusterService clusterService,
+        ThreadPool threadPool,
+        HavenaskEngineEnvironment env,
+        NativeProcessControlService nativeProcessControlService,
+        HavenaskClient searcherClient,
+        HavenaskClient qrsClient
+    ) {
         this.clusterService = clusterService;
         this.threadPool = threadPool;
         this.env = env;
+        env.setMetaDataSyncer(this);
         this.nativeProcessControlService = nativeProcessControlService;
         this.searcherClient = searcherClient;
         this.qrsClient = qrsClient;
@@ -177,7 +183,7 @@ public class MetaDataSyncer extends AbstractLifecycleComponent {
 
                         synced.set(true);
                         searcherTargetInfo.set(searchResponse.getCustomInfo());
-                        return ;
+                        return;
                     }
                 } catch (IOException e) {
                     LOGGER.error("update heartbeat target failed", e);

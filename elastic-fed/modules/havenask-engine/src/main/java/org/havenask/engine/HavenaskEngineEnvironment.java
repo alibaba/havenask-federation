@@ -60,7 +60,7 @@ public class HavenaskEngineEnvironment implements CustomEnvironment {
     private final Path tablePath;
     private final Path bizsPath;
 
-    private NativeProcessControlService nativeProcessControlService;
+    private MetaDataSyncer metaDataSyncer;
 
     public HavenaskEngineEnvironment(final Environment environment, final Settings settings) {
         this.environment = environment;
@@ -150,8 +150,8 @@ public class HavenaskEngineEnvironment implements CustomEnvironment {
         return runtimedataPath.resolve(tableName);
     }
 
-    public void setNativeProcessControlService(NativeProcessControlService nativeProcessControlService) {
-        this.nativeProcessControlService = nativeProcessControlService;
+    public void setMetaDataSyncer(MetaDataSyncer metaDataSyncer) {
+        this.metaDataSyncer = metaDataSyncer;
     }
 
     @Override
@@ -169,8 +169,8 @@ public class HavenaskEngineEnvironment implements CustomEnvironment {
         TableConfigGenerator.removeTable(tableName, configPath);
         Path indexDir = runtimedataPath.resolve(tableName);
         IOUtils.rm(indexDir);
-        if (nativeProcessControlService != null) {
-            nativeProcessControlService.asyncUpdateTarget();
+        if (metaDataSyncer != null) {
+            metaDataSyncer.setPendingSync();
         }
     }
 }

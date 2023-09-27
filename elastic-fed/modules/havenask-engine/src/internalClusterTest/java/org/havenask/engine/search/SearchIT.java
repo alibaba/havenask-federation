@@ -19,6 +19,7 @@ import java.util.Collection;
 import java.util.concurrent.TimeUnit;
 
 import com.carrotsearch.randomizedtesting.annotations.ThreadLeakFilters;
+import org.apache.lucene.util.LuceneTestCase.AwaitsFix;
 import org.havenask.ArpcThreadLeakFilter;
 import org.havenask.OkHttpThreadLeakFilter;
 import org.havenask.TestHavenaskEnginePlugin;
@@ -36,6 +37,7 @@ import org.havenask.search.builder.KnnSearchBuilder;
 import org.havenask.search.builder.SearchSourceBuilder;
 
 @ThreadLeakFilters(filters = { OkHttpThreadLeakFilter.class, ArpcThreadLeakFilter.class })
+@AwaitsFix(bugUrl = "https://github.com/alibaba/havenask-federation/issues/256")
 public class SearchIT extends HavenaskITTestCase {
     @Override
     protected Collection<Class<? extends Plugin>> nodePlugins() {
