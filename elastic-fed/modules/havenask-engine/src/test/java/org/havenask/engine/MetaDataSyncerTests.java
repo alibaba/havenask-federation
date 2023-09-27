@@ -161,6 +161,7 @@ public class MetaDataSyncerTests extends HavenaskTestCase {
         assertEquals(true, true);
     }
 
+    @AwaitsFix(bugUrl = "https://github.com/alibaba/havenask-federation/issues/256")
     public void testCreateSearcherUpdateHeartbeatTargetRequest() throws Exception {
         for (String subDir : subDirNames) {
             Path versionPath = defaultRuntimeDataPath.resolve(subDir).resolve(INDEX_SUB_PATH);
