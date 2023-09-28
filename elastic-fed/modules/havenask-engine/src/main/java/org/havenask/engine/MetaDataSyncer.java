@@ -21,12 +21,12 @@ import java.net.NetworkInterface;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
-import java.util.Random;
+import java.util.ArrayList;
+import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.List;
-import java.util.ArrayList;
 import java.util.Map;
-import java.util.Enumeration;
+import java.util.Random;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Matcher;
@@ -55,7 +55,6 @@ import org.havenask.engine.rpc.UpdateHeartbeatTargetRequest;
 import org.havenask.engine.util.Utils;
 import org.havenask.threadpool.ThreadPool;
 
-import static java.nio.file.Files.createFile;
 import static org.havenask.engine.HavenaskEnginePlugin.HAVENASK_THREAD_POOL_NAME;
 
 public class MetaDataSyncer extends AbstractLifecycleComponent {
@@ -398,8 +397,8 @@ public class MetaDataSyncer extends AbstractLifecycleComponent {
         if (Files.exists(fakeConfigPath) && clearDirectory(fakeConfigPath)) {
             copyDirectory(configPath, fakeConfigPath);
         }
-        Path doneFile = fakeConfigPath.resolve("uez_deploy.done");
-        createFile(doneFile);
+        //Path doneFile = fakeConfigPath.resolve("suez_deploy.done");
+        //createFile(doneFile);
     }
 
     public static boolean clearDirectory(Path directory) throws IOException {
