@@ -321,7 +321,7 @@ public class MetaDataSyncer extends AbstractLifecycleComponent {
             if (EngineSettings.isHavenaskEngine(indexMetadata.getSettings())) {
                 String tableName = Utils.getHavenaskTableName(shardRouting.shardId());
                 subDirNames.add(tableName);
-                createConfigLink("general_p0_r0", "table", tableName, defaultBizsPath, env.getDataPath());
+                createConfigLink("general_p0_r0", "table", tableName, defaultTablePath, env.getDataPath());
             }
         }
 
