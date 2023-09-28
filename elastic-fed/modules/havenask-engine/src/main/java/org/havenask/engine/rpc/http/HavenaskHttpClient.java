@@ -66,9 +66,8 @@ public class HavenaskHttpClient implements HavenaskClient {
             XContentParser parser = JSON.xContent()
                 .createParser(NamedXContentRegistry.EMPTY, LoggingDeprecationHandler.INSTANCE, response.body().byteStream())
         ) {
-            // TODO change to debug
-            if (logger.isInfoEnabled()) {
-                logger.info("updateHeartbeatTarget, request[{}], response[{}]", Strings.toString(request), response.body().string());
+            if (logger.isDebugEnabled()) {
+                logger.debug("updateHeartbeatTarget, request[{}], response[{}]", Strings.toString(request), response.body().string());
             }
 
             HeartbeatTargetResponse heartbeatTargetResponse = HeartbeatTargetResponse.fromXContent(parser);

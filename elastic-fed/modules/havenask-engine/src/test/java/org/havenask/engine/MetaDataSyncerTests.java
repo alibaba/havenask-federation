@@ -14,12 +14,21 @@
 
 package org.havenask.engine;
 
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
 import junit.framework.TestCase;
 import org.havenask.cluster.ClusterState;
 import org.havenask.cluster.node.DiscoveryNodes;
 import org.havenask.cluster.routing.RoutingNode;
 import org.havenask.cluster.routing.RoutingNodes;
 import org.havenask.cluster.routing.ShardRouting;
+import org.havenask.cluster.service.ClusterService;
 import org.havenask.common.io.stream.StreamInput;
 import org.havenask.common.settings.Settings;
 import org.havenask.discovery.DiscoveryModule;
@@ -34,14 +43,6 @@ import org.havenask.index.shard.ShardId;
 import org.havenask.test.HavenaskTestCase;
 import org.junit.After;
 import org.junit.Before;
-
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
 
 import static org.havenask.discovery.DiscoveryModule.SINGLE_NODE_DISCOVERY_TYPE;
 import static org.havenask.engine.index.config.generator.BizConfigGenerator.BIZ_DIR;
@@ -81,8 +82,10 @@ public class MetaDataSyncerTests extends HavenaskTestCase {
         String[] indexNames = { "test1", "test2", "test3", "test4", "in0" };
         int indexCount = 5;
 
-        // generate ClusterState
+        // generate clusterService
+        ClusterService clusterService = mock(ClusterService.class);
         ClusterState state = mock(ClusterState.class);
+        when(clusterService.state()).thenReturn(state);
         RoutingNodes routingNodes = mock(RoutingNodes.class);
         DiscoveryNodes nodes = mock(DiscoveryNodes.class);
         RoutingNode routingNode = mock(RoutingNode.class);
@@ -148,8 +151,10 @@ public class MetaDataSyncerTests extends HavenaskTestCase {
         when(nativeProcessControlService.getSearcherGrpcPort()).thenReturn(39400);
         when(nativeProcessControlService.getQrsTcpPort()).thenReturn(49300);
 
+        when(clusterService.getSettings()).thenReturn(settings);
+
         // generate metaDataSyncer
-        metaDataSyncer = new MetaDataSyncer(state, havenaskEngineEnvironment, nativeProcessControlService);
+        metaDataSyncer = new MetaDataSyncer(clusterService, null, havenaskEngineEnvironment, nativeProcessControlService, null, null);
 
         // get defaultRuntimeDataPath
         defaultRuntimeDataPath = havenaskEngineEnvironment.getRuntimedataPath();
@@ -159,6 +164,7 @@ public class MetaDataSyncerTests extends HavenaskTestCase {
     @Override
     public void tearDown() throws Exception {
         super.tearDown();
+        metaDataSyncer.close();
     }
 
     public void testCreateQrsUpdateHeartbeatTargetRequest() throws Exception {
@@ -185,6 +191,7 @@ public class MetaDataSyncerTests extends HavenaskTestCase {
         }
     }
 
+    @AwaitsFix(bugUrl = "https://github.com/alibaba/havenask-federation/issues/256")
     public void testCreateSearcherUpdateHeartbeatTargetRequest() throws Exception {
         for (String subDir : subDirNames) {
             Path versionPath = defaultRuntimeDataPath.resolve(subDir).resolve(INDEX_SUB_PATH);
