@@ -245,7 +245,7 @@ public class HavenaskEngine extends InternalEngine {
         while (timeout > 0) {
             try {
                 TargetInfo targetInfo = metaDataSyncer.getSearcherTargetInfo();
-                if (targetInfo == null || false == targetInfo.table_info.containsKey(shardId.getIndexName())) {
+                if (targetInfo == null || false == targetInfo.table_info.containsKey(tableName)) {
                     throw new IOException("havenask table not found in searcher");
                 }
 

@@ -320,7 +320,9 @@ public class MetaDataSyncer extends AbstractLifecycleComponent {
         for (ShardRouting shardRouting : localRoutingNode) {
             IndexMetadata indexMetadata = metadata.index(shardRouting.getIndexName());
             if (EngineSettings.isHavenaskEngine(indexMetadata.getSettings())) {
-                subDirNames.add(Utils.getHavenaskTableName(shardRouting.shardId()));
+                String tableName = Utils.getHavenaskTableName(shardRouting.shardId());
+                subDirNames.add(tableName);
+                createConfigLink("general_p0_r0", "table", tableName, defaultBizsPath, env.getDataPath());
             }
         }
 
