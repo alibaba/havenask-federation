@@ -42,6 +42,7 @@ import org.havenask.cluster.node.DiscoveryNode;
 import org.havenask.cluster.routing.RoutingNode;
 import org.havenask.cluster.routing.ShardRouting;
 import org.havenask.cluster.service.ClusterService;
+import org.havenask.common.Strings;
 import org.havenask.common.SuppressForbidden;
 import org.havenask.common.component.AbstractLifecycleComponent;
 import org.havenask.common.settings.Settings;
@@ -183,10 +184,10 @@ public class MetaDataSyncer extends AbstractLifecycleComponent {
             }
 
             // 同步元数据,触发条件:
-            // 1. synced为false
-            // 2. pending为true
+            // 1. pending为true
+            // 2. synced为false
             // 3. syncTimes小于MAX_SYNC_TIMES
-            if (synced.get() == false || pending.getAndSet(false) == true || syncTimes > MAX_SYNC_TIMES) {
+            if (pending.getAndSet(false) == true || synced.get() == false || syncTimes > MAX_SYNC_TIMES) {
                 // update heartbeat target
                 LOGGER.info("update heartbeat target, synced: {}, pending: {}, syncTimes: {}", synced.get(), pending.get(), syncTimes);
 
@@ -196,29 +197,37 @@ public class MetaDataSyncer extends AbstractLifecycleComponent {
                     HeartbeatTargetResponse qrsResponse = qrsClient.updateHeartbeatTarget(qrsTargetRequest);
 
                     UpdateHeartbeatTargetRequest searcherTargetRequest = createSearcherUpdateHeartbeatTargetRequest();
-                    HeartbeatTargetResponse searchResponse = searcherClient.updateHeartbeatTarget(searcherTargetRequest);
+                    HeartbeatTargetResponse searcherResponse = searcherClient.updateHeartbeatTarget(searcherTargetRequest);
 
                     // TODO check target info equals method
-                    if (qrsTargetRequest.getTargetInfo().equals(qrsResponse.getSignature())
-                        && searcherTargetRequest.getTargetInfo().equals(searchResponse.getSignature())) {
+                    boolean qrsEquals = qrsTargetRequest.getTargetInfo().equals(qrsResponse.getSignature());
+                    boolean searcherEquals = searcherTargetRequest.getTargetInfo().equals(searcherResponse.getSignature());
+                    if (false == qrsEquals) {
+                        LOGGER.trace(
+                            "update qrs heartbeat target failed, qrsTargetRequest: {}, qrsResponse: {}",
+                            Strings.toString(qrsTargetRequest),
+                            Strings.toString(qrsResponse)
+                        );
+                    }
+
+                    if (false == searcherEquals) {
+                        LOGGER.trace(
+                            "update searcher heartbeat target failed, searcherTargetRequest: {}, searcherResponse: {}",
+                            Strings.toString(searcherTargetRequest),
+                            Strings.toString(searcherResponse)
+                        );
+                    }
+
+                    if (qrsEquals && searcherEquals) {
                         LOGGER.info("update heartbeat target success");
 
                         synced.set(true);
-                        searcherTargetInfo.set(searchResponse.getCustomInfo());
+                        searcherTargetInfo.set(searcherResponse.getCustomInfo());
                         syncTimes = 0;
                         // 在每次同步成功时更新两个randomVersion
                         randomVersion = random.nextInt(100000) + 1;
                         generalSqlRandomVersion = random.nextInt(100000) + 1;
                         return;
-                    } else {
-                        LOGGER.trace(
-                            "update heartbeat target failed, qrsTargetRequest: {}, qrsResponse: {}, "
-                                + "searcherTargetRequest: {}, searchResponse: {}",
-                            qrsTargetRequest,
-                            qrsResponse,
-                            searcherTargetRequest,
-                            searchResponse
-                        );
                     }
                 } catch (Throwable e) {
                     LOGGER.error("update heartbeat target failed", e);
