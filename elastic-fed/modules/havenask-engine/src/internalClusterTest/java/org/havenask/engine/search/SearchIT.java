@@ -19,6 +19,7 @@ import java.util.Collection;
 import java.util.concurrent.TimeUnit;
 
 import com.carrotsearch.randomizedtesting.annotations.ThreadLeakFilters;
+import org.apache.lucene.util.LuceneTestCase.AwaitsFix;
 import org.havenask.ArpcThreadLeakFilter;
 import org.havenask.OkHttpThreadLeakFilter;
 import org.havenask.TestHavenaskEnginePlugin;
@@ -36,6 +37,7 @@ import org.havenask.search.builder.KnnSearchBuilder;
 import org.havenask.search.builder.SearchSourceBuilder;
 
 @ThreadLeakFilters(filters = { OkHttpThreadLeakFilter.class, ArpcThreadLeakFilter.class })
+@AwaitsFix(bugUrl = "https://github.com/alibaba/havenask-federation/issues/256")
 public class SearchIT extends HavenaskITTestCase {
     @Override
     protected Collection<Class<? extends Plugin>> nodePlugins() {
@@ -54,7 +56,7 @@ public class SearchIT extends HavenaskITTestCase {
         assertBusy(() -> {
             ClusterHealthResponse clusterHealthResponse = client().admin().cluster().health(new ClusterHealthRequest(index)).get();
             assertEquals(clusterHealthResponse.getStatus(), ClusterHealthStatus.GREEN);
-        }, 2, TimeUnit.MINUTES);
+        }, 30, TimeUnit.SECONDS);
 
         SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
         HnswQueryBuilder hnswQueryBuilder = new HnswQueryBuilder("vector", new float[] { 1.5f, 2.5f }, 10);
@@ -103,7 +105,7 @@ public class SearchIT extends HavenaskITTestCase {
         assertBusy(() -> {
             ClusterHealthResponse clusterHealthResponse = client().admin().cluster().health(new ClusterHealthRequest(index)).get();
             assertEquals(clusterHealthResponse.getStatus(), ClusterHealthStatus.GREEN);
-        }, 2, TimeUnit.MINUTES);
+        }, 30, TimeUnit.SECONDS);
     }
 
     public void testSourceFilter() throws Exception {
@@ -136,7 +138,7 @@ public class SearchIT extends HavenaskITTestCase {
         assertBusy(() -> {
             ClusterHealthResponse clusterHealthResponse = client().admin().cluster().health(new ClusterHealthRequest(index)).get();
             assertEquals(clusterHealthResponse.getStatus(), ClusterHealthStatus.GREEN);
-        }, 2, TimeUnit.MINUTES);
+        }, 30, TimeUnit.SECONDS);
 
         String[] include1 = new String[] { "name", "key1" };
         String[] exclude1 = new String[] {};

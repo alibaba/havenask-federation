@@ -114,10 +114,10 @@ public class HavenaskEnginePlugin extends Plugin
     private static Logger logger = LogManager.getLogger(HavenaskEnginePlugin.class);
     private final SetOnce<HavenaskEngineEnvironment> havenaskEngineEnvironmentSetOnce = new SetOnce<>();
     private final SetOnce<NativeProcessControlService> nativeProcessControlServiceSetOnce = new SetOnce<>();
-    private final SetOnce<CheckTargetService> checkTargetServiceSetOnce = new SetOnce<>();
     private final SetOnce<HavenaskClient> searcherClientSetOnce = new SetOnce<>();
     private final SetOnce<QrsClient> qrsClientSetOnce = new SetOnce<>();
     private final SetOnce<SearcherClient> searcherArpcClientSetOnce = new SetOnce<>();
+    private final SetOnce<MetaDataSyncer> metaDataSyncerSetOnce = new SetOnce<>();
     private final Settings settings;
 
     public static final String HAVENASK_THREAD_POOL_NAME = "havenask";
@@ -172,7 +172,8 @@ public class HavenaskEnginePlugin extends Plugin
                     qrsClientSetOnce.get(),
                     searcherArpcClientSetOnce.get(),
                     havenaskEngineEnvironmentSetOnce.get(),
-                    nativeProcessControlServiceSetOnce.get()
+                    nativeProcessControlServiceSetOnce.get(),
+                    metaDataSyncerSetOnce.get()
                 )
             );
         }
@@ -207,19 +208,22 @@ public class HavenaskEnginePlugin extends Plugin
         SearcherClient searcherClient = new SearcherArpcClient(nativeProcessControlService.getSearcherTcpPort());
         searcherClientSetOnce.set(havenaskClient);
         searcherArpcClientSetOnce.set(searcherClient);
-        CheckTargetService checkTargetService = new CheckTargetService(
+
+        MetaDataSyncer metaDataSyncer = new MetaDataSyncer(
             clusterService,
             threadPool,
-            client,
+            havenaskEngineEnvironmentSetOnce.get(),
             nativeProcessControlService,
-            havenaskClient
+            havenaskClient,
+            qrsClientSetOnce.get()
         );
-        checkTargetServiceSetOnce.set(checkTargetService);
+        metaDataSyncerSetOnce.set(metaDataSyncer);
+
         return Arrays.asList(
             nativeProcessControlServiceSetOnce.get(),
             havenaskEngineEnvironmentSetOnce.get(),
             searcherClientSetOnce.get(),
-            checkTargetServiceSetOnce.get()
+            metaDataSyncerSetOnce.get()
         );
     }
 

@@ -69,6 +69,7 @@ import org.havenask.common.settings.Settings;
 import org.havenask.common.unit.TimeValue;
 import org.havenask.common.xcontent.XContentHelper;
 import org.havenask.engine.HavenaskEngineEnvironment;
+import org.havenask.engine.MetaDataSyncer;
 import org.havenask.engine.NativeProcessControlService;
 import org.havenask.engine.index.mapper.VectorField;
 import org.havenask.engine.rpc.HavenaskClient;
@@ -77,6 +78,7 @@ import org.havenask.engine.rpc.QrsSqlRequest;
 import org.havenask.engine.rpc.QrsSqlResponse;
 import org.havenask.engine.rpc.SearcherClient;
 import org.havenask.engine.rpc.SqlClientInfoResponse;
+import org.havenask.engine.rpc.TargetInfo;
 import org.havenask.engine.rpc.WriteRequest;
 import org.havenask.engine.rpc.WriteResponse;
 import org.havenask.engine.util.Utils;
@@ -109,6 +111,7 @@ public class HavenaskEngine extends InternalEngine {
     private final SearcherClient searcherClient;
     private final HavenaskEngineEnvironment env;
     private final NativeProcessControlService nativeProcessControlService;
+    private final MetaDataSyncer metaDataSyncer;
     private final ShardId shardId;
     private final String tableName;
     private final boolean realTimeEnable;
@@ -124,7 +127,8 @@ public class HavenaskEngine extends InternalEngine {
         QrsClient qrsHttpClient,
         SearcherClient searcherClient,
         HavenaskEngineEnvironment env,
-        NativeProcessControlService nativeProcessControlService
+        NativeProcessControlService nativeProcessControlService,
+        MetaDataSyncer metaDataSyncer
     ) {
         super(engineConfig);
 
@@ -133,6 +137,7 @@ public class HavenaskEngine extends InternalEngine {
         this.searcherClient = searcherClient;
         this.env = env;
         this.nativeProcessControlService = nativeProcessControlService;
+        this.metaDataSyncer = metaDataSyncer;
         this.shardId = engineConfig.getShardId();
         this.tableName = Utils.getHavenaskTableName(shardId);
         this.realTimeEnable = EngineSettings.HAVENASK_REALTIME_ENABLE.get(engineConfig.getIndexSettings().getSettings());
@@ -174,7 +179,7 @@ public class HavenaskEngine extends InternalEngine {
 
         // 加载配置表
         try {
-            activeTable();
+            metaDataSyncer.setPendingSync();
             checkTableStatus();
         } catch (IOException e) {
             logger.error(() -> new ParameterizedMessage("shard [{}] activeTable exception", engineConfig.getShardId()), e);
@@ -235,30 +240,14 @@ public class HavenaskEngine extends InternalEngine {
         }
     }
 
-    /**
-     * 加载数据表
-     * TODO 注意加锁,防止并发更新冲突
-     *
-     * @throws IOException TODO
-     */
-    private void activeTable() throws IOException {
-        // 更新配置表信息
-        nativeProcessControlService.updateDataNodeTarget();
-    }
-
     private void checkTableStatus() throws IOException {
         long timeout = 60000;
         while (timeout > 0) {
             try {
-                // TODO 关闭searcher target的检查
-                // HeartbeatTargetResponse heartbeatTargetResponse = searcherHttpClient.getHeartbeatTarget();
-                // if (heartbeatTargetResponse.getSignature() == null) {
-                // throw new IOException("havenask get heartbeat target failed");
-                // }
-                // TargetInfo targetInfo = heartbeatTargetResponse.getSignature();
-                // if (false == targetInfo.table_info.containsKey(shardId.getIndexName())) {
-                // throw new IOException("havenask table not found in searcher");
-                // }
+                TargetInfo targetInfo = metaDataSyncer.getSearcherTargetInfo();
+                if (targetInfo == null || false == targetInfo.table_info.containsKey(shardId.getIndexName())) {
+                    throw new IOException("havenask table not found in searcher");
+                }
 
                 SqlClientInfoResponse sqlClientInfoResponse = qrsHttpClient.executeSqlClientInfo();
                 if (sqlClientInfoResponse.getErrorCode() != 0) {
