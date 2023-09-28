@@ -169,12 +169,12 @@ public class TargetInfo {
                     return false;
                 }
                 Cm2Config cm2Config = (Cm2Config) o;
-                return part_count == cm2Config.part_count
-                    && version == cm2Config.version
-                    && part_id == cm2Config.part_id
-                    && tcp_port == cm2Config.tcp_port
-                    && support_heartbeat == cm2Config.support_heartbeat
-                    && grpc_port == cm2Config.grpc_port
+                return Objects.equals(part_count, cm2Config.part_count)
+                    && Objects.equals(version, cm2Config.version)
+                    && Objects.equals(part_id, cm2Config.part_id)
+                    && Objects.equals(tcp_port, cm2Config.tcp_port)
+                    && Objects.equals(support_heartbeat, cm2Config.support_heartbeat)
+                    && Objects.equals(grpc_port, cm2Config.grpc_port)
                     && Objects.equals(biz_name, cm2Config.biz_name)
                     && Objects.equals(ip, cm2Config.ip);
             }
@@ -211,9 +211,9 @@ public class TargetInfo {
                 return false;
             }
             ServiceInfo that = (ServiceInfo) o;
-            return part_id == that.part_id
-                && part_count == that.part_count
-                && version == that.version
+            return Objects.equals(part_id, that.part_id)
+                && Objects.equals(part_count, that.part_count)
+                && Objects.equals(version, that.version)
                 && Objects.equals(cm2, that.cm2)
                 && Objects.equals(zone_name, that.zone_name)
                 && Objects.equals(cm2_config, that.cm2_config);
@@ -240,7 +240,7 @@ public class TargetInfo {
                         return false;
                     }
                     DeployStatus that = (DeployStatus) o;
-                    return deploy_status == that.deploy_status && Objects.equals(local_config_path, that.local_config_path);
+                    return Objects.equals(deploy_status, that.deploy_status) && Objects.equals(local_config_path, that.local_config_path);
                 }
 
                 @Override
@@ -272,14 +272,14 @@ public class TargetInfo {
                     return false;
                 }
                 Partition partition = (Partition) o;
-                return deploy_status == partition.deploy_status
-                    && inc_version == partition.inc_version
-                    && keep_count == partition.keep_count
-                    && rt_status == partition.rt_status
-                    && schema_version == partition.schema_version
-                    && table_load_type == partition.table_load_type
-                    && table_status == partition.table_status
-                    && table_type == partition.table_type
+                return Objects.equals(deploy_status, partition.deploy_status)
+                    && Objects.equals(inc_version, partition.inc_version)
+                    && Objects.equals(keep_count, partition.keep_count)
+                    && Objects.equals(rt_status, partition.rt_status)
+                    && Objects.equals(schema_version, partition.schema_version)
+                    && Objects.equals(table_load_type, partition.table_load_type)
+                    && Objects.equals(table_status, partition.table_status)
+                    && Objects.equals(table_type, partition.table_type)
                     && Objects.equals(check_index_path, partition.check_index_path)
                     && Objects.equals(deploy_status_map, partition.deploy_status_map)
                     && Objects.equals(loaded_config_path, partition.loaded_config_path)
@@ -350,12 +350,12 @@ public class TargetInfo {
                 return false;
             }
             TableInfo tableInfo = (TableInfo) o;
-            return table_mode == tableInfo.table_mode
-                && table_type == tableInfo.table_type
-                && total_partition_count == tableInfo.total_partition_count
-                && force_online == tableInfo.force_online
-                && rt_status == tableInfo.rt_status
-                && timestamp_to_skip == tableInfo.timestamp_to_skip
+            return Objects.equals(table_mode, tableInfo.table_mode)
+                && Objects.equals(table_type, tableInfo.table_type)
+                && Objects.equals(total_partition_count, tableInfo.total_partition_count)
+                && Objects.equals(force_online, tableInfo.force_online)
+                && Objects.equals(rt_status, tableInfo.rt_status)
+                && Objects.equals(timestamp_to_skip, tableInfo.timestamp_to_skip)
                 && Objects.equals(config_path, tableInfo.config_path)
                 && Objects.equals(group_name, tableInfo.group_name)
                 && Objects.equals(index_root, tableInfo.index_root)
@@ -420,7 +420,7 @@ public class TargetInfo {
             return false;
         }
         TargetInfo that = (TargetInfo) o;
-        return target_version == that.target_version
+        return Objects.equals(target_version, that.target_version)
             && Objects.equals(app_info, that.app_info)
             && Objects.equals(biz_info, that.biz_info)
             && Objects.equals(custom_app_info, that.custom_app_info)

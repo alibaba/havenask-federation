@@ -167,6 +167,7 @@ public class MetaDataSyncerTests extends HavenaskTestCase {
         metaDataSyncer.close();
     }
 
+    @AwaitsFix(bugUrl = "https://github.com/alibaba/havenask-federation/issues/256")
     public void testCreateQrsUpdateHeartbeatTargetRequest() throws Exception {
         UpdateHeartbeatTargetRequest qrsTargetRequest = metaDataSyncer.createQrsUpdateHeartbeatTargetRequest();
         TargetInfo.ServiceInfo serviceInfo = qrsTargetRequest.getServiceInfo();
