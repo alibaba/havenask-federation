@@ -53,4 +53,20 @@ public class UpdateHeartbeatTargetRequest implements ToXContentObject {
         builder.endObject();
         return builder;
     }
+
+    public Boolean getCleanDisk() {
+        return this.targetInfo.clean_disk;
+    }
+
+    public int getTargetVersion() {
+        return this.targetInfo.target_version;
+    }
+
+    public TargetInfo.ServiceInfo getServiceInfo() {
+        return this.targetInfo.service_info;
+    }
+
+    public java.util.Map<String, java.util.Map<String, TargetInfo.TableInfo>> getTableInfo() {
+        return this.targetInfo.table_info;
+    }
 }

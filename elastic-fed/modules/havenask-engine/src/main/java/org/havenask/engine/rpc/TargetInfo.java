@@ -31,7 +31,7 @@ public class TargetInfo {
     public ServiceInfo service_info;
     public Map<String, Map<String, TableInfo>> table_info;
     public Boolean clean_disk;
-    public int target_version;
+    public Integer target_version;
     public String catalog_address;
 
     public static class AppInfo {
@@ -53,7 +53,7 @@ public class TargetInfo {
         }
 
         public String config_path;
-        public int keep_count;
+        public Integer keep_count;
     }
 
     public static class BizInfo {
@@ -79,7 +79,7 @@ public class TargetInfo {
 
             public String config_path;
             public CustomBizInfo custom_biz_info;
-            public int keep_count;
+            public Integer keep_count;
         }
 
         public static class CustomBizInfo {
@@ -145,20 +145,20 @@ public class TargetInfo {
         public Service cm2;
 
         public String zone_name;
-        public int part_id;
-        public int part_count;
-        public int version;
-        public Map<String, List<cm2Config>> cm2_config;
+        public Integer part_id;
+        public Integer part_count;
+        public Integer version;
+        public Map<String, List<Cm2Config>> cm2_config;
 
-        public static class cm2Config {
-            public int part_count;
+        public static class Cm2Config {
+            public Integer part_count;
             public String biz_name;
             public String ip;
-            public int version;
-            public int part_id;
-            public int tcp_port;
-            public boolean support_heartbeat;
-            public int grpc_port;
+            public Integer version;
+            public Integer part_id;
+            public Integer tcp_port;
+            public Boolean support_heartbeat;
+            public Integer grpc_port;
 
             @Override
             public boolean equals(Object o) {
@@ -168,13 +168,13 @@ public class TargetInfo {
                 if (o == null || getClass() != o.getClass()) {
                     return false;
                 }
-                cm2Config cm2Config = (cm2Config) o;
-                return part_count == cm2Config.part_count
-                    && version == cm2Config.version
-                    && part_id == cm2Config.part_id
-                    && tcp_port == cm2Config.tcp_port
-                    && support_heartbeat == cm2Config.support_heartbeat
-                    && grpc_port == cm2Config.grpc_port
+                Cm2Config cm2Config = (Cm2Config) o;
+                return Objects.equals(part_count, cm2Config.part_count)
+                    && Objects.equals(version, cm2Config.version)
+                    && Objects.equals(part_id, cm2Config.part_id)
+                    && Objects.equals(tcp_port, cm2Config.tcp_port)
+                    && Objects.equals(support_heartbeat, cm2Config.support_heartbeat)
+                    && Objects.equals(grpc_port, cm2Config.grpc_port)
                     && Objects.equals(biz_name, cm2Config.biz_name)
                     && Objects.equals(ip, cm2Config.ip);
             }
@@ -211,9 +211,9 @@ public class TargetInfo {
                 return false;
             }
             ServiceInfo that = (ServiceInfo) o;
-            return part_id == that.part_id
-                && part_count == that.part_count
-                && version == that.version
+            return Objects.equals(part_id, that.part_id)
+                && Objects.equals(part_count, that.part_count)
+                && Objects.equals(version, that.version)
                 && Objects.equals(cm2, that.cm2)
                 && Objects.equals(zone_name, that.zone_name)
                 && Objects.equals(cm2_config, that.cm2_config);
@@ -228,7 +228,7 @@ public class TargetInfo {
     public static class TableInfo {
         public static class Partition {
             public static class DeployStatus {
-                public int deploy_status;
+                public Integer deploy_status;
                 public String local_config_path;
 
                 @Override
@@ -240,7 +240,7 @@ public class TargetInfo {
                         return false;
                     }
                     DeployStatus that = (DeployStatus) o;
-                    return deploy_status == that.deploy_status && Objects.equals(local_config_path, that.local_config_path);
+                    return Objects.equals(deploy_status, that.deploy_status) && Objects.equals(local_config_path, that.local_config_path);
                 }
 
                 @Override
@@ -250,18 +250,18 @@ public class TargetInfo {
             }
 
             public String check_index_path;
-            public int deploy_status;
+            public Integer deploy_status;
             public List<List<Object>> deploy_status_map;
-            public int inc_version;
-            public int keep_count;
+            public Integer inc_version;
+            public Integer keep_count;
             public String loaded_config_path;
             public String loaded_index_root;
             public String local_index_path;
-            public int rt_status;
-            public int schema_version;
-            public int table_load_type;
-            public int table_status;
-            public int table_type;
+            public Integer rt_status;
+            public Integer schema_version;
+            public Integer table_load_type;
+            public Integer table_status;
+            public Integer table_type;
 
             @Override
             public boolean equals(Object o) {
@@ -272,14 +272,14 @@ public class TargetInfo {
                     return false;
                 }
                 Partition partition = (Partition) o;
-                return deploy_status == partition.deploy_status
-                    && inc_version == partition.inc_version
-                    && keep_count == partition.keep_count
-                    && rt_status == partition.rt_status
-                    && schema_version == partition.schema_version
-                    && table_load_type == partition.table_load_type
-                    && table_status == partition.table_status
-                    && table_type == partition.table_type
+                return Objects.equals(deploy_status, partition.deploy_status)
+                    && Objects.equals(inc_version, partition.inc_version)
+                    && Objects.equals(keep_count, partition.keep_count)
+                    && Objects.equals(rt_status, partition.rt_status)
+                    && Objects.equals(schema_version, partition.schema_version)
+                    && Objects.equals(table_load_type, partition.table_load_type)
+                    && Objects.equals(table_status, partition.table_status)
+                    && Objects.equals(table_type, partition.table_type)
                     && Objects.equals(check_index_path, partition.check_index_path)
                     && Objects.equals(deploy_status_map, partition.deploy_status_map)
                     && Objects.equals(loaded_config_path, partition.loaded_config_path)
@@ -307,28 +307,28 @@ public class TargetInfo {
             }
         }
 
-        public int table_mode;
-        public int table_type;
-        public int total_partition_count;
+        public Integer table_mode;
+        public Integer table_type;
+        public Integer total_partition_count;
         public String config_path;
-        public boolean force_online;
+        public Boolean force_online;
         public String group_name;
         public String index_root;
         public Map<String, Partition> partitions;
         public String raw_index_root;
-        public int rt_status;
-        public long timestamp_to_skip;
+        public Integer rt_status;
+        public Long timestamp_to_skip;
 
         public TableInfo() {
 
         }
 
         public TableInfo(
-            int tableMode,
-            int tableType,
+            Integer tableMode,
+            Integer tableType,
             String configPath,
             String indexRoot,
-            int totalPartitionCount,
+            Integer totalPartitionCount,
             String curPartitionName,
             Partition curPartition
         ) {
@@ -350,12 +350,12 @@ public class TargetInfo {
                 return false;
             }
             TableInfo tableInfo = (TableInfo) o;
-            return table_mode == tableInfo.table_mode
-                && table_type == tableInfo.table_type
-                && total_partition_count == tableInfo.total_partition_count
-                && force_online == tableInfo.force_online
-                && rt_status == tableInfo.rt_status
-                && timestamp_to_skip == tableInfo.timestamp_to_skip
+            return Objects.equals(table_mode, tableInfo.table_mode)
+                && Objects.equals(table_type, tableInfo.table_type)
+                && Objects.equals(total_partition_count, tableInfo.total_partition_count)
+                && Objects.equals(force_online, tableInfo.force_online)
+                && Objects.equals(rt_status, tableInfo.rt_status)
+                && Objects.equals(timestamp_to_skip, tableInfo.timestamp_to_skip)
                 && Objects.equals(config_path, tableInfo.config_path)
                 && Objects.equals(group_name, tableInfo.group_name)
                 && Objects.equals(index_root, tableInfo.index_root)
@@ -420,7 +420,7 @@ public class TargetInfo {
             return false;
         }
         TargetInfo that = (TargetInfo) o;
-        return target_version == that.target_version
+        return Objects.equals(target_version, that.target_version)
             && Objects.equals(app_info, that.app_info)
             && Objects.equals(biz_info, that.biz_info)
             && Objects.equals(custom_app_info, that.custom_app_info)

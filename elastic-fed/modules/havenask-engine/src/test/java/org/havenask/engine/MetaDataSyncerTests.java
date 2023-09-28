@@ -20,6 +20,7 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import junit.framework.TestCase;
 import org.havenask.cluster.ClusterState;
@@ -33,6 +34,7 @@ import org.havenask.common.settings.Settings;
 import org.havenask.discovery.DiscoveryModule;
 import org.havenask.engine.index.config.ZoneBiz;
 import org.havenask.engine.index.engine.EngineSettings;
+import org.havenask.engine.rpc.TargetInfo;
 import org.havenask.engine.rpc.UpdateHeartbeatTargetRequest;
 import org.havenask.engine.util.Utils;
 import org.havenask.env.Environment;
@@ -44,8 +46,8 @@ import org.junit.Before;
 
 import static org.havenask.discovery.DiscoveryModule.SINGLE_NODE_DISCOVERY_TYPE;
 import static org.havenask.engine.index.config.generator.BizConfigGenerator.BIZ_DIR;
-import static org.havenask.engine.index.config.generator.BizConfigGenerator.DEFAULT_BIZ_CONFIG;
 import static org.havenask.engine.index.config.generator.BizConfigGenerator.DEFAULT_DIR;
+import static org.havenask.engine.index.config.generator.BizConfigGenerator.DEFAULT_BIZ_CONFIG;
 import static org.havenask.engine.index.config.generator.TableConfigGenerator.TABLE_DIR;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -54,17 +56,34 @@ public class MetaDataSyncerTests extends HavenaskTestCase {
     private MetaDataSyncer metaDataSyncer;
     private Path defaultRuntimeDataPath;
 
+    private static final int TARGET_VERSION = 1651870394;
+    private static final int DEFAULT_PART_COUNT = 1;
+    private static final int DEFAULT_PART_ID = 0;
+    private static final int DEFAULT_SEARCHER_TCP_PORT = 39300;
+    private static final int DEFAUlT_SEARCHER_GRPC_PORT = 39400;
     private static final String INDEX_SUB_PATH = "generation_0/partition_0_65535";
     private static final String[] subDirNames = { "test1", "test2", "test3", "test4", "in0" };
+    private static final String[] cm2ConfigBizNames = {
+        "general.para_search_2",
+        "general.para_search_2.search",
+        "general.default_sql",
+        "general.para_search_4",
+        "general.default.search",
+        "general.default_agg",
+        "general.default_agg.search",
+        "general.default",
+        "general.para_search_4.search" };
 
     @Before
     @Override
     public void setUp() throws Exception {
         super.setUp();
 
-        ClusterService clusterService = mock(ClusterService.class);
+        String[] indexNames = { "test1", "test2", "test3", "test4", "in0" };
+        int indexCount = 5;
 
-        // generate ClusterState
+        // generate clusterService
+        ClusterService clusterService = mock(ClusterService.class);
         ClusterState state = mock(ClusterState.class);
         when(clusterService.state()).thenReturn(state);
         RoutingNodes routingNodes = mock(RoutingNodes.class);
@@ -76,32 +95,24 @@ public class MetaDataSyncerTests extends HavenaskTestCase {
         when(nodes.getLocalNodeId()).thenReturn("localNodeId");
         when(routingNodes.node("localNodeId")).thenReturn(routingNode);
 
-        ShardId shardId1 = mock(ShardId.class);
-        when(shardId1.getIndexName()).thenReturn("test1");
-        ShardId shardId2 = mock(ShardId.class);
-        when(shardId2.getIndexName()).thenReturn("test2");
-        ShardId shardId3 = mock(ShardId.class);
-        when(shardId3.getIndexName()).thenReturn("test3");
-        ShardId shardId4 = mock(ShardId.class);
-        when(shardId4.getIndexName()).thenReturn("test4");
-        ShardId shardId5 = mock(ShardId.class);
-        when(shardId5.getIndexName()).thenReturn("in0");
+        ShardId[] shardIds = new ShardId[indexCount];
+        for (int i = 0; i < shardIds.length; i++) {
+            shardIds[i] = mock(ShardId.class);
+            when(shardIds[i].getIndexName()).thenReturn(indexNames[i]);
+        }
 
         StreamInput in = mock(StreamInput.class);
         when(in.readByte()).thenReturn((byte) 1);
-        ShardRouting shardRouting1 = new ShardRouting(shardId1, in);
-        ShardRouting shardRouting2 = new ShardRouting(shardId2, in);
-        ShardRouting shardRouting3 = new ShardRouting(shardId3, in);
-        ShardRouting shardRouting4 = new ShardRouting(shardId4, in);
-        ShardRouting shardRouting5 = new ShardRouting(shardId5, in);
+        ShardRouting[] shardRoutings = new ShardRouting[indexCount];
+        for (int i = 0; i < shardRoutings.length; i++) {
+            shardRoutings[i] = new ShardRouting(shardIds[i], in);
+        }
 
-        List<ShardRouting> shardRoutings = new ArrayList<>();
-        shardRoutings.add(shardRouting1);
-        shardRoutings.add(shardRouting2);
-        shardRoutings.add(shardRouting3);
-        shardRoutings.add(shardRouting4);
-        shardRoutings.add(shardRouting5);
-        when(routingNode.iterator()).thenReturn(shardRoutings.iterator());
+        List<ShardRouting> listShardRoutings = new ArrayList<>();
+        for (int i = 0; i < shardRoutings.length; i++) {
+            listShardRoutings.add(shardRoutings[i]);
+        }
+        when(routingNode.iterator()).thenReturn(listShardRoutings.iterator());
 
         // generate HavenaskEngineEnvironment
         ShardId shardId = new ShardId("indexFile", "indexFile", 0);
@@ -156,9 +167,29 @@ public class MetaDataSyncerTests extends HavenaskTestCase {
         metaDataSyncer.close();
     }
 
+    @AwaitsFix(bugUrl = "https://github.com/alibaba/havenask-federation/issues/256")
     public void testCreateQrsUpdateHeartbeatTargetRequest() throws Exception {
         UpdateHeartbeatTargetRequest qrsTargetRequest = metaDataSyncer.createQrsUpdateHeartbeatTargetRequest();
-        assertEquals(true, true);
+        TargetInfo.ServiceInfo serviceInfo = qrsTargetRequest.getServiceInfo();
+
+        assertEquals(TARGET_VERSION, qrsTargetRequest.getTargetVersion());
+        assertEquals(false, qrsTargetRequest.getCleanDisk());
+        assertEquals("qrs", serviceInfo.zone_name);
+        assertEquals(DEFAULT_PART_COUNT, (int) serviceInfo.part_count);
+        assertEquals(DEFAULT_PART_ID, (int) serviceInfo.part_id);
+
+        assert (serviceInfo.cm2_config.containsKey("local"));
+        List<TargetInfo.ServiceInfo.Cm2Config> cm2ConfigList = serviceInfo.cm2_config.get("local");
+        assertEquals(cm2ConfigBizNames.length, cm2ConfigList.size());
+        for (int i = 0; i < cm2ConfigBizNames.length; i++) {
+            TargetInfo.ServiceInfo.Cm2Config curCm2Config = cm2ConfigList.get(i);
+            assertEquals(cm2ConfigBizNames[i], curCm2Config.biz_name);
+            assertEquals(DEFAULT_PART_COUNT, (int) curCm2Config.part_count);
+            assertEquals(DEFAULT_PART_ID, (int) curCm2Config.part_id);
+            assertEquals(DEFAULT_SEARCHER_TCP_PORT, (int) curCm2Config.tcp_port);
+            assertEquals(DEFAUlT_SEARCHER_GRPC_PORT, (int) curCm2Config.grpc_port);
+            assertEquals(true, curCm2Config.support_heartbeat);
+        }
     }
 
     @AwaitsFix(bugUrl = "https://github.com/alibaba/havenask-federation/issues/256")
@@ -170,6 +201,26 @@ public class MetaDataSyncerTests extends HavenaskTestCase {
             Files.createFile(FilePath);
         }
         UpdateHeartbeatTargetRequest searcherTargetRequest = metaDataSyncer.createSearcherUpdateHeartbeatTargetRequest();
-        assertEquals(true, true);
+
+        TargetInfo.ServiceInfo serviceInfo = searcherTargetRequest.getServiceInfo();
+        Map<String, Map<String, TargetInfo.TableInfo>> tableInfos = searcherTargetRequest.getTableInfo();
+
+        assertEquals(TARGET_VERSION, searcherTargetRequest.getTargetVersion());
+        assertEquals(false, searcherTargetRequest.getCleanDisk());
+        assertEquals("general", serviceInfo.zone_name);
+        assertEquals(DEFAULT_PART_COUNT, (int) serviceInfo.part_count);
+        assertEquals(DEFAULT_PART_ID, (int) serviceInfo.part_id);
+        assertEquals(0, (int) serviceInfo.version);
+
+        assertEquals(subDirNames.length, tableInfos.size());
+        for (int i = 0; i < subDirNames.length; i++) {
+            assert (tableInfos.containsKey(subDirNames[i]));
+            Map<String, TargetInfo.TableInfo> curTableInfoMap = tableInfos.get(subDirNames[i]);
+            assert (curTableInfoMap.containsKey("0"));
+            TargetInfo.TableInfo curTableInfo = curTableInfoMap.get("0");
+            assertEquals("in0" != subDirNames[i] ? 1 : 0, (int) curTableInfo.table_mode);
+            assertEquals("in0" != subDirNames[i] ? 2 : 3, (int) curTableInfo.table_type);
+            assertEquals(1, (int) curTableInfo.total_partition_count);
+        }
     }
 }

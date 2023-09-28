@@ -18,17 +18,20 @@ import java.io.IOException;
 import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
+import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.Enumeration;
+import java.nio.file.StandardCopyOption;
+import java.util.Random;
 import java.util.HashMap;
 import java.util.List;
+import java.util.ArrayList;
 import java.util.Map;
-import java.util.Random;
+import java.util.Enumeration;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Stream;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -52,6 +55,7 @@ import org.havenask.engine.rpc.UpdateHeartbeatTargetRequest;
 import org.havenask.engine.util.Utils;
 import org.havenask.threadpool.ThreadPool;
 
+import static java.nio.file.Files.createFile;
 import static org.havenask.engine.HavenaskEnginePlugin.HAVENASK_THREAD_POOL_NAME;
 
 public class MetaDataSyncer extends AbstractLifecycleComponent {
@@ -66,6 +70,7 @@ public class MetaDataSyncer extends AbstractLifecycleComponent {
     private static final int BASE_VERSION = 2104320000;
     private static final boolean DEFAULT_SUPPORT_HEARTBEAT = true;
     private static final boolean CLEAN_DISK = false;
+    private static final String TABLE_NAME_IN0 = "in0";
     private static final String QRS_ZONE_NAME = "qrs";
     private static final String GENERAL_DEFAULT_SQL = "general.default_sql";
     private static final String SEARCHER_ZONE_NAME = "general";
@@ -101,6 +106,10 @@ public class MetaDataSyncer extends AbstractLifecycleComponent {
     private final boolean enabled;
     private final boolean isDataNode;
 
+    private int randomVersion;
+    private int generalSqlRandomVersion;
+    private Random random;
+
     // synced标识metadata当前是否已经同步
     // pending标识是否需要同步, 解决元数据并发修改和更新的同步问题, 由于同步是异步的, 所以需要pending标识是否需要同步
     private AtomicBoolean synced = new AtomicBoolean(false);
@@ -130,6 +139,9 @@ public class MetaDataSyncer extends AbstractLifecycleComponent {
         Settings settings = clusterService.getSettings();
         isDataNode = DiscoveryNode.isDataNode(settings);
         enabled = HavenaskEnginePlugin.HAVENASK_ENGINE_ENABLED_SETTING.get(settings);
+
+        random = new Random();
+        randomVersion = random.nextInt(100000) + 1;
     }
 
     @Override
@@ -195,6 +207,9 @@ public class MetaDataSyncer extends AbstractLifecycleComponent {
                         synced.set(true);
                         searcherTargetInfo.set(searchResponse.getCustomInfo());
                         syncTimes = 0;
+                        // 在每次同步成功时更新两个randomVersion
+                        randomVersion = random.nextInt(100000) + 1;
+                        generalSqlRandomVersion = random.nextInt(100000) + 1;
                         return;
                     } else {
                         LOGGER.trace(
@@ -246,21 +261,21 @@ public class MetaDataSyncer extends AbstractLifecycleComponent {
         TargetInfo qrsTargetInfo = new TargetInfo();
         qrsTargetInfo.clean_disk = CLEAN_DISK;
         qrsTargetInfo.target_version = TARGET_VERSION;
-        qrsTargetInfo.service_info = new TargetInfo.ServiceInfo(QRS_ZONE_NAME, DEFAULT_PART_COUNT, DEFAULT_PART_ID);
+        qrsTargetInfo.service_info = new TargetInfo.ServiceInfo(QRS_ZONE_NAME, DEFAULT_PART_ID, DEFAULT_PART_COUNT);
         qrsTargetInfo.table_info = new HashMap<>();
         qrsTargetInfo.biz_info = new TargetInfo.BizInfo(defaultBizsPath);
+        createConfigLink("qrs", "biz", "default", defaultBizsPath, env.getDataPath());
         qrsTargetInfo.catalog_address = ip + ":" + qrsTcpPort;
 
-        Random random = new Random();
-        int randomVersion = random.nextInt(100000) + 1;
-        List<TargetInfo.ServiceInfo.cm2Config> cm2ConfigLocalVal = new ArrayList<>();
+        // randomVersion = random.nextInt(100000) + 1;
+        List<TargetInfo.ServiceInfo.Cm2Config> cm2ConfigLocalVal = new ArrayList<>();
         for (String bizName : cm2ConfigBizNames) {
-            TargetInfo.ServiceInfo.cm2Config curCm2Config = new TargetInfo.ServiceInfo.cm2Config();
+            TargetInfo.ServiceInfo.Cm2Config curCm2Config = new TargetInfo.ServiceInfo.Cm2Config();
             curCm2Config.part_count = DEFAULT_PART_COUNT;
             curCm2Config.biz_name = bizName;
             curCm2Config.ip = ip;
             if (GENERAL_DEFAULT_SQL == bizName) {
-                curCm2Config.version = random.nextInt(100000) + 1;
+                curCm2Config.version = generalSqlRandomVersion;
             } else {
                 curCm2Config.version = BASE_VERSION + randomVersion;
             }
@@ -278,6 +293,7 @@ public class MetaDataSyncer extends AbstractLifecycleComponent {
 
     public UpdateHeartbeatTargetRequest createSearcherUpdateHeartbeatTargetRequest() throws IOException {
         Path indexRootPath = env.getDataPath().resolve(INDEX_ROOT_POSTFIX);
+
         ClusterState state = clusterService.state();
         Metadata metadata = state.metadata();
 
@@ -293,6 +309,7 @@ public class MetaDataSyncer extends AbstractLifecycleComponent {
         searcherTargetInfo.biz_info = new TargetInfo.BizInfo(defaultBizsPath);
 
         List<String> subDirNames = new ArrayList<>();
+        subDirNames.add(TABLE_NAME_IN0);
         RoutingNode localRoutingNode = state.getRoutingNodes().node(state.nodes().getLocalNodeId());
         if (localRoutingNode == null) {
             // TODO 抛出异常？
@@ -353,6 +370,68 @@ public class MetaDataSyncer extends AbstractLifecycleComponent {
             return number;
         } else {
             return -1;
+        }
+    }
+
+    private static void createConfigLink(String zoneName, String prefix, String bizName, Path configPath, Path dataPath)
+        throws IOException {
+        // TODO 这个方法中有一些地方有可能抛出异常，暂时没有处理，后续需要跟进
+        final String localSearchPostFix = "local_search_12000";
+        final String zoneConfig = "zone_config";
+
+        String configPathStr = configPath.toString();
+        int lastIndex = configPathStr.lastIndexOf("/");
+        String version = configPathStr.substring(lastIndex + 1);
+
+        Path rundir = dataPath.resolve(localSearchPostFix).resolve(zoneName);
+        Path bizConfigDir = rundir.resolve(zoneConfig).resolve(prefix).resolve(bizName);
+        if (false == Files.exists(bizConfigDir)) {
+            Files.createDirectories(bizConfigDir);
+            // TODO 可能抛出异常
+        }
+        Path fakeConfigPath = bizConfigDir.resolve(version);
+
+        // TODO 调用clearFolder和copyFolder可能会抛出异常，完善else逻辑
+        if (Files.exists(fakeConfigPath) && clearDirectory(fakeConfigPath)) {
+            copyDirectory(configPath, fakeConfigPath);
+        }
+        Path doneFile = fakeConfigPath.resolve("uez_deploy.done");
+        createFile(doneFile);
+    }
+
+    public static boolean clearDirectory(Path directory) throws IOException {
+        boolean success = true;
+        try (Stream<Path> pathStream = Files.walk(directory)) {
+            pathStream.sorted((p1, p2) -> -p1.compareTo(p2)) // 以相反的顺序排序，以便先删除文件再删除目录
+                .forEach(path -> {
+                    try {
+                        Files.delete(path); // 删除文件或目录
+                    } catch (IOException e) {
+                        throw new RuntimeException("Failed to clear file: " + e.getMessage(), e);
+                    }
+                });
+        }
+        return success;
+    }
+
+    private static boolean copyDirectory(Path source, Path destination) throws IOException {
+        try {
+            // 拷贝所有文件与目录到目标路径
+            Files.walk(source).forEach(sourcePath -> {
+                try {
+                    Path targetPath = destination.resolve(source.relativize(sourcePath));
+                    if (Files.isDirectory(sourcePath) && !Files.exists(targetPath)) {
+                        Files.createDirectory(targetPath);
+                    } else {
+                        Files.copy(sourcePath, targetPath, StandardCopyOption.REPLACE_EXISTING);
+                    }
+                } catch (IOException e) {
+                    throw new RuntimeException("Failed to copy file: " + e.getMessage(), e);
+                }
+            });
+            return true;
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to copy file: " + e.getMessage(), e);
         }
     }
 
