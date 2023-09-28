@@ -394,9 +394,10 @@ public class MetaDataSyncer extends AbstractLifecycleComponent {
         Path fakeConfigPath = bizConfigDir.resolve(version);
 
         // TODO 调用clearFolder和copyFolder可能会抛出异常，完善else逻辑
-        if (Files.exists(fakeConfigPath) && clearDirectory(fakeConfigPath)) {
-            copyDirectory(configPath, fakeConfigPath);
+        if (Files.exists(fakeConfigPath)) {
+            clearDirectory(fakeConfigPath);
         }
+        copyDirectory(configPath, fakeConfigPath);
         //Path doneFile = fakeConfigPath.resolve("suez_deploy.done");
         //createFile(doneFile);
     }
