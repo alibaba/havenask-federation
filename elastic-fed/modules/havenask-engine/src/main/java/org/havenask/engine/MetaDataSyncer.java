@@ -292,6 +292,7 @@ public class MetaDataSyncer extends AbstractLifecycleComponent {
     }
 
     public UpdateHeartbeatTargetRequest createSearcherUpdateHeartbeatTargetRequest() throws IOException {
+        createConfigLink("general_p0_r0", "biz", "default", defaultBizsPath, env.getDataPath());
         Path indexRootPath = env.getDataPath().resolve(INDEX_ROOT_POSTFIX);
 
         ClusterState state = clusterService.state();
