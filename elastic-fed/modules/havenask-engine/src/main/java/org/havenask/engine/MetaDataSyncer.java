@@ -21,17 +21,16 @@ import java.net.NetworkInterface;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
-import java.util.Random;
+import java.util.ArrayList;
+import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.List;
-import java.util.ArrayList;
 import java.util.Map;
-import java.util.Enumeration;
+import java.util.Random;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Stream;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -42,11 +41,13 @@ import org.havenask.cluster.node.DiscoveryNode;
 import org.havenask.cluster.routing.RoutingNode;
 import org.havenask.cluster.routing.ShardRouting;
 import org.havenask.cluster.service.ClusterService;
+import org.havenask.common.Strings;
 import org.havenask.common.SuppressForbidden;
 import org.havenask.common.component.AbstractLifecycleComponent;
 import org.havenask.common.settings.Settings;
 import org.havenask.common.unit.TimeValue;
 import org.havenask.common.util.concurrent.AbstractAsyncTask;
+import org.havenask.core.internal.io.IOUtils;
 import org.havenask.engine.index.engine.EngineSettings;
 import org.havenask.engine.rpc.HavenaskClient;
 import org.havenask.engine.rpc.HeartbeatTargetResponse;
@@ -55,7 +56,6 @@ import org.havenask.engine.rpc.UpdateHeartbeatTargetRequest;
 import org.havenask.engine.util.Utils;
 import org.havenask.threadpool.ThreadPool;
 
-import static java.nio.file.Files.createFile;
 import static org.havenask.engine.HavenaskEnginePlugin.HAVENASK_THREAD_POOL_NAME;
 
 public class MetaDataSyncer extends AbstractLifecycleComponent {
@@ -80,6 +80,9 @@ public class MetaDataSyncer extends AbstractLifecycleComponent {
     private static final String INDEX_ROOT_POSTFIX = "local_search_12000/general_p0_r0/runtimedata";
     private static final String DEFAULT_PARTITION_NAME = "0_65535";
     private static final String INDEX_SUB_PATH = "generation_0/partition_0_65535";
+    private static final String HAVENASK_WORKSPACCE = "local_search_12000";
+    private static final String HAVENASK_SEARCHER_HOME = "general_p0_r0";
+    private static final String HAVENASK_QRS_HOME = "qrs";
     private static final String[] cm2ConfigBizNames = {
         "general.para_search_2",
         "general.para_search_2.search",
@@ -184,10 +187,10 @@ public class MetaDataSyncer extends AbstractLifecycleComponent {
             }
 
             // 同步元数据,触发条件:
-            // 1. synced为false
-            // 2. pending为true
+            // 1. pending为true
+            // 2. synced为false
             // 3. syncTimes小于MAX_SYNC_TIMES
-            if (synced.get() == false || pending.getAndSet(false) == true || syncTimes > MAX_SYNC_TIMES) {
+            if (pending.getAndSet(false) == true || synced.get() == false || syncTimes > MAX_SYNC_TIMES) {
                 // update heartbeat target
                 LOGGER.info("update heartbeat target, synced: {}, pending: {}, syncTimes: {}", synced.get(), pending.get(), syncTimes);
 
@@ -197,29 +200,37 @@ public class MetaDataSyncer extends AbstractLifecycleComponent {
                     HeartbeatTargetResponse qrsResponse = qrsClient.updateHeartbeatTarget(qrsTargetRequest);
 
                     UpdateHeartbeatTargetRequest searcherTargetRequest = createSearcherUpdateHeartbeatTargetRequest();
-                    HeartbeatTargetResponse searchResponse = searcherClient.updateHeartbeatTarget(searcherTargetRequest);
+                    HeartbeatTargetResponse searcherResponse = searcherClient.updateHeartbeatTarget(searcherTargetRequest);
 
                     // TODO check target info equals method
-                    if (qrsTargetRequest.getTargetInfo().equals(qrsResponse.getSignature())
-                        && searcherTargetRequest.getTargetInfo().equals(searchResponse.getSignature())) {
+                    boolean qrsEquals = qrsTargetRequest.getTargetInfo().equals(qrsResponse.getSignature());
+                    boolean searcherEquals = searcherTargetRequest.getTargetInfo().equals(searcherResponse.getSignature());
+                    if (false == qrsEquals) {
+                        LOGGER.trace(
+                            "update qrs heartbeat target failed, qrsTargetRequest: {}, qrsResponse: {}",
+                            Strings.toString(qrsTargetRequest),
+                            Strings.toString(qrsResponse)
+                        );
+                    }
+
+                    if (false == searcherEquals) {
+                        LOGGER.trace(
+                            "update searcher heartbeat target failed, searcherTargetRequest: {}, searcherResponse: {}",
+                            Strings.toString(searcherTargetRequest),
+                            Strings.toString(searcherResponse)
+                        );
+                    }
+
+                    if (qrsEquals && searcherEquals) {
                         LOGGER.info("update heartbeat target success");
 
                         synced.set(true);
-                        searcherTargetInfo.set(searchResponse.getCustomInfo());
+                        searcherTargetInfo.set(searcherResponse.getCustomInfo());
                         syncTimes = 0;
                         // 在每次同步成功时更新两个randomVersion
                         randomVersion = random.nextInt(100000) + 1;
                         generalSqlRandomVersion = random.nextInt(100000) + 1;
                         return;
-                    } else {
-                        LOGGER.trace(
-                            "update heartbeat target failed, qrsTargetRequest: {}, qrsResponse: {}, "
-                                + "searcherTargetRequest: {}, searchResponse: {}",
-                            qrsTargetRequest,
-                            qrsResponse,
-                            searcherTargetRequest,
-                            searchResponse
-                        );
                     }
                 } catch (Throwable e) {
                     LOGGER.error("update heartbeat target failed", e);
@@ -264,7 +275,7 @@ public class MetaDataSyncer extends AbstractLifecycleComponent {
         qrsTargetInfo.service_info = new TargetInfo.ServiceInfo(QRS_ZONE_NAME, DEFAULT_PART_ID, DEFAULT_PART_COUNT);
         qrsTargetInfo.table_info = new HashMap<>();
         qrsTargetInfo.biz_info = new TargetInfo.BizInfo(defaultBizsPath);
-        createConfigLink("qrs", "biz", "default", defaultBizsPath, env.getDataPath());
+        createConfigLink(HAVENASK_QRS_HOME, "biz", "default", defaultBizsPath, env.getDataPath());
         qrsTargetInfo.catalog_address = ip + ":" + qrsTcpPort;
 
         // randomVersion = random.nextInt(100000) + 1;
@@ -292,6 +303,7 @@ public class MetaDataSyncer extends AbstractLifecycleComponent {
     }
 
     public UpdateHeartbeatTargetRequest createSearcherUpdateHeartbeatTargetRequest() throws IOException {
+        createConfigLink(HAVENASK_SEARCHER_HOME, "biz", "default", defaultBizsPath, env.getDataPath());
         Path indexRootPath = env.getDataPath().resolve(INDEX_ROOT_POSTFIX);
 
         ClusterState state = clusterService.state();
@@ -319,7 +331,9 @@ public class MetaDataSyncer extends AbstractLifecycleComponent {
         for (ShardRouting shardRouting : localRoutingNode) {
             IndexMetadata indexMetadata = metadata.index(shardRouting.getIndexName());
             if (EngineSettings.isHavenaskEngine(indexMetadata.getSettings())) {
-                subDirNames.add(Utils.getHavenaskTableName(shardRouting.shardId()));
+                String tableName = Utils.getHavenaskTableName(shardRouting.shardId());
+                subDirNames.add(tableName);
+                createConfigLink(HAVENASK_SEARCHER_HOME, "table", tableName, defaultTablePath, env.getDataPath());
             }
         }
 
@@ -392,26 +406,10 @@ public class MetaDataSyncer extends AbstractLifecycleComponent {
         Path fakeConfigPath = bizConfigDir.resolve(version);
 
         // TODO 调用clearFolder和copyFolder可能会抛出异常，完善else逻辑
-        if (Files.exists(fakeConfigPath) && clearDirectory(fakeConfigPath)) {
-            copyDirectory(configPath, fakeConfigPath);
+        if (Files.exists(fakeConfigPath)) {
+            IOUtils.rm(fakeConfigPath);
         }
-        Path doneFile = fakeConfigPath.resolve("uez_deploy.done");
-        createFile(doneFile);
-    }
-
-    public static boolean clearDirectory(Path directory) throws IOException {
-        boolean success = true;
-        try (Stream<Path> pathStream = Files.walk(directory)) {
-            pathStream.sorted((p1, p2) -> -p1.compareTo(p2)) // 以相反的顺序排序，以便先删除文件再删除目录
-                .forEach(path -> {
-                    try {
-                        Files.delete(path); // 删除文件或目录
-                    } catch (IOException e) {
-                        throw new RuntimeException("Failed to clear file: " + e.getMessage(), e);
-                    }
-                });
-        }
-        return success;
+        copyDirectory(configPath, fakeConfigPath);
     }
 
     private static boolean copyDirectory(Path source, Path destination) throws IOException {
