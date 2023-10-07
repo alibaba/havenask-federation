@@ -15,8 +15,10 @@
 package org.havenask.engine.index.store;
 
 import java.io.IOException;
+import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -26,6 +28,9 @@ import com.alibaba.fastjson.JSONObject;
 
 import org.apache.lucene.index.IndexCommit;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.store.IOContext;
+import org.apache.lucene.store.IndexOutput;
+import org.apache.lucene.store.OutputStreamIndexOutput;
 import org.apache.lucene.util.Version;
 import org.havenask.common.Strings;
 import org.havenask.engine.HavenaskEngineEnvironment;
@@ -42,10 +47,13 @@ import static org.havenask.engine.util.Utils.INDEX_SUB_PATH;
 
 public class HavenaskStore extends Store {
 
-    private final HavenaskEngineEnvironment env;
-    public static final Version havenaskVersion = Version.fromBits(1, 0, 0);
+    public static final Version HAVENASK_VERSION = Version.fromBits(1, 0, 0);
     private static final String HAVENASK_VERSION_FILE_PREFIX = "version.";
     private static final String HAVENASK_ENTRY_TABLE_FILE_PREFIX = "entry_table.";
+    private static final int CHUNK_SIZE = 8192;
+
+    private final HavenaskEngineEnvironment env;
+    private final Path shardPath;
 
     public HavenaskStore(
         ShardId shardId,
@@ -57,6 +65,7 @@ public class HavenaskStore extends Store {
     ) {
         super(shardId, indexSettings, directory, shardLock, onClose);
         this.env = env;
+        this.shardPath = env.getShardPath(shardId).resolve(INDEX_SUB_PATH);
     }
 
     @Override
@@ -78,7 +87,6 @@ public class HavenaskStore extends Store {
             ? Long.valueOf(commit.getUserData().get(HavenaskCommitInfo.COMMIT_VERSION_KEY))
             : 0;
         String versionFile = HAVENASK_VERSION_FILE_PREFIX + commitVersion;
-        Path shardPath = env.getShardPath(shardId).resolve(INDEX_SUB_PATH);
         String content = Files.readString(shardPath.resolve(versionFile));
         JSONObject jsonObject = JSON.parseObject(content);
         String fenceName = jsonObject.getString("fence_name");
@@ -95,7 +103,7 @@ public class HavenaskStore extends Store {
         Map<String, StoreFileMetadata> metadata = new LinkedHashMap<>();
         entryTable.files.forEach((name, file) -> {
             if (file.type == EntryTable.Type.FILE) {
-                StoreFileMetadata storeFileMetadata = new StoreFileMetadata(file.name, file.length, "", havenaskVersion);
+                StoreFileMetadata storeFileMetadata = new StoreFileMetadata(file.name, file.length, "", HAVENASK_VERSION);
                 metadata.put(file.name, storeFileMetadata);
             }
         });
@@ -103,7 +111,28 @@ public class HavenaskStore extends Store {
         return metadata;
     }
 
+    @Override
+    public IndexOutput createVerifyingOutput(String fileName, final StoreFileMetadata metadata, final IOContext context)
+        throws IOException {
+        if (isHavenaskFile(metadata.writtenBy())) {
+            Path filePath = shardPath.resolve(fileName);
+            Path fileDir = filePath.getParent();
+            if (Files.notExists(fileDir)) {
+                Files.createDirectories(fileDir);
+            }
+            OutputStream os = Files.newOutputStream(shardPath.resolve(fileName), StandardOpenOption.WRITE, StandardOpenOption.CREATE_NEW);
+            return new OutputStreamIndexOutput(
+                "OutputStreamIndexOutput(path=\"" + shardPath.resolve(fileName) + "\")",
+                fileName,
+                os,
+                CHUNK_SIZE
+            );
+        } else {
+            return super.createVerifyingOutput(fileName, metadata, context);
+        }
+    }
+
     public static boolean isHavenaskFile(Version version) {
-        return version.major == havenaskVersion.major;
+        return version.major == HAVENASK_VERSION.major;
     }
 }

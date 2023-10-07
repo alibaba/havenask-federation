@@ -20,12 +20,16 @@ import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.util.List;
 import java.util.Map;
 
 import org.apache.lucene.index.IndexCommit;
 import org.apache.lucene.index.SegmentInfos;
+import org.apache.lucene.store.IOContext;
+import org.apache.lucene.store.IndexOutput;
 import org.havenask.Version;
 import org.havenask.cluster.metadata.IndexMetadata;
+import org.havenask.common.UUIDs;
 import org.havenask.common.lucene.Lucene;
 import org.havenask.common.settings.Settings;
 import org.havenask.engine.HavenaskEngineEnvironment;
@@ -38,11 +42,18 @@ import org.havenask.index.store.Store.OnClose;
 import org.havenask.index.store.StoreFileMetadata;
 import org.havenask.test.DummyShardLock;
 import org.havenask.test.HavenaskTestCase;
+import org.junit.Before;
 
 import static org.hamcrest.CoreMatchers.containsString;
 
 public class HavenaskStoreTests extends HavenaskTestCase {
-    public void testGetHavenaskMetadata() throws IOException {
+    private HavenaskStore havenaskStore;
+    private Path workDir = createTempDir();
+    private ShardId shardId;
+    private Path dataPath;
+
+    @Before
+    public void setup() throws IOException {
         String index = "test";
         IndexMetadata build = IndexMetadata.builder(index)
             .settings(Settings.builder().put(IndexMetadata.SETTING_VERSION_CREATED, Version.CURRENT))
@@ -50,13 +61,12 @@ public class HavenaskStoreTests extends HavenaskTestCase {
             .numberOfReplicas(0)
             .build();
         IndexSettings indexSettings = new IndexSettings(build, Settings.EMPTY);
-        ShardId shardId = new ShardId(index, index, 1);
+        shardId = new ShardId(index, index, 1);
 
-        Path workDir = createTempDir();
         Settings settings = Settings.builder().put(Environment.PATH_HOME_SETTING.getKey(), workDir.toString()).build();
         Environment environment = TestEnvironment.newEnvironment(settings);
 
-        HavenaskStore havenaskStore = new HavenaskStore(
+        havenaskStore = new HavenaskStore(
             shardId,
             indexSettings,
             null,
@@ -65,6 +75,17 @@ public class HavenaskStoreTests extends HavenaskTestCase {
             new HavenaskEngineEnvironment(environment, settings)
         );
 
+        String tableName = Utils.getHavenaskTableName(shardId);
+        dataPath = workDir.resolve(HavenaskEngineEnvironment.DEFAULT_DATA_PATH)
+            .resolve(HavenaskEngineEnvironment.HAVENASK_RUNTIMEDATA_PATH)
+            .resolve(tableName)
+            .resolve("generation_0")
+            .resolve("partition_0_65535");
+
+        Files.createDirectories(dataPath);
+    }
+
+    public void testGetHavenaskMetadata() throws IOException {
         // commit is null
         {
             Map<String, StoreFileMetadata> snapshot = havenaskStore.getHavenaskMetadata(null);
@@ -78,14 +99,6 @@ public class HavenaskStoreTests extends HavenaskTestCase {
             assertThat(e.getMessage(), containsString("version.0"));
         }
 
-        String tableName = Utils.getHavenaskTableName(shardId);
-        Path dataPath = Files.createDirectories(
-            workDir.resolve(HavenaskEngineEnvironment.DEFAULT_DATA_PATH)
-                .resolve(HavenaskEngineEnvironment.HAVENASK_RUNTIMEDATA_PATH)
-                .resolve(tableName)
-                .resolve("generation_0")
-                .resolve("partition_0_65535")
-        );
         String versionContent = "{\n"
             + "\"description\":\n"
             + "  {\n"
@@ -177,6 +190,21 @@ public class HavenaskStoreTests extends HavenaskTestCase {
             assertEquals(snapshot.get("index_partition_meta").length(), 28);
             assertEquals(snapshot.get("schema.json").length(), 2335);
             assertEquals(snapshot.get("version.0").length(), 372);
+        }
+    }
+
+    public void testCreateVerifyingOutput() throws IOException {
+        List<String> fileLists = List.of("test", "dir1/test", "dir1/dir2/test");
+        for (String fileName : fileLists) {
+            String content = "test content";
+            StoreFileMetadata metadata = new StoreFileMetadata(fileName, content.length(), "", HavenaskStore.HAVENASK_VERSION);
+            String tempFileName = "recovery." + UUIDs.randomBase64UUID() + "." + fileName;
+            IndexOutput indexOutput = havenaskStore.createVerifyingOutput(tempFileName, metadata, IOContext.DEFAULT);
+            indexOutput.writeBytes(content.getBytes(StandardCharsets.UTF_8), content.length());
+            indexOutput.close();
+
+            String fileContent = Files.readString(dataPath.resolve(tempFileName));
+            assertEquals(fileContent, content);
         }
     }
 }
