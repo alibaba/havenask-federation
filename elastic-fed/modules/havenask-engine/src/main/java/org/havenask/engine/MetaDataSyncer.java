@@ -407,19 +407,23 @@ public class MetaDataSyncer extends AbstractLifecycleComponent {
     }
 
     private static void copyDirectory(Path source, Path destination) throws IOException {
-        // 拷贝所有文件与目录到目标路径
-        Files.walk(source).forEach(sourcePath -> {
-            try {
-                Path targetPath = destination.resolve(source.relativize(sourcePath));
-                if (Files.isDirectory(sourcePath) && !Files.exists(targetPath)) {
-                    Files.createDirectory(targetPath);
-                } else {
-                    Files.copy(sourcePath, targetPath, StandardCopyOption.REPLACE_EXISTING);
+        try {
+            // 拷贝所有文件与目录到目标路径
+            Files.walk(source).forEach(sourcePath -> {
+                try {
+                    Path targetPath = destination.resolve(source.relativize(sourcePath));
+                    if (Files.isDirectory(sourcePath) && !Files.exists(targetPath)) {
+                        Files.createDirectory(targetPath);
+                    } else {
+                        Files.copy(sourcePath, targetPath, StandardCopyOption.REPLACE_EXISTING);
+                    }
+                } catch (IOException e) {
+                    throw new RuntimeException("Failed to copy file: " + e.getMessage(), e);
                 }
-            } catch (IOException e) {
-                throw new RuntimeException("Failed to copy file: " + e.getMessage(), e);
-            }
-        });
+            });
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to copy file: " + e.getMessage(), e);
+        }
     }
 
     private static String getMaxGenerationId(Path indexPath, String tableName) throws IOException {
