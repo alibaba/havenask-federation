@@ -31,7 +31,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Stream;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -48,6 +47,7 @@ import org.havenask.common.component.AbstractLifecycleComponent;
 import org.havenask.common.settings.Settings;
 import org.havenask.common.unit.TimeValue;
 import org.havenask.common.util.concurrent.AbstractAsyncTask;
+import org.havenask.core.internal.io.IOUtils;
 import org.havenask.engine.index.engine.EngineSettings;
 import org.havenask.engine.rpc.HavenaskClient;
 import org.havenask.engine.rpc.HeartbeatTargetResponse;
@@ -80,6 +80,9 @@ public class MetaDataSyncer extends AbstractLifecycleComponent {
     private static final String INDEX_ROOT_POSTFIX = "local_search_12000/general_p0_r0/runtimedata";
     private static final String DEFAULT_PARTITION_NAME = "0_65535";
     private static final String INDEX_SUB_PATH = "generation_0/partition_0_65535";
+    private static final String HAVENASK_WORKSPACCE = "local_search_12000";
+    private static final String HAVENASK_SEARCHER_HOME = "general_p0_r0";
+    private static final String HAVENASK_QRS_HOME = "qrs";
     private static final String[] cm2ConfigBizNames = {
         "general.para_search_2",
         "general.para_search_2.search",
@@ -272,7 +275,7 @@ public class MetaDataSyncer extends AbstractLifecycleComponent {
         qrsTargetInfo.service_info = new TargetInfo.ServiceInfo(QRS_ZONE_NAME, DEFAULT_PART_ID, DEFAULT_PART_COUNT);
         qrsTargetInfo.table_info = new HashMap<>();
         qrsTargetInfo.biz_info = new TargetInfo.BizInfo(defaultBizsPath);
-        createConfigLink("qrs", "biz", "default", defaultBizsPath, env.getDataPath());
+        createConfigLink(HAVENASK_QRS_HOME, "biz", "default", defaultBizsPath, env.getDataPath());
         qrsTargetInfo.catalog_address = ip + ":" + qrsTcpPort;
 
         // randomVersion = random.nextInt(100000) + 1;
@@ -300,7 +303,7 @@ public class MetaDataSyncer extends AbstractLifecycleComponent {
     }
 
     public UpdateHeartbeatTargetRequest createSearcherUpdateHeartbeatTargetRequest() throws IOException {
-        createConfigLink("general_p0_r0", "biz", "default", defaultBizsPath, env.getDataPath());
+        createConfigLink(HAVENASK_SEARCHER_HOME, "biz", "default", defaultBizsPath, env.getDataPath());
         Path indexRootPath = env.getDataPath().resolve(INDEX_ROOT_POSTFIX);
 
         ClusterState state = clusterService.state();
@@ -330,7 +333,7 @@ public class MetaDataSyncer extends AbstractLifecycleComponent {
             if (EngineSettings.isHavenaskEngine(indexMetadata.getSettings())) {
                 String tableName = Utils.getHavenaskTableName(shardRouting.shardId());
                 subDirNames.add(tableName);
-                createConfigLink("general_p0_r0", "table", tableName, defaultTablePath, env.getDataPath());
+                createConfigLink(HAVENASK_SEARCHER_HOME, "table", tableName, defaultTablePath, env.getDataPath());
             }
         }
 
@@ -404,26 +407,9 @@ public class MetaDataSyncer extends AbstractLifecycleComponent {
 
         // TODO 调用clearFolder和copyFolder可能会抛出异常，完善else逻辑
         if (Files.exists(fakeConfigPath)) {
-            clearDirectory(fakeConfigPath);
+            IOUtils.rm(fakeConfigPath);
         }
         copyDirectory(configPath, fakeConfigPath);
-        //Path doneFile = fakeConfigPath.resolve("suez_deploy.done");
-        //createFile(doneFile);
-    }
-
-    public static boolean clearDirectory(Path directory) throws IOException {
-        boolean success = true;
-        try (Stream<Path> pathStream = Files.walk(directory)) {
-            pathStream.sorted((p1, p2) -> -p1.compareTo(p2)) // 以相反的顺序排序，以便先删除文件再删除目录
-                .forEach(path -> {
-                    try {
-                        Files.delete(path); // 删除文件或目录
-                    } catch (IOException e) {
-                        throw new RuntimeException("Failed to clear file: " + e.getMessage(), e);
-                    }
-                });
-        }
-        return success;
     }
 
     private static boolean copyDirectory(Path source, Path destination) throws IOException {
