@@ -43,6 +43,7 @@ import org.havenask.index.shard.ShardId;
 import org.havenask.index.store.Store;
 import org.havenask.index.store.StoreFileMetadata;
 
+import static org.apache.lucene.index.IndexFileNames.SEGMENTS;
 import static org.havenask.engine.util.Utils.INDEX_SUB_PATH;
 
 public class HavenaskStore extends Store {
@@ -130,6 +131,39 @@ public class HavenaskStore extends Store {
         } else {
             return super.createVerifyingOutput(fileName, metadata, context);
         }
+    }
+
+    @Override
+    public void renameTempFilesSafe(Map<String, String> tempFileMap) throws IOException {
+        Map<String, String> havenaskTempFileMap = new HashMap<>(tempFileMap);
+        Map<String, String> luceneTempFileMap = new HashMap<>();
+        havenaskTempFileMap.forEach((tempFileName, fileName) -> {
+            if (fileName.startsWith(SEGMENTS) || fileName.equals("write.lock")) {
+                luceneTempFileMap.put(tempFileName, fileName);
+            }
+        });
+
+        luceneTempFileMap.forEach((tempFileName, fileName) -> havenaskTempFileMap.remove(tempFileName));
+
+        super.renameTempFilesSafe(luceneTempFileMap);
+        renameHavenaskTempFilesSafe(havenaskTempFileMap);
+    }
+
+    void renameHavenaskTempFilesSafe(Map<String, String> tempFileMap) {
+        tempFileMap.forEach((tempFileName, fileName) -> {
+            try {
+                Path tempFilePath = shardPath.resolve(tempFileName);
+                Path filePath = shardPath.resolve(fileName);
+                Path fileDir = filePath.getParent();
+                if (Files.notExists(fileDir)) {
+                    Files.createDirectories(fileDir);
+                }
+                Files.move(tempFilePath, filePath);
+            } catch (IOException e) {
+                // TODO check if this is the right thing to do
+                throw new RuntimeException(e);
+            }
+        });
     }
 
     public static boolean isHavenaskFile(Version version) {

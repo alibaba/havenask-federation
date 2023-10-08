@@ -207,4 +207,26 @@ public class HavenaskStoreTests extends HavenaskTestCase {
             assertEquals(fileContent, content);
         }
     }
+
+    public void testRenameTempFilesSafe() throws IOException {
+        String prefix = "recovery." + UUIDs.randomBase64UUID() + ".";
+        Map<String, String> tempFileMap = Map.of(
+            prefix + "test",
+            "test",
+            prefix + "dir1/test",
+            "dir1/test",
+            prefix + "dir1/dir2/test",
+            "dir1/dir2/test"
+        );
+
+        Files.createDirectories(dataPath.resolve(prefix + "dir1/dir2"));
+        Files.write(dataPath.resolve(prefix + "test"), "test content".getBytes(StandardCharsets.UTF_8));
+        Files.write(dataPath.resolve(prefix + "dir1/test"), "test dir1 content".getBytes(StandardCharsets.UTF_8));
+        Files.write(dataPath.resolve(prefix + "dir1/dir2/test"), "test dir1 dir2 content".getBytes(StandardCharsets.UTF_8));
+        havenaskStore.renameHavenaskTempFilesSafe(tempFileMap);
+
+        assertEquals(Files.readString(dataPath.resolve("test")), "test content");
+        assertEquals(Files.readString(dataPath.resolve("dir1/test")), "test dir1 content");
+        assertEquals(Files.readString(dataPath.resolve("dir1/dir2/test")), "test dir1 dir2 content");
+    }
 }
