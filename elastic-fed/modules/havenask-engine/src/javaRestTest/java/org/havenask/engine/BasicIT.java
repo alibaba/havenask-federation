@@ -134,4 +134,59 @@ public class BasicIT extends AbstractHavenaskRestTestCase {
         assertEquals(false, highLevelClient().indices().exists(new GetIndexRequest(index), RequestOptions.DEFAULT));
     }
 
+    public void testCreateAndDelete() throws Exception {
+        int randomTimes = randomIntBetween(2, 9);
+        for (int i = 0; i < randomTimes; i++) {
+            int shardsNum = randomIntBetween(1, 6);
+            String index = "create_and_delete_test";
+            // create index
+            assertTrue(
+                    highLevelClient().indices()
+                            .create(
+                                    new CreateIndexRequest(index).settings(
+                                                    Settings.builder()
+                                                            .put(EngineSettings.ENGINE_TYPE_SETTING.getKey(), EngineSettings.ENGINE_HAVENASK)
+                                                            .put("index.number_of_shards", shardsNum)
+                                                            .put("number_of_replicas", 0)
+                                                            .build()
+                                            )
+                                            .mapping(
+                                                    Map.of(
+                                                            "properties",
+                                                            Map.of(
+                                                                    "content" + i,
+                                                                    Map.of("type", "keyword")
+                                                            )
+                                                    )
+                                            ),
+                                    RequestOptions.DEFAULT
+                            )
+                            .isAcknowledged()
+            );
+            assertBusy(() -> {
+                ClusterHealthResponse clusterHealthResponse = highLevelClient().cluster()
+                        .health(new ClusterHealthRequest(index), RequestOptions.DEFAULT);
+                assertEquals(clusterHealthResponse.getStatus(), ClusterHealthStatus.GREEN);
+            }, 2, TimeUnit.MINUTES);
+
+            assertEquals(true, highLevelClient().indices().exists(new GetIndexRequest(index), RequestOptions.DEFAULT));
+            GetIndexResponse getIndexResponse = highLevelClient().indices().get(new GetIndexRequest(index), RequestOptions.DEFAULT);
+
+            assertEquals(
+                    getIndexResponse.getMappings().get(index),
+                    new MappingMetadata(
+                            "_doc",
+                            Map.of(
+                                    "dynamic",
+                                    "false",
+                                    "properties",
+                                    Map.of("content" + i, Map.of("type", "keyword"))
+                            )
+                    )
+            );
+
+            assertTrue(highLevelClient().indices().delete(new DeleteIndexRequest(index), RequestOptions.DEFAULT).isAcknowledged());
+            assertEquals(false, highLevelClient().indices().exists(new GetIndexRequest(index), RequestOptions.DEFAULT));
+        }
+    }
 }
