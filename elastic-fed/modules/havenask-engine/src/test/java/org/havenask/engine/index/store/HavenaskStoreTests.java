@@ -86,12 +86,6 @@ public class HavenaskStoreTests extends HavenaskTestCase {
     }
 
     public void testGetHavenaskMetadata() throws IOException {
-        // commit is null
-        {
-            Map<String, StoreFileMetadata> snapshot = havenaskStore.getHavenaskMetadata(null);
-            assertEquals(snapshot.size(), 0);
-        }
-
         IndexCommit indexCommit = Lucene.getIndexCommit(new SegmentInfos(7), null);
         {
             // assert no version file
@@ -191,6 +185,12 @@ public class HavenaskStoreTests extends HavenaskTestCase {
             assertEquals(snapshot.get("schema.json").length(), 2335);
             assertEquals(snapshot.get("version.0").length(), 372);
         }
+
+        // commit is null
+        {
+            Map<String, StoreFileMetadata> snapshot = havenaskStore.getHavenaskMetadata(null);
+            assertEquals(snapshot.size(), 5);
+        }
     }
 
     public void testCreateVerifyingOutput() throws IOException {
@@ -228,5 +228,23 @@ public class HavenaskStoreTests extends HavenaskTestCase {
         assertEquals(Files.readString(dataPath.resolve("test")), "test content");
         assertEquals(Files.readString(dataPath.resolve("dir1/test")), "test dir1 content");
         assertEquals(Files.readString(dataPath.resolve("dir1/dir2/test")), "test dir1 dir2 content");
+    }
+
+    public void testListHavenaskFiles() throws IOException {
+        // create some files
+        Files.createDirectories(dataPath.resolve("dir1/dir2"));
+        Files.write(dataPath.resolve("test"), "test content".getBytes(StandardCharsets.UTF_8));
+        Files.write(dataPath.resolve("dir1/test"), "test dir1 content".getBytes(StandardCharsets.UTF_8));
+        Files.write(dataPath.resolve("dir1/dir2/test"), "test dir1 dir2 content".getBytes(StandardCharsets.UTF_8));
+
+        assertEquals(Files.readString(dataPath.resolve("test")), "test content");
+        assertEquals(Files.readString(dataPath.resolve("dir1/test")), "test dir1 content");
+        assertEquals(Files.readString(dataPath.resolve("dir1/dir2/test")), "test dir1 dir2 content");
+
+        List<String> files = havenaskStore.listHavenaskFiles();
+        assertEquals(files.size(), 3);
+        assertTrue(files.contains("test"));
+        assertTrue(files.contains("dir1/test"));
+        assertTrue(files.contains("dir1/dir2/test"));
     }
 }
