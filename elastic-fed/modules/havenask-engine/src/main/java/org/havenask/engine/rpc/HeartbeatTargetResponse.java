@@ -93,7 +93,7 @@ public class HeartbeatTargetResponse implements ToXContentObject {
             builder.field(SERVICE_INFO_FIELD.getPreferredName(), serviceInfo);
         }
         if (signature != null) {
-            builder.field(SIGNATURE_FIELD.getPreferredName(), signature);
+            builder.field(SIGNATURE_FIELD.getPreferredName(), signature.toString());
         }
         builder.endObject();
         return builder;

@@ -15,14 +15,11 @@
 package org.havenask.engine;
 
 import java.io.IOException;
-import java.net.Inet4Address;
-import java.net.InetAddress;
-import java.net.NetworkInterface;
+import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
-import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -42,8 +39,8 @@ import org.havenask.cluster.routing.RoutingNode;
 import org.havenask.cluster.routing.ShardRouting;
 import org.havenask.cluster.service.ClusterService;
 import org.havenask.common.Strings;
-import org.havenask.common.SuppressForbidden;
 import org.havenask.common.component.AbstractLifecycleComponent;
+import org.havenask.common.network.NetworkAddress;
 import org.havenask.common.settings.Settings;
 import org.havenask.common.unit.TimeValue;
 import org.havenask.common.util.concurrent.AbstractAsyncTask;
@@ -77,7 +74,7 @@ public class MetaDataSyncer extends AbstractLifecycleComponent {
     private static final String DEFAULT_CM2_CONFIG_LOCAL = "local";
     private static final String BIZS_PATH_POSTFIX = "default/0";
     private static final String TABLE_PATH_POSTFIX = "0";
-    private static final String INDEX_ROOT_POSTFIX = "local_search_12000/general_p0_r0/runtimedata";
+    private static final String INDEX_ROOT_POSTFIX = "runtimedata";
     private static final String DEFAULT_PARTITION_NAME = "0_65535";
     private static final String INDEX_SUB_PATH = "generation_0/partition_0_65535";
     private static final String HAVENASK_WORKSPACCE = "local_search_12000";
@@ -263,7 +260,7 @@ public class MetaDataSyncer extends AbstractLifecycleComponent {
     }
 
     public UpdateHeartbeatTargetRequest createQrsUpdateHeartbeatTargetRequest() throws IOException {
-        String ip = getIp();
+        String ip = NetworkAddress.format(clusterService.state().nodes().getLocalNode().getAddress().address().getAddress());
 
         int searcherTcpPort = nativeProcessControlService.getSearcherTcpPort();
         int searcherGrpcPort = nativeProcessControlService.getSearcherGrpcPort();
@@ -278,7 +275,6 @@ public class MetaDataSyncer extends AbstractLifecycleComponent {
         createConfigLink(HAVENASK_QRS_HOME, "biz", "default", defaultBizsPath, env.getDataPath());
         qrsTargetInfo.catalog_address = ip + ":" + qrsTcpPort;
 
-        // randomVersion = random.nextInt(100000) + 1;
         List<TargetInfo.ServiceInfo.Cm2Config> cm2ConfigLocalVal = new ArrayList<>();
         for (String bizName : cm2ConfigBizNames) {
             TargetInfo.ServiceInfo.Cm2Config curCm2Config = new TargetInfo.ServiceInfo.Cm2Config();
@@ -304,7 +300,7 @@ public class MetaDataSyncer extends AbstractLifecycleComponent {
 
     public UpdateHeartbeatTargetRequest createSearcherUpdateHeartbeatTargetRequest() throws IOException {
         createConfigLink(HAVENASK_SEARCHER_HOME, "biz", "default", defaultBizsPath, env.getDataPath());
-        Path indexRootPath = env.getDataPath().resolve(INDEX_ROOT_POSTFIX);
+        Path indexRootPath = env.getDataPath().resolve(HAVENASK_WORKSPACCE).resolve(HAVENASK_SEARCHER_HOME).resolve(INDEX_ROOT_POSTFIX);
 
         ClusterState state = clusterService.state();
         Metadata metadata = state.metadata();
@@ -341,7 +337,7 @@ public class MetaDataSyncer extends AbstractLifecycleComponent {
         for (String subDir : subDirNames) {
             Path versionPath = defaultRuntimeDataPath.resolve(subDir).resolve(INDEX_SUB_PATH);
             boolean hasRealTime = false;
-            if ("in0" != subDir) {
+            if (TABLE_NAME_IN0 != subDir) {
                 hasRealTime = true;
             }
             int tableMode = hasRealTime ? 1 : 0;
@@ -365,7 +361,7 @@ public class MetaDataSyncer extends AbstractLifecycleComponent {
 
             Map<String, TargetInfo.TableInfo> innerMap = new HashMap<String, TargetInfo.TableInfo>() {
                 {
-                    put("0", curTableInfo);
+                    put(getMaxGenerationId(defaultRuntimeDataPath, subDir), curTableInfo);
                 }
             };
             searcherTargetInfo.table_info.put(subDir, innerMap);
@@ -390,18 +386,16 @@ public class MetaDataSyncer extends AbstractLifecycleComponent {
     private static void createConfigLink(String zoneName, String prefix, String bizName, Path configPath, Path dataPath)
         throws IOException {
         // TODO 这个方法中有一些地方有可能抛出异常，暂时没有处理，后续需要跟进
-        final String localSearchPostFix = "local_search_12000";
         final String zoneConfig = "zone_config";
 
         String configPathStr = configPath.toString();
         int lastIndex = configPathStr.lastIndexOf("/");
         String version = configPathStr.substring(lastIndex + 1);
 
-        Path rundir = dataPath.resolve(localSearchPostFix).resolve(zoneName);
+        Path rundir = dataPath.resolve(HAVENASK_WORKSPACCE).resolve(zoneName);
         Path bizConfigDir = rundir.resolve(zoneConfig).resolve(prefix).resolve(bizName);
         if (false == Files.exists(bizConfigDir)) {
             Files.createDirectories(bizConfigDir);
-            // TODO 可能抛出异常
         }
         Path fakeConfigPath = bizConfigDir.resolve(version);
 
@@ -412,7 +406,7 @@ public class MetaDataSyncer extends AbstractLifecycleComponent {
         copyDirectory(configPath, fakeConfigPath);
     }
 
-    private static boolean copyDirectory(Path source, Path destination) throws IOException {
+    private static void copyDirectory(Path source, Path destination) throws IOException {
         try {
             // 拷贝所有文件与目录到目标路径
             Files.walk(source).forEach(sourcePath -> {
@@ -427,31 +421,25 @@ public class MetaDataSyncer extends AbstractLifecycleComponent {
                     throw new RuntimeException("Failed to copy file: " + e.getMessage(), e);
                 }
             });
-            return true;
         } catch (IOException e) {
             throw new RuntimeException("Failed to copy file: " + e.getMessage(), e);
         }
     }
 
-    @SuppressForbidden(reason = "InetAddress.getLocalHost(); Need ip address to create update heartbeat target request.")
-    private static String getIp() throws IOException {
-        List<String> ipAddresses = new ArrayList<>();
-        Enumeration<NetworkInterface> interfaces = NetworkInterface.getNetworkInterfaces();
-        while (interfaces.hasMoreElements()) {
-            NetworkInterface networkInterface = interfaces.nextElement();
-            Enumeration<InetAddress> addresses = networkInterface.getInetAddresses();
-            while (addresses.hasMoreElements()) {
-                InetAddress address = addresses.nextElement();
-                if (!address.isLoopbackAddress() && address instanceof Inet4Address) {
-                    ipAddresses.add(address.getHostAddress());
+    private static String getMaxGenerationId(Path indexPath, String tableName) throws IOException {
+        Path dest = indexPath.resolve(tableName);
+        Pattern pattern = Pattern.compile("generation_(\\d+)");
+        int maxId = -1;
+        try (DirectoryStream<Path> stream = Files.newDirectoryStream(dest, "generation_*")) {
+            for (Path path : stream) {
+                String fileName = path.getFileName().toString();
+                Matcher matcher = pattern.matcher(fileName);
+                if (matcher.matches()) {
+                    int id = Integer.parseInt(matcher.group(1));
+                    maxId = Math.max(maxId, id);
                 }
             }
         }
-        if (ipAddresses != null && ipAddresses.size() > 0) {
-            // TODO 目前是返回了非回环的第一个地址，若有多个ip地址时是否能够更好地处理？
-            return ipAddresses.get(0);
-        } else {
-            return "";
-        }
+        return String.valueOf(maxId);
     }
 }
