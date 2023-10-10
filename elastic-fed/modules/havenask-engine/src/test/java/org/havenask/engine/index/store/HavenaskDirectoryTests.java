@@ -20,8 +20,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 
-import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.LuceneTestCase;
+import org.havenask.core.internal.io.IOUtils;
 import org.havenask.test.HavenaskTestCase;
 import org.junit.After;
 import org.junit.Before;

@@ -32,6 +32,7 @@ import java.util.stream.Stream;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 
+import org.apache.logging.log4j.message.ParameterizedMessage;
 import org.apache.lucene.index.IndexCommit;
 import org.apache.lucene.store.BufferedIndexInput;
 import org.apache.lucene.store.Directory;
@@ -114,7 +115,7 @@ public class HavenaskStore extends Store {
         });
 
         // add entry_table file
-        metadata.put(entryTableFile, new StoreFileMetadata(entryTableFile, entryTablePath.toFile().length(), "", HAVENASK_VERSION));
+        metadata.put(entryTableFile, new StoreFileMetadata(entryTableFile, entryTableContent.length(), "", HAVENASK_VERSION));
 
         return metadata;
     }
@@ -322,7 +323,7 @@ public class HavenaskStore extends Store {
                 Files.delete(shardPath.resolve(existingFile));
                 logger.debug("cleanupAndVerify: deleted unreferenced file [{}]", existingFile);
             } catch (IOException e) {
-                logger.warn("cleanupAndVerify: failed to delete unreferenced file [{}]", e, existingFile);
+                logger.warn(new ParameterizedMessage("cleanupAndVerify: failed to delete unreferenced file [{}]", existingFile), e);
             }
         }
         super.cleanupAndVerify(reason, sourceMetadata);
