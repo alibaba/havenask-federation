@@ -246,8 +246,7 @@ public class HavenaskStore extends Store {
                         if (i < 0) { // be defensive here, even though we checked before hand, something could have changed
                             throw new EOFException("read past EOF: " + this + " buffer: " + b + " chunkLen: " + toRead + " end: " + end);
                         }
-                        assert i > 0
-                            : "SeekableByteChannel.read with non zero-length bb.remaining() must always read at least"
+                        assert i > 0 : "SeekableByteChannel.read with non zero-length bb.remaining() must always read at least"
                             + " one byte (Channel is in blocking mode, see spec of ReadableByteChannel)";
                         pos += i;
                         readLength -= i;
