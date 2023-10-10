@@ -152,6 +152,9 @@ public class HavenaskStore extends Store {
         }
     }
 
+    /**
+     * 迁移lucene的SimpleFSIndexInput到HavenaskStore类
+     */
     static final class SimpleFSIndexInput extends BufferedIndexInput {
         /**
          * The maximum chunk size for reads of 16384 bytes.
@@ -169,14 +172,14 @@ public class HavenaskStore extends Store {
 
         private ByteBuffer byteBuf; // wraps the buffer for NIO
 
-        public SimpleFSIndexInput(String resourceDesc, SeekableByteChannel channel, IOContext context) throws IOException {
+        SimpleFSIndexInput(String resourceDesc, SeekableByteChannel channel, IOContext context) throws IOException {
             super(resourceDesc, context);
             this.channel = channel;
             this.off = 0L;
             this.end = channel.size();
         }
 
-        public SimpleFSIndexInput(String resourceDesc, SeekableByteChannel channel, long off, long length, int bufferSize) {
+        SimpleFSIndexInput(String resourceDesc, SeekableByteChannel channel, long off, long length, int bufferSize) {
             super(resourceDesc, bufferSize);
             this.channel = channel;
             this.off = off;
@@ -218,7 +221,7 @@ public class HavenaskStore extends Store {
         }
 
         @Override
-        public final long length() {
+        public long length() {
             return end - off;
         }
 
@@ -243,7 +246,9 @@ public class HavenaskStore extends Store {
                         if (i < 0) { // be defensive here, even though we checked before hand, something could have changed
                             throw new EOFException("read past EOF: " + this + " buffer: " + b + " chunkLen: " + toRead + " end: " + end);
                         }
-                        assert i > 0 : "SeekableByteChannel.read with non zero-length bb.remaining() must always read at least one byte (Channel is in blocking mode, see spec of ReadableByteChannel)";
+                        assert i > 0
+                            : "SeekableByteChannel.read with non zero-length bb.remaining() must always read at least"
+                            + " one byte (Channel is in blocking mode, see spec of ReadableByteChannel)";
                         pos += i;
                         readLength -= i;
                     }
