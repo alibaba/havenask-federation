@@ -321,8 +321,7 @@ public class MetaDataSyncer extends AbstractLifecycleComponent {
         subDirNames.add(TABLE_NAME_IN0);
         RoutingNode localRoutingNode = state.getRoutingNodes().node(state.nodes().getLocalNodeId());
         if (localRoutingNode == null) {
-            // TODO 抛出异常？
-            return null;
+            throw new RuntimeException("localRoutingNode is null");
         }
 
         for (ShardRouting shardRouting : localRoutingNode) {
@@ -386,7 +385,6 @@ public class MetaDataSyncer extends AbstractLifecycleComponent {
 
     private static void createConfigLink(String zoneName, String prefix, String bizName, Path configPath, Path dataPath)
         throws IOException {
-        // TODO 这个方法中有一些地方有可能抛出异常，暂时没有处理，后续需要跟进
         final String zoneConfig = "zone_config";
 
         String configPathStr = configPath.toString();
@@ -400,7 +398,6 @@ public class MetaDataSyncer extends AbstractLifecycleComponent {
         }
         Path fakeConfigPath = bizConfigDir.resolve(version);
 
-        // TODO 调用clearFolder和copyFolder可能会抛出异常，完善else逻辑
         if (Files.exists(fakeConfigPath)) {
             IOUtils.rm(fakeConfigPath);
         }
