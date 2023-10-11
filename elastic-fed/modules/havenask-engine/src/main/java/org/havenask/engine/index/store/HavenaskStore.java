@@ -22,12 +22,9 @@ import java.nio.channels.SeekableByteChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
-import java.util.stream.Stream;
 
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
@@ -327,35 +324,6 @@ public class HavenaskStore extends Store {
             }
         }
         super.cleanupAndVerify(reason, sourceMetadata);
-    }
-
-    List<String> listHavenaskFiles() throws IOException {
-        List<Path> files = listAllHavenaskFiles(shardPath);
-        String shardPathStr = shardPath.toString();
-        List<String> fileNames = new ArrayList<>();
-        files.forEach(path -> {
-            String fileName = path.toString().substring(shardPathStr.length() + 1);
-            fileNames.add(fileName);
-        });
-        return fileNames;
-    }
-
-    static List<Path> listAllHavenaskFiles(Path dir) throws IOException {
-        List<Path> files = new ArrayList<>();
-        try (Stream<Path> stream = Files.list(dir)) {
-            stream.forEach(path -> {
-                if (Files.isDirectory(path)) {
-                    try {
-                        files.addAll(listAllHavenaskFiles(path));
-                    } catch (IOException e) {
-                        throw new RuntimeException(e);
-                    }
-                } else {
-                    files.add(path);
-                }
-            });
-        }
-        return files;
     }
 
     public static boolean isHavenaskFile(Version version) {
