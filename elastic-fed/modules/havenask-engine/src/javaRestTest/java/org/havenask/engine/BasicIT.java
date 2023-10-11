@@ -33,13 +33,17 @@ import org.havenask.client.indices.GetIndexResponse;
 import org.havenask.cluster.health.ClusterHealthStatus;
 import org.havenask.cluster.metadata.MappingMetadata;
 import org.havenask.common.collect.Map;
+import org.havenask.common.compress.CompressedXContent;
 import org.havenask.common.settings.Settings;
+import org.havenask.common.util.Maps;
+import org.havenask.common.xcontent.XContentHelper;
 import org.havenask.common.xcontent.XContentType;
 import org.havenask.engine.index.engine.EngineSettings;
+import org.havenask.index.mapper.MapperService;
 
 public class BasicIT extends AbstractHavenaskRestTestCase {
     public void testCRUD() throws Exception {
-        String index = "test";
+        String index = "index_crud";
         assertTrue(
             highLevelClient().indices()
                 .create(
@@ -121,18 +125,20 @@ public class BasicIT extends AbstractHavenaskRestTestCase {
         assertEquals(getIndexResponse.getIndices().length, 1);
         assertEquals(getIndexResponse.getSetting(index, EngineSettings.ENGINE_TYPE_SETTING.getKey()), EngineSettings.ENGINE_HAVENASK);
         assertEquals(getIndexResponse.getSetting(index, "index.number_of_replicas"), "0");
-        assertEquals(
-            getIndexResponse.getMappings().get(index),
-            new MappingMetadata(
-                "_doc",
-                Map.of(
-                    "dynamic",
-                    "false",
-                    "properties",
-                    Map.of("content", Map.of("type", "keyword"), "seq", Map.of("type", "integer"), "time", Map.of("type", "date"))
-                )
+
+        MappingMetadata expectedMappingMetaData = new MappingMetadata(
+            "_doc",
+            Map.of(
+                "dynamic",
+                "false",
+                "properties",
+                Map.of("content", Map.of("type", "keyword"), "seq", Map.of("type", "integer"), "time", Map.of("type", "date"))
             )
         );
+        MappingMetadata resMappingMetaData = getIndexResponse.getMappings().get(index);
+        assertEquals(expectedMappingMetaData.type(), resMappingMetaData.type());
+        assertEquals(expectedMappingMetaData.routing(), resMappingMetaData.routing());
+        assertTrue(mappingsEquals(expectedMappingMetaData.source(), resMappingMetaData.source()));
 
         // delete index and HEAD index
         assertEquals(true, highLevelClient().indices().exists(new GetIndexRequest(index), RequestOptions.DEFAULT));
@@ -276,5 +282,36 @@ public class BasicIT extends AbstractHavenaskRestTestCase {
             assertTrue(highLevelClient().indices().delete(new DeleteIndexRequest(indexs.get(i)), RequestOptions.DEFAULT).isAcknowledged());
             assertEquals(false, highLevelClient().indices().exists(new GetIndexRequest(indexs.get(i)), RequestOptions.DEFAULT));
         }
+    }
+
+    @SuppressWarnings("unchecked")
+    public static java.util.Map<String, Object> reduceMapping(java.util.Map<String, Object> mapping) {
+        if (mapping.size() == 1 && MapperService.SINGLE_MAPPING_NAME.equals(mapping.keySet().iterator().next())) {
+            return (java.util.Map<String, Object>) mapping.values().iterator().next();
+        } else {
+            return mapping;
+        }
+    }
+
+    static boolean mappingsEquals(CompressedXContent m1, CompressedXContent m2) {
+        if (m1 == m2) {
+            return true;
+        }
+
+        if (m1 == null || m2 == null) {
+            return false;
+        }
+
+        if (m1.equals(m2)) {
+            return true;
+        }
+
+        java.util.Map<String, Object> thisUncompressedMapping = reduceMapping(
+            XContentHelper.convertToMap(m1.uncompressed(), true, XContentType.JSON).v2()
+        );
+        java.util.Map<String, Object> otherUncompressedMapping = reduceMapping(
+            XContentHelper.convertToMap(m2.uncompressed(), true, XContentType.JSON).v2()
+        );
+        return Maps.deepEquals(thisUncompressedMapping, otherUncompressedMapping);
     }
 }
