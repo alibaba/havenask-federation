@@ -34,8 +34,6 @@ import org.havenask.common.lucene.Lucene;
 import org.havenask.common.settings.Settings;
 import org.havenask.engine.HavenaskEngineEnvironment;
 import org.havenask.engine.util.Utils;
-import org.havenask.env.Environment;
-import org.havenask.env.TestEnvironment;
 import org.havenask.index.IndexSettings;
 import org.havenask.index.shard.ShardId;
 import org.havenask.index.store.Store.OnClose;
@@ -63,26 +61,15 @@ public class HavenaskStoreTests extends HavenaskTestCase {
         IndexSettings indexSettings = new IndexSettings(build, Settings.EMPTY);
         shardId = new ShardId(index, index, 1);
 
-        Settings settings = Settings.builder().put(Environment.PATH_HOME_SETTING.getKey(), workDir.toString()).build();
-        Environment environment = TestEnvironment.newEnvironment(settings);
-
-        havenaskStore = new HavenaskStore(
-            shardId,
-            indexSettings,
-            null,
-            new DummyShardLock(shardId),
-            OnClose.EMPTY,
-            new HavenaskEngineEnvironment(environment, settings)
-        );
-
         String tableName = Utils.getHavenaskTableName(shardId);
         dataPath = workDir.resolve(HavenaskEngineEnvironment.DEFAULT_DATA_PATH)
             .resolve(HavenaskEngineEnvironment.HAVENASK_RUNTIMEDATA_PATH)
             .resolve(tableName)
             .resolve("generation_0")
             .resolve("partition_0_65535");
-
         Files.createDirectories(dataPath);
+
+        havenaskStore = new HavenaskStore(shardId, indexSettings, null, new DummyShardLock(shardId), OnClose.EMPTY, dataPath);
     }
 
     public void testGetHavenaskMetadata() throws IOException {
@@ -178,18 +165,19 @@ public class HavenaskStoreTests extends HavenaskTestCase {
 
         {
             Map<String, StoreFileMetadata> snapshot = havenaskStore.getHavenaskMetadata(indexCommit);
-            assertEquals(snapshot.size(), 5);
+            assertEquals(snapshot.size(), 6);
             assertEquals(snapshot.get("deploy_meta.0").length(), 711);
             assertEquals(snapshot.get("index_format_version").length(), 82);
             assertEquals(snapshot.get("index_partition_meta").length(), 28);
             assertEquals(snapshot.get("schema.json").length(), 2335);
             assertEquals(snapshot.get("version.0").length(), 372);
+            assertEquals(snapshot.get("entry_table.0").length(), 400);
         }
 
         // commit is null
         {
             Map<String, StoreFileMetadata> snapshot = havenaskStore.getHavenaskMetadata(null);
-            assertEquals(snapshot.size(), 5);
+            assertEquals(snapshot.size(), 6);
         }
     }
 
@@ -228,23 +216,5 @@ public class HavenaskStoreTests extends HavenaskTestCase {
         assertEquals(Files.readString(dataPath.resolve("test")), "test content");
         assertEquals(Files.readString(dataPath.resolve("dir1/test")), "test dir1 content");
         assertEquals(Files.readString(dataPath.resolve("dir1/dir2/test")), "test dir1 dir2 content");
-    }
-
-    public void testListHavenaskFiles() throws IOException {
-        // create some files
-        Files.createDirectories(dataPath.resolve("dir1/dir2"));
-        Files.write(dataPath.resolve("test"), "test content".getBytes(StandardCharsets.UTF_8));
-        Files.write(dataPath.resolve("dir1/test"), "test dir1 content".getBytes(StandardCharsets.UTF_8));
-        Files.write(dataPath.resolve("dir1/dir2/test"), "test dir1 dir2 content".getBytes(StandardCharsets.UTF_8));
-
-        assertEquals(Files.readString(dataPath.resolve("test")), "test content");
-        assertEquals(Files.readString(dataPath.resolve("dir1/test")), "test dir1 content");
-        assertEquals(Files.readString(dataPath.resolve("dir1/dir2/test")), "test dir1 dir2 content");
-
-        List<String> files = havenaskStore.listHavenaskFiles();
-        assertEquals(files.size(), 3);
-        assertTrue(files.contains("test"));
-        assertTrue(files.contains("dir1/test"));
-        assertTrue(files.contains("dir1/dir2/test"));
     }
 }
