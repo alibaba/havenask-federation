@@ -39,6 +39,25 @@
 
 package org.havenask.indices.recovery;
 
+import java.io.Closeable;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.Deque;
+import java.util.List;
+import java.util.Locale;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentLinkedDeque;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Consumer;
+import java.util.function.IntSupplier;
+import java.util.stream.StreamSupport;
+
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.message.ParameterizedMessage;
 import org.apache.lucene.index.CorruptIndexException;
@@ -71,8 +90,8 @@ import org.havenask.common.lucene.store.InputStreamIndexInput;
 import org.havenask.common.unit.ByteSizeValue;
 import org.havenask.common.unit.TimeValue;
 import org.havenask.common.util.CancellableThreads;
-import org.havenask.common.util.concurrent.HavenaskExecutors;
 import org.havenask.common.util.concurrent.FutureUtils;
+import org.havenask.common.util.concurrent.HavenaskExecutors;
 import org.havenask.common.util.concurrent.ListenableFuture;
 import org.havenask.core.internal.io.IOUtils;
 import org.havenask.index.engine.Engine;
@@ -92,25 +111,6 @@ import org.havenask.index.translog.Translog;
 import org.havenask.threadpool.ThreadPool;
 import org.havenask.transport.RemoteTransportException;
 import org.havenask.transport.Transports;
-
-import java.io.Closeable;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.Deque;
-import java.util.List;
-import java.util.Locale;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentLinkedDeque;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.function.Consumer;
-import java.util.function.IntSupplier;
-import java.util.stream.StreamSupport;
 
 /**
  * RecoverySourceHandler handles the three phases of shard recovery, which is
@@ -916,7 +916,7 @@ public class RecoverySourceHandler {
         }
     }
 
-    void sendFiles(Store store, StoreFileMetadata[] files, IntSupplier translogOps, ActionListener<Void> listener) {
+    public void sendFiles(Store store, StoreFileMetadata[] files, IntSupplier translogOps, ActionListener<Void> listener) {
         ArrayUtil.timSort(files, Comparator.comparingLong(StoreFileMetadata::length)); // send smallest first
 
         final MultiChunkTransfer<StoreFileMetadata, FileChunk>multiFileSender = new MultiChunkTransfer<StoreFileMetadata, FileChunk>(
@@ -930,7 +930,7 @@ public class RecoverySourceHandler {
                 protected void onNewResource(StoreFileMetadata md) throws IOException {
                     offset = 0;
                     IOUtils.close(currentInput, () -> currentInput = null);
-                    final IndexInput indexInput = store.directory().openInput(md.name(), IOContext.READONCE);
+                    final IndexInput indexInput = store.openInput(md, IOContext.READONCE);
                     currentInput = new InputStreamIndexInput(indexInput, md.length()) {
                         @Override
                         public void close() throws IOException {

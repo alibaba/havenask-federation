@@ -14,10 +14,12 @@
 
 package org.havenask.engine.util;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.AccessController;
+import java.security.PrivilegedAction;
 import java.security.PrivilegedActionException;
 import java.security.PrivilegedExceptionAction;
 import java.util.Locale;
@@ -205,5 +207,29 @@ public class Utils {
 
     public static String getVersionFile(Integer version) {
         return String.format(Locale.ROOT, "version.%s", version);
+    }
+
+    /**
+     * 执行tar解压命令
+     * @param filePath        tar文件路径
+     * @param destinationPath 解压目标路径
+     */
+    public static void executeTarCommand(String filePath, String destinationPath) {
+        AccessController.doPrivileged((PrivilegedAction<Boolean>) () -> {
+            try {
+                // 构建tar命令
+                ProcessBuilder processBuilder = new ProcessBuilder("tar", "-zxvf", filePath, "-C", destinationPath);
+                processBuilder.redirectErrorStream(true);
+
+                // 执行tar命令
+                Process process = processBuilder.start();
+
+                // 等待命令执行完成
+                process.waitFor();
+            } catch (IOException | InterruptedException e) {
+                return false;
+            }
+            return true;
+        });
     }
 }

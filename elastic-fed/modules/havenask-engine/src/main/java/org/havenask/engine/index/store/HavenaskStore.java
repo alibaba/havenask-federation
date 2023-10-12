@@ -14,29 +14,31 @@
 
 package org.havenask.engine.index.store;
 
+import java.io.EOFException;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.nio.ByteBuffer;
+import java.nio.channels.SeekableByteChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
-import java.util.stream.Stream;
 
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 
+import org.apache.logging.log4j.message.ParameterizedMessage;
 import org.apache.lucene.index.IndexCommit;
+import org.apache.lucene.store.BufferedIndexInput;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
+import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.store.OutputStreamIndexOutput;
 import org.apache.lucene.util.Version;
 import org.havenask.common.Strings;
-import org.havenask.engine.HavenaskEngineEnvironment;
 import org.havenask.engine.index.config.EntryTable;
 import org.havenask.engine.index.engine.EngineSettings;
 import org.havenask.engine.index.engine.HavenaskEngine.HavenaskCommitInfo;
@@ -48,7 +50,6 @@ import org.havenask.index.store.Store;
 import org.havenask.index.store.StoreFileMetadata;
 
 import static org.apache.lucene.index.IndexFileNames.SEGMENTS;
-import static org.havenask.engine.util.Utils.INDEX_SUB_PATH;
 
 public class HavenaskStore extends Store {
 
@@ -57,7 +58,6 @@ public class HavenaskStore extends Store {
     private static final String HAVENASK_ENTRY_TABLE_FILE_PREFIX = "entry_table.";
     private static final int CHUNK_SIZE = 8192;
 
-    private final HavenaskEngineEnvironment env;
     private final Path shardPath;
 
     public HavenaskStore(
@@ -66,11 +66,10 @@ public class HavenaskStore extends Store {
         Directory directory,
         ShardLock shardLock,
         OnClose onClose,
-        HavenaskEngineEnvironment env
+        Path shardPath
     ) {
-        super(shardId, indexSettings, directory, shardLock, onClose);
-        this.env = env;
-        this.shardPath = env.getShardPath(shardId).resolve(INDEX_SUB_PATH);
+        super(shardId, indexSettings, new HavenaskDirectory(directory, shardPath), shardLock, onClose);
+        this.shardPath = shardPath;
     }
 
     @Override
@@ -112,6 +111,9 @@ public class HavenaskStore extends Store {
             }
         });
 
+        // add entry_table file
+        metadata.put(entryTableFile, new StoreFileMetadata(entryTableFile, entryTableContent.length(), "", HAVENASK_VERSION));
+
         return metadata;
     }
 
@@ -133,6 +135,132 @@ public class HavenaskStore extends Store {
             );
         } else {
             return super.createVerifyingOutput(fileName, metadata, context);
+        }
+    }
+
+    @Override
+    public IndexInput openInput(StoreFileMetadata metadata, IOContext context) throws IOException {
+        if (isHavenaskFile(metadata.writtenBy())) {
+            Path filePath = shardPath.resolve(metadata.name());
+            SeekableByteChannel channel = Files.newByteChannel(filePath, StandardOpenOption.READ);
+
+            return new SimpleFSIndexInput("SimpleFSIndexInput(path=\"" + filePath + "\")", channel, context);
+        } else {
+            return super.openInput(metadata, context);
+        }
+    }
+
+    /**
+     * 迁移lucene的SimpleFSIndexInput到HavenaskStore类
+     */
+    static final class SimpleFSIndexInput extends BufferedIndexInput {
+        /**
+         * The maximum chunk size for reads of 16384 bytes.
+         */
+        private static final int CHUNK_SIZE = 16384;
+
+        /** the channel we will read from */
+        protected final SeekableByteChannel channel;
+        /** is this instance a clone and hence does not own the file to close it */
+        boolean isClone = false;
+        /** start offset: non-zero in the slice case */
+        protected final long off;
+        /** end offset (start+length) */
+        protected final long end;
+
+        private ByteBuffer byteBuf; // wraps the buffer for NIO
+
+        SimpleFSIndexInput(String resourceDesc, SeekableByteChannel channel, IOContext context) throws IOException {
+            super(resourceDesc, context);
+            this.channel = channel;
+            this.off = 0L;
+            this.end = channel.size();
+        }
+
+        SimpleFSIndexInput(String resourceDesc, SeekableByteChannel channel, long off, long length, int bufferSize) {
+            super(resourceDesc, bufferSize);
+            this.channel = channel;
+            this.off = off;
+            this.end = off + length;
+            this.isClone = true;
+        }
+
+        @Override
+        public void close() throws IOException {
+            if (!isClone) {
+                channel.close();
+            }
+        }
+
+        @Override
+        public SimpleFSIndexInput clone() {
+            SimpleFSIndexInput clone = (SimpleFSIndexInput) super.clone();
+            clone.isClone = true;
+            return clone;
+        }
+
+        @Override
+        public IndexInput slice(String sliceDescription, long offset, long length) throws IOException {
+            if (offset < 0 || length < 0 || offset + length > this.length()) {
+                throw new IllegalArgumentException(
+                    "slice() "
+                        + sliceDescription
+                        + " out of bounds: offset="
+                        + offset
+                        + ",length="
+                        + length
+                        + ",fileLength="
+                        + this.length()
+                        + ": "
+                        + this
+                );
+            }
+            return new SimpleFSIndexInput(getFullSliceDescription(sliceDescription), channel, off + offset, length, getBufferSize());
+        }
+
+        @Override
+        public long length() {
+            return end - off;
+        }
+
+        @Override
+        protected void readInternal(ByteBuffer b) throws IOException {
+            synchronized (channel) {
+                long pos = getFilePointer() + off;
+
+                if (pos + b.remaining() > end) {
+                    throw new EOFException("read past EOF: " + this);
+                }
+
+                try {
+                    channel.position(pos);
+
+                    int readLength = b.remaining();
+                    while (readLength > 0) {
+                        final int toRead = Math.min(CHUNK_SIZE, readLength);
+                        b.limit(b.position() + toRead);
+                        assert b.remaining() == toRead;
+                        final int i = channel.read(b);
+                        if (i < 0) { // be defensive here, even though we checked before hand, something could have changed
+                            throw new EOFException("read past EOF: " + this + " buffer: " + b + " chunkLen: " + toRead + " end: " + end);
+                        }
+                        assert i > 0 : "SeekableByteChannel.read with non zero-length bb.remaining() must always read at least"
+                            + " one byte (Channel is in blocking mode, see spec of ReadableByteChannel)";
+                        pos += i;
+                        readLength -= i;
+                    }
+                    assert readLength == 0;
+                } catch (IOException ioe) {
+                    throw new IOException(ioe.getMessage() + ": " + this, ioe);
+                }
+            }
+        }
+
+        @Override
+        protected void seekInternal(long pos) throws IOException {
+            if (pos > length()) {
+                throw new EOFException("read past EOF: pos=" + pos + " vs length=" + length() + ": " + this);
+            }
         }
     }
 
@@ -183,44 +311,19 @@ public class HavenaskStore extends Store {
 
     @Override
     public void cleanupAndVerify(String reason, MetadataSnapshot sourceMetadata) throws IOException {
-        for (String existingFile : listHavenaskFiles()) {
+        for (String existingFile : directory().listAll()) {
             if (Store.isAutogenerated(existingFile) || sourceMetadata.contains(existingFile)) {
                 continue;
             }
 
-            Files.delete(shardPath.resolve(existingFile));
-            logger.debug("cleanupAndVerify: deleted unreferenced file [{}]", existingFile);
+            try {
+                Files.delete(shardPath.resolve(existingFile));
+                logger.debug("cleanupAndVerify: deleted unreferenced file [{}]", existingFile);
+            } catch (IOException e) {
+                logger.warn(new ParameterizedMessage("cleanupAndVerify: failed to delete unreferenced file [{}]", existingFile), e);
+            }
         }
         super.cleanupAndVerify(reason, sourceMetadata);
-    }
-
-    List<String> listHavenaskFiles() throws IOException {
-        List<Path> files = listAllHavenaskFiles(shardPath);
-        String shardPathStr = shardPath.toString();
-        List<String> fileNames = new ArrayList<>();
-        files.forEach(path -> {
-            String fileName = path.toString().substring(shardPathStr.length() + 1);
-            fileNames.add(fileName);
-        });
-        return fileNames;
-    }
-
-    static List<Path> listAllHavenaskFiles(Path dir) throws IOException {
-        List<Path> files = new ArrayList<>();
-        try (Stream<Path> stream = Files.list(dir)) {
-            stream.forEach(path -> {
-                if (Files.isDirectory(path)) {
-                    try {
-                        files.addAll(listAllHavenaskFiles(path));
-                    } catch (IOException e) {
-                        throw new RuntimeException(e);
-                    }
-                } else {
-                    files.add(path);
-                }
-            });
-        }
-        return files;
     }
 
     public static boolean isHavenaskFile(Version version) {

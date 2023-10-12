@@ -15,6 +15,7 @@
 package org.havenask.engine;
 
 import java.io.IOException;
+import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
@@ -101,6 +102,7 @@ import org.havenask.watcher.ResourceWatcherService;
 
 import static org.havenask.engine.NativeProcessControlService.HAVENASK_QRS_HTTP_PORT_SETTING;
 import static org.havenask.engine.index.engine.EngineSettings.ENGINE_HAVENASK;
+import static org.havenask.engine.util.Utils.INDEX_SUB_PATH;
 
 public class HavenaskEnginePlugin extends Plugin
     implements
@@ -339,7 +341,9 @@ public class HavenaskEnginePlugin extends Plugin
 
             @Override
             public Store newStore(ShardId shardId, IndexSettings indexSettings, Directory directory, ShardLock shardLock, OnClose onClose) {
-                return new HavenaskStore(shardId, indexSettings, directory, shardLock, onClose, havenaskEngineEnvironmentSetOnce.get());
+                HavenaskEngineEnvironment env = havenaskEngineEnvironmentSetOnce.get();
+                Path shardPath = env.getShardPath(shardId).resolve(INDEX_SUB_PATH);
+                return new HavenaskStore(shardId, indexSettings, directory, shardLock, onClose, shardPath);
             }
         });
     }
