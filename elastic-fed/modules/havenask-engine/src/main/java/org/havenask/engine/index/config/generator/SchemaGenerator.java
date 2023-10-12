@@ -55,7 +55,8 @@ import org.havenask.engine.index.config.Schema.VectorIndex;
 import org.havenask.engine.index.engine.EngineSettings;
 import org.havenask.engine.index.mapper.DenseVectorFieldMapper.Algorithm;
 import org.havenask.engine.index.mapper.DenseVectorFieldMapper.DenseVectorFieldType;
-import org.havenask.engine.index.mapper.DenseVectorFieldMapper.HCIndexOptions;
+import org.havenask.engine.index.mapper.DenseVectorFieldMapper.QCIndexOptions;
+import org.havenask.engine.index.mapper.DenseVectorFieldMapper.LinearIndexOptions;
 import org.havenask.engine.index.mapper.DenseVectorFieldMapper.HnswIndexOptions;
 import org.havenask.engine.index.mapper.DenseVectorFieldMapper.IndexOptions;
 import org.havenask.index.mapper.IdFieldMapper;
@@ -66,6 +67,14 @@ import org.havenask.index.mapper.TextSearchInfo;
 public class SchemaGenerator {
     // have deprecated fields or not support now.
     public static final Set<String> ExcludeFields = Set.of("_field_names", "index", "_type", "_uid", "_parent");
+    public static final int SEARCH_INDEX_PARAMS_POS = 0;
+    public static final int BUILD_INDEX_PARAMS_POS = 1;
+    public static final String LINEAR_BUILDER = "LinearBuilder";
+    public static final String QC_BUILDER = "QcBuilder";
+    public static final String HNSW_BUILDER = "HnswBuilder";
+    public static final String LINEAR_SEARCHER = "LinearSearcher";
+    public static final String QC_SEARCHER = "QcSearcher";
+    public static final String HNSW_SEARCHER = "HnswSearcher";
 
     Set<String> analyzers = null;
 
@@ -243,77 +252,74 @@ public class SchemaGenerator {
         List<Schema.Field> indexFields = Arrays.asList(new Schema.Field(IdFieldMapper.NAME), new Schema.Field(dupFieldName));
         Map<String, String> parameter = new LinkedHashMap<>();
         parameter.put("dimension", String.valueOf(vectorField.getDims()));
-        parameter.put("enable_rt_build", "true");
-        parameter.put("distance_type", "InnerProduct");
 
         IndexOptions indexOptions = vectorField.getIndexOptions();
-        if (indexOptions.type == Algorithm.HNSW) {
-            parameter.put("builder_name", "HnswBuilder");
-            parameter.put("searcher_name", "HnswSearcher");
-            HnswIndexOptions hnswIndexOptions = (HnswIndexOptions) indexOptions;
-            if (hnswIndexOptions.maxDocCnt != null) {
-                parameter.put("proxima.graph.common.max_doc_cnt", String.valueOf(hnswIndexOptions.maxDocCnt));
-            }
-            if (hnswIndexOptions.maxScanNum != null) {
-                parameter.put("proxima.graph.common.max_scan_num", String.valueOf(hnswIndexOptions.maxScanNum));
-            }
-            if (hnswIndexOptions.memoryQuota != null) {
-                parameter.put("proxima.general.builder.memory_quota", String.valueOf(hnswIndexOptions.memoryQuota));
-            }
-            if (hnswIndexOptions.efConstruction != null) {
-                parameter.put("proxima.hnsw.builder.efconstruction", String.valueOf(hnswIndexOptions.efConstruction));
-            }
-            if (hnswIndexOptions.maxLevel != null) {
-                parameter.put("proxima.hnsw.builder.max_level", String.valueOf(hnswIndexOptions.maxLevel));
-            }
-            if (hnswIndexOptions.scalingFactor != null) {
-                parameter.put("proxima.hnsw.builder.scaling_factor", String.valueOf(hnswIndexOptions.scalingFactor));
-            }
-            if (hnswIndexOptions.upperNeighborCnt != null) {
-                parameter.put("proxima.hnsw.builder.upper_neighbor_cnt", String.valueOf(hnswIndexOptions.upperNeighborCnt));
-            }
-            if (hnswIndexOptions.ef != null) {
-                parameter.put("proxima.hnsw.searcher.ef", String.valueOf(hnswIndexOptions.ef));
-            }
-            if (hnswIndexOptions.maxScanCnt != null) {
-                parameter.put("proxima.hnsw.searcher.max_scan_cnt", String.valueOf(hnswIndexOptions.maxScanCnt));
-            }
-        } else if (indexOptions.type == Algorithm.HC) {
-            HCIndexOptions hcIndexOptions = (HCIndexOptions) indexOptions;
-            if (hcIndexOptions.numInLevel1 != null) {
-                parameter.put("proxima.hc.builder.num_in_level_1", String.valueOf(hcIndexOptions.numInLevel1));
-            }
-            if (hcIndexOptions.numInLevel2 != null) {
-                parameter.put("proxima.hc.builder.num_in_level_2", String.valueOf(hcIndexOptions.numInLevel2));
-            }
-            if (hcIndexOptions.leafCentroidNum != null) {
-                parameter.put("proxima.hc.common.leaf_centroid_num", String.valueOf(hcIndexOptions.leafCentroidNum));
-            }
-            if (hcIndexOptions.trainSampleCount != null) {
-                parameter.put("proxima.hc.builder.train_sample_count", String.valueOf(hcIndexOptions.trainSampleCount));
-            }
-            if (hcIndexOptions.trainSampleRatio != null) {
-                parameter.put("proxima.hc.builder.train_sample_ratio", String.valueOf(hcIndexOptions.trainSampleRatio));
-            }
-            if (hcIndexOptions.scanNumInLevel1 != null) {
-                parameter.put("proxima.hc.builder.scan_num_in_level_1", String.valueOf(hcIndexOptions.scanNumInLevel1));
-            }
-            if (hcIndexOptions.scanNumInLevel2 != null) {
-                parameter.put("proxima.hc.builder.scan_num_in_level_2", String.valueOf(hcIndexOptions.scanNumInLevel2));
-            }
-            if (hcIndexOptions.maxScanNum != null) {
-                parameter.put("proxima.hc.searcher.max_scan_num", String.valueOf(hcIndexOptions.maxScanNum));
-            }
-            if (hcIndexOptions.useLinearThreshold != null) {
-                parameter.put("use_linear_threshold", String.valueOf(hcIndexOptions.useLinearThreshold));
-            }
-            if (hcIndexOptions.useDynamicParams != null) {
-                parameter.put("use_dynamic_params", String.valueOf(hcIndexOptions.useDynamicParams));
-            }
-
-        } else {
-            // parameter.put("index_type", "linear");
+        if (indexOptions.embeddingDelimiter != null) {
+            parameter.put("embedding_delimiter", indexOptions.embeddingDelimiter);
         }
+        if (indexOptions.distanceType != null) {
+            parameter.put("distance_type", indexOptions.distanceType);
+        }
+        if (indexOptions.majorOrder != null) {
+            parameter.put("major_order", indexOptions.majorOrder);
+        }
+        if (indexOptions.enableRtBuild != null) {
+            parameter.put("enable_rt_build", String.valueOf(indexOptions.enableRtBuild));
+        }
+        if (indexOptions.ignoreInvalidDoc != null) {
+            parameter.put("ignore_invalid_doc", String.valueOf(indexOptions.ignoreInvalidDoc));
+        }
+        if (indexOptions.enableRecallReport != null) {
+            parameter.put("enable_recall_report", String.valueOf(indexOptions.enableRecallReport));
+        }
+        if (indexOptions.isEmbeddingSaved != null) {
+            parameter.put("is_embedding_saved", String.valueOf(indexOptions.isEmbeddingSaved));
+        }
+        if (indexOptions.minScanDocCnt != null) {
+            parameter.put("min_scan_doc_cnt", String.valueOf(indexOptions.minScanDocCnt));
+        }
+        if (indexOptions.linearBuildThreshold != null) {
+            parameter.put("linear_build_threshold", String.valueOf(indexOptions.linearBuildThreshold));
+        }
+
+        if (indexOptions.type == Algorithm.HNSW) {
+            parameter.put("builder_name", HNSW_BUILDER);
+            parameter.put("searcher_name", HNSW_SEARCHER);
+
+            HnswIndexOptions hnswIndexOptions = (HnswIndexOptions) indexOptions;
+            String[] SearchAndBuildIndexParams = getSearchAndBuildIndexParams(hnswIndexOptions);
+            if (SearchAndBuildIndexParams[SEARCH_INDEX_PARAMS_POS] != null) {
+                parameter.put("searcher_index_params", SearchAndBuildIndexParams[SEARCH_INDEX_PARAMS_POS]);
+            }
+            if (SearchAndBuildIndexParams[BUILD_INDEX_PARAMS_POS] != null) {
+                parameter.put("builder_index_params", SearchAndBuildIndexParams[BUILD_INDEX_PARAMS_POS]);
+            }
+        } else if (indexOptions.type == Algorithm.QC) {
+            parameter.put("builder_name", QC_BUILDER);
+            parameter.put("searcher_name", QC_SEARCHER);
+
+            QCIndexOptions qcIndexOptions = (QCIndexOptions) indexOptions;
+            String[] SearchAndBuildIndexParams = getSearchAndBuildIndexParams(qcIndexOptions);
+            if (SearchAndBuildIndexParams[SEARCH_INDEX_PARAMS_POS] != null) {
+                parameter.put("searcher_index_params", SearchAndBuildIndexParams[SEARCH_INDEX_PARAMS_POS]);
+            }
+            if (SearchAndBuildIndexParams[BUILD_INDEX_PARAMS_POS] != null) {
+                parameter.put("builder_index_params", SearchAndBuildIndexParams[BUILD_INDEX_PARAMS_POS]);
+            }
+        } else if (indexOptions.type == Algorithm.LINEAR) {
+            parameter.put("builder_name", LINEAR_BUILDER);
+            parameter.put("searcher_name", LINEAR_SEARCHER);
+
+            LinearIndexOptions linearIndexOptions = (LinearIndexOptions) indexOptions;
+            String[] SearchAndBuildIndexParams = getSearchAndBuildIndexParams(linearIndexOptions);
+            if (SearchAndBuildIndexParams[SEARCH_INDEX_PARAMS_POS] != null) {
+                parameter.put("searcher_index_params", SearchAndBuildIndexParams[SEARCH_INDEX_PARAMS_POS]);
+            }
+            if (SearchAndBuildIndexParams[BUILD_INDEX_PARAMS_POS] != null) {
+                parameter.put("builder_index_params", SearchAndBuildIndexParams[BUILD_INDEX_PARAMS_POS]);
+            }
+        }
+
         return new Schema.VectorIndex(fieldName, indexFields, parameter);
     }
 
@@ -355,5 +361,151 @@ public class SchemaGenerator {
             new Schema.FieldInfo("_primary_term", "INT64")
         );
         return schema;
+    }
+
+    public String[] getSearchAndBuildIndexParams(IndexOptions indexOptions) {
+        String[] resStrs = new String[2];
+        if (indexOptions.type == Algorithm.HNSW) {
+            HnswIndexOptions hnswIndexOptions = (HnswIndexOptions) indexOptions;
+
+            StringBuilder hnswSearchIndexParamsBuilder = new StringBuilder();
+            if (hnswIndexOptions.searcherEf != null) {
+                hnswSearchIndexParamsBuilder.append("{");
+                hnswSearchIndexParamsBuilder.append("\"proxima.hnsw.searcher.ef\":" + hnswIndexOptions.searcherEf);
+                hnswSearchIndexParamsBuilder.append("}");
+                resStrs[SEARCH_INDEX_PARAMS_POS] = hnswSearchIndexParamsBuilder.toString();
+            }
+
+            StringBuilder hnswBuildIndexParamsBuilder = new StringBuilder();
+            if (hnswIndexOptions.builderMaxNeighborCnt != null
+                || hnswIndexOptions.builderEfConstruction != null
+                || hnswIndexOptions.builderThreadCnt != null) {
+                hnswBuildIndexParamsBuilder.append("{");
+                if (hnswIndexOptions.builderMaxNeighborCnt != null) {
+                    hnswBuildIndexParamsBuilder.append(
+                        "\"proxima.hnsw.builder.max_neighbor_cnt\":" + hnswIndexOptions.builderMaxNeighborCnt + ','
+                    );
+                }
+                if (hnswIndexOptions.builderEfConstruction != null) {
+                    hnswBuildIndexParamsBuilder.append(
+                        "\"proxima.hnsw.builder.ef_construction\":" + hnswIndexOptions.builderEfConstruction + ','
+                    );
+                }
+                if (hnswIndexOptions.builderThreadCnt != null) {
+                    hnswBuildIndexParamsBuilder.append("\"proxima.hnsw.builder.thread_cnt\":" + hnswIndexOptions.builderThreadCnt + ',');
+                }
+                // 删掉最后一个多余的','
+                hnswBuildIndexParamsBuilder.deleteCharAt(hnswBuildIndexParamsBuilder.length() - 1);
+                hnswBuildIndexParamsBuilder.append("}");
+                resStrs[BUILD_INDEX_PARAMS_POS] = hnswBuildIndexParamsBuilder.toString();
+            }
+
+        } else if (indexOptions.type == Algorithm.QC) {
+            QCIndexOptions qcIndexOptions = (QCIndexOptions) indexOptions;
+            StringBuilder qcSearchIndexParamsBuilder = new StringBuilder();
+            if (qcIndexOptions.searcherScanRatio != null
+                || qcIndexOptions.searcherOptimizerParams != null
+                || qcIndexOptions.searcherBruteForceThreshold != null) {
+                if (qcIndexOptions.searcherScanRatio != null) {
+                    qcSearchIndexParamsBuilder.append("{");
+                    qcSearchIndexParamsBuilder.append("\"proxima.qc.searcher.scan_ratio\":" + qcIndexOptions.searcherScanRatio + ',');
+                }
+                if (qcIndexOptions.searcherOptimizerParams != null) {
+                    qcSearchIndexParamsBuilder.append(
+                        "\"proxima.qc.searcher.optimizer_params\":" + '\"' + qcIndexOptions.searcherOptimizerParams + '\"' + ','
+                    );
+                }
+                if (qcIndexOptions.searcherBruteForceThreshold != null) {
+                    qcSearchIndexParamsBuilder.append(
+                        "\"proxima.qc.searcher.brute_force_threshold\":" + qcIndexOptions.searcherBruteForceThreshold + ','
+                    );
+                }
+                // 删掉最后一个多余的','
+                qcSearchIndexParamsBuilder.deleteCharAt(qcSearchIndexParamsBuilder.length() - 1);
+                qcSearchIndexParamsBuilder.append("}");
+                resStrs[SEARCH_INDEX_PARAMS_POS] = qcSearchIndexParamsBuilder.toString();
+            }
+
+            StringBuilder qcBuildIndexParamsBuilder = new StringBuilder();
+            if (qcIndexOptions.builderTrainSampleCount != null
+                || qcIndexOptions.builderThreadCount != null
+                || qcIndexOptions.builderCentroidCount != null
+                || qcIndexOptions.builderClusterAutoTuning != null
+                || qcIndexOptions.builderOptimizerClass != null
+                || qcIndexOptions.builderOptimizerParams != null
+                || qcIndexOptions.builderQuantizerClass != null
+                || qcIndexOptions.builderQuantizeByCentroid != null
+                || qcIndexOptions.builderStoreOriginalFeatures != null
+                || qcIndexOptions.builderTrainSampleCount2 != null
+                || qcIndexOptions.builderTrainSampleRatio != null) {
+                if (qcIndexOptions.builderTrainSampleCount != null) {
+                    qcBuildIndexParamsBuilder.append("{");
+                    qcBuildIndexParamsBuilder.append(
+                        "\"proxima.qc.builder.train_sample_count\":" + qcIndexOptions.builderTrainSampleCount + ','
+                    );
+                }
+                if (qcIndexOptions.builderThreadCount != null) {
+                    qcBuildIndexParamsBuilder.append("\"proxima.qc.builder.thread_count\":" + qcIndexOptions.builderThreadCount + ',');
+                }
+                if (qcIndexOptions.builderCentroidCount != null) {
+                    qcBuildIndexParamsBuilder.append(
+                        "\"proxima.qc.builder.centroid_count\":" + '\"' + qcIndexOptions.builderCentroidCount + '\"' + ','
+                    );
+                }
+                if (qcIndexOptions.builderClusterAutoTuning != null) {
+                    qcBuildIndexParamsBuilder.append(
+                        "\"proxima.qc.builder.cluster_auto_tuning\":" + qcIndexOptions.builderClusterAutoTuning + ','
+                    );
+                }
+                if (qcIndexOptions.builderOptimizerClass != null) {
+                    qcBuildIndexParamsBuilder.append(
+                        "\"proxima.qc.builder.optimizer_class\":" + '\"' + qcIndexOptions.builderOptimizerClass + '\"' + ','
+                    );
+                }
+                if (qcIndexOptions.builderOptimizerParams != null) {
+                    qcBuildIndexParamsBuilder.append(
+                        "\"proxima.qc.builder.optimizer_params\":" + '\"' + qcIndexOptions.builderOptimizerParams + '\"' + ','
+                    );
+                }
+                if (qcIndexOptions.builderQuantizerClass != null) {
+                    qcBuildIndexParamsBuilder.append(
+                        "\"proxima.qc.builder.quantizer_class\":" + '\"' + qcIndexOptions.builderQuantizerClass + '\"' + ','
+                    );
+                }
+                if (qcIndexOptions.builderQuantizeByCentroid != null) {
+                    qcBuildIndexParamsBuilder.append(
+                        "\"proxima.qc.builder.quantize_by_centroid\":" + qcIndexOptions.builderQuantizeByCentroid + ','
+                    );
+                }
+                if (qcIndexOptions.builderStoreOriginalFeatures != null) {
+                    qcBuildIndexParamsBuilder.append(
+                        "\"proxima.qc.builder.store_original_features\":" + qcIndexOptions.builderStoreOriginalFeatures + ','
+                    );
+                }
+                // TODO check this param
+                // if (qcIndexOptions.builderTrainSampleCount2!= null) {
+                // qcBuildIndexParamsBuilder.append("\"proxima.qc.builder.train_sample_count_2\":" + qcIndexOptions.builderTrainSampleCount2
+                // + ',');
+                // }
+                if (qcIndexOptions.builderTrainSampleRatio != null) {
+                    qcBuildIndexParamsBuilder.append(
+                        "\"proxima.qc.builder.train_sample_ratio\":" + qcIndexOptions.builderTrainSampleRatio + ','
+                    );
+                }
+                // 删掉最后一个多余的','
+                qcBuildIndexParamsBuilder.deleteCharAt(qcBuildIndexParamsBuilder.length() - 1);
+                qcBuildIndexParamsBuilder.append("}");
+                resStrs[BUILD_INDEX_PARAMS_POS] = qcBuildIndexParamsBuilder.toString();
+            }
+
+        } else if (indexOptions.type == Algorithm.LINEAR) {
+            LinearIndexOptions linearIndexOptions = (LinearIndexOptions) indexOptions;
+            if (linearIndexOptions.linearBuildThreshold != null) {
+                resStrs[SEARCH_INDEX_PARAMS_POS] = "{\"proxima.hnsw.builder.linear_build_threshold\":"
+                    + linearIndexOptions.linearBuildThreshold
+                    + '}';
+            }
+        }
+        return resStrs;
     }
 }

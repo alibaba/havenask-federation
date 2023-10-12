@@ -131,7 +131,7 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
     public enum Algorithm {
         HNSW("hnsw"),
         LINEAR("linear"),
-        HC("hc");
+        QC("qc");
 
         private final String value;
 
@@ -183,152 +183,139 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
         }
     }
 
+    /**
+     *     "embedding_delimiter": ",",
+     *     "builder_name": "QcBuilder",
+     *     "searcher_name": "QcSearcher",
+     *     "distance_type": "SquaredEuclidean",
+     *     "search_index_params": "{\"proxima.qc.searcher.scan_ratio\":0.01}",
+     *
+     *     "build_index_params": "{\"proxima.qc.builder.quantizer_class\":\"Int8QuantizerConverter\",
+     *     \"proxima.qc.builder.quantize_by_centroid\":true,\"proxima.qc.builder.optimizer_class\":
+     *     \"BruteForceBuilder\",\"proxima.qc.builder.thread_count\":10,\"proxima.qc.builder.optimizer_params\":
+     *     {\"proxima.linear.builder.column_major_order\":true},\"proxima.qc.builder.store_original_features\":false,
+     *     \"proxima.qc.builder.train_sample_count\":3000000,\"proxima.qc.builder.train_sample_ratio\":0.5}",
+     *
+     *     "major_order": "col",
+     *     "enable_rt_build": "true",
+     *     "ignore_invalid_doc" : "true",
+     *     "enable_recall_report": "true",
+     *     "is_embedding_saved": "true",
+     *     "min_scan_doc_cnt": "20000",
+     *     "linear_build_threshold": "5000",
+     */
     public static class IndexOptions implements ToXContent {
         public final Algorithm type;
-
-        IndexOptions(Algorithm type) {
-            this.type = type;
-        }
-
-        @Override
-        public XContentBuilder toXContent(XContentBuilder builder, Params params) throws IOException {
-            builder.startObject();
-            builder.field("type", type.name());
-            builder.endObject();
-            return builder;
-        }
-    }
-
-    /**
-     * {
-     * "proxima.hc.builder.num_in_level_1": "1000",
-     * "proxima.hc.builder.num_in_level_2": "100",
-     * "proxima.hc.common.leaf_centroid_num": "100000",
-     * "proxima.general.builder.train_sample_count": "0",
-     * "proxima.general.builder.train_sample_ratio": "0.0",
-     * "proxima.hc.searcher.scan_num_in_level_1": "60",
-     * "proxima.hc.searcher.scan_num_in_level_2": "6000",
-     * "proxima.hc.searcher.max_scan_num": "50000",
-     * "use_linear_threshold":"10000",
-     * "use_dynamic_params":"1"
-     * }
-     */
-    public static class HCIndexOptions extends IndexOptions {
-        public final Integer numInLevel1;
-        public final Integer numInLevel2;
-        public final Integer leafCentroidNum;
-        public final Integer trainSampleCount;
-        public final Float trainSampleRatio;
-        public final Integer scanNumInLevel1;
-        public final Integer scanNumInLevel2;
-        public final Integer maxScanNum;
-        public final Integer useLinearThreshold;
-        public final Integer useDynamicParams;
+        public final String embeddingDelimiter;
+        public final String distanceType;
+        public final String majorOrder;
+        public final Boolean enableRtBuild;
+        public final Boolean ignoreInvalidDoc;
+        public final Boolean enableRecallReport;
+        public final Boolean isEmbeddingSaved;
+        public final Integer minScanDocCnt;
+        public final Integer linearBuildThreshold;
 
         static IndexOptions parseIndexOptions(String fieldName, Map<String, ?> indexOptionsMap) {
-            Object numInLevel1Node = indexOptionsMap.remove("proxima.hc.builder.num_in_level_1");
-            Integer numInLevel1 = numInLevel1Node != null ? XContentMapValues.nodeIntegerValue(numInLevel1Node) : null;
-            Object numInLevel2Node = indexOptionsMap.remove("proxima.hc.builder.num_in_level_2");
-            Integer numInLevel2 = numInLevel2Node != null ? XContentMapValues.nodeIntegerValue(numInLevel2Node) : null;
-            Object leafCentroidNumNode = indexOptionsMap.remove("proxima.hc.common.leaf_centroid_num");
-            Integer leafCentroidNum = leafCentroidNumNode != null ? XContentMapValues.nodeIntegerValue(leafCentroidNumNode) : null;
-            Object trainSampleCountNode = indexOptionsMap.remove("proxima.general.builder.train_sample_count");
-            Integer trainSampleCount = trainSampleCountNode != null ? XContentMapValues.nodeIntegerValue(trainSampleCountNode) : null;
-            Object trainSampleRatioNode = indexOptionsMap.remove("proxima.general.builder.train_sample_ratio");
-            Float trainSampleRatio = trainSampleRatioNode != null ? XContentMapValues.nodeFloatValue(trainSampleRatioNode) : null;
-            Object scanNumInLevel1Node = indexOptionsMap.remove("proxima.hc.searcher.scan_num_in_level_1");
-            Integer scanNumInLevel1 = scanNumInLevel1Node != null ? XContentMapValues.nodeIntegerValue(scanNumInLevel1Node) : null;
-            Object scanNumInLevel2Node = indexOptionsMap.remove("proxima.hc.searcher.scan_num_in_level_2");
-            Integer scanNumInLevel2 = scanNumInLevel2Node != null ? XContentMapValues.nodeIntegerValue(scanNumInLevel2Node) : null;
-            Object maxScanNumNode = indexOptionsMap.remove("proxima.hc.searcher.max_scan_num");
-            Integer maxScanNum = maxScanNumNode != null ? XContentMapValues.nodeIntegerValue(maxScanNumNode) : null;
-            Object useLinearThresholdNode = indexOptionsMap.remove("use_linear_threshold");
-            Integer useLinearThreshold = useLinearThresholdNode != null ? XContentMapValues.nodeIntegerValue(useLinearThresholdNode) : null;
-            Object useDynamicParamsNode = indexOptionsMap.remove("use_dynamic_params");
-            Integer useDynamicParams = useDynamicParamsNode != null ? XContentMapValues.nodeIntegerValue(useDynamicParamsNode) : null;
+            Object embeddingDelimiterNode = indexOptionsMap.remove("embedding_delimiter");
+            String embeddingDelimiter = embeddingDelimiterNode != null ? XContentMapValues.nodeStringValue(embeddingDelimiterNode) : null;
+            Object distanceTypeNode = indexOptionsMap.remove("distance_type");
+            String distanceType = distanceTypeNode != null ? XContentMapValues.nodeStringValue(distanceTypeNode) : null;
+            Object majorOrderNode = indexOptionsMap.remove("major_order");
+            String majorOrder = majorOrderNode != null ? XContentMapValues.nodeStringValue(majorOrderNode) : null;
+            Object enableRtBuildNode = indexOptionsMap.remove("enable_rt_build");
+            Boolean enableRtBuild = enableRtBuildNode != null ? XContentMapValues.nodeBooleanValue(enableRtBuildNode) : null;
+            Object ignoreInvalidDocNode = indexOptionsMap.remove("ignore_invalid_doc");
+            Boolean ignoreInvalidDoc = ignoreInvalidDocNode != null ? XContentMapValues.nodeBooleanValue(ignoreInvalidDocNode) : null;
+            Object enableRecallReportNode = indexOptionsMap.remove("enable_recall_report");
+            Boolean enableRecallReport = enableRecallReportNode != null ? XContentMapValues.nodeBooleanValue(enableRecallReportNode) : null;
+            Object isEmbeddingSavedNode = indexOptionsMap.remove("is_embedding_saved");
+            Boolean isEmbeddingSaved = isEmbeddingSavedNode != null ? XContentMapValues.nodeBooleanValue(isEmbeddingSavedNode) : null;
+            Object minScanDocCntNode = indexOptionsMap.remove("min_scan_doc_cnt");
+            Integer minScanDocCnt = minScanDocCntNode != null ? XContentMapValues.nodeIntegerValue(minScanDocCntNode) : null;
+            Object linearBuildThresholdNode = indexOptionsMap.remove("linear_build_threshold");
+            Integer linearBuildThreshold = linearBuildThresholdNode != null
+                ? XContentMapValues.nodeIntegerValue(linearBuildThresholdNode)
+                : null;
 
-            // TODO 参数校验
-            DocumentMapperParser.checkNoRemainingFields(fieldName, indexOptionsMap, Version.CURRENT);
-            if (numInLevel1 != null && numInLevel2 != null && leafCentroidNumNode != null) {
-                if (numInLevel1 * numInLevel2 != leafCentroidNum) {
-                    throw new IllegalArgumentException("num_in_level_1 * num_in_level_2 != leaf_centroid_num");
-                }
-            }
-
-            // TODO vaild value
-            return new HCIndexOptions(
-                numInLevel1,
-                numInLevel2,
-                leafCentroidNum,
-                trainSampleCount,
-                trainSampleRatio,
-                scanNumInLevel1,
-                scanNumInLevel2,
-                maxScanNum,
-                useLinearThreshold,
-                useDynamicParams
+            // TODO valid value
+            return new IndexOptions(
+                embeddingDelimiter,
+                distanceType,
+                majorOrder,
+                enableRtBuild,
+                ignoreInvalidDoc,
+                enableRecallReport,
+                isEmbeddingSaved,
+                minScanDocCnt,
+                linearBuildThreshold
             );
         }
 
-        public HCIndexOptions(
-            Integer numInLevel1,
-            Integer numInLevel2,
-            Integer leafCentroidNum,
-            Integer trainSampleCount,
-            Float trainSampleRatio,
-            Integer scanNumInLevel1,
-            Integer scanNumInLevel2,
-            Integer maxScanNum,
-            Integer useLinearThreshold,
-            Integer useDynamicParams
+        IndexOptions(
+            String embeddingDelimiter,
+            String distanceType,
+            String majorOrder,
+            Boolean enableRtBuild,
+            Boolean ignoreInvalidDoc,
+            Boolean enableRecallReport,
+            Boolean isEmbeddingSaved,
+            Integer minScanDocCnt,
+            Integer linearBuildThreshold
         ) {
-            super(Algorithm.HC);
-            this.numInLevel1 = numInLevel1;
-            this.numInLevel2 = numInLevel2;
-            this.leafCentroidNum = leafCentroidNum;
-            this.trainSampleCount = trainSampleCount;
-            this.trainSampleRatio = trainSampleRatio;
-            this.scanNumInLevel1 = scanNumInLevel1;
-            this.scanNumInLevel2 = scanNumInLevel2;
-            this.maxScanNum = maxScanNum;
-            this.useLinearThreshold = useLinearThreshold;
-            this.useDynamicParams = useDynamicParams;
+            this.type = null;
+            this.embeddingDelimiter = embeddingDelimiter;
+            this.distanceType = distanceType;
+            this.majorOrder = majorOrder;
+            this.enableRtBuild = enableRtBuild;
+            this.ignoreInvalidDoc = ignoreInvalidDoc;
+            this.enableRecallReport = enableRecallReport;
+            this.isEmbeddingSaved = isEmbeddingSaved;
+            this.minScanDocCnt = minScanDocCnt;
+            this.linearBuildThreshold = linearBuildThreshold;
+        }
+
+        IndexOptions(
+            Algorithm type,
+            String embeddingDelimiter,
+            String distanceType,
+            String majorOrder,
+            Boolean enableRtBuild,
+            Boolean ignoreInvalidDoc,
+            Boolean enableRecallReport,
+            Boolean isEmbeddingSaved,
+            Integer minScanDocCnt,
+            Integer linearBuildThreshold
+        ) {
+            this.type = type;
+            this.embeddingDelimiter = embeddingDelimiter;
+            this.distanceType = distanceType;
+            this.majorOrder = majorOrder;
+            this.enableRtBuild = enableRtBuild;
+            this.ignoreInvalidDoc = ignoreInvalidDoc;
+            this.enableRecallReport = enableRecallReport;
+            this.isEmbeddingSaved = isEmbeddingSaved;
+            this.minScanDocCnt = minScanDocCnt;
+            this.linearBuildThreshold = linearBuildThreshold;
+        }
+
+        IndexOptions(Algorithm type, IndexOptions other) {
+            this.type = type;
+            this.embeddingDelimiter = other.embeddingDelimiter;
+            this.distanceType = other.distanceType;
+            this.majorOrder = other.majorOrder;
+            this.enableRtBuild = other.enableRtBuild;
+            this.ignoreInvalidDoc = other.ignoreInvalidDoc;
+            this.enableRecallReport = other.enableRecallReport;
+            this.isEmbeddingSaved = other.isEmbeddingSaved;
+            this.minScanDocCnt = other.minScanDocCnt;
+            this.linearBuildThreshold = other.linearBuildThreshold;
         }
 
         @Override
         public XContentBuilder toXContent(XContentBuilder builder, Params params) throws IOException {
             builder.startObject();
             builder.field("type", type.name());
-            if (numInLevel1 != null) {
-                builder.field("proxima.hc.builder.num_in_level_1", numInLevel1);
-            }
-            if (numInLevel2 != null) {
-                builder.field("proxima.hc.builder.num_in_level_2", numInLevel2);
-            }
-            if (leafCentroidNum != null) {
-                builder.field("proxima.hc.common.leaf_centroid_num", leafCentroidNum);
-            }
-            if (trainSampleCount != null) {
-                builder.field("proxima.general.builder.train_sample_count", trainSampleCount);
-            }
-            if (trainSampleRatio != null) {
-                builder.field("proxima.general.builder.train_sample_ratio", trainSampleRatio);
-            }
-            if (scanNumInLevel1 != null) {
-                builder.field("proxima.hc.searcher.scan_num_in_level_1", scanNumInLevel1);
-            }
-            if (scanNumInLevel2 != null) {
-                builder.field("proxima.hc.searcher.scan_num_in_level_2", scanNumInLevel2);
-            }
-            if (maxScanNum != null) {
-                builder.field("proxima.hc.searcher.max_scan_num", maxScanNum);
-            }
-            if (useLinearThreshold != null) {
-                builder.field("use_linear_threshold", useLinearThreshold);
-            }
-            if (useDynamicParams != null) {
-                builder.field("use_dynamic_params", useDynamicParams);
-            }
             builder.endObject();
             return builder;
         }
@@ -341,224 +328,609 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
             if (o == null || getClass() != o.getClass()) {
                 return false;
             }
-            HCIndexOptions that = (HCIndexOptions) o;
-            return Objects.equals(numInLevel1, that.numInLevel1)
-                && Objects.equals(numInLevel2, that.numInLevel2)
-                && Objects.equals(leafCentroidNum, that.leafCentroidNum)
-                && Objects.equals(trainSampleCount, that.trainSampleCount)
-                && Objects.equals(trainSampleRatio, that.trainSampleRatio)
-                && Objects.equals(scanNumInLevel1, that.scanNumInLevel1)
-                && Objects.equals(scanNumInLevel2, that.scanNumInLevel2)
-                && Objects.equals(maxScanNum, that.maxScanNum)
-                && Objects.equals(useLinearThreshold, that.useLinearThreshold)
-                && Objects.equals(useDynamicParams, that.useDynamicParams);
+            IndexOptions that = (IndexOptions) o;
+            return Objects.equals(embeddingDelimiter, that.embeddingDelimiter)
+                && Objects.equals(distanceType, that.distanceType)
+                && Objects.equals(majorOrder, that.majorOrder)
+                && Objects.equals(enableRtBuild, that.enableRtBuild)
+                && Objects.equals(ignoreInvalidDoc, that.ignoreInvalidDoc)
+                && Objects.equals(enableRecallReport, that.enableRecallReport)
+                && Objects.equals(isEmbeddingSaved, that.isEmbeddingSaved)
+                && Objects.equals(minScanDocCnt, that.minScanDocCnt)
+                && Objects.equals(linearBuildThreshold, that.linearBuildThreshold);
         }
 
         @Override
         public int hashCode() {
             return Objects.hash(
-                numInLevel1,
-                numInLevel2,
-                leafCentroidNum,
-                trainSampleCount,
-                trainSampleRatio,
-                scanNumInLevel1,
-                scanNumInLevel2,
-                maxScanNum,
-                useLinearThreshold,
-                useDynamicParams
+                embeddingDelimiter,
+                distanceType,
+                majorOrder,
+                enableRtBuild,
+                ignoreInvalidDoc,
+                enableRecallReport,
+                isEmbeddingSaved,
+                minScanDocCnt,
+                linearBuildThreshold
             );
         }
 
         @Override
         public String toString() {
-            return "HCIndexOptions{"
-                + "numInLevel1="
-                + numInLevel1
-                + ", numInLevel2="
-                + numInLevel2
-                + ", leafCentroidNum="
-                + leafCentroidNum
-                + ", trainSampleCount="
-                + trainSampleCount
-                + ", trainSampleRatio="
-                + trainSampleRatio
-                + ", scanNumInLevel1="
-                + scanNumInLevel1
-                + ", scanNumInLevel2="
-                + scanNumInLevel2
-                + ", maxScanNum="
-                + maxScanNum
-                + ", useLinearThreshold="
-                + useLinearThreshold
-                + ", useDynamicParams="
-                + useDynamicParams
+            return "IndexOptions{"
+                + "type="
+                + type
+                + ", embeddingDelimiter='"
+                + embeddingDelimiter
+                + '\''
+                + ", distanceType='"
+                + distanceType
+                + '\''
+                + ", majorOrder='"
+                + majorOrder
+                + '\''
+                + ", enableRtBuild="
+                + enableRtBuild
+                + ", ignoreInvalidDoc="
+                + ignoreInvalidDoc
+                + ", enableRecallReport="
+                + enableRecallReport
+                + ", isEmbeddingSaved="
+                + isEmbeddingSaved
+                + ", minScanDocCnt="
+                + minScanDocCnt
+                + ", linearBuildThreshold="
+                + linearBuildThreshold
+                + '}';
+        }
+
+        public XContentBuilder toInnerXContent(XContentBuilder builder, Params params) throws IOException {
+            builder.startObject();
+            builder.field("type", type.name());
+            if (embeddingDelimiter != null) {
+                builder.field("embedding_delimiter", embeddingDelimiter);
+            }
+            if (distanceType != null) {
+                builder.field("distance_type", distanceType);
+            }
+            if (majorOrder != null) {
+                builder.field("major_order", majorOrder);
+            }
+            if (enableRtBuild != null) {
+                builder.field("enable_rt_build", enableRtBuild);
+            }
+            if (ignoreInvalidDoc != null) {
+                builder.field("ignore_invalid_doc", ignoreInvalidDoc);
+            }
+            if (enableRecallReport != null) {
+                builder.field("enable_recall_report", enableRecallReport);
+            }
+            if (isEmbeddingSaved != null) {
+                builder.field("is_embedding_saved", isEmbeddingSaved);
+            }
+            if (minScanDocCnt != null) {
+                builder.field("min_scan_doc_cnt", minScanDocCnt);
+            }
+            if (linearBuildThreshold != null) {
+                builder.field("linear_build_threshold", linearBuildThreshold);
+            }
+            return builder;
+        }
+    }
+
+    /**
+     * {
+     * "proxima.linear.builder.column_major_order" : "false"
+     * }
+     */
+
+    public static class LinearIndexOptions extends IndexOptions {
+        public final String builderColumnMajorOrder;
+
+        static IndexOptions parseIndexOptions(String fieldName, Map<String, ?> indexOptionsMap) {
+            IndexOptions baseIndexOptions = IndexOptions.parseIndexOptions(fieldName, indexOptionsMap);
+            Object buildIndexParamsNode = indexOptionsMap.remove("build_index_params");
+            Map<String, ?> buildIndexParamsMap = buildIndexParamsNode != null
+                ? XContentMapValues.nodeMapValue(buildIndexParamsNode, "build_index_params")
+                : null;
+
+            String builderColumnMajorOrder = null;
+            if (buildIndexParamsMap != null) {
+                Object builderColumnMajorOrderNode = buildIndexParamsMap.remove("proxima.linear.builder.column_major_order");
+                builderColumnMajorOrder = builderColumnMajorOrderNode != null
+                    ? XContentMapValues.nodeStringValue(builderColumnMajorOrderNode)
+                    : null;
+                DocumentMapperParser.checkNoRemainingFields(fieldName, buildIndexParamsMap, Version.CURRENT);
+            }
+
+            DocumentMapperParser.checkNoRemainingFields(fieldName, indexOptionsMap, Version.CURRENT);
+            // TODO vaild value
+            return new LinearIndexOptions(baseIndexOptions, builderColumnMajorOrder);
+        }
+
+        private LinearIndexOptions(IndexOptions baseIndexOptions, String builderColumnMajorOrder) {
+            super(Algorithm.LINEAR, baseIndexOptions);
+            this.builderColumnMajorOrder = builderColumnMajorOrder;
+        }
+
+        @Override
+        public XContentBuilder toXContent(XContentBuilder builder, Params params) throws IOException {
+            XContentBuilder baseBuilder = toInnerXContent(builder, params);
+            if (builderColumnMajorOrder != null) {
+                baseBuilder.startObject("build_index_params");
+                {
+                    baseBuilder.field("proxima.linear.builder.column_major_order", builderColumnMajorOrder);
+                }
+                baseBuilder.endObject();
+            }
+
+            // end innerXContent
+            baseBuilder.endObject();
+            return baseBuilder;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (!super.equals(o)) {
+                return false;
+            }
+            LinearIndexOptions that = (LinearIndexOptions) o;
+            return Objects.equals(builderColumnMajorOrder, that.builderColumnMajorOrder);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(super.hashCode(), builderColumnMajorOrder);
+        }
+
+        @Override
+        public String toString() {
+            return "LinearIndexOptions{" + super.toString() + "builderColumnMajorOrder='" + builderColumnMajorOrder + '\'' + '}';
+        }
+    }
+
+    /**
+     * {
+     * "proxima.qc.builder.train_sample_count" : "0",
+     * "proxima.qc.builder.thread_count" : "0",
+     * "proxima.qc.builder.centroid_count" : "1000",
+     * "proxima.qc.builder.cluster_auto_tuning" : "false",
+     * "proxima.qc.builder.optimizer_class" : "HcBuilder",
+     * "proxima.qc.builder.optimizer_params" : "-",
+     * "proxima.qc.builder.quantizer_class" : "-",
+     * "proxima.qc.builder.quantize_by_centroid" : "false",
+     * "proxima.qc.builder.store_original_features" : "false",
+     * "proxima.qc.builder.train_sample_count" : "0",
+     * "proxima.qc.builder.train_sample_ratio" : "1",
+     * "proxima.qc.searcher.scan_ratio" : "0.01",
+     * "proxima.qc.searcher.optimizer_params" : "-",
+     * "proxima.qc.searcher.brute_force_threshold" : "1000",
+     * }
+     */
+    public static class QCIndexOptions extends IndexOptions {
+        public final Integer builderTrainSampleCount;
+        public final Integer builderThreadCount;
+        public final String builderCentroidCount;
+        public final Boolean builderClusterAutoTuning;
+        public final String builderOptimizerClass;
+        public final String builderOptimizerParams;
+        public final String builderQuantizerClass;
+        public final Boolean builderQuantizeByCentroid;
+        public final Boolean builderStoreOriginalFeatures;
+        public final Integer builderTrainSampleCount2;
+        public final Double builderTrainSampleRatio;
+        public final Double searcherScanRatio;
+        public final String searcherOptimizerParams;
+        public final Integer searcherBruteForceThreshold;
+
+        static IndexOptions parseIndexOptions(String fieldName, Map<String, ?> indexOptionsMap) {
+            IndexOptions baseIndexOptions = IndexOptions.parseIndexOptions(fieldName, indexOptionsMap);
+
+            Integer builderTrainSampleCount = null;
+            Integer builderThreadCount = null;
+            String builderCentroidCount = null;
+            Boolean builderClusterAutoTuning = null;
+            String builderOptimizerClass = null;
+            String builderOptimizerParams = null;
+            String builderQuantizerClass = null;
+            Boolean builderQuantizeByCentroid = null;
+            Boolean builderStoreOriginalFeatures = null;
+            Integer builderTrainSampleCount2 = null;
+            Double builderTrainSampleRatio = null;
+
+            Object buildIndexParamsNode = indexOptionsMap.remove("build_index_params");
+            Map<String, ?> buildIndexParamsMap = buildIndexParamsNode != null
+                ? XContentMapValues.nodeMapValue(buildIndexParamsNode, "build_index_params")
+                : null;
+            if (buildIndexParamsMap != null) {
+                Object builderTrainSampleCountNode = buildIndexParamsMap.remove("proxima.qc.builder.train_sample_count");
+                builderTrainSampleCount = builderTrainSampleCountNode != null
+                    ? XContentMapValues.nodeIntegerValue(builderTrainSampleCountNode)
+                    : null;
+                Object builderThreadCountNode = buildIndexParamsMap.remove("proxima.qc.builder.thread_count");
+                builderThreadCount = builderThreadCountNode != null ? XContentMapValues.nodeIntegerValue(builderThreadCountNode) : null;
+                Object builderCentroidCountNode = buildIndexParamsMap.remove("proxima.qc.builder.centroid_count");
+                builderCentroidCount = builderCentroidCountNode != null
+                    ? XContentMapValues.nodeStringValue(builderCentroidCountNode)
+                    : null;
+                Object builderClusterAutoTuningNode = buildIndexParamsMap.remove("proxima.qc.builder.cluster_auto_tuning");
+                builderClusterAutoTuning = builderClusterAutoTuningNode != null
+                    ? XContentMapValues.nodeBooleanValue(builderClusterAutoTuningNode)
+                    : null;
+                Object builderOptimizerClassNode = buildIndexParamsMap.remove("proxima.qc.builder.optimizer_class");
+                builderOptimizerClass = builderOptimizerClassNode != null
+                    ? XContentMapValues.nodeStringValue(builderOptimizerClassNode)
+                    : null;
+                Object builderOptimizerParamsNode = buildIndexParamsMap.remove("proxima.qc.builder.optimizer_params");
+                builderOptimizerParams = builderOptimizerParamsNode != null
+                    ? XContentMapValues.nodeStringValue(builderOptimizerParamsNode)
+                    : null;
+                Object builderQuantizerClassNode = buildIndexParamsMap.remove("proxima.qc.builder.quantizer_class");
+                builderQuantizerClass = builderQuantizerClassNode != null
+                    ? XContentMapValues.nodeStringValue(builderQuantizerClassNode)
+                    : null;
+                Object builderQuantizeByCentroidNode = buildIndexParamsMap.remove("proxima.qc.builder.quantize_by_centroid");
+                builderQuantizeByCentroid = builderQuantizeByCentroidNode != null
+                    ? XContentMapValues.nodeBooleanValue(builderQuantizeByCentroidNode)
+                    : null;
+                Object builderStoreOriginalFeaturesNode = buildIndexParamsMap.remove("proxima.qc.builder.store_original_features");
+                builderStoreOriginalFeatures = builderStoreOriginalFeaturesNode != null
+                    ? XContentMapValues.nodeBooleanValue(builderStoreOriginalFeaturesNode)
+                    : null;
+                Object builderTrainSampleCount2Node = buildIndexParamsMap.remove("proxima.qc.builder.train_sample_count2");
+                builderTrainSampleCount2 = builderTrainSampleCount2Node != null
+                    ? XContentMapValues.nodeIntegerValue(builderTrainSampleCount2Node)
+                    : null;
+                Object builderTrainSampleRatioNode = buildIndexParamsMap.remove("proxima.qc.builder.train_sample_ratio");
+                builderTrainSampleRatio = builderTrainSampleRatioNode != null
+                    ? XContentMapValues.nodeDoubleValue(builderTrainSampleRatioNode)
+                    : null;
+                DocumentMapperParser.checkNoRemainingFields(fieldName, buildIndexParamsMap, Version.CURRENT);
+            }
+
+            Double searcherScanRatio = null;
+            String searcherOptimizerParams = null;
+            Integer searcherBruteForceThreshold = null;
+
+            Object searcherParamsNode = indexOptionsMap.remove("search_index_params");
+            Map<String, ?> searcherParamsMap = searcherParamsNode != null
+                ? XContentMapValues.nodeMapValue(searcherParamsNode, "search_index_params")
+                : null;
+            if (searcherParamsMap != null) {
+                Object searcherScanRatioNode = searcherParamsMap.remove("proxima.qc.searcher.scan_ratio");
+                searcherScanRatio = searcherScanRatioNode != null ? XContentMapValues.nodeDoubleValue(searcherScanRatioNode) : null;
+                Object searcherOptimizerParamsNode = searcherParamsMap.remove("proxima.qc.searcher.optimizer_params");
+                searcherOptimizerParams = searcherOptimizerParamsNode != null
+                    ? XContentMapValues.nodeStringValue(searcherOptimizerParamsNode)
+                    : null;
+                Object searcherBruteForceThresholdNode = searcherParamsMap.remove("proxima.qc.searcher.brute_force_threshold");
+                searcherBruteForceThreshold = searcherBruteForceThresholdNode != null
+                    ? XContentMapValues.nodeIntegerValue(searcherBruteForceThresholdNode)
+                    : null;
+                DocumentMapperParser.checkNoRemainingFields(fieldName, searcherParamsMap, Version.CURRENT);
+            }
+            DocumentMapperParser.checkNoRemainingFields(fieldName, indexOptionsMap, Version.CURRENT);
+            // TODO vaild value
+            return new QCIndexOptions(
+                baseIndexOptions,
+                builderTrainSampleCount,
+                builderThreadCount,
+                builderCentroidCount,
+                builderClusterAutoTuning,
+                builderOptimizerClass,
+                builderOptimizerParams,
+                builderQuantizerClass,
+                builderQuantizeByCentroid,
+                builderStoreOriginalFeatures,
+                builderTrainSampleCount2,
+                builderTrainSampleRatio,
+                searcherScanRatio,
+                searcherOptimizerParams,
+                searcherBruteForceThreshold
+            );
+        }
+
+        private QCIndexOptions(
+            IndexOptions baseIndexOptions,
+            Integer builderTrainSampleCount,
+            Integer builderThreadCount,
+            String builderCentroidCount,
+            Boolean builderClusterAutoTuning,
+            String builderOptimizerClass,
+            String builderOptimizerParams,
+            String builderQuantizerClass,
+            Boolean builderQuantizeByCentroid,
+            Boolean builderStoreOriginalFeatures,
+            Integer builderTrainSampleCount2,
+            Double builderTrainSampleRatio,
+            Double searcherScanRatio,
+            String searcherOptimizerParams,
+            Integer searcherBruteForceThreshold
+        ) {
+            super(Algorithm.QC, baseIndexOptions);
+            this.builderTrainSampleCount = builderTrainSampleCount;
+            this.builderThreadCount = builderThreadCount;
+            this.builderCentroidCount = builderCentroidCount;
+            this.builderClusterAutoTuning = builderClusterAutoTuning;
+            this.builderOptimizerClass = builderOptimizerClass;
+            this.builderOptimizerParams = builderOptimizerParams;
+            this.builderQuantizerClass = builderQuantizerClass;
+            this.builderQuantizeByCentroid = builderQuantizeByCentroid;
+            this.builderStoreOriginalFeatures = builderStoreOriginalFeatures;
+            this.builderTrainSampleCount2 = builderTrainSampleCount2;
+            this.builderTrainSampleRatio = builderTrainSampleRatio;
+            this.searcherScanRatio = searcherScanRatio;
+            this.searcherOptimizerParams = searcherOptimizerParams;
+            this.searcherBruteForceThreshold = searcherBruteForceThreshold;
+        }
+
+        @Override
+        public XContentBuilder toXContent(XContentBuilder builder, Params params) throws IOException {
+            XContentBuilder baseBuilder = toInnerXContent(builder, params);
+
+            baseBuilder.startObject("build_index_params");
+            {
+                if (builderTrainSampleCount != null) {
+                    baseBuilder.field("proxima.qc.builder.train_sample_count", builderTrainSampleCount);
+                }
+                if (builderThreadCount != null) {
+                    baseBuilder.field("proxima.qc.builder.thread_count", builderThreadCount);
+                }
+                if (builderCentroidCount != null) {
+                    baseBuilder.field("proxima.qc.builder.centroid_count", builderCentroidCount);
+                }
+                if (builderClusterAutoTuning != null) {
+                    baseBuilder.field("proxima.qc.builder.cluster_auto_tuning", builderClusterAutoTuning);
+                }
+                if (builderOptimizerClass != null) {
+                    baseBuilder.field("proxima.qc.builder.optimizer_class", builderOptimizerClass);
+                }
+                if (builderOptimizerParams != null) {
+                    baseBuilder.field("proxima.qc.builder.optimizer_params", builderOptimizerParams);
+                }
+                if (builderQuantizerClass != null) {
+                    baseBuilder.field("proxima.qc.builder.quantizer_class", builderQuantizerClass);
+                }
+                if (builderQuantizeByCentroid != null) {
+                    baseBuilder.field("proxima.qc.builder.quantize_by_centroid", builderQuantizeByCentroid);
+                }
+                if (builderStoreOriginalFeatures != null) {
+                    baseBuilder.field("proxima.qc.builder.store_original_features", builderStoreOriginalFeatures);
+                }
+                if (builderTrainSampleCount2 != null) {
+                    baseBuilder.field("proxima.qc.builder.train_sample_count2", builderTrainSampleCount2);
+                }
+                if (builderTrainSampleRatio != null) {
+                    baseBuilder.field("proxima.qc.builder.train_sample_ratio", builderTrainSampleRatio);
+                }
+            }
+            baseBuilder.endObject();
+
+            baseBuilder.startObject("search_index_params");
+            {
+                if (searcherScanRatio != null) {
+                    baseBuilder.field("proxima.qc.searcher.scan_ratio", searcherScanRatio);
+                }
+                if (searcherOptimizerParams != null) {
+                    baseBuilder.field("proxima.qc.searcher.optimizer_params", searcherOptimizerParams);
+                }
+                if (searcherBruteForceThreshold != null) {
+                    baseBuilder.field("proxima.qc.searcher.brute_force_threshold", searcherBruteForceThreshold);
+                }
+            }
+            baseBuilder.endObject();
+
+            // end innerXContent
+            baseBuilder.endObject();
+            return baseBuilder;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (!super.equals(o)) {
+                return false;
+            }
+            QCIndexOptions that = (QCIndexOptions) o;
+            return Objects.equals(builderTrainSampleCount, that.builderTrainSampleCount)
+                && Objects.equals(builderThreadCount, that.builderThreadCount)
+                && Objects.equals(builderCentroidCount, that.builderCentroidCount)
+                && Objects.equals(builderClusterAutoTuning, that.builderClusterAutoTuning)
+                && Objects.equals(builderOptimizerClass, that.builderOptimizerClass)
+                && Objects.equals(builderOptimizerParams, that.builderOptimizerParams)
+                && Objects.equals(builderQuantizerClass, that.builderQuantizerClass)
+                && Objects.equals(builderQuantizeByCentroid, that.builderQuantizeByCentroid)
+                && Objects.equals(builderStoreOriginalFeatures, that.builderStoreOriginalFeatures)
+                && Objects.equals(builderTrainSampleCount2, that.builderTrainSampleCount2)
+                && Objects.equals(builderTrainSampleRatio, that.builderTrainSampleRatio)
+                && Objects.equals(searcherScanRatio, that.searcherScanRatio)
+                && Objects.equals(searcherOptimizerParams, that.searcherOptimizerParams)
+                && Objects.equals(searcherBruteForceThreshold, that.searcherBruteForceThreshold);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(
+                super.hashCode(),
+                builderTrainSampleCount,
+                builderThreadCount,
+                builderCentroidCount,
+                builderClusterAutoTuning,
+                builderOptimizerClass,
+                builderOptimizerParams,
+                builderQuantizerClass,
+                builderQuantizeByCentroid,
+                builderStoreOriginalFeatures,
+                builderTrainSampleCount2,
+                builderTrainSampleRatio,
+                searcherScanRatio,
+                searcherOptimizerParams,
+                searcherBruteForceThreshold
+            );
+        }
+
+        @Override
+        public String toString() {
+            return "QcIndexOptions{"
+                + super.toString()
+                + ", builderTrainSampleCount="
+                + builderTrainSampleCount
+                + ", builderThreadCount="
+                + builderThreadCount
+                + ", builderCentroidCount="
+                + builderCentroidCount
+                + ", builderClusterAutoTuning="
+                + builderClusterAutoTuning
+                + ", builderOptimizerClass="
+                + builderOptimizerClass
+                + ", builderOptimizerParams="
+                + builderOptimizerParams
+                + ", builderQuantizerClass="
+                + builderQuantizerClass
+                + ", builderQuantizeByCentroid="
+                + builderQuantizeByCentroid
+                + ", builderStoreOriginalFeatures="
+                + builderStoreOriginalFeatures
+                + ", builderTrainSampleCount2="
+                + builderTrainSampleCount2
+                + ", builderTrainSampleRatio="
+                + builderTrainSampleRatio
+                + ", searcherScanRatio="
+                + searcherScanRatio
+                + ", searcherOptimizerParams="
+                + searcherOptimizerParams
+                + ", searcherBruteForceThreshold="
+                + searcherBruteForceThreshold
                 + '}';
         }
     }
 
     /**
      * {
-     * "proxima.graph.common.graph_type" : "hnsw",
-     * "proxima.graph.common.max_doc_cnt" : "50000000",
-     * "proxima.graph.common.max_scan_num" : "25000",
-     * "proxima.general.builder.memory_quota" : "0",
-     * "proxima.hnsw.builder.efconstruction" : "400",
-     * "proxima.hnsw.builder.max_level" : "6",
-     * "proxima.hnsw.builder.scaling_factor" : "50",
-     * "proxima.hnsw.builder.upper_neighbor_cnt" : "50",
-     * "proxima.hnsw.searcher.ef" : "200",
-     * "proxima.hnsw.searcher.max_scan_cnt" : "15000"
+     * "proxima.hnsw.builder.max_neighbor_count" : "100",
+     * "proxima.hnsw.builder.efconstruction" : "500",
+     * "proxima.hnsw.builder.thread_count" : "0",
+     * "proxima.hnsw.searcher.ef" : "500",
      * }
      */
     public static class HnswIndexOptions extends IndexOptions {
-        public final Integer maxDocCnt;
-        public final Integer maxScanNum;
-        public final Integer memoryQuota;
-        public final Integer efConstruction;
-        public final Integer maxLevel;
-        public final Integer scalingFactor;
-        public final Integer upperNeighborCnt;
-        public final Integer ef;
-        public final Integer maxScanCnt;
+        public final Integer builderMaxNeighborCnt;
+        public final Integer builderEfConstruction;
+        public final Integer builderThreadCnt;
+        public final Integer searcherEf;
 
         static IndexOptions parseIndexOptions(String fieldName, Map<String, ?> indexOptionsMap) {
-            Object maxDocCntNode = indexOptionsMap.remove("proxima.graph.common.max_doc_cnt");
-            Integer maxDocCnt = maxDocCntNode != null ? XContentMapValues.nodeIntegerValue(maxDocCntNode) : null;
-            Object maxScanNumNode = indexOptionsMap.remove("proxima.graph.common.max_scan_num");
-            Integer maxScanNum = maxScanNumNode != null ? XContentMapValues.nodeIntegerValue(maxScanNumNode) : null;
-            Object memoryQuotaNode = indexOptionsMap.remove("proxima.general.builder.memory_quota");
-            Integer memoryQuota = memoryQuotaNode != null ? XContentMapValues.nodeIntegerValue(memoryQuotaNode) : null;
-            Object efConstructionNode = indexOptionsMap.remove("proxima.hnsw.builder.efconstruction");
-            Integer efConstruction = efConstructionNode != null ? XContentMapValues.nodeIntegerValue(efConstructionNode) : null;
-            Object maxLevelNode = indexOptionsMap.remove("proxima.hnsw.builder.max_level");
-            Integer maxLevel = maxLevelNode != null ? XContentMapValues.nodeIntegerValue(maxLevelNode) : null;
-            Object scalingFactorNode = indexOptionsMap.remove("proxima.hnsw.builder.scaling_factor");
-            Integer scalingFactor = scalingFactorNode != null ? XContentMapValues.nodeIntegerValue(scalingFactorNode) : null;
-            Object upperNeighborCntNode = indexOptionsMap.remove("proxima.hnsw.builder.upper_neighbor_cnt");
-            Integer upperNeighborCnt = upperNeighborCntNode != null ? XContentMapValues.nodeIntegerValue(upperNeighborCntNode) : null;
-            Object efNode = indexOptionsMap.remove("proxima.hnsw.searcher.ef");
-            Integer ef = efNode != null ? XContentMapValues.nodeIntegerValue(efNode) : null;
-            Object maxScanCntNode = indexOptionsMap.remove("proxima.hnsw.searcher.max_scan_cnt");
-            Integer maxScanCnt = maxScanCntNode != null ? XContentMapValues.nodeIntegerValue(maxScanCntNode) : null;
+            IndexOptions baseIndexOptions = IndexOptions.parseIndexOptions(fieldName, indexOptionsMap);
+
+            Integer builderMaxNeighborCnt = null;
+            Integer builderEfConstruction = null;
+            Integer builderThreadCnt = null;
+            Object buildIndexParamsNode = indexOptionsMap.remove("build_index_params");
+            Map<String, ?> buildIndexParamsMap = buildIndexParamsNode != null
+                ? XContentMapValues.nodeMapValue(buildIndexParamsNode, "build_index_params")
+                : null;
+            if (buildIndexParamsMap != null) {
+                Object builderMaxNeighborCntNode = buildIndexParamsMap.remove("proxima.hnsw.builder.max_neighbor_count");
+                builderMaxNeighborCnt = builderMaxNeighborCntNode != null
+                    ? XContentMapValues.nodeIntegerValue(builderMaxNeighborCntNode)
+                    : null;
+                Object builderEfConstructionNode = buildIndexParamsMap.remove("proxima.hnsw.builder.efconstruction");
+                builderEfConstruction = builderEfConstructionNode != null
+                    ? XContentMapValues.nodeIntegerValue(builderEfConstructionNode)
+                    : null;
+                Object builderThreadCntNode = buildIndexParamsMap.remove("proxima.hnsw.builder.thread_count");
+                builderThreadCnt = builderThreadCntNode != null ? XContentMapValues.nodeIntegerValue(builderThreadCntNode) : null;
+                DocumentMapperParser.checkNoRemainingFields(fieldName, buildIndexParamsMap, Version.CURRENT);
+            }
+
+            Integer searcherEf = null;
+            Object searcherParamsNode = indexOptionsMap.remove("search_index_params");
+            Map<String, ?> searcherParamsMap = searcherParamsNode != null
+                ? XContentMapValues.nodeMapValue(searcherParamsNode, "search_index_params")
+                : null;
+            if (searcherParamsMap != null) {
+                Object searcherEfNode = searcherParamsMap.remove("proxima.hnsw.searcher.ef");
+                searcherEf = searcherEfNode != null ? XContentMapValues.nodeIntegerValue(searcherEfNode) : null;
+                DocumentMapperParser.checkNoRemainingFields(fieldName, searcherParamsMap, Version.CURRENT);
+            }
 
             DocumentMapperParser.checkNoRemainingFields(fieldName, indexOptionsMap, Version.CURRENT);
 
             // TODO vaild value
-            return new HnswIndexOptions(
-                maxDocCnt,
-                maxScanNum,
-                memoryQuota,
-                efConstruction,
-                maxLevel,
-                scalingFactor,
-                upperNeighborCnt,
-                ef,
-                maxScanCnt
-            );
+            return new HnswIndexOptions(baseIndexOptions, builderMaxNeighborCnt, builderEfConstruction, builderThreadCnt, searcherEf);
         }
 
         private HnswIndexOptions(
-            Integer maxDocCnt,
-            Integer maxScanNum,
-            Integer memoryQuota,
-            Integer efConstruction,
-            Integer maxLevel,
-            Integer scalingFactor,
-            Integer upperNeighborCnt,
-            Integer ef,
-            Integer maxScanCnt
+            IndexOptions baseIndexOptions,
+            Integer builderMaxNeighborCnt,
+            Integer builderEfConstruction,
+            Integer builderThreadCnt,
+            Integer searcherEf
         ) {
-            super(Algorithm.HNSW);
-            this.maxDocCnt = maxDocCnt;
-            this.maxScanNum = maxScanNum;
-            this.memoryQuota = memoryQuota;
-            this.efConstruction = efConstruction;
-            this.maxLevel = maxLevel;
-            this.scalingFactor = scalingFactor;
-            this.upperNeighborCnt = upperNeighborCnt;
-            this.ef = ef;
-            this.maxScanCnt = maxScanCnt;
+            super(Algorithm.HNSW, baseIndexOptions);
+            this.builderMaxNeighborCnt = builderMaxNeighborCnt;
+            this.builderEfConstruction = builderEfConstruction;
+            this.builderThreadCnt = builderThreadCnt;
+            this.searcherEf = searcherEf;
         }
 
         @Override
         public XContentBuilder toXContent(XContentBuilder builder, Params params) throws IOException {
-            builder.startObject();
-            builder.field("type", type.name());
-            if (maxDocCnt != null) {
-                builder.field("proxima.graph.common.max_doc_cnt", maxDocCnt);
+            XContentBuilder baseBuilder = toInnerXContent(builder, params);
+            baseBuilder.startObject("build_index_params");
+            {
+                if (builderMaxNeighborCnt != null) {
+                    baseBuilder.field("proxima.hnsw.builder.max_neighbor_count", builderMaxNeighborCnt);
+                }
+                if (builderEfConstruction != null) {
+                    baseBuilder.field("proxima.hnsw.builder.efconstruction", builderEfConstruction);
+                }
+                if (builderThreadCnt != null) {
+                    baseBuilder.field("proxima.hnsw.builder.thread_count", builderThreadCnt);
+                }
             }
-            if (maxScanNum != null) {
-                builder.field("proxima.graph.common.max_scan_num", maxScanNum);
+            baseBuilder.endObject();
+            baseBuilder.startObject("search_index_params");
+            {
+                if (searcherEf != null) {
+                    baseBuilder.field("proxima.hnsw.searcher.ef", searcherEf);
+                }
             }
-            if (memoryQuota != null) {
-                builder.field("proxima.general.builder.memory_quota", memoryQuota);
-            }
-            if (efConstruction != null) {
-                builder.field("proxima.hnsw.builder.efconstruction", efConstruction);
-            }
-            if (maxLevel != null) {
-                builder.field("proxima.hnsw.builder.max_level", maxLevel);
-            }
-            if (scalingFactor != null) {
-                builder.field("proxima.hnsw.builder.scaling_factor", scalingFactor);
-            }
-            if (upperNeighborCnt != null) {
-                builder.field("proxima.hnsw.builder.upper_neighbor_cnt", upperNeighborCnt);
-            }
-            if (ef != null) {
-                builder.field("proxima.hnsw.searcher.ef", ef);
-            }
-            if (maxScanCnt != null) {
-                builder.field("proxima.hnsw.searcher.max_scan_cnt", maxScanCnt);
-            }
-            builder.endObject();
-            return builder;
+            baseBuilder.endObject();
+
+            // end innerXContent
+            baseBuilder.endObject();
+            return baseBuilder;
         }
 
         @Override
         public boolean equals(Object o) {
-            if (this == o) {
-                return true;
-            }
-            if (o == null || getClass() != o.getClass()) {
+            if (!super.equals(o)) {
                 return false;
             }
             HnswIndexOptions that = (HnswIndexOptions) o;
-            return Objects.equals(maxDocCnt, that.maxDocCnt)
-                && Objects.equals(maxScanNum, that.maxScanNum)
-                && Objects.equals(efConstruction, that.efConstruction)
-                && Objects.equals(maxLevel, that.maxLevel)
-                && Objects.equals(scalingFactor, that.scalingFactor)
-                && Objects.equals(upperNeighborCnt, that.upperNeighborCnt)
-                && Objects.equals(ef, that.ef)
-                && Objects.equals(maxScanCnt, that.maxScanCnt);
+            return Objects.equals(builderMaxNeighborCnt, that.builderMaxNeighborCnt)
+                && Objects.equals(builderEfConstruction, that.builderEfConstruction)
+                && Objects.equals(builderThreadCnt, that.builderThreadCnt)
+                && Objects.equals(searcherEf, that.searcherEf);
         }
 
         @Override
         public int hashCode() {
-            return Objects.hash(maxDocCnt, maxScanNum, efConstruction, maxLevel, scalingFactor, upperNeighborCnt, ef, maxScanCnt);
+            return Objects.hash(super.hashCode(), builderMaxNeighborCnt, builderEfConstruction, builderThreadCnt, searcherEf);
         }
 
         @Override
         public String toString() {
             return "HnswIndexOptions{"
-                + "maxDocCnt="
-                + maxDocCnt
-                + ", maxScanNum="
-                + maxScanNum
-                + ", efConstruction="
-                + efConstruction
-                + ", maxLevel="
-                + maxLevel
-                + ", scalingFactor="
-                + scalingFactor
-                + ", upperNeighborCnt="
-                + upperNeighborCnt
-                + ", ef="
-                + ef
-                + ", maxScanCnt="
-                + maxScanCnt
+                + super.toString()
+                + ", builderMaxNeighborCnt="
+                + builderMaxNeighborCnt
+                + ", builderEfConstruction="
+                + builderEfConstruction
+                + ", builderThreadCnt="
+                + builderThreadCnt
+                + ", searcherEf="
+                + searcherEf
                 + '}';
         }
     }
@@ -571,12 +943,14 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
             throw new MapperParsingException("[index_options] requires field [type] to be configured");
         }
         Algorithm type = Algorithm.fromString(XContentMapValues.nodeStringValue(typeNode));
-        if (type == Algorithm.HC) {
-            return HCIndexOptions.parseIndexOptions(fieldName, indexOptionsMap);
+        if (type == Algorithm.QC) {
+            return QCIndexOptions.parseIndexOptions(fieldName, indexOptionsMap);
         } else if (type == Algorithm.HNSW) {
             return HnswIndexOptions.parseIndexOptions(fieldName, indexOptionsMap);
+        } else if (type == Algorithm.LINEAR) {
+            return LinearIndexOptions.parseIndexOptions(fieldName, indexOptionsMap);
         } else {
-            return new IndexOptions(type);
+            return IndexOptions.parseIndexOptions(fieldName, indexOptionsMap);
         }
     }
 
