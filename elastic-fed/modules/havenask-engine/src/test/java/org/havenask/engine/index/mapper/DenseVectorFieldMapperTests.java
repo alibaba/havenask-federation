@@ -72,7 +72,7 @@ public class DenseVectorFieldMapperTests extends MapperTestCase {
                     .field("dims", 4)
                     .field("similarity", "dot_product")
                     .startObject("index_options")
-                    .field("type", "hc")
+                    .field("type", "qc")
                     .endObject()
             )
         );

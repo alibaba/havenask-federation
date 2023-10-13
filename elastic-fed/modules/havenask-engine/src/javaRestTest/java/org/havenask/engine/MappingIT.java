@@ -14,6 +14,7 @@
 
 package org.havenask.engine;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
@@ -27,9 +28,41 @@ import org.havenask.client.indices.GetIndexRequest;
 import org.havenask.cluster.health.ClusterHealthStatus;
 import org.havenask.common.collect.Map;
 import org.havenask.common.settings.Settings;
+import org.havenask.common.xcontent.XContentBuilder;
+import org.havenask.common.xcontent.XContentFactory;
 import org.havenask.engine.index.engine.EngineSettings;
 
 public class MappingIT extends AbstractHavenaskRestTestCase {
+    public static final String[] indexOptionNames = new String[] {
+        "type",
+        "embedding_delimiter",
+        "distance_type",
+        "major_order",
+        "enable_rt_build",
+        "ignore_invalid_doc",
+        "enable_recall_report",
+        "is_embedding_saved",
+        "min_scan_doc_cnt",
+        "linear_build_threshold" };
+    public static final String[] hnswIndexOptionValues = new String[] {
+        "hnsw",
+        ",",
+        "InnerProduct",
+        "row",
+        "true",
+        "true",
+        "true",
+        "true",
+        "20000",
+        "500" };
+    public static final String[] hnswSearchIndexParamsNames = new String[] { "proxima.hnsw.searcher.ef" };
+    public static final String[] hnswSearchIndexParamsValues = new String[] { "500" };
+    public static final String[] hnswBuildIndexParamsNames = new String[] {
+        "proxima.hnsw.builder.max_neighbor_count",
+        "proxima.hnsw.builder.efconstruction",
+        "proxima.hnsw.builder.thread_count" };
+    public static final String[] hnswBuildIndexParamsValues = new String[] { "100", "500", "0" };
+
     // test supported data type
     public void testSupportedDataType() throws Exception {
         String index = "index_supported_data_type";
@@ -151,5 +184,77 @@ public class MappingIT extends AbstractHavenaskRestTestCase {
             String exMessage = ex.getMessage();
             assertTrue(exMessage.contains("unsupported_operation_exception") || exMessage.contains("mapper_parsing_exception"));
         }
+    }
+
+    // 对havenask v2版本的向量索引配置适配后的测试
+    public void testUpdatedVectorData() throws Exception {
+        String index = "index_updated_vector_data";
+        String fieldName = "image";
+        int vectorDims = 2;
+        // create index
+        assertTrue(
+            highLevelClient().indices()
+                .create(
+                    new CreateIndexRequest(index).settings(
+                        Settings.builder()
+                            .put(EngineSettings.ENGINE_TYPE_SETTING.getKey(), EngineSettings.ENGINE_HAVENASK)
+                            .put("index.number_of_shards", 1)
+                            .put("index.number_of_replicas", 0)
+                            .build()
+                    ).mapping(createMapping(vectorDims, fieldName)),
+                    RequestOptions.DEFAULT
+                )
+                .isAcknowledged()
+        );
+        assertBusy(() -> {
+            ClusterHealthResponse clusterHealthResponse = highLevelClient().cluster()
+                .health(new ClusterHealthRequest(index), RequestOptions.DEFAULT);
+            assertEquals(clusterHealthResponse.getStatus(), ClusterHealthStatus.GREEN);
+        }, 2, TimeUnit.MINUTES);
+
+        // delete index and HEAD index
+        assertTrue(highLevelClient().indices().delete(new DeleteIndexRequest(index), RequestOptions.DEFAULT).isAcknowledged());
+        assertEquals(false, highLevelClient().indices().exists(new GetIndexRequest(index), RequestOptions.DEFAULT));
+    }
+
+    private static XContentBuilder createMapping(int vectorDims, String fieldName) throws IOException {
+        XContentBuilder mappingBuilder = XContentFactory.jsonBuilder();
+        mappingBuilder.startObject();
+        {
+            mappingBuilder.startObject("properties");
+            {
+                mappingBuilder.startObject(fieldName);
+                {
+                    mappingBuilder.field("type", "dense_vector");
+                    mappingBuilder.field("dims", vectorDims);
+                    mappingBuilder.field("similarity", "dot_product");
+                    mappingBuilder.startObject("index_options");
+                    {
+                        for (int i = 0; i < indexOptionNames.length; i++) {
+                            mappingBuilder.field(indexOptionNames[i], hnswIndexOptionValues[i]);
+                        }
+                        mappingBuilder.startObject("search_index_params");
+                        {
+                            for (int i = 0; i < hnswSearchIndexParamsNames.length; i++) {
+                                mappingBuilder.field(hnswSearchIndexParamsNames[i], hnswSearchIndexParamsValues[i]);
+                            }
+                        }
+                        mappingBuilder.endObject();
+                        mappingBuilder.startObject("build_index_params");
+                        {
+                            for (int i = 0; i < hnswBuildIndexParamsNames.length; i++) {
+                                mappingBuilder.field(hnswBuildIndexParamsNames[i], hnswBuildIndexParamsValues[i]);
+                            }
+                        }
+                        mappingBuilder.endObject();
+                    }
+                    mappingBuilder.endObject();
+                }
+                mappingBuilder.endObject();
+            }
+            mappingBuilder.endObject();
+        }
+        mappingBuilder.endObject();
+        return mappingBuilder;
     }
 }

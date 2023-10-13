@@ -189,13 +189,11 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
      *     "searcher_name": "QcSearcher",
      *     "distance_type": "SquaredEuclidean",
      *     "search_index_params": "{\"proxima.qc.searcher.scan_ratio\":0.01}",
-     *
      *     "build_index_params": "{\"proxima.qc.builder.quantizer_class\":\"Int8QuantizerConverter\",
-     *     \"proxima.qc.builder.quantize_by_centroid\":true,\"proxima.qc.builder.optimizer_class\":
-     *     \"BruteForceBuilder\",\"proxima.qc.builder.thread_count\":10,\"proxima.qc.builder.optimizer_params\":
-     *     {\"proxima.linear.builder.column_major_order\":true},\"proxima.qc.builder.store_original_features\":false,
-     *     \"proxima.qc.builder.train_sample_count\":3000000,\"proxima.qc.builder.train_sample_ratio\":0.5}",
-     *
+     *          \"proxima.qc.builder.quantize_by_centroid\":true,\"proxima.qc.builder.optimizer_class\":
+     *          \"BruteForceBuilder\",\"proxima.qc.builder.thread_count\":10,\"proxima.qc.builder.optimizer_params\":
+     *          {\"proxima.linear.builder.column_major_order\":true},\"proxima.qc.builder.store_original_features\":false,
+     *          \"proxima.qc.builder.train_sample_count\":3000000,\"proxima.qc.builder.train_sample_ratio\":0.5}",
      *     "major_order": "col",
      *     "enable_rt_build": "true",
      *     "ignore_invalid_doc" : "true",
