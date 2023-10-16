@@ -63,6 +63,7 @@ public class EntryTable {
             file.length = fileObject.getLong("length");
             if (file.length == -2) {
                 file.type = Type.DIR;
+                file.length = Integer.MAX_VALUE;
             } else {
                 file.type = Type.FILE;
             }
