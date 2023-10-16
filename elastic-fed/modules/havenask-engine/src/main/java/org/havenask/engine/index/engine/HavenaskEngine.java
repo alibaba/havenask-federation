@@ -751,6 +751,7 @@ public class HavenaskEngine extends InternalEngine {
     protected void addCustomCommitData(Map<String, String> commitData) {
         commitData.put(HavenaskCommitInfo.COMMIT_TIMESTAMP_KEY, Long.toString(lastCommitInfo.getCommitTimestamp()));
         commitData.put(HavenaskCommitInfo.COMMIT_VERSION_KEY, Long.toString(lastCommitInfo.getCommitVersion()));
+        commitData.put(SequenceNumbers.MAX_SEQ_NO, Long.toString(lastCommitInfo.getCommitCheckpoint()));
     }
 
     public static class HavenaskCommitInfo {
