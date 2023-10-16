@@ -74,6 +74,7 @@ public class BizConfig {
     public static class BuildConfig {
         public int max_doc_count = 100000;
         public int build_total_memory = 128;
+        public int keep_version_count = 40;
     }
 
     public static class OfflineIndexConfig {
