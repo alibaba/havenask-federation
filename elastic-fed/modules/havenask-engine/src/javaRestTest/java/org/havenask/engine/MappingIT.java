@@ -17,11 +17,18 @@ package org.havenask.engine;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Set;
+import java.util.HashSet;
+import java.util.HashMap;
 import java.util.concurrent.TimeUnit;
 
 import org.havenask.action.admin.cluster.health.ClusterHealthRequest;
 import org.havenask.action.admin.cluster.health.ClusterHealthResponse;
 import org.havenask.action.admin.indices.delete.DeleteIndexRequest;
+import org.havenask.action.bulk.BulkRequest;
+import org.havenask.action.index.IndexRequest;
+import org.havenask.action.search.SearchRequest;
+import org.havenask.action.search.SearchResponse;
 import org.havenask.client.RequestOptions;
 import org.havenask.client.indices.CreateIndexRequest;
 import org.havenask.client.indices.GetIndexRequest;
@@ -30,17 +37,12 @@ import org.havenask.common.collect.Map;
 import org.havenask.common.settings.Settings;
 import org.havenask.common.xcontent.XContentBuilder;
 import org.havenask.common.xcontent.XContentFactory;
+import org.havenask.common.xcontent.XContentType;
 import org.havenask.engine.index.engine.EngineSettings;
+import org.havenask.engine.index.query.HnswQueryBuilder;
+import org.havenask.search.builder.SearchSourceBuilder;
 
 public class MappingIT extends AbstractHavenaskRestTestCase {
-    public static final String[] hnswSearchIndexParamsNames = new String[] { "proxima.hnsw.searcher.ef" };
-    public static final String[] hnswSearchIndexParamsValues = new String[] { "500" };
-    public static final String[] hnswBuildIndexParamsNames = new String[] {
-        "proxima.hnsw.builder.max_neighbor_count",
-        "proxima.hnsw.builder.efconstruction",
-        "proxima.hnsw.builder.thread_count" };
-    public static final String[] hnswBuildIndexParamsValues = new String[] { "100", "500", "0" };
-
     // test supported data type
     public void testSupportedDataType() throws Exception {
         String index = "index_supported_data_type";
@@ -166,8 +168,12 @@ public class MappingIT extends AbstractHavenaskRestTestCase {
 
     // 对havenask v2版本的向量索引配置适配后的测试
     public void testUpdatedVectorData() throws Exception {
+        final int TYPE_POS = 0;
+
         String index = "index_updated_vector_data";
         String fieldName = "image";
+        int vectorDims = 2;
+
         final String[] indexOptionNames = new String[] {
             "type",
             "embedding_delimiter",
@@ -179,19 +185,195 @@ public class MappingIT extends AbstractHavenaskRestTestCase {
             "is_embedding_saved",
             "min_scan_doc_cnt",
             "linear_build_threshold" };
-        final String[] hnswIndexOptionValues = new String[] {
-            "hnsw",
-            ",",
-            "InnerProduct",
-            "row",
-            "true",
-            "true",
-            "true",
-            "true",
-            "20000",
-            "500" };
+        final String[] types = { "hnsw", "qc", "linear" };
+        final String[] typesStr = { "HNSW", "QC", "LINEAR" };
+        final String[] indexOptionValues = new String[] { "", ",", "InnerProduct", "row", "true", "true", "true", "true", "20000", "500" };
 
+        final String[][] searchIndexParamsNames = new String[][] {
+            new String[] { "proxima.hnsw.searcher.ef" },
+            new String[] { "proxima.qc.searcher.scan_ratio", "proxima.qc.searcher.brute_force_threshold" },
+            null };
+        final String[][] searchIndexParamsValues = new String[][] { new String[] { "500" }, new String[] { "0.01", "1000" }, null };
+
+        final String[][] buildIndexParamsNames = new String[][] {
+            new String[] {
+                "proxima.hnsw.builder.max_neighbor_count",
+                "proxima.hnsw.builder.efconstruction",
+                "proxima.hnsw.builder.thread_count" },
+            new String[] {
+                "proxima.qc.builder.train_sample_count",
+                "proxima.qc.builder.thread_count",
+                "proxima.qc.builder.centroid_count",
+                "proxima.qc.builder.cluster_auto_tuning",
+                "proxima.qc.builder.quantize_by_centroid",
+                "proxima.qc.builder.store_original_features",
+                "proxima.qc.builder.train_sample_ratio" },
+            new String[] { "proxima.linear.builder.column_major_order" } };
+        final String[][] buildIndexParamsValues = new String[][] {
+            new String[] { "100", "500", "0" },
+            new String[] { "0", "0", "1000", "false", "false", "false", "1.0" },
+            new String[] { "false" } };
+
+        int dataNum = 8;
+        String[] ids = { "1", "2", "3", "4", "5", "6", "7", "8" };
+        float[][] images = new float[][] {
+            { 1.1f, 1.1f },
+            { 2.2f, 2.2f },
+            { 3.3f, 3.3f },
+            { 4.4f, 4.4f },
+            { 5.5f, 5.5f },
+            { 6.6f, 6.6f },
+            { 7.7f, 7.7f },
+            { 8.8f, 8.8f } };
+
+        Set<String> resSourceAsString = new HashSet<>();
+        resSourceAsString.add("{\"image\":[1.1,1.1]}");
+        resSourceAsString.add("{\"image\":[2.2,2.2]}");
+        resSourceAsString.add("{\"image\":[3.3,3.3]}");
+        resSourceAsString.add("{\"image\":[4.4,4.4]}");
+        resSourceAsString.add("{\"image\":[5.5,5.5]}");
+        resSourceAsString.add("{\"image\":[6.6,6.6]}");
+        resSourceAsString.add("{\"image\":[7.7,7.7]}");
+        resSourceAsString.add("{\"image\":[8.8,8.8]}");
+        for (int type = 0; type < types.length; type++) {
+            indexOptionValues[TYPE_POS] = types[type];
+            // create index
+            assertTrue(
+                highLevelClient().indices()
+                    .create(
+                        new CreateIndexRequest(index).settings(
+                            Settings.builder()
+                                .put(EngineSettings.ENGINE_TYPE_SETTING.getKey(), EngineSettings.ENGINE_HAVENASK)
+                                .put("index.number_of_shards", 1)
+                                .put("index.number_of_replicas", 0)
+                                .build()
+                        )
+                            .mapping(
+                                createVectorMapping(
+                                    vectorDims,
+                                    fieldName,
+                                    indexOptionNames,
+                                    indexOptionValues,
+                                    searchIndexParamsNames[type],
+                                    searchIndexParamsValues[type],
+                                    buildIndexParamsNames[type],
+                                    buildIndexParamsValues[type]
+                                )
+                            ),
+                        RequestOptions.DEFAULT
+                    )
+                    .isAcknowledged()
+            );
+            assertBusy(() -> {
+                ClusterHealthResponse clusterHealthResponse = highLevelClient().cluster()
+                    .health(new ClusterHealthRequest(index), RequestOptions.DEFAULT);
+                assertEquals(clusterHealthResponse.getStatus(), ClusterHealthStatus.GREEN);
+            }, 2, TimeUnit.MINUTES);
+
+            // get mapping
+            indexOptionValues[TYPE_POS] = typesStr[type];
+            java.util.Map<String, Object> expectedMapping = createExpectedMapping(
+                vectorDims,
+                fieldName,
+                indexOptionNames,
+                indexOptionValues,
+                searchIndexParamsNames[type],
+                searchIndexParamsValues[type],
+                buildIndexParamsNames[type],
+                buildIndexParamsValues[type]
+            );
+            java.util.Map<String, Object> actualMapping = highLevelClient().indices()
+                .get(new GetIndexRequest(index), RequestOptions.DEFAULT)
+                .getMappings()
+                .get(index)
+                .getSourceAsMap();
+            assertEquals(expectedMapping.toString(), actualMapping.toString());
+
+            // put and get some doc
+            BulkRequest bulkRequest = new BulkRequest();
+            for (int i = 0; i < dataNum; i++) {
+                bulkRequest.add(new IndexRequest(index).id(ids[i]).source(Map.of(fieldName, images[i]), XContentType.JSON));
+            }
+
+            highLevelClient().bulk(bulkRequest, RequestOptions.DEFAULT);
+
+            // get data with _search
+            SearchRequest searchRequest = new SearchRequest(index);
+            SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+            HnswQueryBuilder hnswQueryBuilder = new HnswQueryBuilder(fieldName, new float[] { 1.5f, 2.5f }, 10);
+            searchSourceBuilder.query(hnswQueryBuilder);
+            searchRequest.source(searchSourceBuilder);
+
+            // 执行查询请求并获取相应结果
+            SearchResponse searchResponse = highLevelClient().search(searchRequest, RequestOptions.DEFAULT);
+            assertEquals(dataNum, searchResponse.getHits().getTotalHits().value);
+            for (int i = 0; i < dataNum; i++) {
+                assertTrue(resSourceAsString.contains(searchResponse.getHits().getHits()[i].getSourceAsString()));
+                // TODO 后续返回结果支持包含score以后, 增加对score的相关测试
+            }
+
+            // delete index and HEAD index
+            assertTrue(highLevelClient().indices().delete(new DeleteIndexRequest(index), RequestOptions.DEFAULT).isAcknowledged());
+            assertEquals(false, highLevelClient().indices().exists(new GetIndexRequest(index), RequestOptions.DEFAULT));
+        }
+    }
+
+    /**
+     *     "dimension": "2",
+     *     "embedding_delimiter": ",",
+     *     "distance_type": "InnerProduct",
+     *     "builder_name": "QcBuilder",
+     *     "searcher_name": "QcSearcher",
+     *     "build_index_params": "{}",
+     *     "search_index_params": "{\"proxima.qc.searcher.scan_ratio\":0.10}",
+     *     "linear_build_threshold": "10000",
+     *     "min_scan_doc_cnt":"20000",
+     *     "enable_recall_report": "true",
+     *     "enable_rt_build" : "false"
+     */
+    @SuppressWarnings("unchecked")
+    public void testUpdateVectorDataWithPartialParams() throws Exception {
+        final int TYPE_POS = 0;
+        String index = "index_updated_vector_data_with_partial_params";
+        String fieldName = "image";
         int vectorDims = 2;
+
+        final String[] indexOptionNames = new String[] {
+            "type",
+            "embedding_delimiter",
+            "distance_type",
+            "linear_build_threshold",
+            "enable_recall_report",
+            "min_scan_doc_cnt",
+            "enable_rt_build", };
+
+        final String[] indexOptionValues = new String[] { "qc", ",", "InnerProduct", "10000", "true", "20000", "false" };
+
+        final String[] searchIndexParamsNames = new String[] { "proxima.qc.searcher.scan_ratio" };
+        final String[] searchIndexParamsValues = new String[] { "0.01" };
+
+        int dataNum = 8;
+        String[] ids = { "1", "2", "3", "4", "5", "6", "7", "8" };
+        float[][] images = new float[][] {
+            { 1.1f, 1.1f },
+            { 2.2f, 2.2f },
+            { 3.3f, 3.3f },
+            { 4.4f, 4.4f },
+            { 5.5f, 5.5f },
+            { 6.6f, 6.6f },
+            { 7.7f, 7.7f },
+            { 8.8f, 8.8f } };
+
+        Set<String> resSourceAsString = new HashSet<>();
+        resSourceAsString.add("{\"image\":[1.1,1.1]}");
+        resSourceAsString.add("{\"image\":[2.2,2.2]}");
+        resSourceAsString.add("{\"image\":[3.3,3.3]}");
+        resSourceAsString.add("{\"image\":[4.4,4.4]}");
+        resSourceAsString.add("{\"image\":[5.5,5.5]}");
+        resSourceAsString.add("{\"image\":[6.6,6.6]}");
+        resSourceAsString.add("{\"image\":[7.7,7.7]}");
+        resSourceAsString.add("{\"image\":[8.8,8.8]}");
+
         // create index
         assertTrue(
             highLevelClient().indices()
@@ -202,7 +384,19 @@ public class MappingIT extends AbstractHavenaskRestTestCase {
                             .put("index.number_of_shards", 1)
                             .put("index.number_of_replicas", 0)
                             .build()
-                    ).mapping(createVectorMapping(vectorDims, fieldName, indexOptionNames, hnswIndexOptionValues)),
+                    )
+                        .mapping(
+                            createVectorMapping(
+                                vectorDims,
+                                fieldName,
+                                indexOptionNames,
+                                indexOptionValues,
+                                searchIndexParamsNames,
+                                searchIndexParamsValues,
+                                null,
+                                null
+                            )
+                        ),
                     RequestOptions.DEFAULT
                 )
                 .isAcknowledged()
@@ -213,6 +407,46 @@ public class MappingIT extends AbstractHavenaskRestTestCase {
             assertEquals(clusterHealthResponse.getStatus(), ClusterHealthStatus.GREEN);
         }, 2, TimeUnit.MINUTES);
 
+        // get mapping
+        indexOptionValues[TYPE_POS] = "QC";
+        java.util.Map<String, Object> expectedMapping = createExpectedMapping(
+            vectorDims,
+            fieldName,
+            indexOptionNames,
+            indexOptionValues,
+            searchIndexParamsNames,
+            searchIndexParamsValues,
+            null,
+            null
+        );
+        java.util.Map<String, Object> actualMapping = highLevelClient().indices()
+            .get(new GetIndexRequest(index), RequestOptions.DEFAULT)
+            .getMappings()
+            .get(index)
+            .getSourceAsMap();
+        assertEquals(expectedMapping.toString(), actualMapping.toString());
+        BulkRequest bulkRequest = new BulkRequest();
+        for (int i = 0; i < dataNum; i++) {
+            bulkRequest.add(new IndexRequest(index).id(ids[i]).source(Map.of(fieldName, images[i]), XContentType.JSON));
+        }
+
+        highLevelClient().bulk(bulkRequest, RequestOptions.DEFAULT);
+
+        // get data with _search
+        SearchRequest searchRequest = new SearchRequest(index);
+        SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+        HnswQueryBuilder hnswQueryBuilder = new HnswQueryBuilder(fieldName, new float[] { 1.5f, 2.5f }, 10);
+        searchSourceBuilder.query(hnswQueryBuilder);
+        searchRequest.source(searchSourceBuilder);
+
+        // 执行查询请求并获取相应结果
+        SearchResponse searchResponse = highLevelClient().search(searchRequest, RequestOptions.DEFAULT);
+        assertEquals(dataNum, searchResponse.getHits().getTotalHits().value);
+        for (int i = 0; i < dataNum; i++) {
+            assertTrue(resSourceAsString.contains(searchResponse.getHits().getHits()[i].getSourceAsString()));
+            // TODO 后续返回结果支持包含score以后, 增加对score的相关测试
+        }
+
         // delete index and HEAD index
         assertTrue(highLevelClient().indices().delete(new DeleteIndexRequest(index), RequestOptions.DEFAULT).isAcknowledged());
         assertEquals(false, highLevelClient().indices().exists(new GetIndexRequest(index), RequestOptions.DEFAULT));
@@ -222,7 +456,11 @@ public class MappingIT extends AbstractHavenaskRestTestCase {
         int vectorDims,
         String fieldName,
         String[] indexOptionNames,
-        String[] IndexOptionValues
+        String[] IndexOptionValues,
+        String[] searchIndexParamsNames,
+        String[] searchIndexParamsValues,
+        String[] buildIndexParamsNames,
+        String[] buildIndexParamsValues
     ) throws IOException {
         XContentBuilder mappingBuilder = XContentFactory.jsonBuilder();
         mappingBuilder.startObject();
@@ -239,20 +477,24 @@ public class MappingIT extends AbstractHavenaskRestTestCase {
                         for (int i = 0; i < indexOptionNames.length; i++) {
                             mappingBuilder.field(indexOptionNames[i], IndexOptionValues[i]);
                         }
-                        mappingBuilder.startObject("search_index_params");
-                        {
-                            for (int i = 0; i < hnswSearchIndexParamsNames.length; i++) {
-                                mappingBuilder.field(hnswSearchIndexParamsNames[i], hnswSearchIndexParamsValues[i]);
+                        if (searchIndexParamsValues != null) {
+                            mappingBuilder.startObject("search_index_params");
+                            {
+                                for (int i = 0; i < searchIndexParamsNames.length; i++) {
+                                    mappingBuilder.field(searchIndexParamsNames[i], searchIndexParamsValues[i]);
+                                }
                             }
+                            mappingBuilder.endObject();
                         }
-                        mappingBuilder.endObject();
-                        mappingBuilder.startObject("build_index_params");
-                        {
-                            for (int i = 0; i < hnswBuildIndexParamsNames.length; i++) {
-                                mappingBuilder.field(hnswBuildIndexParamsNames[i], hnswBuildIndexParamsValues[i]);
+                        if (buildIndexParamsValues != null) {
+                            mappingBuilder.startObject("build_index_params");
+                            {
+                                for (int i = 0; i < buildIndexParamsNames.length; i++) {
+                                    mappingBuilder.field(buildIndexParamsNames[i], buildIndexParamsValues[i]);
+                                }
                             }
+                            mappingBuilder.endObject();
                         }
-                        mappingBuilder.endObject();
                     }
                     mappingBuilder.endObject();
                 }
@@ -262,5 +504,46 @@ public class MappingIT extends AbstractHavenaskRestTestCase {
         }
         mappingBuilder.endObject();
         return mappingBuilder;
+    }
+
+    private static java.util.Map<String, Object> createExpectedMapping(
+        int vectorDims,
+        String fieldName,
+        String[] indexOptionNames,
+        String[] IndexOptionValues,
+        String[] searchIndexParamsNames,
+        String[] searchIndexParamsValues,
+        String[] buildIndexParamsNames,
+        String[] buildIndexParamsValues
+    ) {
+        java.util.Map<String, Object> expectedMapping = new HashMap<>();
+        expectedMapping.put("dynamic", "false");
+        java.util.Map<String, Object> properties = new HashMap<>();
+        expectedMapping.put("properties", properties);
+        java.util.Map<String, Object> fieldMap = new HashMap<>();
+        properties.put(fieldName, fieldMap);
+        fieldMap.put("dims", vectorDims);
+        fieldMap.put("similarity", "DOT_PRODUCT");
+        fieldMap.put("type", "dense_vector");
+        java.util.Map<String, Object> indexOptions = new HashMap<>();
+        fieldMap.put("index_options", indexOptions);
+        for (int i = 0; i < indexOptionNames.length; i++) {
+            indexOptions.put(indexOptionNames[i], IndexOptionValues[i]);
+        }
+        java.util.Map<String, Object> searchIndexParams = new HashMap<>();
+        indexOptions.put("search_index_params", searchIndexParams);
+        if (searchIndexParamsNames != null) {
+            for (int i = 0; i < searchIndexParamsNames.length; i++) {
+                searchIndexParams.put(searchIndexParamsNames[i], searchIndexParamsValues[i]);
+            }
+        }
+        java.util.Map<String, Object> buildIndexParams = new HashMap<>();
+        indexOptions.put("build_index_params", buildIndexParams);
+        if (buildIndexParamsNames != null) {
+            for (int i = 0; i < buildIndexParamsNames.length; i++) {
+                buildIndexParams.put(buildIndexParamsNames[i], buildIndexParamsValues[i]);
+            }
+        }
+        return expectedMapping;
     }
 }
