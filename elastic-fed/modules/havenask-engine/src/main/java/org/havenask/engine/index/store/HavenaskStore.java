@@ -129,9 +129,9 @@ public class HavenaskStore extends Store {
             OutputStream os;
             if (metadata.length() < 0) {
                 Files.createDirectories(filePath);
-                 os = new ByteArrayOutputStream();
+                os = new ByteArrayOutputStream();
             } else {
-                 os = Files.newOutputStream(shardPath.resolve(fileName), StandardOpenOption.WRITE, StandardOpenOption.CREATE_NEW);
+                os = Files.newOutputStream(shardPath.resolve(fileName), StandardOpenOption.WRITE, StandardOpenOption.CREATE_NEW);
             }
 
             return new OutputStreamIndexOutput(

@@ -77,13 +77,21 @@ public class EntryTable {
         JSONObject filesJson = new JSONObject(true);
         files.forEach((name, file) -> {
             JSONObject fileJson = new JSONObject();
-            fileJson.put("length", file.length);
+            if (file.type == Type.DIR) {
+                fileJson.put("length", -2);
+            } else {
+                fileJson.put("length", file.length);
+            }
             filesJson.put(name, fileJson);
         });
         JSONObject packageFilesJson = new JSONObject(true);
         packageFiles.forEach((name, file) -> {
             JSONObject fileJson = new JSONObject();
-            fileJson.put("length", file.length);
+            if (file.type == Type.DIR) {
+                fileJson.put("length", -2);
+            } else {
+                fileJson.put("length", file.length);
+            }
             packageFilesJson.put(name, fileJson);
         });
         JSONObject jsonObject = new JSONObject(true);
