@@ -42,7 +42,7 @@ import org.havenask.common.Strings;
 import org.havenask.engine.index.config.EntryTable;
 import org.havenask.engine.index.engine.EngineSettings;
 import org.havenask.engine.index.engine.HavenaskEngine.HavenaskCommitInfo;
-import org.havenask.engine.util.VersionUtils;
+import org.havenask.engine.util.Utils;
 import org.havenask.env.ShardLock;
 import org.havenask.index.IndexSettings;
 import org.havenask.index.shard.ShardId;
@@ -85,7 +85,10 @@ public class HavenaskStore extends Store {
     Map<String, StoreFileMetadata> getHavenaskMetadata(IndexCommit commit) throws IOException {
         long commitVersion = 0;
         if (commit == null) {
-            commitVersion = VersionUtils.getMaxVersion(shardPath, commitVersion);
+            String maxIndexVersionFile = Utils.getIndexMaxVersion(shardPath);
+            if (maxIndexVersionFile != null) {
+                commitVersion = Long.parseLong(maxIndexVersionFile.substring(maxIndexVersionFile.indexOf('.') + 1));
+            }
         } else if (commit.getUserData().containsKey(HavenaskCommitInfo.COMMIT_VERSION_KEY)) {
             commitVersion = Long.valueOf(commit.getUserData().get(HavenaskCommitInfo.COMMIT_VERSION_KEY));
         }
