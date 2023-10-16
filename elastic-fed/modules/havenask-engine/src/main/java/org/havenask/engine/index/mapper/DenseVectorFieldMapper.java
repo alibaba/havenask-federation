@@ -441,10 +441,10 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
                 builder.field("embedding_delimiter", embeddingDelimiter);
             }
             if (distanceType != null) {
-                builder.field("distance_type", distanceType);
+                builder.field("distance_type", distanceType.getValue());
             }
             if (majorOrder != null) {
-                builder.field("major_order", majorOrder);
+                builder.field("major_order", majorOrder.getValue());
             }
             if (enableRtBuild != null) {
                 builder.field("enable_rt_build", enableRtBuild);
