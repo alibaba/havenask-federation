@@ -258,10 +258,10 @@ public class SchemaGenerator {
             parameter.put("embedding_delimiter", indexOptions.embeddingDelimiter);
         }
         if (indexOptions.distanceType != null) {
-            parameter.put("distance_type", indexOptions.distanceType.name());
+            parameter.put("distance_type", indexOptions.distanceType.getValue());
         }
         if (indexOptions.majorOrder != null) {
-            parameter.put("major_order", indexOptions.majorOrder.name());
+            parameter.put("major_order", indexOptions.majorOrder.getValue());
         }
         if (indexOptions.enableRtBuild != null) {
             parameter.put("enable_rt_build", String.valueOf(indexOptions.enableRtBuild));

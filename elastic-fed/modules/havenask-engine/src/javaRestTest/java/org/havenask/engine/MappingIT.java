@@ -33,28 +33,6 @@ import org.havenask.common.xcontent.XContentFactory;
 import org.havenask.engine.index.engine.EngineSettings;
 
 public class MappingIT extends AbstractHavenaskRestTestCase {
-    public static final String[] indexOptionNames = new String[] {
-        "type",
-        "embedding_delimiter",
-        "distance_type",
-        "major_order",
-        "enable_rt_build",
-        "ignore_invalid_doc",
-        "enable_recall_report",
-        "is_embedding_saved",
-        "min_scan_doc_cnt",
-        "linear_build_threshold" };
-    public static final String[] hnswIndexOptionValues = new String[] {
-        "hnsw",
-        ",",
-        "InnerProduct",
-        "row",
-        "true",
-        "true",
-        "true",
-        "true",
-        "20000",
-        "500" };
     public static final String[] hnswSearchIndexParamsNames = new String[] { "proxima.hnsw.searcher.ef" };
     public static final String[] hnswSearchIndexParamsValues = new String[] { "500" };
     public static final String[] hnswBuildIndexParamsNames = new String[] {
@@ -190,6 +168,29 @@ public class MappingIT extends AbstractHavenaskRestTestCase {
     public void testUpdatedVectorData() throws Exception {
         String index = "index_updated_vector_data";
         String fieldName = "image";
+        final String[] indexOptionNames = new String[] {
+            "type",
+            "embedding_delimiter",
+            "distance_type",
+            "major_order",
+            "enable_rt_build",
+            "ignore_invalid_doc",
+            "enable_recall_report",
+            "is_embedding_saved",
+            "min_scan_doc_cnt",
+            "linear_build_threshold" };
+        final String[] hnswIndexOptionValues = new String[] {
+            "hnsw",
+            ",",
+            "InnerProduct",
+            "row",
+            "true",
+            "true",
+            "true",
+            "true",
+            "20000",
+            "500" };
+
         int vectorDims = 2;
         // create index
         assertTrue(
@@ -201,7 +202,7 @@ public class MappingIT extends AbstractHavenaskRestTestCase {
                             .put("index.number_of_shards", 1)
                             .put("index.number_of_replicas", 0)
                             .build()
-                    ).mapping(createMapping(vectorDims, fieldName)),
+                    ).mapping(createVectorMapping(vectorDims, fieldName, indexOptionNames, hnswIndexOptionValues)),
                     RequestOptions.DEFAULT
                 )
                 .isAcknowledged()
@@ -217,7 +218,12 @@ public class MappingIT extends AbstractHavenaskRestTestCase {
         assertEquals(false, highLevelClient().indices().exists(new GetIndexRequest(index), RequestOptions.DEFAULT));
     }
 
-    private static XContentBuilder createMapping(int vectorDims, String fieldName) throws IOException {
+    private static XContentBuilder createVectorMapping(
+        int vectorDims,
+        String fieldName,
+        String[] indexOptionNames,
+        String[] IndexOptionValues
+    ) throws IOException {
         XContentBuilder mappingBuilder = XContentFactory.jsonBuilder();
         mappingBuilder.startObject();
         {
@@ -231,7 +237,7 @@ public class MappingIT extends AbstractHavenaskRestTestCase {
                     mappingBuilder.startObject("index_options");
                     {
                         for (int i = 0; i < indexOptionNames.length; i++) {
-                            mappingBuilder.field(indexOptionNames[i], hnswIndexOptionValues[i]);
+                            mappingBuilder.field(indexOptionNames[i], IndexOptionValues[i]);
                         }
                         mappingBuilder.startObject("search_index_params");
                         {
