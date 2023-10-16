@@ -258,10 +258,10 @@ public class SchemaGenerator {
             parameter.put("embedding_delimiter", indexOptions.embeddingDelimiter);
         }
         if (indexOptions.distanceType != null) {
-            parameter.put("distance_type", indexOptions.distanceType);
+            parameter.put("distance_type", indexOptions.distanceType.name());
         }
         if (indexOptions.majorOrder != null) {
-            parameter.put("major_order", indexOptions.majorOrder);
+            parameter.put("major_order", indexOptions.majorOrder.name());
         }
         if (indexOptions.enableRtBuild != null) {
             parameter.put("enable_rt_build", String.valueOf(indexOptions.enableRtBuild));
@@ -436,7 +436,6 @@ public class SchemaGenerator {
                 || qcIndexOptions.builderQuantizerClass != null
                 || qcIndexOptions.builderQuantizeByCentroid != null
                 || qcIndexOptions.builderStoreOriginalFeatures != null
-                || qcIndexOptions.builderTrainSampleCount2 != null
                 || qcIndexOptions.builderTrainSampleRatio != null) {
                 if (qcIndexOptions.builderTrainSampleCount != null) {
                     qcBuildIndexParamsBuilder.append("{");
@@ -482,11 +481,6 @@ public class SchemaGenerator {
                         "\"proxima.qc.builder.store_original_features\":" + qcIndexOptions.builderStoreOriginalFeatures + ','
                     );
                 }
-                // TODO check this param
-                // if (qcIndexOptions.builderTrainSampleCount2!= null) {
-                // qcBuildIndexParamsBuilder.append("\"proxima.qc.builder.train_sample_count_2\":" + qcIndexOptions.builderTrainSampleCount2
-                // + ',');
-                // }
                 if (qcIndexOptions.builderTrainSampleRatio != null) {
                     qcBuildIndexParamsBuilder.append(
                         "\"proxima.qc.builder.train_sample_ratio\":" + qcIndexOptions.builderTrainSampleRatio + ','

@@ -183,6 +183,54 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
         }
     }
 
+    public enum DistanceType {
+        INNER_PRODUCT("InnerProduct"),
+        SQUARED_EUCLIDEAN("SquaredEuclidean");
+
+        private final String value;
+
+        DistanceType(String value) {
+            this.value = value;
+        }
+
+        public String getValue() {
+            return value;
+        }
+
+        public static DistanceType fromString(String value) {
+            for (DistanceType distanceType : DistanceType.values()) {
+                if (distanceType.getValue().equalsIgnoreCase(value)) {
+                    return distanceType;
+                }
+            }
+            throw new IllegalArgumentException("No distance type matches " + value);
+        }
+    }
+
+    public enum MajorOrder {
+        COL("col"),
+        ROW("row");
+
+        private final String value;
+
+        MajorOrder(String value) {
+            this.value = value;
+        }
+
+        public String getValue() {
+            return value;
+        }
+
+        public static MajorOrder fromString(String value) {
+            for (MajorOrder majorOrder : MajorOrder.values()) {
+                if (majorOrder.getValue().equalsIgnoreCase(value)) {
+                    return majorOrder;
+                }
+            }
+            throw new IllegalArgumentException("No major order matches " + value);
+        }
+    }
+
     /**
      *     "embedding_delimiter": ",",
      *     "builder_name": "QcBuilder",
@@ -205,8 +253,8 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
     public static class IndexOptions implements ToXContent {
         public final Algorithm type;
         public final String embeddingDelimiter;
-        public final String distanceType;
-        public final String majorOrder;
+        public final DistanceType distanceType;
+        public final MajorOrder majorOrder;
         public final Boolean enableRtBuild;
         public final Boolean ignoreInvalidDoc;
         public final Boolean enableRecallReport;
@@ -218,9 +266,13 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
             Object embeddingDelimiterNode = indexOptionsMap.remove("embedding_delimiter");
             String embeddingDelimiter = embeddingDelimiterNode != null ? XContentMapValues.nodeStringValue(embeddingDelimiterNode) : null;
             Object distanceTypeNode = indexOptionsMap.remove("distance_type");
-            String distanceType = distanceTypeNode != null ? XContentMapValues.nodeStringValue(distanceTypeNode) : null;
+            DistanceType distanceType = distanceTypeNode != null
+                ? DistanceType.fromString(XContentMapValues.nodeStringValue(distanceTypeNode))
+                : null;
             Object majorOrderNode = indexOptionsMap.remove("major_order");
-            String majorOrder = majorOrderNode != null ? XContentMapValues.nodeStringValue(majorOrderNode) : null;
+            MajorOrder majorOrder = majorOrderNode != null
+                ? MajorOrder.fromString(XContentMapValues.nodeStringValue(majorOrderNode))
+                : null;
             Object enableRtBuildNode = indexOptionsMap.remove("enable_rt_build");
             Boolean enableRtBuild = enableRtBuildNode != null ? XContentMapValues.nodeBooleanValue(enableRtBuildNode) : null;
             Object ignoreInvalidDocNode = indexOptionsMap.remove("ignore_invalid_doc");
@@ -252,8 +304,8 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
 
         IndexOptions(
             String embeddingDelimiter,
-            String distanceType,
-            String majorOrder,
+            DistanceType distanceType,
+            MajorOrder majorOrder,
             Boolean enableRtBuild,
             Boolean ignoreInvalidDoc,
             Boolean enableRecallReport,
@@ -276,8 +328,8 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
         IndexOptions(
             Algorithm type,
             String embeddingDelimiter,
-            String distanceType,
-            String majorOrder,
+            DistanceType distanceType,
+            MajorOrder majorOrder,
             Boolean enableRtBuild,
             Boolean ignoreInvalidDoc,
             Boolean enableRecallReport,
@@ -515,7 +567,6 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
         public final String builderQuantizerClass;
         public final Boolean builderQuantizeByCentroid;
         public final Boolean builderStoreOriginalFeatures;
-        public final Integer builderTrainSampleCount2;
         public final Double builderTrainSampleRatio;
         public final Double searcherScanRatio;
         public final String searcherOptimizerParams;
@@ -533,7 +584,6 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
             String builderQuantizerClass = null;
             Boolean builderQuantizeByCentroid = null;
             Boolean builderStoreOriginalFeatures = null;
-            Integer builderTrainSampleCount2 = null;
             Double builderTrainSampleRatio = null;
 
             Object buildIndexParamsNode = indexOptionsMap.remove("build_index_params");
@@ -574,10 +624,6 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
                 Object builderStoreOriginalFeaturesNode = buildIndexParamsMap.remove("proxima.qc.builder.store_original_features");
                 builderStoreOriginalFeatures = builderStoreOriginalFeaturesNode != null
                     ? XContentMapValues.nodeBooleanValue(builderStoreOriginalFeaturesNode)
-                    : null;
-                Object builderTrainSampleCount2Node = buildIndexParamsMap.remove("proxima.qc.builder.train_sample_count2");
-                builderTrainSampleCount2 = builderTrainSampleCount2Node != null
-                    ? XContentMapValues.nodeIntegerValue(builderTrainSampleCount2Node)
                     : null;
                 Object builderTrainSampleRatioNode = buildIndexParamsMap.remove("proxima.qc.builder.train_sample_ratio");
                 builderTrainSampleRatio = builderTrainSampleRatioNode != null
@@ -620,7 +666,6 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
                 builderQuantizerClass,
                 builderQuantizeByCentroid,
                 builderStoreOriginalFeatures,
-                builderTrainSampleCount2,
                 builderTrainSampleRatio,
                 searcherScanRatio,
                 searcherOptimizerParams,
@@ -639,7 +684,6 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
             String builderQuantizerClass,
             Boolean builderQuantizeByCentroid,
             Boolean builderStoreOriginalFeatures,
-            Integer builderTrainSampleCount2,
             Double builderTrainSampleRatio,
             Double searcherScanRatio,
             String searcherOptimizerParams,
@@ -655,7 +699,6 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
             this.builderQuantizerClass = builderQuantizerClass;
             this.builderQuantizeByCentroid = builderQuantizeByCentroid;
             this.builderStoreOriginalFeatures = builderStoreOriginalFeatures;
-            this.builderTrainSampleCount2 = builderTrainSampleCount2;
             this.builderTrainSampleRatio = builderTrainSampleRatio;
             this.searcherScanRatio = searcherScanRatio;
             this.searcherOptimizerParams = searcherOptimizerParams;
@@ -694,9 +737,6 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
                 }
                 if (builderStoreOriginalFeatures != null) {
                     baseBuilder.field("proxima.qc.builder.store_original_features", builderStoreOriginalFeatures);
-                }
-                if (builderTrainSampleCount2 != null) {
-                    baseBuilder.field("proxima.qc.builder.train_sample_count2", builderTrainSampleCount2);
                 }
                 if (builderTrainSampleRatio != null) {
                     baseBuilder.field("proxima.qc.builder.train_sample_ratio", builderTrainSampleRatio);
@@ -738,7 +778,6 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
                 && Objects.equals(builderQuantizerClass, that.builderQuantizerClass)
                 && Objects.equals(builderQuantizeByCentroid, that.builderQuantizeByCentroid)
                 && Objects.equals(builderStoreOriginalFeatures, that.builderStoreOriginalFeatures)
-                && Objects.equals(builderTrainSampleCount2, that.builderTrainSampleCount2)
                 && Objects.equals(builderTrainSampleRatio, that.builderTrainSampleRatio)
                 && Objects.equals(searcherScanRatio, that.searcherScanRatio)
                 && Objects.equals(searcherOptimizerParams, that.searcherOptimizerParams)
@@ -758,7 +797,6 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
                 builderQuantizerClass,
                 builderQuantizeByCentroid,
                 builderStoreOriginalFeatures,
-                builderTrainSampleCount2,
                 builderTrainSampleRatio,
                 searcherScanRatio,
                 searcherOptimizerParams,
@@ -788,8 +826,6 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
                 + builderQuantizeByCentroid
                 + ", builderStoreOriginalFeatures="
                 + builderStoreOriginalFeatures
-                + ", builderTrainSampleCount2="
-                + builderTrainSampleCount2
                 + ", builderTrainSampleRatio="
                 + builderTrainSampleRatio
                 + ", searcherScanRatio="
