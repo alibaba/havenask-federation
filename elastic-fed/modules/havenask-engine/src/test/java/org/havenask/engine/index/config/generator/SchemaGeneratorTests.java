@@ -511,8 +511,6 @@ public class SchemaGeneratorTests extends MapperServiceTestCase {
                 + "\t\t\"indexer\":\"aitheta2_indexer\",\n"
                 + "\t\t\"parameters\":{\n"
                 + "\t\t\t\"dimension\":\"128\",\n"
-                + "\t\t\t\"enable_rt_build\":\"true\",\n"
-                + "\t\t\t\"distance_type\":\"InnerProduct\",\n"
                 + "\t\t\t\"builder_name\":\"HnswBuilder\",\n"
                 + "\t\t\t\"searcher_name\":\"HnswSearcher\"\n"
                 + "\t\t}\n"
@@ -538,49 +536,107 @@ public class SchemaGeneratorTests extends MapperServiceTestCase {
                     b.field("type", "dense_vector");
                     b.field("dims", 128);
                     b.startObject("index_options");
-                    b.field("type", "linear");
+                    {
+                        b.field("type", "linear");
+                        b.field("embedding_delimiter", ",");
+                        b.field("distance_type", "InnerProduct");
+                        b.field("major_order", "row");
+                        b.field("enable_rt_build", "true");
+                        b.field("ignore_invalid_doc", "true");
+                        b.field("enable_recall_report", "true");
+                        b.field("is_embedding_saved", "true");
+                        b.field("min_scan_doc_cnt", "20000");
+                        b.field("linear_build_threshold", "5000");
+                        b.startObject("build_index_params");
+                        {
+                            b.field("proxima.linear.builder.column_major_order", "false");
+                        }
+                        b.endObject();
+                    }
                     b.endObject();
                 }
                 b.endObject();
-                b.startObject("hc_field");
+
+                b.startObject("qc_field");
                 {
                     b.field("type", "dense_vector");
                     b.field("dims", 128);
                     b.startObject("index_options");
-                    b.field("type", "hc");
-                    b.field("proxima.hc.builder.num_in_level_1", 1000);
-                    b.field("proxima.hc.builder.num_in_level_2", 100);
-                    b.field("proxima.hc.common.leaf_centroid_num", 100000);
-                    b.field("proxima.general.builder.train_sample_count", 0);
-                    b.field("proxima.general.builder.train_sample_ratio", 0.0);
-                    b.field("proxima.hc.searcher.scan_num_in_level_1", 60);
-                    b.field("proxima.hc.searcher.scan_num_in_level_2", 6000);
-                    b.field("proxima.hc.searcher.max_scan_num", 50000);
-                    b.field("use_linear_threshold", 10000);
-                    b.field("use_dynamic_params", 1);
+                    {
+                        b.field("type", "qc");
+                        b.field("embedding_delimiter", ",");
+                        b.field("distance_type", "InnerProduct");
+                        b.field("major_order", "row");
+                        b.field("enable_rt_build", "true");
+                        b.field("ignore_invalid_doc", "true");
+                        b.field("enable_recall_report", "true");
+                        b.field("is_embedding_saved", "true");
+                        b.field("min_scan_doc_cnt", "20000");
+                        b.field("linear_build_threshold", "5000");
+                        b.startObject("build_index_params");
+                        {
+                            b.field("proxima.qc.builder.train_sample_count", "0");
+                            b.field("proxima.qc.builder.thread_count", "0");
+                            b.field("proxima.qc.builder.centroid_count", "100*100");
+                            b.field("proxima.qc.builder.cluster_auto_tuning", "false");
+                            b.field("proxima.qc.builder.optimizer_class", "HcBuilder");
+                            b.field("proxima.qc.builder.optimizer_params", "-");
+                            b.field("proxima.qc.builder.quantizer_class", "DoubleBitConverter");
+                            b.field("proxima.qc.builder.quantize_by_centroid", "false");
+                            b.field("proxima.qc.builder.store_original_features", "false");
+                            b.field("proxima.qc.builder.train_sample_count2", "0");
+                            b.field("proxima.qc.builder.train_sample_ratio", "1");
+                        }
+                        b.endObject();
+                        b.startObject("search_index_params");
+                        {
+                            b.field("proxima.qc.searcher.scan_ratio", "0.01");
+                            b.field("proxima.qc.searcher.optimizer_params", "-");
+                            b.field("proxima.qc.searcher.brute_force_threshold", "1000");
+                        }
+                        b.endObject();
+                    }
                     b.endObject();
                 }
                 b.endObject();
+
                 b.startObject("hnsw_field");
                 {
                     b.field("type", "dense_vector");
                     b.field("dims", 128);
                     b.startObject("index_options");
-                    b.field("type", "hnsw");
-                    b.field("proxima.graph.common.max_doc_cnt", 50000000);
-                    b.field("proxima.graph.common.max_scan_num", 25000);
-                    b.field("proxima.general.builder.memory_quota", 0);
-                    b.field("proxima.hnsw.builder.efconstruction", 400);
-                    b.field("proxima.hnsw.builder.max_level", 6);
-                    b.field("proxima.hnsw.builder.scaling_factor", 50);
-                    b.field("proxima.hnsw.builder.upper_neighbor_cnt", 50);
-                    b.field("proxima.hnsw.searcher.ef", 200);
-                    b.field("proxima.hnsw.searcher.max_scan_cnt", 15000);
+                    {
+                        b.field("type", "hnsw");
+                        b.field("embedding_delimiter", ",");
+                        b.field("distance_type", "InnerProduct");
+                        b.field("major_order", "row");
+                        b.field("enable_rt_build", "true");
+                        b.field("ignore_invalid_doc", "true");
+                        b.field("enable_recall_report", "true");
+                        b.field("is_embedding_saved", "true");
+                        b.field("min_scan_doc_cnt", "20000");
+                        b.field("linear_build_threshold", "5000");
+
+                        b.startObject("build_index_params");
+                        {
+                            b.field("proxima.hnsw.builder.max_neighbor_count", "100");
+                            b.field("proxima.hnsw.builder.efconstruction", "500");
+                            b.field("proxima.hnsw.builder.thread_count", "0");
+                        }
+                        b.endObject();
+
+                        b.startObject("search_index_params");
+                        {
+                            b.field("proxima.hnsw.searcher.ef", "500");
+                        }
+                        b.endObject();
+                    }
                     b.endObject();
                 }
                 b.endObject();
             }
         }));
+
         SchemaGenerator schemaGenerator = new SchemaGenerator();
         Schema schema = schemaGenerator.getSchema(indexName, Settings.EMPTY, mapperService);
         String actual = schema.toString();

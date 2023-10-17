@@ -15,6 +15,7 @@
 package org.havenask.engine;
 
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Collection;
@@ -28,6 +29,8 @@ import java.util.function.Supplier;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.store.LockFactory;
+import org.apache.lucene.store.NIOFSDirectory;
 import org.apache.lucene.util.SetOnce;
 import org.havenask.action.ActionRequest;
 import org.havenask.action.ActionResponse;
@@ -78,7 +81,6 @@ import org.havenask.index.shard.IndexMappingProvider;
 import org.havenask.index.shard.IndexSettingProvider;
 import org.havenask.index.shard.ShardId;
 import org.havenask.index.shard.ShardPath;
-import org.havenask.index.store.FsDirectoryFactory;
 import org.havenask.index.store.Store;
 import org.havenask.index.store.Store.OnClose;
 import org.havenask.plugins.ActionPlugin;
@@ -103,6 +105,7 @@ import org.havenask.watcher.ResourceWatcherService;
 import static org.havenask.engine.NativeProcessControlService.HAVENASK_QRS_HTTP_PORT_SETTING;
 import static org.havenask.engine.index.engine.EngineSettings.ENGINE_HAVENASK;
 import static org.havenask.engine.util.Utils.INDEX_SUB_PATH;
+import static org.havenask.index.store.FsDirectoryFactory.INDEX_LOCK_FACTOR_SETTING;
 
 public class HavenaskEnginePlugin extends Plugin
     implements
@@ -336,7 +339,10 @@ public class HavenaskEnginePlugin extends Plugin
         return Collections.singletonMap(ENGINE_HAVENASK, new DirectoryFactory() {
             @Override
             public Directory newDirectory(IndexSettings indexSettings, ShardPath shardPath) throws IOException {
-                return new FsDirectoryFactory().newDirectory(indexSettings, shardPath);
+                final Path location = shardPath.resolveIndex();
+                final LockFactory lockFactory = indexSettings.getValue(INDEX_LOCK_FACTOR_SETTING);
+                Files.createDirectories(location);
+                return new NIOFSDirectory(location, lockFactory);
             }
 
             @Override

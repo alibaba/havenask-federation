@@ -17,6 +17,7 @@ package org.havenask.engine;
 import org.havenask.common.settings.Settings;
 import org.havenask.common.unit.TimeValue;
 import org.havenask.engine.index.engine.EngineSettings;
+import org.havenask.index.IndexModule;
 import org.havenask.index.IndexSettings;
 import org.havenask.test.HavenaskTestCase;
 
@@ -33,6 +34,8 @@ public class HavenaskIndexSettingProviderTests extends HavenaskTestCase {
         boolean softDelete = settings.getAsBoolean(IndexSettings.INDEX_SOFT_DELETES_SETTING.getKey(), true);
         assertEquals(softDelete, false);
         assertEquals(TimeValue.timeValueSeconds(5), refresh);
+        String indexStoreType = settings.get(IndexModule.INDEX_STORE_TYPE_SETTING.getKey(), EngineSettings.ENGINE_HAVENASK);
+        assertEquals(indexStoreType, EngineSettings.ENGINE_HAVENASK);
     }
 
     // test for havenask engine not support soft delete
@@ -47,6 +50,21 @@ public class HavenaskIndexSettingProviderTests extends HavenaskTestCase {
             fail("havenask engine not support soft delete");
         } catch (IllegalArgumentException e) {
             assertEquals("havenask engine not support soft delete", e.getMessage());
+        }
+    }
+
+    // test for havenask engine only support index.store.type: havenask
+    public void testGetAdditionalIndexSettingsWithIndexStoreType() {
+        try {
+            HavenaskIndexSettingProvider provider = new HavenaskIndexSettingProvider(Settings.EMPTY);
+            provider.getAdditionalIndexSettings(
+                "test",
+                false,
+                Settings.builder().put("index.engine", "havenask").put(IndexModule.INDEX_STORE_TYPE_SETTING.getKey(), "fs").build()
+            );
+            fail("havenask engine only support index.store.type: havenask");
+        } catch (IllegalArgumentException e) {
+            assertEquals("havenask engine only support index.store.type: havenask", e.getMessage());
         }
     }
 
@@ -142,5 +160,7 @@ public class HavenaskIndexSettingProviderTests extends HavenaskTestCase {
         assertEquals(EngineSettings.ENGINE_HAVENASK, engine);
         TimeValue refresh = settings.getAsTime("index.refresh_interval", null);
         assertEquals(TimeValue.timeValueSeconds(5), refresh);
+        String indexStoreType = settings.get(IndexModule.INDEX_STORE_TYPE_SETTING.getKey(), EngineSettings.ENGINE_HAVENASK);
+        assertEquals(indexStoreType, EngineSettings.ENGINE_HAVENASK);
     }
 }

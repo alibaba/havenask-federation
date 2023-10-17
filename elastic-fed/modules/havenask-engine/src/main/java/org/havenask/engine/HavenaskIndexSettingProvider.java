@@ -17,6 +17,7 @@ package org.havenask.engine;
 import org.havenask.common.settings.Settings;
 import org.havenask.common.unit.TimeValue;
 import org.havenask.engine.index.engine.EngineSettings;
+import org.havenask.index.IndexModule;
 import org.havenask.index.IndexSettings;
 import org.havenask.index.shard.IndexSettingProvider;
 
@@ -44,6 +45,16 @@ public class HavenaskIndexSettingProvider implements IndexSettingProvider {
                 throw new IllegalArgumentException("havenask engine not support soft delete");
             }
             builder.put(IndexSettings.INDEX_SOFT_DELETES_SETTING.getKey(), false);
+
+            // havenask索引的index.store.type设置为store
+            String indexStoreType = templateAndRequestSettings.get(
+                IndexModule.INDEX_STORE_TYPE_SETTING.getKey(),
+                EngineSettings.ENGINE_HAVENASK
+            );
+            if (false == EngineSettings.ENGINE_HAVENASK.equals(indexStoreType)) {
+                throw new IllegalArgumentException("havenask engine only support index.store.type: " + EngineSettings.ENGINE_HAVENASK);
+            }
+            builder.put(IndexModule.INDEX_STORE_TYPE_SETTING.getKey(), EngineSettings.ENGINE_HAVENASK);
 
             if (false == templateAndRequestSettings.hasValue(INDEX_REFRESH_INTERVAL_SETTING.getKey())) {
                 builder.put(INDEX_REFRESH_INTERVAL_SETTING.getKey(), DEFAULT_REFRESH_INTERVAL);
