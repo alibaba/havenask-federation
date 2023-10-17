@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Executor;
 
+import org.apache.lucene.index.IndexCommit;
 import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.store.BaseDirectoryWrapper;
 import org.apache.lucene.store.Directory;
@@ -116,18 +117,20 @@ public class RecoverySourceHandlerTests extends HavenaskTestCase {
         if (randomBoolean()) {
             writer.w.setLiveCommitData(() -> {
                 final Map<String, String> commitData = new HashMap<>();
-                commitData.put(HavenaskCommitInfo.COMMIT_VERSION_KEY, String.valueOf(randomIntBetween(0, 1)));
+                String version = randomFrom("0", "1", "2", "536870913", "536870914", "536870915");
+                commitData.put(HavenaskCommitInfo.COMMIT_VERSION_KEY, version);
                 return commitData.entrySet().iterator();
             });
         }
         writer.commit();
+        IndexCommit commit = randomBoolean() ? writer.w.getConfig().getIndexCommit() : null;
         writer.close();
 
         // add havenask data
         String havenaskFiles = RecoverySourceHandlerTests.class.getResource("/partition.tar.gz").getPath();
         Utils.executeTarCommand(havenaskFiles, shardPath.toString());
 
-        Store.MetadataSnapshot metadata = store.getMetadata(null);
+        Store.MetadataSnapshot metadata = store.getMetadata(commit);
         List<StoreFileMetadata> metas = new ArrayList<>();
         for (StoreFileMetadata md : metadata) {
             metas.add(md);
@@ -162,7 +165,7 @@ public class RecoverySourceHandlerTests extends HavenaskTestCase {
         PlainActionFuture<Void> sendFilesFuture = new PlainActionFuture<>();
         handler.sendFiles(store, metas.toArray(new StoreFileMetadata[0]), () -> 0, sendFilesFuture);
         sendFilesFuture.actionGet();
-        Store.MetadataSnapshot targetStoreMetadata = targetStore.getMetadata(null);
+        Store.MetadataSnapshot targetStoreMetadata = targetStore.getMetadata(commit);
         Store.RecoveryDiff recoveryDiff = targetStoreMetadata.recoveryDiff(metadata);
         assertEquals(metas.size(), recoveryDiff.identical.size());
         assertEquals(0, recoveryDiff.different.size());

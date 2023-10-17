@@ -28,8 +28,8 @@ public class EntryTable {
         DIR
     }
 
-    public Map<String, File> files = new LinkedHashMap<>();
-    public Map<String, File> packageFiles = new LinkedHashMap<>();
+    public Map<String, Map<String, File>> files = new LinkedHashMap<>();
+    public Map<String, Map<String, File>> packageFiles = new LinkedHashMap<>();
 
     public static class File {
         public String name;
@@ -45,71 +45,68 @@ public class EntryTable {
         return entryTable;
     }
 
-    private static Map<String, File> parseFiles(JSONObject jsonObject) {
-        if (jsonObject == null) {
+    private static Map<String, Map<String, File>> parseFiles(JSONObject jsonObject) {
+        if (jsonObject == null || jsonObject.size() == 0) {
             return new LinkedHashMap<>();
         }
 
-        JSONObject filesJson = jsonObject.getJSONObject("");
-        if (filesJson == null) {
-            return new LinkedHashMap<>();
-        }
+        Map<String, Map<String, File>> files = new LinkedHashMap<>();
+        jsonObject.forEach((key, value) -> {
+            Map<String, File> fileMap = new LinkedHashMap<>();
+            JSONObject fileObject = (JSONObject) value;
+            fileObject.forEach((name, fileValue) -> {
+                File file = new File();
+                file.name = name;
+                JSONObject fileJson = (JSONObject) fileValue;
+                file.length = fileJson.getLong("length");
+                if (file.length == -2) {
+                    file.type = Type.DIR;
+                    file.length = Integer.MAX_VALUE;
+                } else {
+                    file.type = Type.FILE;
+                }
+                fileMap.put(file.name, file);
+            });
+            files.put(key, fileMap);
+        });
 
-        Map<String, File> files = new LinkedHashMap<>();
-        for (Map.Entry<String, Object> entry : filesJson.entrySet()) {
-            File file = new File();
-            file.name = entry.getKey();
-            JSONObject fileObject = (JSONObject) entry.getValue();
-            file.length = fileObject.getLong("length");
-            if (file.length == -2) {
-                file.type = Type.DIR;
-                file.length = Integer.MAX_VALUE;
-            } else {
-                file.type = Type.FILE;
-            }
-            files.put(file.name, file);
-        }
         return files;
     }
 
     @Override
     public String toString() {
         JSONObject filesJson = new JSONObject(true);
-        files.forEach((name, file) -> {
-            JSONObject fileJson = new JSONObject();
-            if (file.type == Type.DIR) {
-                fileJson.put("length", -2);
-            } else {
-                fileJson.put("length", file.length);
-            }
-            filesJson.put(name, fileJson);
+        files.forEach((name, fileMap) -> {
+            JSONObject fileMapJson = new JSONObject(true);
+            fileMap.forEach((fileName, file) -> {
+                JSONObject fileJson = new JSONObject();
+                if (file.type == Type.DIR) {
+                    fileJson.put("length", -2);
+                } else {
+                    fileJson.put("length", file.length);
+                }
+                fileMapJson.put(fileName, fileJson);
+            });
+            filesJson.put(name, fileMapJson);
         });
+
         JSONObject packageFilesJson = new JSONObject(true);
-        packageFiles.forEach((name, file) -> {
-            JSONObject fileJson = new JSONObject();
-            if (file.type == Type.DIR) {
-                fileJson.put("length", -2);
-            } else {
-                fileJson.put("length", file.length);
-            }
-            packageFilesJson.put(name, fileJson);
+        packageFiles.forEach((name, fileMap) -> {
+            JSONObject fileMapJson = new JSONObject(true);
+            fileMap.forEach((fileName, file) -> {
+                JSONObject fileJson = new JSONObject();
+                if (file.type == Type.DIR) {
+                    fileJson.put("length", -2);
+                } else {
+                    fileJson.put("length", file.length);
+                }
+                fileMapJson.put(fileName, fileJson);
+            });
+            packageFilesJson.put(name, fileMapJson);
         });
         JSONObject jsonObject = new JSONObject(true);
-        if (filesJson.size() > 0) {
-            JSONObject filesParent = new JSONObject();
-            filesParent.put("", filesJson);
-            jsonObject.put("files", filesParent);
-        } else {
-            jsonObject.put("files", new JSONObject());
-        }
-
-        if (packageFilesJson.size() > 0) {
-            JSONObject packageFilesParent = new JSONObject();
-            packageFilesParent.put("", packageFilesJson);
-            jsonObject.put("package_files", packageFilesParent);
-        } else {
-            jsonObject.put("package_files", new JSONObject());
-        }
+        jsonObject.put("files", filesJson);
+        jsonObject.put("package_files", packageFilesJson);
         return jsonObject.toJSONString();
     }
 }

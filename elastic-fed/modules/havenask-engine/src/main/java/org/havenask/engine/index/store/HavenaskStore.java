@@ -97,21 +97,38 @@ public class HavenaskStore extends Store {
 
         String entryTableFile = HAVENASK_ENTRY_TABLE_FILE_PREFIX + commitVersion;
         Path entryTablePath = shardPath.resolve(entryTableFile);
+        String entryTablePathStr = entryTableFile;
         if (false == Strings.isEmpty(fenceName)) {
             entryTablePath = shardPath.resolve(fenceName).resolve(entryTableFile);
+            entryTablePathStr = fenceName + "/" + entryTableFile;
         }
         String entryTableContent = Files.readString(entryTablePath);
         EntryTable entryTable = EntryTable.parse(entryTableContent);
 
-        // TODO 如何处理目录
         Map<String, StoreFileMetadata> metadata = new LinkedHashMap<>();
-        entryTable.files.forEach((name, file) -> {
-            StoreFileMetadata storeFileMetadata = new StoreFileMetadata(file.name, file.length, "", HAVENASK_VERSION);
-            metadata.put(file.name, storeFileMetadata);
+        entryTable.files.forEach((name, fileMap) -> {
+            fileMap.forEach((fileName, file) -> {
+                StoreFileMetadata storeFileMetadata;
+                if (false == Strings.isEmpty(fenceName)) {
+                    if (fileName.equals("")) {
+                        String realPath = fenceName + "/" + fileName;
+                        storeFileMetadata = new StoreFileMetadata(realPath, file.length, "", HAVENASK_VERSION);
+                        // version文件需要拷贝到最外层目录
+                        if (fileName.startsWith("version.")) {
+                            metadata.put(fileName, new StoreFileMetadata(fileName, file.length, "", HAVENASK_VERSION));
+                        }
+                    } else {
+                        storeFileMetadata = new StoreFileMetadata(fileName, file.length, "", HAVENASK_VERSION);
+                    }
+                } else {
+                    storeFileMetadata = new StoreFileMetadata(fileName, file.length, "", HAVENASK_VERSION);
+                }
+                metadata.put(fileName, storeFileMetadata);
+            });
         });
 
         // add entry_table file
-        metadata.put(entryTableFile, new StoreFileMetadata(entryTableFile, entryTableContent.length(), "", HAVENASK_VERSION));
+        metadata.put(entryTablePathStr, new StoreFileMetadata(entryTablePathStr, entryTableContent.length(), "", HAVENASK_VERSION));
 
         return metadata;
     }
