@@ -31,9 +31,7 @@ import java.util.regex.Pattern;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.havenask.cluster.ClusterState;
 import org.havenask.cluster.metadata.IndexMetadata;
-import org.havenask.cluster.metadata.Metadata;
 import org.havenask.cluster.node.DiscoveryNode;
 import org.havenask.cluster.routing.RoutingNode;
 import org.havenask.cluster.routing.ShardRouting;
@@ -50,6 +48,8 @@ import org.havenask.engine.rpc.HavenaskClient;
 import org.havenask.engine.rpc.HeartbeatTargetResponse;
 import org.havenask.engine.rpc.TargetInfo;
 import org.havenask.engine.rpc.UpdateHeartbeatTargetRequest;
+import org.havenask.engine.rpc.QrsClient;
+import org.havenask.engine.rpc.SqlClientInfoResponse;
 import org.havenask.engine.util.Utils;
 import org.havenask.threadpool.ThreadPool;
 
@@ -201,6 +201,7 @@ public class MetaDataSyncer extends AbstractLifecycleComponent {
 
                         boolean qrsEquals = qrsTargetRequest.getTargetInfo().equals(qrsResponse.getSignature());
                         boolean searcherEquals = searcherTargetRequest.getTargetInfo().equals(searcherResponse.getSignature());
+
                         if (false == qrsEquals) {
                             LOGGER.trace(
                                 "update qrs heartbeat target failed, qrsTargetRequest: {}, qrsResponse: {}",
@@ -218,15 +219,33 @@ public class MetaDataSyncer extends AbstractLifecycleComponent {
                         }
 
                         if (qrsEquals && searcherEquals) {
-                            LOGGER.info("update heartbeat target success");
-
-                            synced.set(true);
-                            searcherTargetInfo.set(searcherResponse.getCustomInfo());
-                            syncTimes = 0;
-                            // 在每次同步成功时更新两个randomVersion
+                            // 在每次两个request都更新成功时更新两个randomVersion
                             randomVersion = random.nextInt(100000) + 1;
                             generalSqlRandomVersion = random.nextInt(100000) + 1;
-                            return;
+                            LOGGER.trace("qrsEquals && searcherEquals success!!!!  update version");
+
+                            // 在qrs与searcher都同步成功后，再check qrs的table
+                            SqlClientInfoResponse sqlClientInfoResponse = ((QrsClient) qrsClient).executeSqlClientInfo();
+                            List<String> subDirNames = getSubDirNames(clusterService);
+                            boolean qrsTableSynced = qrsTableCheck(subDirNames, sqlClientInfoResponse);
+                            if (false == qrsTableSynced) {
+                                LOGGER.trace(
+                                    "update qrs table info failed, required table names : {}, sqlClientInfo's tables : {}",
+                                    subDirNames.toString(),
+                                    sqlClientInfoResponse.getResult()
+                                        .getJSONObject("default")
+                                        .getJSONObject("general")
+                                        .getJSONObject("tables")
+                                        .keySet()
+                                        .toString()
+                                );
+                            } else {
+                                LOGGER.info("update heartbeat target success");
+                                synced.set(true);
+                                searcherTargetInfo.set(searcherResponse.getCustomInfo());
+                                syncTimes = 0;
+                                return;
+                            }
                         }
                     } catch (Throwable e) {
                         LOGGER.error("update heartbeat target failed", e);
@@ -303,9 +322,6 @@ public class MetaDataSyncer extends AbstractLifecycleComponent {
         createConfigLink(HAVENASK_SEARCHER_HOME, "biz", "default", defaultBizsPath, env.getDataPath());
         Path indexRootPath = env.getDataPath().resolve(HAVENASK_WORKSPACCE).resolve(HAVENASK_SEARCHER_HOME).resolve(INDEX_ROOT_POSTFIX);
 
-        ClusterState state = clusterService.state();
-        Metadata metadata = state.metadata();
-
         TargetInfo searcherTargetInfo = new TargetInfo();
         searcherTargetInfo.clean_disk = CLEAN_DISK;
         searcherTargetInfo.target_version = TARGET_VERSION;
@@ -317,21 +333,11 @@ public class MetaDataSyncer extends AbstractLifecycleComponent {
         );
         searcherTargetInfo.biz_info = new TargetInfo.BizInfo(defaultBizsPath);
 
-        List<String> subDirNames = new ArrayList<>();
+        List<String> subDirNames = getSubDirNames(clusterService);
+        for (String tableName : subDirNames) {
+            createConfigLink(HAVENASK_SEARCHER_HOME, "table", tableName, defaultTablePath, env.getDataPath());
+        }
         subDirNames.add(TABLE_NAME_IN0);
-        RoutingNode localRoutingNode = state.getRoutingNodes().node(state.nodes().getLocalNodeId());
-        if (localRoutingNode == null) {
-            throw new RuntimeException("localRoutingNode is null");
-        }
-
-        for (ShardRouting shardRouting : localRoutingNode) {
-            IndexMetadata indexMetadata = metadata.index(shardRouting.getIndexName());
-            if (EngineSettings.isHavenaskEngine(indexMetadata.getSettings())) {
-                String tableName = Utils.getHavenaskTableName(shardRouting.shardId());
-                subDirNames.add(tableName);
-                createConfigLink(HAVENASK_SEARCHER_HOME, "table", tableName, defaultTablePath, env.getDataPath());
-            }
-        }
 
         searcherTargetInfo.table_info = new HashMap<>();
         for (String subDir : subDirNames) {
@@ -439,5 +445,37 @@ public class MetaDataSyncer extends AbstractLifecycleComponent {
             }
         }
         return String.valueOf(maxId);
+    }
+
+    private static List<String> getSubDirNames(ClusterService clusterService) {
+        List<String> subDirNames = new ArrayList<>();
+        RoutingNode localRoutingNode = clusterService.state().getRoutingNodes().node(clusterService.state().nodes().getLocalNodeId());
+        if (localRoutingNode == null) {
+            throw new RuntimeException("localRoutingNode is null");
+        }
+
+        for (ShardRouting shardRouting : localRoutingNode) {
+            IndexMetadata indexMetadata = clusterService.state().metadata().index(shardRouting.getIndexName());
+            if (EngineSettings.isHavenaskEngine(indexMetadata.getSettings())) {
+                String tableName = Utils.getHavenaskTableName(shardRouting.shardId());
+                subDirNames.add(tableName);
+            }
+        }
+        return subDirNames;
+    }
+
+    private static boolean qrsTableCheck(List<String> subDirNames, SqlClientInfoResponse sqlClientInfoResponse) {
+        boolean qrsTableSynced = true;
+        Map<String, Object> expectedSubNames = sqlClientInfoResponse.getResult()
+            .getJSONObject("default")
+            .getJSONObject("general")
+            .getJSONObject("tables");
+        for (String subDir : subDirNames) {
+            if (false == expectedSubNames.containsKey(subDir)) {
+                qrsTableSynced = false;
+                break;
+            }
+        }
+        return qrsTableSynced;
     }
 }
