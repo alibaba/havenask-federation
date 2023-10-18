@@ -315,8 +315,7 @@ public class HavenaskStore extends Store {
                 }
                 Files.move(tempFilePath, filePath);
             } catch (IOException e) {
-                // TODO check if this is the right thing to do
-                throw new RuntimeException(e);
+                logger.debug("rename havenask temp file failed", e);
             }
         });
     }
