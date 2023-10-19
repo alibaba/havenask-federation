@@ -45,8 +45,9 @@ import org.havenask.search.query.QuerySearchResult;
 import static org.havenask.engine.search.rest.RestHavenaskSqlAction.SQL_DATABASE;
 
 public class HavenaskIndexSearcher extends ContextIndexSearcher {
-
     public static final String IDS_CONTEXT = "havenask_ids";
+    private static final int ID_POS = 0;
+    private static final int SCORE_POS = 1;
     private final QrsClient qrsHttpClient;
     private final ShardId shardId;
     private final String tableName;
@@ -85,16 +86,17 @@ public class HavenaskIndexSearcher extends ContextIndexSearcher {
         throws IOException {
         SqlResponse sqlResponse = SqlResponse.parse(sqlResponseStr);
         ScoreDoc[] queryScoreDocs = new ScoreDoc[sqlResponse.getRowCount()];
-        List<String> ids = new ArrayList<>(sqlResponse.getRowCount());
+        List<String> idList = new ArrayList<>(sqlResponse.getRowCount());
+        float maxScore = 0;
         for (int i = 0; i < sqlResponse.getRowCount(); i++) {
-            // TODO get doc's score
-            queryScoreDocs[i] = new ScoreDoc(i, sqlResponse.getRowCount() - i);
-            ids.add(String.valueOf(sqlResponse.getSqlResult().getData()[i][0]));
+            float curScore = ((Double)sqlResponse.getSqlResult().getData()[i][SCORE_POS]).floatValue();
+            queryScoreDocs[i] = new ScoreDoc(i, curScore);
+            maxScore = maxScore > curScore ? maxScore : curScore;
+            idList.add(String.valueOf(sqlResponse.getSqlResult().getData()[i][ID_POS]));
         }
-        readerContext.putInContext(IDS_CONTEXT, ids);
+        readerContext.putInContext(IDS_CONTEXT, idList);
         TopDocs topDocs = new TopDocs(new TotalHits(sqlResponse.getRowCount(), Relation.GREATER_THAN_OR_EQUAL_TO), queryScoreDocs);
-        // TODO get maxScore
-        TopDocsAndMaxScore topDocsAndMaxScore = new TopDocsAndMaxScore(topDocs, sqlResponse.getRowCount());
+        TopDocsAndMaxScore topDocsAndMaxScore = new TopDocsAndMaxScore(topDocs, maxScore);
         querySearchResult.topDocs(topDocsAndMaxScore, new DocValueFormat[] { DocValueFormat.RAW });
     }
 }
