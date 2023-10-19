@@ -15,7 +15,12 @@
 package org.havenask.engine.search;
 
 import java.io.IOException;
-import java.util.*;
+import java.util.List;
+import java.util.Arrays;
+import java.util.ArrayList;
+import java.util.Map;
+import java.util.HashMap;
+import java.util.Collections;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -128,7 +133,8 @@ public class HavenaskFetchPhase implements FetchPhase {
         return SqlResponse.parse(response.getResult());
     }
 
-    private void transferSqlResponse2FetchResult(DocIdToIndex[] docs, List<String>idList, SqlResponse sqlResponse, SearchContext context) throws IOException {
+    private void transferSqlResponse2FetchResult(DocIdToIndex[] docs, List<String> idList, SqlResponse sqlResponse, SearchContext context)
+        throws IOException {
         TotalHits totalHits = context.queryResult().getTotalHits();
         SearchHit[] hits = new SearchHit[sqlResponse.getRowCount()];
         List<FetchSubPhaseProcessor> processors = getProcessors(context.shardTarget(), context);
@@ -143,13 +149,13 @@ public class HavenaskFetchPhase implements FetchPhase {
             // TODO add _routing
             SearchHit searchHit = new SearchHit(
                 docs[i].docId,
-                    idList.get(i),
+                idList.get(i),
                 new Text(MapperService.SINGLE_MAPPING_NAME),
                 Collections.emptyMap(),
                 Collections.emptyMap()
             );
 
-            //根据idList的顺序从fetch结果获取相对应的_source, 如果数据丢失则返回_source not found
+            // 根据idList的顺序从fetch结果获取相对应的_source, 如果数据丢失则返回_source not found
             Integer fetchResIndex = fetchResIdListMap.get(idList.get(i));
             Object source = fetchResIndex != null ? sqlResponse.getSqlResult().getData()[fetchResIndex][SOURCE_POS] : SOURCE_NOT_FOUND;
             HitContent hit = new HitContent(searchHit, source);

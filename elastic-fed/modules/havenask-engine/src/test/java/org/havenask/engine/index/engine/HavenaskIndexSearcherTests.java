@@ -59,52 +59,29 @@ public class HavenaskIndexSearcherTests extends HavenaskTestCase {
 
             double delta = 0.0001;
             QuerySearchResult querySearchResult = new QuerySearchResult();
-            String sqlResponseStr1 = "{\"total_time\":2.016,\"has_soft_failure\":false,\"covered_percent\":1.0,"
-                + "\"row_count\":3,\"format_type\":\"full_json\",\"search_info\":{},\"rpc_info\":\"\","
-                + "\"table_leader_info\":{},\"table_build_watermark\":{},\"sql_query\":\"select _id from "
-                + "in1&&kvpair=databaseName:database;formatType:full_json\",\"iquan_plan\":{\"error_code\":0,"
-                + "\"error_message\":\"\",\"result\":{\"rel_plan_version\":\"\",\"rel_plan\":[],"
-                + "\"exec_params\":{}}},\"navi_graph\":\"\",\"trace\":[],\"sql_result\":{\"data\":[[\"wRSgaYoBtIvm0jEE9eGc\"],"
-                + "[\"wBSgaYoBtIvm0jEE9OG2\"],[\"shRlY4oBtIvm0jEEEOFm\"]],\"column_name\":[\"_id\"],"
-                + "\"column_type\":[\"multi_char\"]},"
-                + "\"error_info\":{\"ErrorCode\":0,\"Error\":\"ERROR_NONE\",\"Message\":\"\"}}  ";
-
-            String sqlResponseStr2 = "{\"total_time\":1.811,\"has_soft_failure\":false,\"covered_percent\":1.0,"
+            String sqlResponseStr1 = "{\"total_time\":8.126,\"has_soft_failure\":false,\"covered_percent\":1.0,"
                 + "\"row_count\":4,\"format_type\":\"full_json\",\"search_info\":{},\"rpc_info\":\"\","
-                + "\"table_leader_info\":{},\"table_build_watermark\":{},"
-                + "\"sql_query\":\"select _id from idtable&&kvpair=databaseName:database;formatType:full_json\","
-                + "\"iquan_plan\":{\"error_code\":0,\"error_message\":\"\",\"result\":{\"rel_plan_version\":\"\","
-                + "\"rel_plan\":[],\"exec_params\":{}}},\"navi_graph\":\"\",\"trace\":[],"
-                + "\"sql_result\":{\"data\":[[\"qwerty\"],[\"asdfgh\"],[\"zxcvbn\"],[\"yuiopl\"]],"
-                + "\"column_name\":[\"_id\"],\"column_type\":[\"multi_char\"]},"
-                + "\"error_info\":{\"ErrorCode\":0,\"Error\":\"ERROR_NONE\",\"Message\":\"\"}}   ";
+                + "\"table_leader_info\":{},\"table_build_watermark\":{},\"sql_query\":"
+                + "\"query=select _id, vectorscore('image') as _score from vector_test_0 where "
+                + "MATCHINDEX('image', '1.1, 1.1') order by _score desc&&kvpair=format:full_json;databaseName:general"
+                + "\",\"iquan_plan\":{\"error_code\":0,\"error_message\":\"\",\"result\":{\"rel_plan_version\":\"\","
+                + "\"rel_plan\":[],\"exec_params\":{}}},\"navi_graph\":\"\",\"trace\":[],\"sql_result\":{\"data\":[[\"4"
+                + "\",9.680000305175782],[\"3\",7.260000228881836],[\"2\",4.840000152587891],[\"1\",2.4200000762939455]],"
+                + "\"column_name\":[\"_id\",\"_score\"],\"column_type\":[\"multi_char\",\"float\"]},\"error_info\":{"
+                + "\"ErrorCode\":0,\"Error\":\"ERROR_NONE\",\"Message\":\"\"}}";
 
-            String[] resStr1 = new String[] { "wRSgaYoBtIvm0jEE9eGc", "wBSgaYoBtIvm0jEE9OG2", "shRlY4oBtIvm0jEEEOFm" };
-            float[] resFloat1 = new float[] { 3.0F, 2.0F, 1.0F };
-            int rowNum1 = 3;
+            String[] resStr1 = new String[] { "4", "3", "2", "1" };
+            float[] resFloat1 = new float[] { 9.6800F, 7.2600F, 4.8400F, 2.4200F };
+            int rowNum1 = resStr1.length;
             HavenaskIndexSearcher.buildQuerySearchResult(querySearchResult, sqlResponseStr1, readerContext);
-            assertEquals(3L, querySearchResult.topDocs().topDocs.totalHits.value);
-            assertEquals(3.0F, querySearchResult.getMaxScore(), delta);
+            assertEquals(4L, querySearchResult.topDocs().topDocs.totalHits.value);
+            assertEquals(9.6800F, querySearchResult.getMaxScore(), delta);
             List<String> ids1 = readerContext.getFromContext(IDS_CONTEXT);
             for (int i = 0; i < rowNum1; i++) {
                 assertEquals(resFloat1[i], querySearchResult.topDocs().topDocs.scoreDocs[i].score, delta);
                 assertEquals(-1, querySearchResult.topDocs().topDocs.scoreDocs[i].shardIndex);
                 assertEquals(i, querySearchResult.topDocs().topDocs.scoreDocs[i].doc);
                 assertEquals(resStr1[i], ids1.get(i));
-            }
-
-            String[] resStr2 = new String[] { "qwerty", "asdfgh", "zxcvbn", "yuiopl" };
-            float[] resFloat2 = new float[] { 4.0F, 3.0F, 2.0F, 1.0F };
-            int rowNum2 = 4;
-            HavenaskIndexSearcher.buildQuerySearchResult(querySearchResult, sqlResponseStr2, readerContext);
-            List<String> ids2 = readerContext.getFromContext(IDS_CONTEXT);
-            assertEquals(4L, querySearchResult.topDocs().topDocs.totalHits.value);
-            assertEquals(4.0F, querySearchResult.getMaxScore(), delta);
-            for (int i = 0; i < rowNum2; i++) {
-                assertEquals(resFloat2[i], querySearchResult.topDocs().topDocs.scoreDocs[i].score, delta);
-                assertEquals(-1, querySearchResult.topDocs().topDocs.scoreDocs[i].shardIndex);
-                assertEquals(i, querySearchResult.topDocs().topDocs.scoreDocs[i].doc);
-                assertEquals(resStr2[i], ids2.get(i));
             }
         } finally {
             threadPool.shutdown();

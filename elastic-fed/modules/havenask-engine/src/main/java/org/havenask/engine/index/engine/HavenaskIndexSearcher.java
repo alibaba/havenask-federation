@@ -47,7 +47,7 @@ import static org.havenask.engine.search.rest.RestHavenaskSqlAction.SQL_DATABASE
 public class HavenaskIndexSearcher extends ContextIndexSearcher {
     public static final String IDS_CONTEXT = "havenask_ids";
     private static final int ID_POS = 0;
-    private static final int SCORE_POS = 1;
+    private static final int SCORE_START_POS = 1;
     private final QrsClient qrsHttpClient;
     private final ShardId shardId;
     private final String tableName;
@@ -88,8 +88,17 @@ public class HavenaskIndexSearcher extends ContextIndexSearcher {
         ScoreDoc[] queryScoreDocs = new ScoreDoc[sqlResponse.getRowCount()];
         List<String> idList = new ArrayList<>(sqlResponse.getRowCount());
         float maxScore = 0;
+        int sqlDataSize = sqlResponse.getRowCount() > 0 ? sqlResponse.getSqlResult().getData()[0].length : 0;
         for (int i = 0; i < sqlResponse.getRowCount(); i++) {
-            float curScore = ((Double)sqlResponse.getSqlResult().getData()[i][SCORE_POS]).floatValue();
+            float toalKnnScore = 0;
+            float defaultScore = sqlResponse.getRowCount() - i;
+            if (sqlDataSize > 1) {
+                for (int scoreIndex = SCORE_START_POS; scoreIndex < sqlDataSize; scoreIndex++) {
+                    toalKnnScore += ((Double) sqlResponse.getSqlResult().getData()[i][scoreIndex]).floatValue();
+                }
+            }
+            float curScore = sqlDataSize == 1 ? defaultScore : toalKnnScore;
+
             queryScoreDocs[i] = new ScoreDoc(i, curScore);
             maxScore = maxScore > curScore ? maxScore : curScore;
             idList.add(String.valueOf(sqlResponse.getSqlResult().getData()[i][ID_POS]));
