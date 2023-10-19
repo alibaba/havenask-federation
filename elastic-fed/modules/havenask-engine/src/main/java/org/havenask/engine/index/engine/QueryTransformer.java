@@ -35,10 +35,6 @@ public class QueryTransformer {
         selectParams.append(" _id");
 
         if (dsl.knnSearch().size() > 0) {
-            // TODO 目前不支持knnSearch同时查询多个向量,后续增加支持
-            if (dsl.knnSearch().size() > 1) {
-                throw new IOException("目前暂不支持同时查询多个向量field" + dsl);
-            }
             where.append(" where ");
             boolean first = true;
             for (KnnSearchBuilder knnSearchBuilder : dsl.knnSearch()) {
@@ -48,13 +44,15 @@ public class QueryTransformer {
 
                 if (false == first) {
                     where.append(" or ");
+                    selectParams.append(" + ");
                 }
 
                 if (first) {
                     first = false;
+                    selectParams.append(", (");
                 }
-                // TODO 支持knnSearch同时查询多个向量后需要修改selectParams的写法
-                selectParams.append(", vectorscore('").append(knnSearchBuilder.getField()).append("') as _score");
+
+                selectParams.append("vectorscore('").append(knnSearchBuilder.getField()).append("')");
 
                 where.append("MATCHINDEX('" + knnSearchBuilder.getField() + "', '");
                 for (int i = 0; i < knnSearchBuilder.getQueryVector().length; i++) {
@@ -65,6 +63,7 @@ public class QueryTransformer {
                 }
                 where.append("&n=" + knnSearchBuilder.k() + "')");
             }
+            selectParams.append(") as _score");
             orderBy.append(" order by _score desc");
         } else if (queryBuilder != null) {
             if (queryBuilder instanceof MatchAllQueryBuilder) {} else if (queryBuilder instanceof ProximaQueryBuilder) {

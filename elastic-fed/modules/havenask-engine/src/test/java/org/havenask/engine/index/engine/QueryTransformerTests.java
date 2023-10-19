@@ -103,12 +103,11 @@ public class QueryTransformerTests extends HavenaskTestCase {
         builder.knnSearch(List.of(new KnnSearchBuilder("field", new float[] { 1.0f, 2.0f }, 20, 20, null)));
         String sql = QueryTransformer.toSql("table", builder);
         assertEquals(
-            "select _id, vectorscore('field') as _score from table where MATCHINDEX('field', '1.0,2.0&n=20') order by _score desc",
+            "select _id, (vectorscore('field')) as _score from table where MATCHINDEX('field', '1.0,2.0&n=20') order by _score desc",
             sql
         );
     }
 
-    @AwaitsFix(bugUrl = "https://github.com/alibaba/havenask-federation/issues/285")
     // test multi knn dsl
     public void testMultiKnnDsl() throws IOException {
         SearchSourceBuilder builder = new SearchSourceBuilder();
@@ -120,7 +119,11 @@ public class QueryTransformerTests extends HavenaskTestCase {
             )
         );
         String sql = QueryTransformer.toSql("table", builder);
-        assertEquals("select _id from table where MATCHINDEX('field1', '1.0,2.0&n=20') or MATCHINDEX('field2', '3.0,4.0&n=10')", sql);
+        assertEquals(
+            "select _id, (vectorscore('field1') + vectorscore('field2')) as _score from table where "
+                + "MATCHINDEX('field1', '1.0,2.0&n=20') or MATCHINDEX('field2', '3.0,4.0&n=10') order by _score desc",
+            sql
+        );
     }
 
     // test unsupported knn dsl
