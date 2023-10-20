@@ -17,8 +17,6 @@ package org.havenask.engine;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Set;
-import java.util.HashSet;
 import java.util.HashMap;
 import java.util.concurrent.TimeUnit;
 
@@ -167,10 +165,10 @@ public class MappingIT extends AbstractHavenaskRestTestCase {
     }
 
     // 对havenask v2版本的向量索引配置适配后的测试
-    public void testUpdatedVectorData() throws Exception {
+    public void testVectorData() throws Exception {
         final int TYPE_POS = 0;
 
-        String index = "index_updated_vector_data";
+        String index = "index_vector_data";
         String fieldName = "image";
         int vectorDims = 2;
 
@@ -179,7 +177,6 @@ public class MappingIT extends AbstractHavenaskRestTestCase {
             "embedding_delimiter",
             "distance_type",
             "major_order",
-            "enable_rt_build",
             "ignore_invalid_doc",
             "enable_recall_report",
             "is_embedding_saved",
@@ -187,7 +184,7 @@ public class MappingIT extends AbstractHavenaskRestTestCase {
             "linear_build_threshold" };
         final String[] types = { "hnsw", "qc", "linear" };
         final String[] typesStr = { "HNSW", "QC", "LINEAR" };
-        final String[] indexOptionValues = new String[] { "", ",", "InnerProduct", "row", "true", "true", "true", "true", "20000", "500" };
+        final String[] indexOptionValues = new String[] { "", ",", "InnerProduct", "row", "true", "true", "true", "20000", "500" };
 
         final String[][] searchIndexParamsNames = new String[][] {
             new String[] { "proxima.hnsw.searcher.ef" },
@@ -226,15 +223,20 @@ public class MappingIT extends AbstractHavenaskRestTestCase {
             { 7.7f, 7.7f },
             { 8.8f, 8.8f } };
 
-        Set<String> resSourceAsString = new HashSet<>();
-        resSourceAsString.add("{\"image\":[1.1,1.1]}");
-        resSourceAsString.add("{\"image\":[2.2,2.2]}");
-        resSourceAsString.add("{\"image\":[3.3,3.3]}");
-        resSourceAsString.add("{\"image\":[4.4,4.4]}");
-        resSourceAsString.add("{\"image\":[5.5,5.5]}");
-        resSourceAsString.add("{\"image\":[6.6,6.6]}");
-        resSourceAsString.add("{\"image\":[7.7,7.7]}");
-        resSourceAsString.add("{\"image\":[8.8,8.8]}");
+        String[] resSourceAsString = new String[] {
+            "{\"image\":[8.8,8.8]}",
+            "{\"image\":[7.7,7.7]}",
+            "{\"image\":[6.6,6.6]}",
+            "{\"image\":[5.5,5.5]}",
+            "{\"image\":[4.4,4.4]}",
+            "{\"image\":[3.3,3.3]}",
+            "{\"image\":[2.2,2.2]}",
+            "{\"image\":[1.1,1.1]}" };
+
+        float delta = 0.0001F;
+        float expectedMaxScore = 35.2F;
+        float[] expectedScores = new float[] { 35.2F, 30.8F, 26.4F, 22.0F, 17.6F, 13.2F, 8.8F, 4.4F };
+
         for (int type = 0; type < types.length; type++) {
             indexOptionValues[TYPE_POS] = types[type];
             // create index
@@ -305,11 +307,16 @@ public class MappingIT extends AbstractHavenaskRestTestCase {
             searchRequest.source(searchSourceBuilder);
 
             // 执行查询请求并获取相应结果
+            assertBusy(() -> {
+                SearchResponse searchResponse = highLevelClient().search(searchRequest, RequestOptions.DEFAULT);
+                assertEquals(dataNum, searchResponse.getHits().getTotalHits().value);
+            }, 10, TimeUnit.SECONDS);
             SearchResponse searchResponse = highLevelClient().search(searchRequest, RequestOptions.DEFAULT);
             assertEquals(dataNum, searchResponse.getHits().getTotalHits().value);
+            assertEquals(expectedMaxScore, searchResponse.getHits().getMaxScore(), delta);
             for (int i = 0; i < dataNum; i++) {
-                assertTrue(resSourceAsString.contains(searchResponse.getHits().getHits()[i].getSourceAsString()));
-                // TODO 后续返回结果支持包含score以后, 增加对score的相关测试
+                assertEquals(resSourceAsString[i], searchResponse.getHits().getHits()[i].getSourceAsString());
+                assertEquals(expectedScores[i], searchResponse.getHits().getHits()[i].getScore(), delta);
             }
 
             // delete index and HEAD index
@@ -332,9 +339,9 @@ public class MappingIT extends AbstractHavenaskRestTestCase {
      *     "enable_rt_build" : "false"
      */
     @SuppressWarnings("unchecked")
-    public void testUpdateVectorDataWithPartialParams() throws Exception {
+    public void testVectorDataWithPartialParams() throws Exception {
         final int TYPE_POS = 0;
-        String index = "index_updated_vector_data_with_partial_params";
+        String index = "index_vector_data_with_partial_params";
         String fieldName = "image";
         int vectorDims = 2;
 
@@ -344,10 +351,9 @@ public class MappingIT extends AbstractHavenaskRestTestCase {
             "distance_type",
             "linear_build_threshold",
             "enable_recall_report",
-            "min_scan_doc_cnt",
-            "enable_rt_build", };
+            "min_scan_doc_cnt", };
 
-        final String[] indexOptionValues = new String[] { "qc", ",", "InnerProduct", "10000", "true", "20000", "false" };
+        final String[] indexOptionValues = new String[] { "qc", ",", "InnerProduct", "10000", "true", "20000" };
 
         final String[] searchIndexParamsNames = new String[] { "proxima.qc.searcher.scan_ratio" };
         final String[] searchIndexParamsValues = new String[] { "0.01" };
@@ -364,15 +370,19 @@ public class MappingIT extends AbstractHavenaskRestTestCase {
             { 7.7f, 7.7f },
             { 8.8f, 8.8f } };
 
-        Set<String> resSourceAsString = new HashSet<>();
-        resSourceAsString.add("{\"image\":[1.1,1.1]}");
-        resSourceAsString.add("{\"image\":[2.2,2.2]}");
-        resSourceAsString.add("{\"image\":[3.3,3.3]}");
-        resSourceAsString.add("{\"image\":[4.4,4.4]}");
-        resSourceAsString.add("{\"image\":[5.5,5.5]}");
-        resSourceAsString.add("{\"image\":[6.6,6.6]}");
-        resSourceAsString.add("{\"image\":[7.7,7.7]}");
-        resSourceAsString.add("{\"image\":[8.8,8.8]}");
+        String[] resSourceAsString = new String[] {
+            "{\"image\":[8.8,8.8]}",
+            "{\"image\":[7.7,7.7]}",
+            "{\"image\":[6.6,6.6]}",
+            "{\"image\":[5.5,5.5]}",
+            "{\"image\":[4.4,4.4]}",
+            "{\"image\":[3.3,3.3]}",
+            "{\"image\":[2.2,2.2]}",
+            "{\"image\":[1.1,1.1]}" };
+
+        float delta = 0.0001F;
+        float expectedMaxScore = 35.2F;
+        float[] expectedScores = new float[] { 35.2F, 30.8F, 26.4F, 22.0F, 17.6F, 13.2F, 8.8F, 4.4F };
 
         // create index
         assertTrue(
@@ -440,11 +450,16 @@ public class MappingIT extends AbstractHavenaskRestTestCase {
         searchRequest.source(searchSourceBuilder);
 
         // 执行查询请求并获取相应结果
+        assertBusy(() -> {
+            SearchResponse searchResponse = highLevelClient().search(searchRequest, RequestOptions.DEFAULT);
+            assertEquals(dataNum, searchResponse.getHits().getTotalHits().value);
+        }, 10, TimeUnit.SECONDS);
         SearchResponse searchResponse = highLevelClient().search(searchRequest, RequestOptions.DEFAULT);
         assertEquals(dataNum, searchResponse.getHits().getTotalHits().value);
+        assertEquals(expectedMaxScore, searchResponse.getHits().getMaxScore(), delta);
         for (int i = 0; i < dataNum; i++) {
-            assertTrue(resSourceAsString.contains(searchResponse.getHits().getHits()[i].getSourceAsString()));
-            // TODO 后续返回结果支持包含score以后, 增加对score的相关测试
+            assertEquals(resSourceAsString[i], searchResponse.getHits().getHits()[i].getSourceAsString());
+            assertEquals(expectedScores[i], searchResponse.getHits().getHits()[i].getScore(), delta);
         }
 
         // delete index and HEAD index
@@ -531,8 +546,8 @@ public class MappingIT extends AbstractHavenaskRestTestCase {
             indexOptions.put(indexOptionNames[i], IndexOptionValues[i]);
         }
         java.util.Map<String, Object> searchIndexParams = new HashMap<>();
-        indexOptions.put("search_index_params", searchIndexParams);
         if (searchIndexParamsNames != null) {
+            indexOptions.put("search_index_params", searchIndexParams);
             for (int i = 0; i < searchIndexParamsNames.length; i++) {
                 searchIndexParams.put(searchIndexParamsNames[i], searchIndexParamsValues[i]);
             }
