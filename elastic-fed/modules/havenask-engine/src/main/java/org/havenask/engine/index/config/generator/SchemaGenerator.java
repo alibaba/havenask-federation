@@ -252,6 +252,7 @@ public class SchemaGenerator {
         List<Schema.Field> indexFields = Arrays.asList(new Schema.Field(IdFieldMapper.NAME), new Schema.Field(dupFieldName));
         Map<String, String> parameter = new LinkedHashMap<>();
         parameter.put("dimension", String.valueOf(vectorField.getDims()));
+        parameter.put("enable_rt_build", String.valueOf(true));
 
         IndexOptions indexOptions = vectorField.getIndexOptions();
         if (indexOptions.embeddingDelimiter != null) {
@@ -262,9 +263,6 @@ public class SchemaGenerator {
         }
         if (indexOptions.majorOrder != null) {
             parameter.put("major_order", indexOptions.majorOrder.getValue());
-        }
-        if (indexOptions.enableRtBuild != null) {
-            parameter.put("enable_rt_build", String.valueOf(indexOptions.enableRtBuild));
         }
         if (indexOptions.ignoreInvalidDoc != null) {
             parameter.put("ignore_invalid_doc", String.valueOf(indexOptions.ignoreInvalidDoc));

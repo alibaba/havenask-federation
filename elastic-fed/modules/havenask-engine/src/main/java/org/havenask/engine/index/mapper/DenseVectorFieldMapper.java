@@ -255,7 +255,6 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
         public final String embeddingDelimiter;
         public final DistanceType distanceType;
         public final MajorOrder majorOrder;
-        public final Boolean enableRtBuild;
         public final Boolean ignoreInvalidDoc;
         public final Boolean enableRecallReport;
         public final Boolean isEmbeddingSaved;
@@ -266,15 +265,14 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
             Object embeddingDelimiterNode = indexOptionsMap.remove("embedding_delimiter");
             String embeddingDelimiter = embeddingDelimiterNode != null ? XContentMapValues.nodeStringValue(embeddingDelimiterNode) : null;
             Object distanceTypeNode = indexOptionsMap.remove("distance_type");
+            // DistanceType不设置时havenask似乎没有默认赋值，此时拿不到打分情况，因此默认赋值为InnerProduct
             DistanceType distanceType = distanceTypeNode != null
                 ? DistanceType.fromString(XContentMapValues.nodeStringValue(distanceTypeNode))
-                : null;
+                : DistanceType.INNER_PRODUCT;
             Object majorOrderNode = indexOptionsMap.remove("major_order");
             MajorOrder majorOrder = majorOrderNode != null
                 ? MajorOrder.fromString(XContentMapValues.nodeStringValue(majorOrderNode))
                 : null;
-            Object enableRtBuildNode = indexOptionsMap.remove("enable_rt_build");
-            Boolean enableRtBuild = enableRtBuildNode != null ? XContentMapValues.nodeBooleanValue(enableRtBuildNode) : null;
             Object ignoreInvalidDocNode = indexOptionsMap.remove("ignore_invalid_doc");
             Boolean ignoreInvalidDoc = ignoreInvalidDocNode != null ? XContentMapValues.nodeBooleanValue(ignoreInvalidDocNode) : null;
             Object enableRecallReportNode = indexOptionsMap.remove("enable_recall_report");
@@ -293,7 +291,6 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
                 embeddingDelimiter,
                 distanceType,
                 majorOrder,
-                enableRtBuild,
                 ignoreInvalidDoc,
                 enableRecallReport,
                 isEmbeddingSaved,
@@ -306,7 +303,6 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
             String embeddingDelimiter,
             DistanceType distanceType,
             MajorOrder majorOrder,
-            Boolean enableRtBuild,
             Boolean ignoreInvalidDoc,
             Boolean enableRecallReport,
             Boolean isEmbeddingSaved,
@@ -317,7 +313,6 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
             this.embeddingDelimiter = embeddingDelimiter;
             this.distanceType = distanceType;
             this.majorOrder = majorOrder;
-            this.enableRtBuild = enableRtBuild;
             this.ignoreInvalidDoc = ignoreInvalidDoc;
             this.enableRecallReport = enableRecallReport;
             this.isEmbeddingSaved = isEmbeddingSaved;
@@ -330,7 +325,6 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
             String embeddingDelimiter,
             DistanceType distanceType,
             MajorOrder majorOrder,
-            Boolean enableRtBuild,
             Boolean ignoreInvalidDoc,
             Boolean enableRecallReport,
             Boolean isEmbeddingSaved,
@@ -341,7 +335,6 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
             this.embeddingDelimiter = embeddingDelimiter;
             this.distanceType = distanceType;
             this.majorOrder = majorOrder;
-            this.enableRtBuild = enableRtBuild;
             this.ignoreInvalidDoc = ignoreInvalidDoc;
             this.enableRecallReport = enableRecallReport;
             this.isEmbeddingSaved = isEmbeddingSaved;
@@ -354,7 +347,6 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
             this.embeddingDelimiter = other.embeddingDelimiter;
             this.distanceType = other.distanceType;
             this.majorOrder = other.majorOrder;
-            this.enableRtBuild = other.enableRtBuild;
             this.ignoreInvalidDoc = other.ignoreInvalidDoc;
             this.enableRecallReport = other.enableRecallReport;
             this.isEmbeddingSaved = other.isEmbeddingSaved;
@@ -382,7 +374,6 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
             return Objects.equals(embeddingDelimiter, that.embeddingDelimiter)
                 && Objects.equals(distanceType, that.distanceType)
                 && Objects.equals(majorOrder, that.majorOrder)
-                && Objects.equals(enableRtBuild, that.enableRtBuild)
                 && Objects.equals(ignoreInvalidDoc, that.ignoreInvalidDoc)
                 && Objects.equals(enableRecallReport, that.enableRecallReport)
                 && Objects.equals(isEmbeddingSaved, that.isEmbeddingSaved)
@@ -396,7 +387,6 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
                 embeddingDelimiter,
                 distanceType,
                 majorOrder,
-                enableRtBuild,
                 ignoreInvalidDoc,
                 enableRecallReport,
                 isEmbeddingSaved,
@@ -419,8 +409,6 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
                 + ", majorOrder='"
                 + majorOrder
                 + '\''
-                + ", enableRtBuild="
-                + enableRtBuild
                 + ", ignoreInvalidDoc="
                 + ignoreInvalidDoc
                 + ", enableRecallReport="
@@ -445,9 +433,6 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
             }
             if (majorOrder != null) {
                 builder.field("major_order", majorOrder.getValue());
-            }
-            if (enableRtBuild != null) {
-                builder.field("enable_rt_build", enableRtBuild);
             }
             if (ignoreInvalidDoc != null) {
                 builder.field("ignore_invalid_doc", ignoreInvalidDoc);
