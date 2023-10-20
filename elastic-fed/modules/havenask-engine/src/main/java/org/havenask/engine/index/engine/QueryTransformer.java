@@ -27,9 +27,13 @@ import org.havenask.search.builder.SearchSourceBuilder;
 public class QueryTransformer {
     public static String toSql(String table, SearchSourceBuilder dsl) throws IOException {
         StringBuilder sqlQuery = new StringBuilder();
-        sqlQuery.append("select _id from " + table);
         QueryBuilder queryBuilder = dsl.query();
         StringBuilder where = new StringBuilder();
+        StringBuilder selectParams = new StringBuilder();
+        StringBuilder orderBy = new StringBuilder();
+
+        selectParams.append(" _id");
+
         if (dsl.knnSearch().size() > 0) {
             where.append(" where ");
             boolean first = true;
@@ -40,11 +44,15 @@ public class QueryTransformer {
 
                 if (false == first) {
                     where.append(" or ");
+                    selectParams.append(" + ");
                 }
 
                 if (first) {
                     first = false;
+                    selectParams.append(", (");
                 }
+
+                selectParams.append("vectorscore('").append(knnSearchBuilder.getField()).append("')");
 
                 where.append("MATCHINDEX('" + knnSearchBuilder.getField() + "', '");
                 for (int i = 0; i < knnSearchBuilder.getQueryVector().length; i++) {
@@ -55,11 +63,12 @@ public class QueryTransformer {
                 }
                 where.append("&n=" + knnSearchBuilder.k() + "')");
             }
+            selectParams.append(") as _score");
+            orderBy.append(" order by _score desc");
         } else if (queryBuilder != null) {
-            if (queryBuilder instanceof MatchAllQueryBuilder) {
-
-            } else if (queryBuilder instanceof ProximaQueryBuilder) {
+            if (queryBuilder instanceof MatchAllQueryBuilder) {} else if (queryBuilder instanceof ProximaQueryBuilder) {
                 ProximaQueryBuilder<?> proximaQueryBuilder = (ProximaQueryBuilder<?>) queryBuilder;
+                selectParams.append(", vectorscore('").append(proximaQueryBuilder.getFieldName()).append("') as _score");
                 where.append(" where MATCHINDEX('" + proximaQueryBuilder.getFieldName() + "', '");
                 for (int i = 0; i < proximaQueryBuilder.getVector().length; i++) {
                     where.append(proximaQueryBuilder.getVector()[i]);
@@ -68,6 +77,7 @@ public class QueryTransformer {
                     }
                 }
                 where.append("&n=" + proximaQueryBuilder.getSize() + "')");
+                orderBy.append(" order by _score desc");
             } else if (queryBuilder instanceof TermQueryBuilder) {
                 TermQueryBuilder termQueryBuilder = (TermQueryBuilder) queryBuilder;
                 where.append(" where " + termQueryBuilder.fieldName() + "='" + termQueryBuilder.value() + "'");
@@ -75,11 +85,11 @@ public class QueryTransformer {
                 MatchQueryBuilder matchQueryBuilder = (MatchQueryBuilder) queryBuilder;
                 where.append(" where MATCHINDEX('" + matchQueryBuilder.fieldName() + "', '" + matchQueryBuilder.value() + "')");
             } else {
-                // TODO reject unsupported DSL
                 throw new IOException("unsupported DSL: " + dsl);
             }
         }
-        sqlQuery.append(where);
+        sqlQuery.append("select").append(selectParams).append(" from ").append(table);
+        sqlQuery.append(where).append(orderBy);
         int size = 0;
         if (dsl.size() >= 0) {
             size += dsl.size();

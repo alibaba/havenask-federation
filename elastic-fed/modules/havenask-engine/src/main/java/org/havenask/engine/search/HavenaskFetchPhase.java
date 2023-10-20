@@ -15,10 +15,12 @@
 package org.havenask.engine.search;
 
 import java.io.IOException;
-import java.util.Collections;
 import java.util.List;
 import java.util.Arrays;
 import java.util.ArrayList;
+import java.util.Map;
+import java.util.HashMap;
+import java.util.Collections;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -53,7 +55,7 @@ public class HavenaskFetchPhase implements FetchPhase {
     private final QrsClient qrsHttpClient;
     private static final int SOURCE_POS = 0;
     private static final int ID_POS = 1;
-
+    private static final Object SOURCE_NOT_FOUND = "{\n" + "\"warn\":\"source not found\"\n" + "}";
     private static final Logger LOGGER = LogManager.getLogger(FetchPhase.class);
 
     // TODO fetchSubPhases
@@ -101,15 +103,15 @@ public class HavenaskFetchPhase implements FetchPhase {
             // make sure that we iterate in doc id order
             Arrays.sort(docs);
 
-            List<String> ids = context.readerContext().getFromContext(HavenaskIndexSearcher.IDS_CONTEXT);
-            SqlResponse sqlResponse = fetchWithSql(docs, ids, context);
-            transferSqlResponse2FetchResult(docs, sqlResponse, context);
+            List<String> idList = context.readerContext().getFromContext(HavenaskIndexSearcher.IDS_CONTEXT);
+            SqlResponse sqlResponse = fetchWithSql(docs, idList, context);
+            transferSqlResponse2FetchResult(docs, idList, sqlResponse, context);
         } catch (IOException e) {
             throw new FetchPhaseExecutionException(context.shardTarget(), "Error running havenask fetch phase", e);
         }
     }
 
-    private SqlResponse fetchWithSql(DocIdToIndex[] docs, List<String> ids, SearchContext context) throws IOException {
+    private SqlResponse fetchWithSql(DocIdToIndex[] docs, List<String> idList, SearchContext context) throws IOException {
         StringBuilder sqlQuery = new StringBuilder();
         String tableName = Utils.getHavenaskTableName(context.indexShard().shardId());
         sqlQuery.append("select _source,_id from " + tableName + "_summary_");
@@ -119,7 +121,7 @@ public class HavenaskFetchPhase implements FetchPhase {
                 throw new TaskCancelledException("cancelled");
             }
             int docId = docs[index].docId;
-            sqlQuery.append("'" + ids.get(docId) + "'");
+            sqlQuery.append("'" + idList.get(docId) + "'");
             if (index < context.docIdsToLoadSize() - 1) {
                 sqlQuery.append(",");
             }
@@ -131,22 +133,32 @@ public class HavenaskFetchPhase implements FetchPhase {
         return SqlResponse.parse(response.getResult());
     }
 
-    private void transferSqlResponse2FetchResult(DocIdToIndex[] docs, SqlResponse sqlResponse, SearchContext context) throws IOException {
+    public void transferSqlResponse2FetchResult(DocIdToIndex[] docs, List<String> idList, SqlResponse sqlResponse, SearchContext context)
+        throws IOException {
         TotalHits totalHits = context.queryResult().getTotalHits();
-        SearchHit[] hits = new SearchHit[sqlResponse.getRowCount()];
-
+        SearchHit[] hits = new SearchHit[idList.size()];
         List<FetchSubPhaseProcessor> processors = getProcessors(context.shardTarget(), context);
 
+        // 记录fetch结果的_id和index的映射关系, query阶段查到的idList是根据_score值排序好的，但fetch结果非有序
+        Map<String, Integer> fetchResIdListMap = new HashMap<>();
         for (int i = 0; i < sqlResponse.getRowCount(); i++) {
+            fetchResIdListMap.put((String) sqlResponse.getSqlResult().getData()[i][ID_POS], i);
+        }
+
+        for (int i = 0; i < idList.size(); i++) {
             // TODO add _routing
             SearchHit searchHit = new SearchHit(
                 docs[i].docId,
-                (String) sqlResponse.getSqlResult().getData()[i][ID_POS],
+                idList.get(i),
                 new Text(MapperService.SINGLE_MAPPING_NAME),
                 Collections.emptyMap(),
                 Collections.emptyMap()
             );
-            HitContent hit = new HitContent(searchHit, sqlResponse.getSqlResult().getData()[i][SOURCE_POS]);
+
+            // 根据idList的顺序从fetch结果获取相对应的_source, 如果数据丢失则返回_source not found
+            Integer fetchResIndex = fetchResIdListMap.get(idList.get(i));
+            Object source = fetchResIndex != null ? sqlResponse.getSqlResult().getData()[fetchResIndex][SOURCE_POS] : SOURCE_NOT_FOUND;
+            HitContent hit = new HitContent(searchHit, source);
             if (processors != null && processors.size() > 0) {
                 for (FetchSubPhaseProcessor processor : processors) {
                     processor.process(hit);
@@ -154,7 +166,7 @@ public class HavenaskFetchPhase implements FetchPhase {
                 hits[i] = hit.getHit();
             } else {
                 hits[i] = hit.getHit();
-                hits[i].sourceRef(new BytesArray((String) sqlResponse.getSqlResult().getData()[i][SOURCE_POS]));
+                hits[i].sourceRef(new BytesArray((String) source));
             }
         }
 
@@ -176,11 +188,11 @@ public class HavenaskFetchPhase implements FetchPhase {
         }
     }
 
-    static class DocIdToIndex implements Comparable<DocIdToIndex> {
+    public static class DocIdToIndex implements Comparable<DocIdToIndex> {
         final int docId;
         final int index;
 
-        DocIdToIndex(int docId, int index) {
+        public DocIdToIndex(int docId, int index) {
             this.docId = docId;
             this.index = index;
         }
