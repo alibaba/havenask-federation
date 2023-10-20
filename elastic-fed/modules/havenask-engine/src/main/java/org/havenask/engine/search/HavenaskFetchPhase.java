@@ -55,7 +55,7 @@ public class HavenaskFetchPhase implements FetchPhase {
     private final QrsClient qrsHttpClient;
     private static final int SOURCE_POS = 0;
     private static final int ID_POS = 1;
-    private static final String SOURCE_NOT_FOUND = "_source not found";
+    private static final Object SOURCE_NOT_FOUND = "{\n" + "\"warn\":\"source not found\"\n" + "}";
     private static final Logger LOGGER = LogManager.getLogger(FetchPhase.class);
 
     // TODO fetchSubPhases
@@ -133,10 +133,10 @@ public class HavenaskFetchPhase implements FetchPhase {
         return SqlResponse.parse(response.getResult());
     }
 
-    private void transferSqlResponse2FetchResult(DocIdToIndex[] docs, List<String> idList, SqlResponse sqlResponse, SearchContext context)
+    public void transferSqlResponse2FetchResult(DocIdToIndex[] docs, List<String> idList, SqlResponse sqlResponse, SearchContext context)
         throws IOException {
         TotalHits totalHits = context.queryResult().getTotalHits();
-        SearchHit[] hits = new SearchHit[sqlResponse.getRowCount()];
+        SearchHit[] hits = new SearchHit[idList.size()];
         List<FetchSubPhaseProcessor> processors = getProcessors(context.shardTarget(), context);
 
         // 记录fetch结果的_id和index的映射关系, query阶段查到的idList是根据_score值排序好的，但fetch结果非有序
@@ -188,11 +188,11 @@ public class HavenaskFetchPhase implements FetchPhase {
         }
     }
 
-    static class DocIdToIndex implements Comparable<DocIdToIndex> {
+    public static class DocIdToIndex implements Comparable<DocIdToIndex> {
         final int docId;
         final int index;
 
-        DocIdToIndex(int docId, int index) {
+        public DocIdToIndex(int docId, int index) {
             this.docId = docId;
             this.index = index;
         }
