@@ -242,6 +242,7 @@ public class HavenaskEngine extends InternalEngine {
 
     private void checkTableStatus() throws IOException {
         long timeout = 60000;
+        long sleepInterval = 1000;
         while (timeout > 0) {
             try {
                 TargetInfo targetInfo = metaDataSyncer.getSearcherTargetInfo();
@@ -267,9 +268,9 @@ public class HavenaskEngine extends InternalEngine {
                     () -> new ParameterizedMessage("shard [{}] checkTableStatus exception, waiting for retry", engineConfig.getShardId()),
                     e
                 );
-                timeout -= 5000;
+                timeout -= sleepInterval;
                 try {
-                    Thread.sleep(5000);
+                    Thread.sleep(sleepInterval);
                 } catch (InterruptedException ex) {
                     // pass
                 }
