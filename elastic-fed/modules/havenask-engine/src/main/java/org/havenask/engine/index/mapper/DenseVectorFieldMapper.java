@@ -211,7 +211,6 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
      *     "embedding_delimiter": ",",
      *     "builder_name": "QcBuilder",
      *     "searcher_name": "QcSearcher",
-     *     "distance_type": "SquaredEuclidean",
      *     "search_index_params": "{\"proxima.qc.searcher.scan_ratio\":0.01}",
      *     "build_index_params": "{\"proxima.qc.builder.quantizer_class\":\"Int8QuantizerConverter\",
      *          \"proxima.qc.builder.quantize_by_centroid\":true,\"proxima.qc.builder.optimizer_class\":
@@ -239,7 +238,6 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
         static IndexOptions parseIndexOptions(String fieldName, Map<String, ?> indexOptionsMap) {
             Object embeddingDelimiterNode = indexOptionsMap.remove("embedding_delimiter");
             String embeddingDelimiter = embeddingDelimiterNode != null ? XContentMapValues.nodeStringValue(embeddingDelimiterNode) : null;
-            Object distanceTypeNode = indexOptionsMap.remove("distance_type");
             Object majorOrderNode = indexOptionsMap.remove("major_order");
             MajorOrder majorOrder = majorOrderNode != null
                 ? MajorOrder.fromString(XContentMapValues.nodeStringValue(majorOrderNode))
