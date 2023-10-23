@@ -183,30 +183,6 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
         }
     }
 
-    public enum DistanceType {
-        INNER_PRODUCT("InnerProduct"),
-        SQUARED_EUCLIDEAN("SquaredEuclidean");
-
-        private final String value;
-
-        DistanceType(String value) {
-            this.value = value;
-        }
-
-        public String getValue() {
-            return value;
-        }
-
-        public static DistanceType fromString(String value) {
-            for (DistanceType distanceType : DistanceType.values()) {
-                if (distanceType.getValue().equalsIgnoreCase(value)) {
-                    return distanceType;
-                }
-            }
-            throw new IllegalArgumentException("No distance type matches " + value);
-        }
-    }
-
     public enum MajorOrder {
         COL("col"),
         ROW("row");
@@ -235,7 +211,6 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
      *     "embedding_delimiter": ",",
      *     "builder_name": "QcBuilder",
      *     "searcher_name": "QcSearcher",
-     *     "distance_type": "SquaredEuclidean",
      *     "search_index_params": "{\"proxima.qc.searcher.scan_ratio\":0.01}",
      *     "build_index_params": "{\"proxima.qc.builder.quantizer_class\":\"Int8QuantizerConverter\",
      *          \"proxima.qc.builder.quantize_by_centroid\":true,\"proxima.qc.builder.optimizer_class\":
@@ -253,7 +228,6 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
     public static class IndexOptions implements ToXContent {
         public final Algorithm type;
         public final String embeddingDelimiter;
-        public final DistanceType distanceType;
         public final MajorOrder majorOrder;
         public final Boolean ignoreInvalidDoc;
         public final Boolean enableRecallReport;
@@ -264,11 +238,6 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
         static IndexOptions parseIndexOptions(String fieldName, Map<String, ?> indexOptionsMap) {
             Object embeddingDelimiterNode = indexOptionsMap.remove("embedding_delimiter");
             String embeddingDelimiter = embeddingDelimiterNode != null ? XContentMapValues.nodeStringValue(embeddingDelimiterNode) : null;
-            Object distanceTypeNode = indexOptionsMap.remove("distance_type");
-            // DistanceType不设置时havenask似乎没有默认赋值，此时拿不到打分情况，因此默认赋值为InnerProduct
-            DistanceType distanceType = distanceTypeNode != null
-                ? DistanceType.fromString(XContentMapValues.nodeStringValue(distanceTypeNode))
-                : DistanceType.INNER_PRODUCT;
             Object majorOrderNode = indexOptionsMap.remove("major_order");
             MajorOrder majorOrder = majorOrderNode != null
                 ? MajorOrder.fromString(XContentMapValues.nodeStringValue(majorOrderNode))
@@ -289,7 +258,6 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
             // TODO valid value
             return new IndexOptions(
                 embeddingDelimiter,
-                distanceType,
                 majorOrder,
                 ignoreInvalidDoc,
                 enableRecallReport,
@@ -301,7 +269,6 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
 
         IndexOptions(
             String embeddingDelimiter,
-            DistanceType distanceType,
             MajorOrder majorOrder,
             Boolean ignoreInvalidDoc,
             Boolean enableRecallReport,
@@ -311,7 +278,6 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
         ) {
             this.type = null;
             this.embeddingDelimiter = embeddingDelimiter;
-            this.distanceType = distanceType;
             this.majorOrder = majorOrder;
             this.ignoreInvalidDoc = ignoreInvalidDoc;
             this.enableRecallReport = enableRecallReport;
@@ -323,7 +289,6 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
         IndexOptions(
             Algorithm type,
             String embeddingDelimiter,
-            DistanceType distanceType,
             MajorOrder majorOrder,
             Boolean ignoreInvalidDoc,
             Boolean enableRecallReport,
@@ -333,7 +298,6 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
         ) {
             this.type = type;
             this.embeddingDelimiter = embeddingDelimiter;
-            this.distanceType = distanceType;
             this.majorOrder = majorOrder;
             this.ignoreInvalidDoc = ignoreInvalidDoc;
             this.enableRecallReport = enableRecallReport;
@@ -345,7 +309,6 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
         IndexOptions(Algorithm type, IndexOptions other) {
             this.type = type;
             this.embeddingDelimiter = other.embeddingDelimiter;
-            this.distanceType = other.distanceType;
             this.majorOrder = other.majorOrder;
             this.ignoreInvalidDoc = other.ignoreInvalidDoc;
             this.enableRecallReport = other.enableRecallReport;
@@ -372,7 +335,6 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
             }
             IndexOptions that = (IndexOptions) o;
             return Objects.equals(embeddingDelimiter, that.embeddingDelimiter)
-                && Objects.equals(distanceType, that.distanceType)
                 && Objects.equals(majorOrder, that.majorOrder)
                 && Objects.equals(ignoreInvalidDoc, that.ignoreInvalidDoc)
                 && Objects.equals(enableRecallReport, that.enableRecallReport)
@@ -385,7 +347,6 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
         public int hashCode() {
             return Objects.hash(
                 embeddingDelimiter,
-                distanceType,
                 majorOrder,
                 ignoreInvalidDoc,
                 enableRecallReport,
@@ -402,13 +363,8 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
                 + type
                 + ", embeddingDelimiter='"
                 + embeddingDelimiter
-                + '\''
-                + ", distanceType='"
-                + distanceType
-                + '\''
                 + ", majorOrder='"
                 + majorOrder
-                + '\''
                 + ", ignoreInvalidDoc="
                 + ignoreInvalidDoc
                 + ", enableRecallReport="
@@ -427,9 +383,6 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
             builder.field("type", type.name());
             if (embeddingDelimiter != null) {
                 builder.field("embedding_delimiter", embeddingDelimiter);
-            }
-            if (distanceType != null) {
-                builder.field("distance_type", distanceType.getValue());
             }
             if (majorOrder != null) {
                 builder.field("major_order", majorOrder.getValue());

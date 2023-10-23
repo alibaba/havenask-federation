@@ -75,6 +75,7 @@ public class SchemaGenerator {
     public static final String LINEAR_SEARCHER = "LinearSearcher";
     public static final String QC_SEARCHER = "QcSearcher";
     public static final String HNSW_SEARCHER = "HnswSearcher";
+    public static final Map<String, String> DISTANCE_TYPE_MAP = Map.of("l2_norm", "SquaredEuclidean", "dot_product", "InnerProduct");
 
     Set<String> analyzers = null;
 
@@ -253,13 +254,11 @@ public class SchemaGenerator {
         Map<String, String> parameter = new LinkedHashMap<>();
         parameter.put("dimension", String.valueOf(vectorField.getDims()));
         parameter.put("enable_rt_build", String.valueOf(true));
+        parameter.put("distance_type", DISTANCE_TYPE_MAP.get(vectorField.getSimilarity().getValue()));
 
         IndexOptions indexOptions = vectorField.getIndexOptions();
         if (indexOptions.embeddingDelimiter != null) {
             parameter.put("embedding_delimiter", indexOptions.embeddingDelimiter);
-        }
-        if (indexOptions.distanceType != null) {
-            parameter.put("distance_type", indexOptions.distanceType.getValue());
         }
         if (indexOptions.majorOrder != null) {
             parameter.put("major_order", indexOptions.majorOrder.getValue());

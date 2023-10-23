@@ -159,25 +159,8 @@ public class DenseVectorFieldMapperTests extends MapperTestCase {
         );
         assertThat(e4.getMessage(), containsString("No algorithm matches wrong_type"));
 
-        // invalid distance_type
-        MapperParsingException e5 = expectThrows(
-            MapperParsingException.class,
-            () -> createDocumentMapper(
-                fieldMapping(
-                    b -> b.field("type", "dense_vector")
-                        .field("dims", 3)
-                        .field("similarity", "dot_product")
-                        .startObject("index_options")
-                        .field("type", "hnsw")
-                        .field("distance_type", "wrong_distance_type")
-                        .endObject()
-                )
-            )
-        );
-        assertThat(e5.getMessage(), containsString("No distance type matches wrong_distance_type"));
-
         // invalid major_order
-        MapperParsingException e6 = expectThrows(
+        MapperParsingException e5 = expectThrows(
             MapperParsingException.class,
             () -> createDocumentMapper(
                 fieldMapping(
@@ -191,7 +174,7 @@ public class DenseVectorFieldMapperTests extends MapperTestCase {
                 )
             )
         );
-        assertThat(e6.getMessage(), containsString("No major order matches wrong_major_order"));
+        assertThat(e5.getMessage(), containsString("No major order matches wrong_major_order"));
     }
 
     public void testWriteWrongDims() throws Exception {

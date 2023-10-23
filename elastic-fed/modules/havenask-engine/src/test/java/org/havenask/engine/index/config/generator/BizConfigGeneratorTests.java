@@ -504,7 +504,7 @@ public class BizConfigGeneratorTests extends MapperServiceTestCase {
                     + "\t\t\"parameters\":{\n"
                     + "\t\t\t\"dimension\":\"128\",\n"
                     + "\t\t\t\"enable_rt_build\":\"true\",\n"
-                    + "\t\t\t\"distance_type\":\"InnerProduct\",\n"
+                    + "\t\t\t\"distance_type\":\"SquaredEuclidean\",\n"
                     + "\t\t\t\"builder_name\":\"HnswBuilder\",\n"
                     + "\t\t\t\"searcher_name\":\"HnswSearcher\"\n"
                     + "\t\t}\n"
