@@ -72,7 +72,7 @@ public class HavenaskIndexSearcher extends ContextIndexSearcher {
 
     @Override
     public void search(Query query, Collector collector) throws IOException {
-        String sql = QueryTransformer.toSql(tableName, searchContext.request().source());
+        String sql = QueryTransformer.toSql(tableName, searchContext.request().source(), searchContext.indexShard().mapperService());
         String kvpair = "format:full_json;timeout:10000;databaseName:" + SQL_DATABASE;
         QrsSqlRequest request = new QrsSqlRequest(sql, kvpair);
         QrsSqlResponse response = qrsHttpClient.executeSql(request);

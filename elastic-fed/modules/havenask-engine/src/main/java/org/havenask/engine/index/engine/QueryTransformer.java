@@ -16,7 +16,9 @@ package org.havenask.engine.index.engine;
 
 import java.io.IOException;
 
+import org.havenask.engine.index.mapper.DenseVectorFieldMapper;
 import org.havenask.engine.index.query.ProximaQueryBuilder;
+import org.havenask.index.mapper.MapperService;
 import org.havenask.index.query.MatchAllQueryBuilder;
 import org.havenask.index.query.MatchQueryBuilder;
 import org.havenask.index.query.QueryBuilder;
@@ -25,7 +27,9 @@ import org.havenask.search.builder.KnnSearchBuilder;
 import org.havenask.search.builder.SearchSourceBuilder;
 
 public class QueryTransformer {
-    public static String toSql(String table, SearchSourceBuilder dsl) throws IOException {
+    public static final String DENSE_VECTOR_FIELD = "image";
+
+    public static String toSql(String table, SearchSourceBuilder dsl, MapperService mapperService) throws IOException {
         StringBuilder sqlQuery = new StringBuilder();
         QueryBuilder queryBuilder = dsl.query();
         StringBuilder where = new StringBuilder();
@@ -52,9 +56,10 @@ public class QueryTransformer {
                     selectParams.append(", (");
                 }
 
-                selectParams.append("vectorscore('").append(knnSearchBuilder.getField()).append("')");
+                String fieldName = knnSearchBuilder.getField();
+                selectParams.append(getScoreComputeStr(fieldName, mapperService));
 
-                where.append("MATCHINDEX('" + knnSearchBuilder.getField() + "', '");
+                where.append("MATCHINDEX('" + fieldName + "', '");
                 for (int i = 0; i < knnSearchBuilder.getQueryVector().length; i++) {
                     where.append(knnSearchBuilder.getQueryVector()[i]);
                     if (i < knnSearchBuilder.getQueryVector().length - 1) {
@@ -68,7 +73,9 @@ public class QueryTransformer {
         } else if (queryBuilder != null) {
             if (queryBuilder instanceof MatchAllQueryBuilder) {} else if (queryBuilder instanceof ProximaQueryBuilder) {
                 ProximaQueryBuilder<?> proximaQueryBuilder = (ProximaQueryBuilder<?>) queryBuilder;
-                selectParams.append(", vectorscore('").append(proximaQueryBuilder.getFieldName()).append("') as _score");
+                String fieldName = proximaQueryBuilder.getFieldName();
+
+                selectParams.append(", ").append(getScoreComputeStr(fieldName, mapperService)).append(" as _score");
                 where.append(" where MATCHINDEX('" + proximaQueryBuilder.getFieldName() + "', '");
                 for (int i = 0; i < proximaQueryBuilder.getVector().length; i++) {
                     where.append(proximaQueryBuilder.getVector()[i]);
@@ -102,5 +109,21 @@ public class QueryTransformer {
             sqlQuery.append(" limit " + size);
         }
         return sqlQuery.toString();
+    }
+
+    private static String getScoreComputeStr(String fieldName, MapperService mapperService) throws IOException {
+        String similarity = ((DenseVectorFieldMapper) mapperService.documentMapper().mappers().getMapper(fieldName)).getSimilarity()
+            .getValue();
+        StringBuilder scoreComputeStr = new StringBuilder();
+        if (similarity != null && similarity.equals("dot_product")) {
+            // e.g. "(1/(1+vecscore('fieldName')))"
+            scoreComputeStr.append("(1/(").append("1+vecscore('").append(fieldName).append("')))");
+        } else if (similarity != null && similarity.equals("l2_norm")) {
+            // e.g. "((1+vecscore('fieldName'))/2)"
+            scoreComputeStr.append("((1+vecscore('").append(fieldName).append("'))/2)");
+        } else {
+            throw new IOException("unsupported similarity: " + similarity);
+        }
+        return scoreComputeStr.toString();
     }
 }
