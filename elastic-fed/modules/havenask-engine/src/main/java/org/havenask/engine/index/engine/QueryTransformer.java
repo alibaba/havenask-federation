@@ -115,12 +115,12 @@ public class QueryTransformer {
         String similarity = ((DenseVectorFieldMapper) mapperService.documentMapper().mappers().getMapper(fieldName)).getSimilarity()
             .getValue();
         StringBuilder scoreComputeStr = new StringBuilder();
-        if (similarity != null && similarity.equals("dot_product")) {
+        if (similarity != null && similarity.equals("l2_norm")) {
             // e.g. "(1/(1+vecscore('fieldName')))"
-            scoreComputeStr.append("(1/(").append("1+vecscore('").append(fieldName).append("')))");
-        } else if (similarity != null && similarity.equals("l2_norm")) {
+            scoreComputeStr.append("(1/(").append("1+vectorscore('").append(fieldName).append("')))");
+        } else if (similarity != null && similarity.equals("dot_product")) {
             // e.g. "((1+vecscore('fieldName'))/2)"
-            scoreComputeStr.append("((1+vecscore('").append(fieldName).append("'))/2)");
+            scoreComputeStr.append("((1+vectorscore('").append(fieldName).append("'))/2)");
         } else {
             throw new IOException("unsupported similarity: " + similarity);
         }
