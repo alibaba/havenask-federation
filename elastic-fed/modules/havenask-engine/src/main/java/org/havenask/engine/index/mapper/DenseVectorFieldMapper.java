@@ -943,6 +943,10 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
         this.indexOptions = mappedFieldType.indexOptions;
     }
 
+    public Similarity getSimilarity() {
+        return similarity;
+    }
+
     @Override
     public boolean parsesArrayValue() {
         return true;

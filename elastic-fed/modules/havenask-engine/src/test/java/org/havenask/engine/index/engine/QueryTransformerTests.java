@@ -15,28 +15,73 @@
 package org.havenask.engine.index.engine;
 
 import java.io.IOException;
+import java.util.Collection;
 
 import org.havenask.common.collect.List;
+import org.havenask.common.settings.Settings;
+import org.havenask.engine.HavenaskEnginePlugin;
 import org.havenask.engine.index.query.HnswQueryBuilder;
+import org.havenask.index.mapper.MapperService;
+import org.havenask.index.mapper.MapperServiceTestCase;
 import org.havenask.index.query.QueryBuilders;
+import org.havenask.plugins.Plugin;
 import org.havenask.search.builder.KnnSearchBuilder;
 import org.havenask.search.builder.SearchSourceBuilder;
-import org.havenask.test.HavenaskTestCase;
+import org.junit.Before;
 
-public class QueryTransformerTests extends HavenaskTestCase {
+import static java.util.Collections.singletonList;
+
+public class QueryTransformerTests extends MapperServiceTestCase {
+    @Override
+    protected Collection<? extends Plugin> getPlugins() {
+        return singletonList(new HavenaskEnginePlugin(Settings.EMPTY));
+    }
+
+    private MapperService mapperService;
+    // mock
+    private SearchSourceBuilder builder = new SearchSourceBuilder();
+
+    @Before
+    public void setup() throws IOException {
+        mapperService = createMapperService(mapping(b -> {
+            {
+                b.startObject("field");
+                {
+                    b.field("type", "dense_vector");
+                    b.field("dims", 2);
+                    b.field("similarity", "l2_norm");
+                }
+                b.endObject();
+                b.startObject("field1");
+                {
+                    b.field("type", "dense_vector");
+                    b.field("dims", 2);
+                    b.field("similarity", "l2_norm");
+                }
+                b.endObject();
+                b.startObject("field2");
+                {
+                    b.field("type", "dense_vector");
+                    b.field("dims", 2);
+                    b.field("similarity", "dot_product");
+                }
+                b.endObject();
+            }
+        }));
+    }
+
     public void testMatchAllDocsQuery() throws IOException {
-        SearchSourceBuilder builder = new SearchSourceBuilder();
         builder.query(QueryBuilders.matchAllQuery());
-        String sql = QueryTransformer.toSql("table", builder);
+        String sql = QueryTransformer.toSql("table", builder, mapperService);
         assertEquals(sql, "select _id from table");
     }
 
     public void testProximaQuery() throws IOException {
         SearchSourceBuilder builder = new SearchSourceBuilder();
         builder.query(new HnswQueryBuilder("field", new float[] { 1.0f, 2.0f }, 20));
-        String sql = QueryTransformer.toSql("table", builder);
+        String sql = QueryTransformer.toSql("table", builder, mapperService);
         assertEquals(
-            "select _id, vectorscore('field') as _score from table where MATCHINDEX('field', '1.0,2.0&n=20') order by _score desc",
+            "select _id, (1/(1+vectorscore('field'))) as _score from table where MATCHINDEX('field', '1.0,2.0&n=20') order by _score desc",
             sql
         );
     }
@@ -45,7 +90,7 @@ public class QueryTransformerTests extends HavenaskTestCase {
         try {
             SearchSourceBuilder builder = new SearchSourceBuilder();
             builder.query(QueryBuilders.existsQuery("field"));
-            QueryTransformer.toSql("table", builder);
+            QueryTransformer.toSql("table", builder, mapperService);
             fail();
         } catch (IOException e) {
             assertEquals(e.getMessage(), "unsupported DSL: {\"query\":{\"exists\":{\"field\":\"field\",\"boost\":1.0}}}");
@@ -56,7 +101,7 @@ public class QueryTransformerTests extends HavenaskTestCase {
     public void testTermQuery() throws IOException {
         SearchSourceBuilder builder = new SearchSourceBuilder();
         builder.query(QueryBuilders.termQuery("field", "value"));
-        String sql = QueryTransformer.toSql("table", builder);
+        String sql = QueryTransformer.toSql("table", builder, mapperService);
         assertEquals(sql, "select _id from table where field='value'");
     }
 
@@ -64,7 +109,7 @@ public class QueryTransformerTests extends HavenaskTestCase {
     public void testMatchQuery() throws IOException {
         SearchSourceBuilder builder = new SearchSourceBuilder();
         builder.query(QueryBuilders.matchQuery("field", "value"));
-        String sql = QueryTransformer.toSql("table", builder);
+        String sql = QueryTransformer.toSql("table", builder, mapperService);
         assertEquals(sql, "select _id from table where MATCHINDEX('field', 'value')");
     }
 
@@ -74,7 +119,7 @@ public class QueryTransformerTests extends HavenaskTestCase {
         builder.query(QueryBuilders.matchAllQuery());
         builder.from(10);
         builder.size(10);
-        String sql = QueryTransformer.toSql("table", builder);
+        String sql = QueryTransformer.toSql("table", builder, mapperService);
         assertEquals("select _id from table limit 20", sql);
     }
 
@@ -83,7 +128,7 @@ public class QueryTransformerTests extends HavenaskTestCase {
         SearchSourceBuilder builder = new SearchSourceBuilder();
         builder.query(QueryBuilders.matchAllQuery());
         builder.size(10);
-        String sql = QueryTransformer.toSql("table", builder);
+        String sql = QueryTransformer.toSql("table", builder, mapperService);
         assertEquals(sql, "select _id from table limit 10");
     }
 
@@ -92,19 +137,30 @@ public class QueryTransformerTests extends HavenaskTestCase {
         SearchSourceBuilder builder = new SearchSourceBuilder();
         builder.query(QueryBuilders.matchAllQuery());
         builder.from(10);
-        String sql = QueryTransformer.toSql("table", builder);
+        String sql = QueryTransformer.toSql("table", builder, mapperService);
         assertEquals(sql, "select _id from table");
     }
 
     // test knn dsl
     public void testKnnDsl() throws IOException {
-        SearchSourceBuilder builder = new SearchSourceBuilder();
-        builder.query(QueryBuilders.matchAllQuery());
-        builder.knnSearch(List.of(new KnnSearchBuilder("field", new float[] { 1.0f, 2.0f }, 20, 20, null)));
-        String sql = QueryTransformer.toSql("table", builder);
+        SearchSourceBuilder l2NormBuilder = new SearchSourceBuilder();
+        l2NormBuilder.query(QueryBuilders.matchAllQuery());
+        l2NormBuilder.knnSearch(List.of(new KnnSearchBuilder("field1", new float[] { 1.0f, 2.0f }, 20, 20, null)));
+        String l2NormSql = QueryTransformer.toSql("table", l2NormBuilder, mapperService);
         assertEquals(
-            "select _id, (vectorscore('field')) as _score from table where MATCHINDEX('field', '1.0,2.0&n=20') order by _score desc",
-            sql
+            "select _id, ((1/(1+vectorscore('field1')))) as _score from table "
+                + "where MATCHINDEX('field1', '1.0,2.0&n=20') order by _score desc",
+            l2NormSql
+        );
+
+        SearchSourceBuilder dotProductBuilder = new SearchSourceBuilder();
+        dotProductBuilder.query(QueryBuilders.matchAllQuery());
+        dotProductBuilder.knnSearch(List.of(new KnnSearchBuilder("field2", new float[] { 1.0f, 2.0f }, 20, 20, null)));
+        String dotProductSql = QueryTransformer.toSql("table", dotProductBuilder, mapperService);
+        assertEquals(
+            "select _id, (((1+vectorscore('field2'))/2)) as _score from table "
+                + "where MATCHINDEX('field2', '1.0,2.0&n=20') order by _score desc",
+            dotProductSql
         );
     }
 
@@ -118,10 +174,10 @@ public class QueryTransformerTests extends HavenaskTestCase {
                 new KnnSearchBuilder("field2", new float[] { 3.0f, 4.0f }, 10, 10, null)
             )
         );
-        String sql = QueryTransformer.toSql("table", builder);
+        String sql = QueryTransformer.toSql("table", builder, mapperService);
         assertEquals(
-            "select _id, (vectorscore('field1') + vectorscore('field2')) as _score from table where "
-                + "MATCHINDEX('field1', '1.0,2.0&n=20') or MATCHINDEX('field2', '3.0,4.0&n=10') order by _score desc",
+            "select _id, ((1/(1+vectorscore('field1'))) + ((1+vectorscore('field2'))/2)) as _score from table "
+                + "where MATCHINDEX('field1', '1.0,2.0&n=20') or MATCHINDEX('field2', '3.0,4.0&n=10') order by _score desc",
             sql
         );
     }
@@ -132,7 +188,7 @@ public class QueryTransformerTests extends HavenaskTestCase {
             SearchSourceBuilder builder = new SearchSourceBuilder();
             builder.query(QueryBuilders.matchAllQuery());
             builder.knnSearch(List.of(new KnnSearchBuilder("field", new float[] { 1.0f, 2.0f }, 20, 20, 1.0f)));
-            QueryTransformer.toSql("table", builder);
+            QueryTransformer.toSql("table", builder, mapperService);
             fail();
         } catch (IOException e) {
             assertEquals(
@@ -150,7 +206,7 @@ public class QueryTransformerTests extends HavenaskTestCase {
             KnnSearchBuilder knnSearchBuilder = new KnnSearchBuilder("field", new float[] { 1.0f, 2.0f }, 20, 20, null);
             knnSearchBuilder.addFilterQuery(QueryBuilders.matchAllQuery());
             builder.knnSearch(List.of(knnSearchBuilder));
-            QueryTransformer.toSql("table", builder);
+            QueryTransformer.toSql("table", builder, mapperService);
             fail();
         } catch (IOException e) {
             assertEquals(
