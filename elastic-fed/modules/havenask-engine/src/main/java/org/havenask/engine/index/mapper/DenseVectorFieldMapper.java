@@ -956,6 +956,7 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
     public void parse(ParseContext context) throws IOException {
         String simpleName = simpleName();
         String fieldName = name();
+        float squaredMagnitude = 0;
 
         context.path().add(simpleName);
 
@@ -982,7 +983,10 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
 
         for (int i = 0; i < vector.size(); i++) {
             array[i] = vector.get(i);
+            squaredMagnitude += array[i] * array[i];
         }
+        checkVectorMagnitude(this.getSimilarity(), squaredMagnitude);
+
         VectorField point = new VectorField(fieldName, array, fieldType);
         context.doc().add(point);
         context.path().remove();
@@ -1000,6 +1004,14 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
     @Override
     protected String contentType() {
         return CONTENT_TYPE;
+    }
+
+    private void checkVectorMagnitude(Similarity similarity, float squaredMagnitude) {
+        if (similarity == Similarity.DOT_PRODUCT && Math.abs(squaredMagnitude - 1.0f) > 1e-4f) {
+            throw new IllegalArgumentException(
+                "The [" + Similarity.DOT_PRODUCT.getValue() + "] " + "similarity can only be used with unit-length vectors."
+            );
+        }
     }
 
     public static class DenseVectorFieldType extends MappedFieldType {

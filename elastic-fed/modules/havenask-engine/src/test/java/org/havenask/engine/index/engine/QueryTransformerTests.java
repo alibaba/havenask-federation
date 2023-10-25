@@ -155,11 +155,11 @@ public class QueryTransformerTests extends MapperServiceTestCase {
 
         SearchSourceBuilder dotProductBuilder = new SearchSourceBuilder();
         dotProductBuilder.query(QueryBuilders.matchAllQuery());
-        dotProductBuilder.knnSearch(List.of(new KnnSearchBuilder("field2", new float[] { 1.0f, 2.0f }, 20, 20, null)));
+        dotProductBuilder.knnSearch(List.of(new KnnSearchBuilder("field2", new float[] { 0.6f, 0.8f }, 20, 20, null)));
         String dotProductSql = QueryTransformer.toSql("table", dotProductBuilder, mapperService);
         assertEquals(
             "select _id, (((1+vectorscore('field2'))/2)) as _score from table "
-                + "where MATCHINDEX('field2', '1.0,2.0&n=20') order by _score desc",
+                + "where MATCHINDEX('field2', '0.6,0.8&n=20') order by _score desc",
             dotProductSql
         );
     }
@@ -171,15 +171,27 @@ public class QueryTransformerTests extends MapperServiceTestCase {
         builder.knnSearch(
             List.of(
                 new KnnSearchBuilder("field1", new float[] { 1.0f, 2.0f }, 20, 20, null),
-                new KnnSearchBuilder("field2", new float[] { 3.0f, 4.0f }, 10, 10, null)
+                new KnnSearchBuilder("field2", new float[] { 0.6f, 0.8f }, 10, 10, null)
             )
         );
         String sql = QueryTransformer.toSql("table", builder, mapperService);
         assertEquals(
             "select _id, ((1/(1+vectorscore('field1'))) + ((1+vectorscore('field2'))/2)) as _score from table "
-                + "where MATCHINDEX('field1', '1.0,2.0&n=20') or MATCHINDEX('field2', '3.0,4.0&n=10') order by _score desc",
+                + "where MATCHINDEX('field1', '1.0,2.0&n=20') or MATCHINDEX('field2', '0.6,0.8&n=10') order by _score desc",
             sql
         );
+    }
+
+    public void testIllegalKnnParams() throws IOException {
+        SearchSourceBuilder dotProductBuilder = new SearchSourceBuilder();
+        dotProductBuilder.query(QueryBuilders.matchAllQuery());
+        dotProductBuilder.knnSearch(List.of(new KnnSearchBuilder("field2", new float[] { 1.0f, 2.0f }, 20, 20, null)));
+        try {
+            String dotProductSql = QueryTransformer.toSql("table", dotProductBuilder, mapperService);
+            fail("should throw IllegalArgumentException");
+        } catch (IllegalArgumentException e) {
+            assertEquals("The [dot_product] similarity can only be used with unit-length vectors.", e.getMessage());
+        }
     }
 
     // test unsupported knn dsl
