@@ -108,7 +108,7 @@ public class DenseVectorFieldMapperTests extends MapperTestCase {
             b.endObject();
         }));
 
-        float[] vector = new float[] { 1.0f, -2.0f, 3.0f, -4.0f };
+        float[] vector = new float[] { 0.6f, -0.8f, 0.0f, -0.0f };
         ParsedDocument doc = mapper.parse(source(b -> b.array("field", vector)));
 
         IndexableField[] fields = doc.rootDoc().getFields("field");
@@ -190,5 +190,17 @@ public class DenseVectorFieldMapperTests extends MapperTestCase {
         float[] vector = new float[] { 1.0f, -2.0f, 3.0f };
         MapperParsingException e = expectThrows(MapperParsingException.class, () -> mapper.parse(source(b -> b.array("field", vector))));
         assertThat(e.getCause().getMessage(), containsString("vector length expects: 4, actually: 3"));
+    }
+
+    public void testWriteIllegalVectorParams() throws Exception {
+        DocumentMapper mapper = createDocumentMapper(fieldMapping(b -> {
+            b.field("type", "dense_vector");
+            b.field("dims", 2);
+            b.field("similarity", "dot_product");
+        }));
+
+        float[] vector = new float[] { 1.0f, -2.0f };
+        MapperParsingException e = expectThrows(MapperParsingException.class, () -> mapper.parse(source(b -> b.array("field", vector))));
+        assertEquals("The [dot_product] similarity can only be used with unit-length vectors.", e.getCause().getMessage());
     }
 }

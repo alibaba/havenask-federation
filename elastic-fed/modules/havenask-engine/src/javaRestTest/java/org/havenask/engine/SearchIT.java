@@ -65,7 +65,7 @@ public class SearchIT extends AbstractHavenaskRestTestCase {
                             .put("index.number_of_replicas", 0)
                             .put(EngineSettings.ENGINE_TYPE_SETTING.getKey(), EngineSettings.ENGINE_HAVENASK)
                             .build()
-                    ).mapping(createMapping(vectorDims, fieldName, similarity)),
+                    ).mapping(createMapping(fieldName, vectorDims, similarity)),
                     RequestOptions.DEFAULT
                 )
                 .isAcknowledged()
@@ -153,7 +153,7 @@ public class SearchIT extends AbstractHavenaskRestTestCase {
                             .put("index.number_of_replicas", 0)
                             .put(EngineSettings.ENGINE_TYPE_SETTING.getKey(), EngineSettings.ENGINE_HAVENASK)
                             .build()
-                    ).mapping(createMapping(vectorDims, fieldName, similarity)),
+                    ).mapping(createMapping(fieldName, vectorDims, similarity)),
                     RequestOptions.DEFAULT
                 )
                 .isAcknowledged()
@@ -281,7 +281,7 @@ public class SearchIT extends AbstractHavenaskRestTestCase {
         assertEquals(false, highLevelClient().indices().exists(new GetIndexRequest(index), RequestOptions.DEFAULT));
     }
 
-    private static XContentBuilder createMapping(int vectorDims, String fieldName, String similarity) throws IOException {
+    private static XContentBuilder createMapping(String fieldName, int vectorDims, String similarity) throws IOException {
         XContentBuilder mappingBuilder = XContentFactory.jsonBuilder();
         mappingBuilder.startObject()
             .startObject("properties")

@@ -14,6 +14,7 @@
 
 package org.havenask.engine;
 
+import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 
 import com.alibaba.fastjson.JSONObject;
@@ -27,6 +28,7 @@ import org.havenask.action.delete.DeleteRequest;
 import org.havenask.action.get.GetRequest;
 import org.havenask.action.get.GetResponse;
 import org.havenask.action.index.IndexRequest;
+import org.havenask.action.search.SearchRequest;
 import org.havenask.action.update.UpdateRequest;
 import org.havenask.client.Request;
 import org.havenask.client.RequestOptions;
@@ -38,8 +40,12 @@ import org.havenask.client.indices.GetIndexRequest;
 import org.havenask.cluster.health.ClusterHealthStatus;
 import org.havenask.common.collect.Map;
 import org.havenask.common.settings.Settings;
+import org.havenask.common.xcontent.XContentBuilder;
+import org.havenask.common.xcontent.XContentFactory;
 import org.havenask.common.xcontent.XContentType;
 import org.havenask.engine.index.engine.EngineSettings;
+import org.havenask.engine.index.query.HnswQueryBuilder;
+import org.havenask.search.builder.SearchSourceBuilder;
 
 public class DocIT extends AbstractHavenaskRestTestCase {
     // test document api, PUT/POST/DELETE and bulk
@@ -361,5 +367,77 @@ public class DocIT extends AbstractHavenaskRestTestCase {
         // delete index and HEAD index
         assertTrue(highLevelClient().indices().delete(new DeleteIndexRequest(index), RequestOptions.DEFAULT).isAcknowledged());
         assertEquals(false, highLevelClient().indices().exists(new GetIndexRequest(index), RequestOptions.DEFAULT));
+    }
+
+    public void testIllegalVectorParams() throws Exception {
+        String index = "illegal_vector_test";
+        String fieldName = "vector";
+        int vectorDims = 2;
+        String similarity = "dot_product";
+
+        float[] vectorParams = { 1.0f, 2.0f };
+
+        // create index
+        assertTrue(
+            highLevelClient().indices()
+                .create(
+                    new CreateIndexRequest(index).settings(
+                        Settings.builder()
+                            .put("index.number_of_shards", 1)
+                            .put("index.number_of_replicas", 0)
+                            .put(EngineSettings.ENGINE_TYPE_SETTING.getKey(), EngineSettings.ENGINE_HAVENASK)
+                            .build()
+                    ).mapping(createMapping(fieldName, vectorDims, similarity)),
+                    RequestOptions.DEFAULT
+                )
+                .isAcknowledged()
+        );
+
+        assertBusy(() -> {
+            ClusterHealthResponse clusterHealthResponse = highLevelClient().cluster()
+                .health(new ClusterHealthRequest(index), RequestOptions.DEFAULT);
+            assertEquals(clusterHealthResponse.getStatus(), ClusterHealthStatus.GREEN);
+        }, 2, TimeUnit.MINUTES);
+
+        org.havenask.HavenaskStatusException ex1 = expectThrows(
+            org.havenask.HavenaskStatusException.class,
+            () -> highLevelClient().index(
+                new IndexRequest(index).id("1").source(Map.of(fieldName, vectorParams), XContentType.JSON),
+                RequestOptions.DEFAULT
+            )
+        );
+        assertTrue(ex1.getCause().getMessage().contains("The [dot_product] similarity can only be used with unit-length vectors."));
+
+        // get data with _search
+        SearchRequest searchRequest = new SearchRequest(index);
+        SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+        HnswQueryBuilder hnswQueryBuilder = new HnswQueryBuilder(fieldName, new float[] { 1.5f, 2.5f }, 10);
+        searchSourceBuilder.query(hnswQueryBuilder);
+        searchRequest.source(searchSourceBuilder);
+
+        // 执行查询请求并获取相应结果
+        org.havenask.HavenaskStatusException ex2 = expectThrows(
+            org.havenask.HavenaskStatusException.class,
+            () -> highLevelClient().search(searchRequest, RequestOptions.DEFAULT)
+        );
+        assertTrue(ex2.getCause().getMessage().contains("The [dot_product] similarity can only be used with unit-length vectors."));
+
+        // delete index and HEAD index
+        assertTrue(highLevelClient().indices().delete(new DeleteIndexRequest(index), RequestOptions.DEFAULT).isAcknowledged());
+        assertEquals(false, highLevelClient().indices().exists(new GetIndexRequest(index), RequestOptions.DEFAULT));
+    }
+
+    private static XContentBuilder createMapping(String fieldName, int vectorDims, String similarity) throws IOException {
+        XContentBuilder mappingBuilder = XContentFactory.jsonBuilder();
+        mappingBuilder.startObject()
+            .startObject("properties")
+            .startObject(fieldName)
+            .field("type", "dense_vector")
+            .field("dims", vectorDims)
+            .field("similarity", similarity)
+            .endObject()
+            .endObject()
+            .endObject();
+        return mappingBuilder;
     }
 }
