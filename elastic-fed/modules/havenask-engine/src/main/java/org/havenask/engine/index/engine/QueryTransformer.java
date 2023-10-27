@@ -27,8 +27,6 @@ import org.havenask.search.builder.KnnSearchBuilder;
 import org.havenask.search.builder.SearchSourceBuilder;
 
 public class QueryTransformer {
-    public static final String DENSE_VECTOR_FIELD = "image";
-
     public static String toSql(String table, SearchSourceBuilder dsl, MapperService mapperService) throws IOException {
         StringBuilder sqlQuery = new StringBuilder();
         QueryBuilder queryBuilder = dsl.query();
@@ -55,9 +53,14 @@ public class QueryTransformer {
                     first = false;
                     selectParams.append(", (");
                 }
-
                 String fieldName = knnSearchBuilder.getField();
-                selectParams.append(getScoreComputeStr(fieldName, mapperService));
+
+                DenseVectorFieldMapper.Similarity similarity = ((DenseVectorFieldMapper) mapperService.documentMapper()
+                    .mappers()
+                    .getMapper(fieldName)).getSimilarity();
+                checkVectorMagnitude(similarity, computeSquaredMagnitude(knnSearchBuilder.getQueryVector()));
+
+                selectParams.append(getScoreComputeStr(fieldName, similarity));
 
                 where.append("MATCHINDEX('" + fieldName + "', '");
                 for (int i = 0; i < knnSearchBuilder.getQueryVector().length; i++) {
@@ -75,9 +78,15 @@ public class QueryTransformer {
                 ProximaQueryBuilder<?> proximaQueryBuilder = (ProximaQueryBuilder<?>) queryBuilder;
                 String fieldName = proximaQueryBuilder.getFieldName();
 
-                selectParams.append(", ").append(getScoreComputeStr(fieldName, mapperService)).append(" as _score");
+                DenseVectorFieldMapper.Similarity similarity = ((DenseVectorFieldMapper) mapperService.documentMapper()
+                    .mappers()
+                    .getMapper(fieldName)).getSimilarity();
+                checkVectorMagnitude(similarity, computeSquaredMagnitude(proximaQueryBuilder.getVector()));
+
+                selectParams.append(", ").append(getScoreComputeStr(fieldName, similarity)).append(" as _score");
                 where.append(" where MATCHINDEX('" + proximaQueryBuilder.getFieldName() + "', '");
                 for (int i = 0; i < proximaQueryBuilder.getVector().length; i++) {
+
                     where.append(proximaQueryBuilder.getVector()[i]);
                     if (i < proximaQueryBuilder.getVector().length - 1) {
                         where.append(",");
@@ -111,19 +120,36 @@ public class QueryTransformer {
         return sqlQuery.toString();
     }
 
-    private static String getScoreComputeStr(String fieldName, MapperService mapperService) throws IOException {
-        String similarity = ((DenseVectorFieldMapper) mapperService.documentMapper().mappers().getMapper(fieldName)).getSimilarity()
-            .getValue();
+    private static String getScoreComputeStr(String fieldName, DenseVectorFieldMapper.Similarity similarity) throws IOException {
         StringBuilder scoreComputeStr = new StringBuilder();
-        if (similarity != null && similarity.equals("l2_norm")) {
+        if (similarity != null && similarity == DenseVectorFieldMapper.Similarity.L2_NORM) {
             // e.g. "(1/(1+vecscore('fieldName')))"
             scoreComputeStr.append("(1/(").append("1+vectorscore('").append(fieldName).append("')))");
-        } else if (similarity != null && similarity.equals("dot_product")) {
+        } else if (similarity != null && similarity == DenseVectorFieldMapper.Similarity.DOT_PRODUCT) {
             // e.g. "((1+vecscore('fieldName'))/2)"
             scoreComputeStr.append("((1+vectorscore('").append(fieldName).append("'))/2)");
         } else {
             throw new IOException("unsupported similarity: " + similarity);
         }
         return scoreComputeStr.toString();
+    }
+
+    private static float computeSquaredMagnitude(float[] queryVector) {
+        float squaredMagnitude = 0;
+        for (int i = 0; i < queryVector.length; i++) {
+            squaredMagnitude += queryVector[i] * queryVector[i];
+        }
+        return squaredMagnitude;
+    }
+
+    private static void checkVectorMagnitude(DenseVectorFieldMapper.Similarity similarity, float squaredMagnitude) {
+        if (similarity == DenseVectorFieldMapper.Similarity.DOT_PRODUCT && Math.abs(squaredMagnitude - 1.0f) > 1e-4f) {
+            throw new IllegalArgumentException(
+                "The ["
+                    + DenseVectorFieldMapper.Similarity.DOT_PRODUCT.getValue()
+                    + "] "
+                    + "similarity can only be used with unit-length vectors."
+            );
+        }
     }
 }
