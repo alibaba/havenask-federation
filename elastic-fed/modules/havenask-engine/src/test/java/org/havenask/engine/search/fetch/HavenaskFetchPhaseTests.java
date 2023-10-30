@@ -88,6 +88,7 @@ public class HavenaskFetchPhaseTests extends HavenaskTestCase {
 
     public void testTransferSqlResponse2FetchResult() throws IOException {
         int docsNum = 4;
+        int loadSize = 3;
         String[] resStr = new String[] {
             "{\n"
                 + "  \"_type\" : \"_doc\",\n"
@@ -139,6 +140,7 @@ public class HavenaskFetchPhaseTests extends HavenaskTestCase {
         when(searchContext.queryResult()).thenReturn(querySearchResult);
         when(searchContext.shardTarget()).thenReturn(shardTarget);
         when(searchContext.fetchResult()).thenReturn(fetchSearchResult);
+        when(searchContext.docIdsToLoadSize()).thenReturn(loadSize);
 
         // mock SqlResponse
         Object[][] Data = {
@@ -162,7 +164,7 @@ public class HavenaskFetchPhaseTests extends HavenaskTestCase {
 
         HavenaskFetchPhase havenaskFetchPhase = new HavenaskFetchPhase(null, new ArrayList<>());
         havenaskFetchPhase.transferSqlResponse2FetchResult(docs, idList, sqlResponse, searchContext);
-        for (int i = 0; i < docsNum; i++) {
+        for (int i = 0; i < loadSize; i++) {
             assertEquals(resStr[i], fetchSearchResult.hits().getHits()[i].toString());
         }
     }
