@@ -62,7 +62,7 @@ public class HavenaskIndexSearcherTests extends HavenaskTestCase {
             String sqlResponseStr1 = "{\"total_time\":8.126,\"has_soft_failure\":false,\"covered_percent\":1.0,"
                 + "\"row_count\":4,\"format_type\":\"full_json\",\"search_info\":{},\"rpc_info\":\"\","
                 + "\"table_leader_info\":{},\"table_build_watermark\":{},\"sql_query\":"
-                + "\"query=select _id, vectorscore('image') as _score from vector_test_0 where "
+                + "\"query=select _id, vector_score('image') as _score from vector_test_0 where "
                 + "MATCHINDEX('image', '1.1, 1.1') order by _score desc&&kvpair=format:full_json;databaseName:general"
                 + "\",\"iquan_plan\":{\"error_code\":0,\"error_message\":\"\",\"result\":{\"rel_plan_version\":\"\","
                 + "\"rel_plan\":[],\"exec_params\":{}}},\"navi_graph\":\"\",\"trace\":[],\"sql_result\":{\"data\":[[\"4"

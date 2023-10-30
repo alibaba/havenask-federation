@@ -81,7 +81,7 @@ public class QueryTransformerTests extends MapperServiceTestCase {
         builder.query(new HnswQueryBuilder("field", new float[] { 1.0f, 2.0f }, 20));
         String sql = QueryTransformer.toSql("table", builder, mapperService);
         assertEquals(
-            "select _id, (1/(1+vectorscore('field'))) as _score from table where MATCHINDEX('field', '1.0,2.0&n=20') order by _score desc",
+            "select _id, (1/(1+vector_score('field'))) as _score from table where MATCHINDEX('field', '1.0,2.0&n=20') order by _score desc",
             sql
         );
     }
@@ -148,7 +148,7 @@ public class QueryTransformerTests extends MapperServiceTestCase {
         l2NormBuilder.knnSearch(List.of(new KnnSearchBuilder("field1", new float[] { 1.0f, 2.0f }, 20, 20, null)));
         String l2NormSql = QueryTransformer.toSql("table", l2NormBuilder, mapperService);
         assertEquals(
-            "select _id, ((1/(1+vectorscore('field1')))) as _score from table "
+            "select _id, ((1/(1+vector_score('field1')))) as _score from table "
                 + "where MATCHINDEX('field1', '1.0,2.0&n=20') order by _score desc",
             l2NormSql
         );
@@ -158,7 +158,7 @@ public class QueryTransformerTests extends MapperServiceTestCase {
         dotProductBuilder.knnSearch(List.of(new KnnSearchBuilder("field2", new float[] { 0.6f, 0.8f }, 20, 20, null)));
         String dotProductSql = QueryTransformer.toSql("table", dotProductBuilder, mapperService);
         assertEquals(
-            "select _id, (((1+vectorscore('field2'))/2)) as _score from table "
+            "select _id, (((1+vector_score('field2'))/2)) as _score from table "
                 + "where MATCHINDEX('field2', '0.6,0.8&n=20') order by _score desc",
             dotProductSql
         );
@@ -176,7 +176,7 @@ public class QueryTransformerTests extends MapperServiceTestCase {
         );
         String sql = QueryTransformer.toSql("table", builder, mapperService);
         assertEquals(
-            "select _id, ((1/(1+vectorscore('field1'))) + ((1+vectorscore('field2'))/2)) as _score from table "
+            "select _id, ((1/(1+vector_score('field1'))) + ((1+vector_score('field2'))/2)) as _score from table "
                 + "where MATCHINDEX('field1', '1.0,2.0&n=20') or MATCHINDEX('field2', '0.6,0.8&n=10') order by _score desc",
             sql
         );
