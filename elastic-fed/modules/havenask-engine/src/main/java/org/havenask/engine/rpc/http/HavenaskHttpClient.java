@@ -15,6 +15,8 @@
 package org.havenask.engine.rpc.http;
 
 import java.io.IOException;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
 
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
@@ -34,7 +36,8 @@ import static org.havenask.common.xcontent.XContentType.JSON;
 public class HavenaskHttpClient implements HavenaskClient {
     private static final String HEART_BEAT_URL = "/HeartbeatService/heartbeat";
 
-    protected OkHttpClient client = new OkHttpClient();
+    protected OkHttpClient client = AccessController.doPrivileged(
+        (PrivilegedAction<OkHttpClient>)() -> new OkHttpClient());
     protected final String url;
 
     public HavenaskHttpClient(int port) {
