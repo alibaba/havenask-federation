@@ -159,7 +159,7 @@ public class BasicIT extends AbstractHavenaskRestTestCase {
                             Settings.builder()
                                 .put(EngineSettings.ENGINE_TYPE_SETTING.getKey(), EngineSettings.ENGINE_HAVENASK)
                                 // TODO 暂时只支持单shard
-                                //.put("index.number_of_shards", shardsNum)
+                                // .put("index.number_of_shards", shardsNum)
                                 .put("number_of_replicas", 0)
                                 .build()
                         ).mapping(Map.of("properties", Map.of("content" + i, Map.of("type", "keyword")))),
@@ -227,7 +227,7 @@ public class BasicIT extends AbstractHavenaskRestTestCase {
                             Settings.builder()
                                 .put(EngineSettings.ENGINE_TYPE_SETTING.getKey(), EngineSettings.ENGINE_HAVENASK)
                                 // TODO 暂时只支持单shard
-                                //.put("index.number_of_shards", shardsNum)
+                                // .put("index.number_of_shards", shardsNum)
                                 .put("number_of_replicas", 0)
                                 .build()
                         ).mapping(Map.of("properties", Map.of("content" + i, Map.of("type", "keyword")))),

@@ -149,7 +149,7 @@ public class SearchIT extends AbstractHavenaskRestTestCase {
                     new CreateIndexRequest(index).settings(
                         Settings.builder()
                             // TODO 暂时只支持单shard
-                            //.put("index.number_of_shards", randomIntBetween(2, 5))
+                            // .put("index.number_of_shards", randomIntBetween(2, 5))
                             // TODO 目前 replicas 不为零时索引会一直是 yellow，将replicas指定为0，后续增加相关测试
                             .put("index.number_of_replicas", 0)
                             .put(EngineSettings.ENGINE_TYPE_SETTING.getKey(), EngineSettings.ENGINE_HAVENASK)
