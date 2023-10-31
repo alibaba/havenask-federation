@@ -20,9 +20,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 import org.havenask.common.Nullable;
 import org.havenask.common.settings.Settings;
@@ -31,7 +29,6 @@ import org.havenask.engine.index.config.DataTable;
 import org.havenask.engine.index.config.Processor.ProcessChain;
 import org.havenask.engine.index.config.Processor.ProcessorChainConfig;
 import org.havenask.engine.index.config.Schema;
-import org.havenask.engine.index.config.ZoneBiz;
 import org.havenask.engine.index.engine.EngineSettings;
 import org.havenask.engine.util.VersionUtils;
 import org.havenask.index.mapper.MapperService;
@@ -76,7 +73,6 @@ public class BizConfigGenerator {
         String strVersion = String.valueOf(lastVersion);
         generateClusterConfig(strVersion);
         Schema schema = generateSchema(strVersion);
-        generateDefaultBizConfig(strVersion);
         generateDataTable(schema, strVersion);
     }
 
@@ -91,40 +87,6 @@ public class BizConfigGenerator {
 
         Path dataTablePath = configPath.resolve(strVersion).resolve(DATA_TABLES_DIR).resolve(indexName + DATA_TABLES_FILE_SUFFIX);
         Files.deleteIfExists(dataTablePath);
-
-        removeDefaultBizConfig(strVersion);
-    }
-
-    private synchronized void generateDefaultBizConfig(String version) throws IOException {
-        Path defaultBizConfigPath = configPath.resolve(version).resolve(DEFAULT_BIZ_CONFIG);
-
-        String strZone = Files.readString(defaultBizConfigPath, StandardCharsets.UTF_8);
-        ZoneBiz zoneBiz = ZoneBiz.parse(strZone);
-        Set<String> indices = new HashSet<>(zoneBiz.turing_options_config.dependency_table);
-        indices.add(indexName);
-        zoneBiz.turing_options_config.dependency_table = indices;
-        Files.write(
-            defaultBizConfigPath,
-            zoneBiz.toString().getBytes(StandardCharsets.UTF_8),
-            StandardOpenOption.CREATE,
-            StandardOpenOption.TRUNCATE_EXISTING
-        );
-    }
-
-    private synchronized void removeDefaultBizConfig(String version) throws IOException {
-        Path defaultBizConfigPath = configPath.resolve(version).resolve(DEFAULT_BIZ_CONFIG);
-
-        String strZone = Files.readString(defaultBizConfigPath, StandardCharsets.UTF_8);
-        ZoneBiz zoneBiz = ZoneBiz.parse(strZone);
-        Set<String> indices = new HashSet<>(zoneBiz.turing_options_config.dependency_table);
-        indices.remove(indexName);
-        zoneBiz.turing_options_config.dependency_table = indices;
-        Files.write(
-            defaultBizConfigPath,
-            zoneBiz.toString().getBytes(StandardCharsets.UTF_8),
-            StandardOpenOption.CREATE,
-            StandardOpenOption.TRUNCATE_EXISTING
-        );
     }
 
     private void generateClusterConfig(String version) throws IOException {
