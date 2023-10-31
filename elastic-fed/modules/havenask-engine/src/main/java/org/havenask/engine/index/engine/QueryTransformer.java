@@ -15,6 +15,7 @@
 package org.havenask.engine.index.engine;
 
 import java.io.IOException;
+import java.util.Locale;
 
 import org.havenask.engine.index.mapper.DenseVectorFieldMapper;
 import org.havenask.engine.index.query.ProximaQueryBuilder;
@@ -44,6 +45,15 @@ public class QueryTransformer {
                     throw new IOException("unsupported knn parameter: " + dsl);
                 }
 
+                String fieldName = knnSearchBuilder.getField();
+
+                DenseVectorFieldMapper denseVectorFieldMapper = ((DenseVectorFieldMapper) mapperService.documentMapper()
+                    .mappers()
+                    .getMapper(fieldName));
+                if (denseVectorFieldMapper == null) {
+                    throw new IOException(String.format(Locale.ROOT, "field: %s is not a vector type field", fieldName));
+                }
+
                 if (false == first) {
                     where.append(" or ");
                     selectParams.append(" + ");
@@ -53,13 +63,9 @@ public class QueryTransformer {
                     first = false;
                     selectParams.append(", (");
                 }
-                String fieldName = knnSearchBuilder.getField();
 
-                DenseVectorFieldMapper.Similarity similarity = ((DenseVectorFieldMapper) mapperService.documentMapper()
-                    .mappers()
-                    .getMapper(fieldName)).getSimilarity();
+                DenseVectorFieldMapper.Similarity similarity = denseVectorFieldMapper.getSimilarity();
                 checkVectorMagnitude(similarity, computeSquaredMagnitude(knnSearchBuilder.getQueryVector()));
-
                 selectParams.append(getScoreComputeStr(fieldName, similarity));
 
                 where.append("MATCHINDEX('" + fieldName + "', '");
@@ -78,9 +84,14 @@ public class QueryTransformer {
                 ProximaQueryBuilder<?> proximaQueryBuilder = (ProximaQueryBuilder<?>) queryBuilder;
                 String fieldName = proximaQueryBuilder.getFieldName();
 
-                DenseVectorFieldMapper.Similarity similarity = ((DenseVectorFieldMapper) mapperService.documentMapper()
+                DenseVectorFieldMapper denseVectorFieldMapper = ((DenseVectorFieldMapper) mapperService.documentMapper()
                     .mappers()
-                    .getMapper(fieldName)).getSimilarity();
+                    .getMapper(fieldName));
+                if (denseVectorFieldMapper == null) {
+                    throw new IOException(String.format(Locale.ROOT, "field: %s is not a vector type field", fieldName));
+                }
+
+                DenseVectorFieldMapper.Similarity similarity = denseVectorFieldMapper.getSimilarity();
                 checkVectorMagnitude(similarity, computeSquaredMagnitude(proximaQueryBuilder.getVector()));
 
                 selectParams.append(", ").append(getScoreComputeStr(fieldName, similarity)).append(" as _score");
