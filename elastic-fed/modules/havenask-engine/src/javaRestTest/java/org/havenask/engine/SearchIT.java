@@ -14,6 +14,9 @@
 
 package org.havenask.engine;
 
+import java.io.IOException;
+import java.util.concurrent.TimeUnit;
+
 import org.havenask.action.admin.cluster.health.ClusterHealthRequest;
 import org.havenask.action.admin.cluster.health.ClusterHealthResponse;
 import org.havenask.action.admin.indices.delete.DeleteIndexRequest;
@@ -36,9 +39,6 @@ import org.havenask.engine.index.query.HnswQueryBuilder;
 import org.havenask.index.query.QueryBuilders;
 import org.havenask.search.builder.KnnSearchBuilder;
 import org.havenask.search.builder.SearchSourceBuilder;
-
-import java.io.IOException;
-import java.util.concurrent.TimeUnit;
 
 public class SearchIT extends AbstractHavenaskRestTestCase {
     public void testSingleShardKnn() throws Exception {
@@ -148,7 +148,8 @@ public class SearchIT extends AbstractHavenaskRestTestCase {
                 .create(
                     new CreateIndexRequest(index).settings(
                         Settings.builder()
-                            .put("index.number_of_shards", randomIntBetween(2, 5))
+                            // TODO 暂时只支持单shard
+                            //.put("index.number_of_shards", randomIntBetween(2, 5))
                             // TODO 目前 replicas 不为零时索引会一直是 yellow，将replicas指定为0，后续增加相关测试
                             .put("index.number_of_replicas", 0)
                             .put(EngineSettings.ENGINE_TYPE_SETTING.getKey(), EngineSettings.ENGINE_HAVENASK)
