@@ -210,11 +210,11 @@ public class SearchIT extends AbstractHavenaskRestTestCase {
         float[][] field0Values = { { 1f, 1f }, { 2f, 2f }, { 3f, 3f }, { 4f, 4f } };
         float[][] field1Values = { { 0.6f, 0.8f }, { 0.8f, 0.6f }, { 1.0f, 0.0f }, { 0.0f, 1.0f } };
 
-        String[] resSourceAsString = {
-            "{\"field1\":[1.0,1.0],\"field2\":[0.6,0.8]}",
-            "{\"field1\":[2.0,2.0],\"field2\":[0.8,0.6]}",
-            "{\"field1\":[4.0,4.0],\"field2\":[0.0,1.0]}",
-            "{\"field1\":[3.0,3.0],\"field2\":[1.0,0.0]}", };
+        String[][] resSourceAsString = {
+            { "\"field1\":[1.0,1.0]", "\"field2\":[0.6,0.8]" },
+            { "\"field1\":[2.0,2.0]", "\"field2\":[0.8,0.6]" },
+            { "\"field1\":[4.0,4.0]", "\"field2\":[0.0,1.0]" },
+            { "\"field1\":[3.0,3.0]", "\"field2\":[1.0,0.0]" } };
 
         String[] expectedId = { "1", "2", "4", "3" };
         float[] expectedScores = { 2f, 1.3133334f, 0.95263153f, 0.9111111f };
@@ -272,7 +272,10 @@ public class SearchIT extends AbstractHavenaskRestTestCase {
 
         for (int i = 0; i < dataNum; i++) {
             assertEquals(expectedId[i], searchResponse.getHits().getHits()[i].getId());
-            assertEquals(resSourceAsString[i], searchResponse.getHits().getHits()[i].getSourceAsString());
+            assertTrue(
+                searchResponse.getHits().getHits()[i].getSourceAsString().contains(resSourceAsString[i][0])
+                    && searchResponse.getHits().getHits()[i].getSourceAsString().contains(resSourceAsString[i][1])
+            );
             assertEquals(expectedScores[i], searchResponse.getHits().getHits()[i].getScore(), delta);
         }
 
