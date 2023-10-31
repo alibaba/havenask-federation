@@ -135,8 +135,9 @@ public class HavenaskFetchPhase implements FetchPhase {
 
     public void transferSqlResponse2FetchResult(DocIdToIndex[] docs, List<String> idList, SqlResponse sqlResponse, SearchContext context)
         throws IOException {
+        int loadSize = context.docIdsToLoadSize();
         TotalHits totalHits = context.queryResult().getTotalHits();
-        SearchHit[] hits = new SearchHit[idList.size()];
+        SearchHit[] hits = new SearchHit[loadSize];
         List<FetchSubPhaseProcessor> processors = getProcessors(context.shardTarget(), context);
 
         // 记录fetch结果的_id和index的映射关系, query阶段查到的idList是根据_score值排序好的，但fetch结果非有序
@@ -145,7 +146,7 @@ public class HavenaskFetchPhase implements FetchPhase {
             fetchResIdListMap.put((String) sqlResponse.getSqlResult().getData()[i][ID_POS], i);
         }
 
-        for (int i = 0; i < idList.size(); i++) {
+        for (int i = 0; i < loadSize; i++) {
             // TODO add _routing
             SearchHit searchHit = new SearchHit(
                 docs[i].docId,
