@@ -156,15 +156,10 @@ public class HavenaskEngineEnvironment implements CustomEnvironment {
 
     @Override
     public void deleteIndexDirectoryUnderLock(Index index, IndexSettings indexSettings) throws IOException {
-        // do nothing
-    }
-
-    @Override
-    public void deleteShardDirectoryUnderLock(ShardLock lock, IndexSettings indexSettings) throws IOException {
         if (EngineSettings.isHavenaskEngine(indexSettings.getSettings()) == false) {
             return;
         }
-        String tableName = Utils.getHavenaskTableName(lock.getShardId());
+        String tableName = index.getName();
         BizConfigGenerator.removeBiz(tableName, configPath);
         TableConfigGenerator.removeTable(tableName, configPath);
         Path indexDir = runtimedataPath.resolve(tableName);
@@ -172,5 +167,10 @@ public class HavenaskEngineEnvironment implements CustomEnvironment {
         if (metaDataSyncer != null) {
             metaDataSyncer.setPendingSync();
         }
+    }
+
+    @Override
+    public void deleteShardDirectoryUnderLock(ShardLock lock, IndexSettings indexSettings) throws IOException {
+        // TODO 删除shard先不做处理,在删除index的时候处理,后续支持多shard后再处理
     }
 }
