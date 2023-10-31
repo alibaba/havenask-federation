@@ -48,8 +48,8 @@ public class QueryTransformer {
                 String fieldName = knnSearchBuilder.getField();
 
                 DenseVectorFieldMapper denseVectorFieldMapper = ((DenseVectorFieldMapper) mapperService.documentMapper()
-                        .mappers()
-                        .getMapper(fieldName));
+                    .mappers()
+                    .getMapper(fieldName));
                 if (denseVectorFieldMapper == null) {
                     throw new IOException(String.format(Locale.ROOT, "field: %s is not a vector type field", fieldName));
                 }
@@ -85,8 +85,8 @@ public class QueryTransformer {
                 String fieldName = proximaQueryBuilder.getFieldName();
 
                 DenseVectorFieldMapper denseVectorFieldMapper = ((DenseVectorFieldMapper) mapperService.documentMapper()
-                        .mappers()
-                        .getMapper(fieldName));
+                    .mappers()
+                    .getMapper(fieldName));
                 if (denseVectorFieldMapper == null) {
                     throw new IOException(String.format(Locale.ROOT, "field: %s is not a vector type field", fieldName));
                 }
@@ -156,10 +156,10 @@ public class QueryTransformer {
     private static void checkVectorMagnitude(DenseVectorFieldMapper.Similarity similarity, float squaredMagnitude) {
         if (similarity == DenseVectorFieldMapper.Similarity.DOT_PRODUCT && Math.abs(squaredMagnitude - 1.0f) > 1e-4f) {
             throw new IllegalArgumentException(
-                    "The ["
-                            + DenseVectorFieldMapper.Similarity.DOT_PRODUCT.getValue()
-                            + "] "
-                            + "similarity can only be used with unit-length vectors."
+                "The ["
+                    + DenseVectorFieldMapper.Similarity.DOT_PRODUCT.getValue()
+                    + "] "
+                    + "similarity can only be used with unit-length vectors."
             );
         }
     }
