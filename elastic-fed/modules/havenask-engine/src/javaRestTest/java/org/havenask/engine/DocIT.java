@@ -284,7 +284,7 @@ public class DocIT extends AbstractHavenaskRestTestCase {
 
         // create index
         assertTrue(
-                createTestIndex(
+            createTestIndex(
                 index,
                 Settings.builder()
                     .put("index.number_of_shards", 1)
@@ -327,15 +327,16 @@ public class DocIT extends AbstractHavenaskRestTestCase {
         String index = "update_doc_test";
         int loopCount = 10;
 
-        assertTrue(createTestIndex(index,
+        assertTrue(
+            createTestIndex(
+                index,
                 Settings.builder()
-                        .put("index.number_of_shards", 1)
-                        .put("index.number_of_replicas", 0)
-                        .put(EngineSettings.ENGINE_TYPE_SETTING.getKey(), EngineSettings.ENGINE_HAVENASK)
-                        .build(),
-                Map.of(
-                        "properties",
-                        Map.of("seq", Map.of("type", "integer"))))
+                    .put("index.number_of_shards", 1)
+                    .put("index.number_of_replicas", 0)
+                    .put(EngineSettings.ENGINE_TYPE_SETTING.getKey(), EngineSettings.ENGINE_HAVENASK)
+                    .build(),
+                Map.of("properties", Map.of("seq", Map.of("type", "integer")))
+            )
         );
 
         waitIndexGreen(index);

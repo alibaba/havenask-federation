@@ -82,7 +82,7 @@ public abstract class AbstractHavenaskRestTestCase extends HavenaskRestTestCase 
         }, 2, TimeUnit.MINUTES);
     }
 
-    //TODO 写入后立刻查询有可能会查不到doc，因此等待一会儿，可能是由havenask写入队列造成的，待确认
+    // TODO 写入后立刻查询有可能会查不到doc，因此等待一会儿，可能是由havenask写入队列造成的，待确认
     protected void waitResponseExists(String index, String id) throws Exception {
         assertBusy(() -> {
             GetResponse getResponse = getDocById(index, id);
