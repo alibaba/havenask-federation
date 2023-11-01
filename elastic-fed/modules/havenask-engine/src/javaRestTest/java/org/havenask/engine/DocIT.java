@@ -15,29 +15,27 @@
 package org.havenask.engine;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import com.alibaba.fastjson.JSONObject;
 
 import org.apache.http.util.EntityUtils;
-import org.havenask.action.admin.cluster.health.ClusterHealthRequest;
-import org.havenask.action.admin.cluster.health.ClusterHealthResponse;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.havenask.action.admin.indices.delete.DeleteIndexRequest;
 import org.havenask.action.bulk.BulkRequest;
 import org.havenask.action.delete.DeleteRequest;
-import org.havenask.action.get.GetRequest;
 import org.havenask.action.get.GetResponse;
 import org.havenask.action.index.IndexRequest;
 import org.havenask.action.search.SearchRequest;
-import org.havenask.action.update.UpdateRequest;
 import org.havenask.client.Request;
 import org.havenask.client.RequestOptions;
 import org.havenask.client.Response;
-import org.havenask.client.ha.SqlRequest;
 import org.havenask.client.ha.SqlResponse;
-import org.havenask.client.indices.CreateIndexRequest;
 import org.havenask.client.indices.GetIndexRequest;
-import org.havenask.cluster.health.ClusterHealthStatus;
 import org.havenask.common.collect.Map;
 import org.havenask.common.settings.Settings;
 import org.havenask.common.xcontent.XContentBuilder;
@@ -46,262 +44,167 @@ import org.havenask.common.xcontent.XContentType;
 import org.havenask.engine.index.engine.EngineSettings;
 import org.havenask.engine.index.query.HnswQueryBuilder;
 import org.havenask.search.builder.SearchSourceBuilder;
+import org.junit.AfterClass;
 
 public class DocIT extends AbstractHavenaskRestTestCase {
+    // static logger
+    private static final Logger logger = LogManager.getLogger(DocIT.class);
+    private static final String[] DocITIndices = { "index_doc_method", "index_multi_data_type", "illegal_vector_test" };
+
+    @AfterClass
+    public static void cleanIndices() {
+        try {
+            for (String index : DocITIndices) {
+                if (highLevelClient().indices().exists(new GetIndexRequest(index), RequestOptions.DEFAULT)) {
+                    highLevelClient().indices().delete(new DeleteIndexRequest(index), RequestOptions.DEFAULT);
+                    logger.info("clean index {}", index);
+                }
+            }
+        } catch (IOException e) {
+            logger.error("clean index failed", e);
+        }
+    }
+
     // test document api, PUT/POST/DELETE and bulk
     public void testDocMethod() throws Exception {
         String index = "index_doc_method";
         // create index
-        assertTrue(
-            highLevelClient().indices()
-                .create(
-                    new CreateIndexRequest(index).settings(
-                        Settings.builder()
-                            .put(EngineSettings.ENGINE_TYPE_SETTING.getKey(), EngineSettings.ENGINE_HAVENASK)
-                            .put("number_of_replicas", 0)
-                            .build()
-                    )
-                        .mapping(
-                            Map.of(
-                                "properties",
-                                Map.of(
-                                    "seq",
-                                    Map.of("type", "integer"),
-                                    "content",
-                                    Map.of("type", "keyword"),
-                                    "time",
-                                    Map.of("type", "date")
-                                )
-                            )
-                        ),
-                    RequestOptions.DEFAULT
-                )
-                .isAcknowledged()
+        Settings settings = Settings.builder()
+            .put(EngineSettings.ENGINE_TYPE_SETTING.getKey(), EngineSettings.ENGINE_HAVENASK)
+            .put("number_of_replicas", 0)
+            .build();
+
+        java.util.Map<String, ?> map = Map.of(
+            "properties",
+            Map.of("seq", Map.of("type", "integer"), "content", Map.of("type", "keyword"), "time", Map.of("type", "date"))
         );
-        assertBusy(() -> {
-            ClusterHealthResponse clusterHealthResponse = highLevelClient().cluster()
-                .health(new ClusterHealthRequest(index), RequestOptions.DEFAULT);
-            assertEquals(clusterHealthResponse.getStatus(), ClusterHealthStatus.GREEN);
-        }, 2, TimeUnit.MINUTES);
+        assertTrue(createTestIndex(index, settings, map));
+
+        waitIndexGreen(index);
 
         // PUT doc
-        highLevelClient().index(
-            new IndexRequest(index).id("1").source(Map.of("seq", 1, "content", "欢迎使用1", "time", "20230718"), XContentType.JSON),
-            RequestOptions.DEFAULT
-        );
-        highLevelClient().index(
-            new IndexRequest(index).id("2").source(Map.of("seq", 2, "content", "欢迎使用2", "time", "20230717"), XContentType.JSON),
-            RequestOptions.DEFAULT
-        );
-        highLevelClient().index(
-            new IndexRequest(index).id("3").source(Map.of("seq", 3, "content", "欢迎使用3", "time", "20230716"), XContentType.JSON),
-            RequestOptions.DEFAULT
-        );
+        String[] idList = { "1", "2", "3" };
+        List<java.util.Map<String, ?>> sourceList = new ArrayList<>();
+        sourceList.add(Map.of("seq", 1, "content", "欢迎使用1", "time", "20230718"));
+        sourceList.add(Map.of("seq", 2, "content", "欢迎使用2", "time", "20230717"));
+        sourceList.add(Map.of("seq", 3, "content", "欢迎使用3", "time", "20230716"));
+        for (int i = 0; i < idList.length; i++) {
+            putDoc(index, idList[i], sourceList.get(i));
+        }
 
         // GET doc
-        GetResponse getResponse = highLevelClient().get(new GetRequest(index, "1"), RequestOptions.DEFAULT);
-        assertEquals(getResponse.isExists(), true);
-        assertEquals(getResponse.getSourceAsMap().get("seq"), 1);
-        assertEquals(getResponse.getSourceAsMap().get("content"), "欢迎使用1");
-        assertEquals(getResponse.getSourceAsMap().get("time"), "20230718");
-
-        GetResponse getResponse2 = highLevelClient().get(new GetRequest(index, "2"), RequestOptions.DEFAULT);
-        assertEquals(getResponse2.isExists(), true);
-        assertEquals(getResponse2.getSourceAsMap().get("seq"), 2);
-        assertEquals(getResponse2.getSourceAsMap().get("content"), "欢迎使用2");
-        assertEquals(getResponse2.getSourceAsMap().get("time"), "20230717");
-
-        GetResponse getResponse3 = highLevelClient().get(new GetRequest(index, "3"), RequestOptions.DEFAULT);
-        assertEquals(getResponse3.isExists(), true);
-        assertEquals(getResponse3.getSourceAsMap().get("seq"), 3);
-        assertEquals(getResponse3.getSourceAsMap().get("content"), "欢迎使用3");
-        assertEquals(getResponse3.getSourceAsMap().get("time"), "20230716");
+        int[] expectedSeq = { 1, 2, 3 };
+        String[] expectedContent = { "欢迎使用1", "欢迎使用2", "欢迎使用3" };
+        String[] expectedTime = { "20230718", "20230717", "20230716" };
+        for (int i = 0; i < idList.length; i++) {
+            waitResponseExists(index, idList[i]);
+            GetResponse getResponse = getDocById(index, idList[i]);
+            assertEquals(true, getResponse.isExists());
+            assertEquals(expectedSeq[i], getResponse.getSourceAsMap().get("seq"));
+            assertEquals(expectedContent[i], getResponse.getSourceAsMap().get("content"));
+            assertEquals(expectedTime[i], getResponse.getSourceAsMap().get("time"));
+        }
 
         // POST doc
-        highLevelClient().index(
-            new IndexRequest(index).source(Map.of("seq", 4, "content", "欢迎使用4", "time", "20230715"), XContentType.JSON),
-            RequestOptions.DEFAULT
-        );
+        putDoc(index, Map.of("seq", 4, "content", "欢迎使用4", "time", "20230715"));
 
         /// get index data count
-        SqlResponse sqlResponse = highLevelClient().havenask()
-            .sql(new SqlRequest("select count(*) from " + index + "_0"), RequestOptions.DEFAULT);
-        assertEquals(sqlResponse.getRowCount(), 1);
-        assertEquals(sqlResponse.getSqlResult().getData().length, 1);
-        assertEquals(sqlResponse.getSqlResult().getColumnName().length, 1);
-        assertEquals(sqlResponse.getSqlResult().getColumnType().length, 1);
-        assertEquals(sqlResponse.getSqlResult().getData()[0][0], 4);
-        assertEquals(sqlResponse.getSqlResult().getColumnName()[0], "COUNT(*)");
-        assertEquals(sqlResponse.getSqlResult().getColumnType()[0], "int64");
+        SqlResponse sqlResponse = getSqlResponse("select count(*) from " + index);
+
+        assertEquals(1, sqlResponse.getRowCount());
+        assertEquals(1, sqlResponse.getSqlResult().getData().length);
+        assertEquals(1, sqlResponse.getSqlResult().getColumnName().length);
+        assertEquals(1, sqlResponse.getSqlResult().getColumnType().length);
+        assertEquals(4, sqlResponse.getSqlResult().getData()[0][0]);
+        assertEquals("COUNT(*)", sqlResponse.getSqlResult().getColumnName()[0]);
+        assertEquals("int64", sqlResponse.getSqlResult().getColumnType()[0]);
 
         // get index stats
-        {
-            Response indexStatsResponse = highLevelClient().getLowLevelClient().performRequest(new Request("GET", "/" + index + "/_stats"));
-            String indexStats = EntityUtils.toString(indexStatsResponse.getEntity());
-            JSONObject indexStatsJson = JSONObject.parseObject(indexStats);
-            long docCount = indexStatsJson.getJSONObject("indices")
-                .getJSONObject(index)
-                .getJSONObject("total")
-                .getJSONObject("docs")
-                .getLong("count");
-            assertEquals(docCount, 4L);
-            long storeSize = indexStatsJson.getJSONObject("indices")
-                .getJSONObject(index)
-                .getJSONObject("total")
-                .getJSONObject("store")
-                .getLong("size_in_bytes");
-            assertTrue(storeSize >= 10240L);
-        }
+        checkStatsDocCount(index, 4L);
 
         // UPDATE doc
-        highLevelClient().update(
-            new UpdateRequest(index, "1").doc(Map.of("seq", 11, "content", "欢迎使用11", "time", "20230718"), XContentType.JSON),
-            RequestOptions.DEFAULT
-        );
-        highLevelClient().update(
-            new UpdateRequest(index, "2").doc(Map.of("seq", 12, "content", "欢迎使用12", "time", "20230717"), XContentType.JSON),
-            RequestOptions.DEFAULT
-        );
+        updateDoc(index, "1", Map.of("seq", 11, "content", "欢迎使用11", "time", "20230718"));
+        updateDoc(index, "2", Map.of("seq", 12, "content", "欢迎使用12", "time", "20230717"));
+        String[] updateIdList = { "1", "2" };
+        int[] expectedUpdateSeq = { 11, 12 };
+        String[] expectedUpdateContent = { "欢迎使用11", "欢迎使用12" };
+        String[] expectedUpdateTime = { "20230718", "20230717" };
 
-        // GET doc check update
-        GetResponse getResponse11 = highLevelClient().get(new GetRequest(index, "1"), RequestOptions.DEFAULT);
-        assertEquals(getResponse11.isExists(), true);
-        assertEquals(getResponse11.getSourceAsMap().get("seq"), 11);
-        assertEquals(getResponse11.getSourceAsMap().get("content"), "欢迎使用11");
-        assertEquals(getResponse11.getSourceAsMap().get("time"), "20230718");
-
-        GetResponse getResponse12 = highLevelClient().get(new GetRequest(index, "2"), RequestOptions.DEFAULT);
-        assertEquals(getResponse12.isExists(), true);
-        assertEquals(getResponse12.getSourceAsMap().get("seq"), 12);
-        assertEquals(getResponse12.getSourceAsMap().get("content"), "欢迎使用12");
-        assertEquals(getResponse12.getSourceAsMap().get("time"), "20230717");
+        // check update
+        for (int i = 0; i < updateIdList.length; i++) {
+            GetResponse getResponse = getDocById(index, updateIdList[i]);
+            assertEquals(expectedUpdateSeq[i], getResponse.getSourceAsMap().get("seq"));
+            assertEquals(expectedUpdateContent[i], getResponse.getSourceAsMap().get("content"));
+            assertEquals(expectedUpdateTime[i], getResponse.getSourceAsMap().get("time"));
+        }
 
         // get index data count
-        {
-            Response indexStatsResponse = highLevelClient().getLowLevelClient().performRequest(new Request("GET", "/" + index + "/_stats"));
-            String indexStats = EntityUtils.toString(indexStatsResponse.getEntity());
-            JSONObject indexStatsJson = JSONObject.parseObject(indexStats);
-            long docCount = indexStatsJson.getJSONObject("indices")
-                .getJSONObject(index)
-                .getJSONObject("total")
-                .getJSONObject("docs")
-                .getLong("count");
-            assertEquals(docCount, 4L);
-            long storeSize = indexStatsJson.getJSONObject("indices")
-                .getJSONObject(index)
-                .getJSONObject("total")
-                .getJSONObject("store")
-                .getLong("size_in_bytes");
-            assertTrue(storeSize >= 10240L);
+        checkStatsDocCount(index, 4L);
+
+        // delete and check
+        String[] deleteIdList = { "1", "2", "3" };
+        for (int i = 0; i < deleteIdList.length; i++) {
+            deleteDoc(index, deleteIdList[i]);
+            GetResponse getResponse = getDocById(index, deleteIdList[i]);
+            assertFalse(getResponse.isExists());
         }
-
-        // DELETE doc
-        highLevelClient().delete(new DeleteRequest(index, "1"), RequestOptions.DEFAULT);
-        highLevelClient().delete(new DeleteRequest(index, "2"), RequestOptions.DEFAULT);
-        highLevelClient().delete(new DeleteRequest(index, "3"), RequestOptions.DEFAULT);
-
-        // GET doc not exists
-        GetResponse getResponse4 = highLevelClient().get(new GetRequest(index, "1"), RequestOptions.DEFAULT);
-        assertEquals(getResponse4.isExists(), false);
-        GetResponse getResponse5 = highLevelClient().get(new GetRequest(index, "2"), RequestOptions.DEFAULT);
-        assertEquals(getResponse5.isExists(), false);
-        GetResponse getResponse6 = highLevelClient().get(new GetRequest(index, "3"), RequestOptions.DEFAULT);
-        assertEquals(getResponse6.isExists(), false);
-
-        // get
-        {
-            Response indexStatsResponse = highLevelClient().getLowLevelClient().performRequest(new Request("GET", "/" + index + "/_stats"));
-            String indexStats = EntityUtils.toString(indexStatsResponse.getEntity());
-            JSONObject indexStatsJson = JSONObject.parseObject(indexStats);
-            long docCount = indexStatsJson.getJSONObject("indices")
-                .getJSONObject(index)
-                .getJSONObject("total")
-                .getJSONObject("docs")
-                .getLong("count");
-            assertEquals(docCount, 1L);
-            long storeSize = indexStatsJson.getJSONObject("indices")
-                .getJSONObject(index)
-                .getJSONObject("total")
-                .getJSONObject("store")
-                .getLong("size_in_bytes");
-            assertTrue(storeSize >= 10240L);
-        }
+        checkStatsDocCount(index, 1L);
 
         // bulk doc
         BulkRequest bulkRequest = new BulkRequest();
-        bulkRequest.add(
-            new IndexRequest(index).id("1").source(Map.of("seq", 1, "content", "欢迎使用1", "time", "20230718"), XContentType.JSON)
-        );
-        bulkRequest.add(
-            new IndexRequest(index).id("2").source(Map.of("seq", 2, "content", "欢迎使用2", "time", "20230717"), XContentType.JSON)
-        );
-        bulkRequest.add(
-            new IndexRequest(index).id("3").source(Map.of("seq", 3, "content", "欢迎使用3", "time", "20230716"), XContentType.JSON)
-        );
+        for (int i = 0; i < idList.length; i++) {
+            bulkRequest.add(new IndexRequest(index).id(idList[i]).source(sourceList.get(i), XContentType.JSON));
+        }
         bulkRequest.add(new DeleteRequest(index, "3"));
         highLevelClient().bulk(bulkRequest, RequestOptions.DEFAULT);
 
         // check data using sql search api
-        String sqlStr = "select * from " + index + "_0 where seq=1 AND content='欢迎使用1'";
-        SqlResponse bulkSqlResponse = highLevelClient().havenask().sql(new SqlRequest(sqlStr), RequestOptions.DEFAULT);
-        assertEquals(bulkSqlResponse.getRowCount(), 1);
-        assertEquals(bulkSqlResponse.getSqlResult().getData()[0][1], "欢迎使用1");
-        assertEquals(bulkSqlResponse.getSqlResult().getData()[0][4], 20230718);
-        assertEquals(bulkSqlResponse.getSqlResult().getData()[0][6], 1);
+        String sqlStr = "select * from " + index + " where seq=1 AND content='欢迎使用1'";
+        SqlResponse bulkSqlResponse = getSqlResponse(sqlStr);
+        java.util.Map<String, Integer> dataIndexMap = new HashMap<>();
+        for (int i = 0; i < bulkSqlResponse.getSqlResult().getColumnName().length; i++) {
+            dataIndexMap.put(bulkSqlResponse.getSqlResult().getColumnName()[i], i);
+        }
+        assertEquals(1, bulkSqlResponse.getRowCount());
+        assertEquals("欢迎使用1", bulkSqlResponse.getSqlResult().getData()[0][dataIndexMap.get("content")]);
+        assertEquals(20230718, bulkSqlResponse.getSqlResult().getData()[0][dataIndexMap.get("time")]);
+        assertEquals(1, bulkSqlResponse.getSqlResult().getData()[0][dataIndexMap.get("seq")]);
 
-        // delete index and HEAD index
-        assertTrue(highLevelClient().indices().delete(new DeleteIndexRequest(index), RequestOptions.DEFAULT).isAcknowledged());
-        assertEquals(false, highLevelClient().indices().exists(new GetIndexRequest(index), RequestOptions.DEFAULT));
+        deleteAndHeadIndex(index);
     }
 
     // test common data type(int, double, boolean, date, text, keyword, array)
     public void testMultiDataType() throws Exception {
         String index = "index_multi_data_type";
         // create index with multi data type
-        assertTrue(
-            highLevelClient().indices()
-                .create(
-                    new CreateIndexRequest(index).settings(
-                        Settings.builder()
-                            .put(EngineSettings.ENGINE_TYPE_SETTING.getKey(), EngineSettings.ENGINE_HAVENASK)
-                            .put("number_of_replicas", 0)
-                            .build()
-                    )
-                        .mapping(
-                            Map.of(
-                                "properties",
-                                Map.of(
-                                    "my_keyword",
-                                    Map.of("type", "keyword"),
-                                    "my_text",
-                                    Map.of("type", "text"),
-                                    "my_integer",
-                                    Map.of("type", "integer"),
-                                    "my_double",
-                                    Map.of("type", "double"),
-                                    "my_date",
-                                    Map.of("type", "date"),
-                                    "my_boolean",
-                                    Map.of("type", "boolean"),
-                                    "my_integer_array",
-                                    Map.of("type", "integer")
-                                )
-                            )
-                        ),
-                    RequestOptions.DEFAULT
-                )
-                .isAcknowledged()
-        );
-        assertBusy(() -> {
-            ClusterHealthResponse clusterHealthResponse = highLevelClient().cluster()
-                .health(new ClusterHealthRequest(index), RequestOptions.DEFAULT);
-            assertEquals(clusterHealthResponse.getStatus(), ClusterHealthStatus.GREEN);
-        }, 2, TimeUnit.MINUTES);
+        Settings settings = Settings.builder()
+            .put(EngineSettings.ENGINE_TYPE_SETTING.getKey(), EngineSettings.ENGINE_HAVENASK)
+            .put("number_of_replicas", 0)
+            .build();
 
-        highLevelClient().index(
-            new IndexRequest(index).id("1").source(Map.of("my_keyword", "keyword_test"), XContentType.JSON),
-            RequestOptions.DEFAULT
+        java.util.Map<String, ?> map = Map.of(
+            "properties",
+            Map.of(
+                "my_keyword",
+                Map.of("type", "keyword"),
+                "my_text",
+                Map.of("type", "text"),
+                "my_integer",
+                Map.of("type", "integer"),
+                "my_double",
+                Map.of("type", "double"),
+                "my_date",
+                Map.of("type", "date"),
+                "my_boolean",
+                Map.of("type", "boolean"),
+                "my_integer_array",
+                Map.of("type", "integer")
+            )
         );
+        assertTrue(createTestIndex(index, settings, map));
+        waitIndexGreen(index);
+
+        putDoc(index, "1", Map.of("my_keyword", "keyword_test"));
 
         highLevelClient().bulk(
             new BulkRequest().add(
@@ -354,19 +257,21 @@ public class DocIT extends AbstractHavenaskRestTestCase {
         // check data using sql search api
         String sqlStr = "select * from "
             + index
-            + "_0 where my_keyword='keyword' AND my_text='text' AND my_integer=1 AND my_double=1.5 AND my_boolean='T' ";
-        SqlResponse bulkSqlResponse = highLevelClient().havenask().sql(new SqlRequest(sqlStr), RequestOptions.DEFAULT);
-        assertEquals(bulkSqlResponse.getRowCount(), 1);
-        assertEquals(bulkSqlResponse.getSqlResult().getData()[0][1], 1);
-        assertEquals(bulkSqlResponse.getSqlResult().getData()[0][2], 1577836800000L);
-        assertEquals(bulkSqlResponse.getSqlResult().getData()[0][4], "text");
-        assertEquals(bulkSqlResponse.getSqlResult().getData()[0][5], "keyword");
-        assertEquals(bulkSqlResponse.getSqlResult().getData()[0][7], 1.5);
-        assertEquals(bulkSqlResponse.getSqlResult().getData()[0][9], "T");
+            + " where my_keyword='keyword' AND my_text='text' AND my_integer=1 AND my_double=1.5 AND my_boolean='T' ";
+        SqlResponse bulkSqlResponse = getSqlResponse(sqlStr);
+        java.util.Map<String, Integer> dataIndexMap = new HashMap<>();
+        for (int i = 0; i < bulkSqlResponse.getSqlResult().getColumnName().length; i++) {
+            dataIndexMap.put(bulkSqlResponse.getSqlResult().getColumnName()[i], i);
+        }
+        assertEquals(1, bulkSqlResponse.getRowCount());
+        assertEquals(1, bulkSqlResponse.getSqlResult().getData()[0][dataIndexMap.get("my_integer")]);
+        assertEquals(1577836800000L, bulkSqlResponse.getSqlResult().getData()[0][dataIndexMap.get("my_date")]);
+        assertEquals("text", bulkSqlResponse.getSqlResult().getData()[0][dataIndexMap.get("my_text")]);
+        assertEquals("keyword", bulkSqlResponse.getSqlResult().getData()[0][dataIndexMap.get("my_keyword")]);
+        assertEquals(1.5, bulkSqlResponse.getSqlResult().getData()[0][dataIndexMap.get("my_double")]);
+        assertEquals("T", bulkSqlResponse.getSqlResult().getData()[0][dataIndexMap.get("my_boolean")]);
 
-        // delete index and HEAD index
-        assertTrue(highLevelClient().indices().delete(new DeleteIndexRequest(index), RequestOptions.DEFAULT).isAcknowledged());
-        assertEquals(false, highLevelClient().indices().exists(new GetIndexRequest(index), RequestOptions.DEFAULT));
+        deleteAndHeadIndex(index);
     }
 
     public void testIllegalVectorParams() throws Exception {
@@ -379,25 +284,18 @@ public class DocIT extends AbstractHavenaskRestTestCase {
 
         // create index
         assertTrue(
-            highLevelClient().indices()
-                .create(
-                    new CreateIndexRequest(index).settings(
-                        Settings.builder()
-                            .put("index.number_of_shards", 1)
-                            .put("index.number_of_replicas", 0)
-                            .put(EngineSettings.ENGINE_TYPE_SETTING.getKey(), EngineSettings.ENGINE_HAVENASK)
-                            .build()
-                    ).mapping(createMapping(fieldName, vectorDims, similarity)),
-                    RequestOptions.DEFAULT
-                )
-                .isAcknowledged()
+                createTestIndex(
+                index,
+                Settings.builder()
+                    .put("index.number_of_shards", 1)
+                    .put("index.number_of_replicas", 0)
+                    .put(EngineSettings.ENGINE_TYPE_SETTING.getKey(), EngineSettings.ENGINE_HAVENASK)
+                    .build(),
+                createMapping(fieldName, vectorDims, similarity)
+            )
         );
 
-        assertBusy(() -> {
-            ClusterHealthResponse clusterHealthResponse = highLevelClient().cluster()
-                .health(new ClusterHealthRequest(index), RequestOptions.DEFAULT);
-            assertEquals(clusterHealthResponse.getStatus(), ClusterHealthStatus.GREEN);
-        }, 2, TimeUnit.MINUTES);
+        waitIndexGreen(index);
 
         org.havenask.HavenaskStatusException ex1 = expectThrows(
             org.havenask.HavenaskStatusException.class,
@@ -422,9 +320,42 @@ public class DocIT extends AbstractHavenaskRestTestCase {
         );
         assertTrue(ex2.getCause().getMessage().contains("The [dot_product] similarity can only be used with unit-length vectors."));
 
-        // delete index and HEAD index
-        assertTrue(highLevelClient().indices().delete(new DeleteIndexRequest(index), RequestOptions.DEFAULT).isAcknowledged());
-        assertEquals(false, highLevelClient().indices().exists(new GetIndexRequest(index), RequestOptions.DEFAULT));
+        deleteAndHeadIndex(index);
+    }
+
+    public void testUpdateDoc() throws Exception {
+        String index = "update_doc_test";
+        int loopCount = 10;
+
+        assertTrue(createTestIndex(index,
+                Settings.builder()
+                        .put("index.number_of_shards", 1)
+                        .put("index.number_of_replicas", 0)
+                        .put(EngineSettings.ENGINE_TYPE_SETTING.getKey(), EngineSettings.ENGINE_HAVENASK)
+                        .build(),
+                Map.of(
+                        "properties",
+                        Map.of("seq", Map.of("type", "integer"))))
+        );
+
+        waitIndexGreen(index);
+
+        putDoc(index, "1", Map.of("seq", 0));
+        waitResponseExists(index, "1");
+        GetResponse getResponse = getDocById(index, "1");
+        assertEquals(0, getResponse.getSourceAsMap().get("seq"));
+        for (int i = 1; i < loopCount; i++) {
+            int expectedSeqVal = i;
+            updateDoc(index, "1", Map.of("seq", i));
+            assertBusy(() -> {
+                GetResponse getUpdateResponse = getDocById(index, "1");
+                assertEquals(expectedSeqVal, getUpdateResponse.getSourceAsMap().get("seq"));
+            }, 10, TimeUnit.SECONDS);
+            getResponse = getDocById(index, "1");
+            assertEquals(i, getResponse.getSourceAsMap().get("seq"));
+        }
+
+        deleteAndHeadIndex(index);
     }
 
     private static XContentBuilder createMapping(String fieldName, int vectorDims, String similarity) throws IOException {
@@ -439,5 +370,23 @@ public class DocIT extends AbstractHavenaskRestTestCase {
             .endObject()
             .endObject();
         return mappingBuilder;
+    }
+
+    private static void checkStatsDocCount(String index, long expectedDocCount) throws IOException {
+        Response indexStatsResponse = highLevelClient().getLowLevelClient().performRequest(new Request("GET", "/" + index + "/_stats"));
+        String indexStats = EntityUtils.toString(indexStatsResponse.getEntity());
+        JSONObject indexStatsJson = JSONObject.parseObject(indexStats);
+        long docCount = indexStatsJson.getJSONObject("indices")
+            .getJSONObject(index)
+            .getJSONObject("total")
+            .getJSONObject("docs")
+            .getLong("count");
+        assertEquals(expectedDocCount, docCount);
+        long storeSize = indexStatsJson.getJSONObject("indices")
+            .getJSONObject(index)
+            .getJSONObject("total")
+            .getJSONObject("store")
+            .getLong("size_in_bytes");
+        assertTrue(storeSize >= 10240L);
     }
 }
