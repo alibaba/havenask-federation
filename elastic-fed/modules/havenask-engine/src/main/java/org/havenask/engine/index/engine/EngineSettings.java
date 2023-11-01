@@ -22,6 +22,8 @@ import org.havenask.common.settings.Setting;
 import org.havenask.common.settings.Setting.Property;
 import org.havenask.common.settings.Settings;
 
+import static org.havenask.cluster.metadata.IndexMetadata.INDEX_NUMBER_OF_SHARDS_SETTING;
+
 public class EngineSettings {
     public static final String ENGINE_HAVENASK = "havenask";
     public static final String ENGINE_LUCENE = "lucene";
@@ -36,6 +38,20 @@ public class EngineSettings {
             if (!ENGINE_LUCENE.equals(value) && !ENGINE_HAVENASK.equals(value)) {
                 throw new IllegalArgumentException("Invalid engine type [" + value + "], must be [lucene] or [havenask]");
             }
+
+            if (ENGINE_HAVENASK.equals(value)) {
+                // havenask engine only support 1 shard
+                Integer shards = (Integer) settings.get(INDEX_NUMBER_OF_SHARDS_SETTING);
+                if (shards != null && shards != 1) {
+                    throw new IllegalArgumentException("havenask engine only support 1 shard");
+                }
+            }
+        }
+
+        @Override
+        public Iterator<Setting<?>> settings() {
+            List<Setting<?>> settings = List.of(INDEX_NUMBER_OF_SHARDS_SETTING);
+            return settings.iterator();
         }
     }, Setting.Property.IndexScope, Setting.Property.Final);
 

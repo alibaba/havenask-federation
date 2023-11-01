@@ -79,7 +79,7 @@ public class BasicIT extends AbstractHavenaskRestTestCase {
         java.util.Map<String, Object> tables = (java.util.Map<String, Object>) ((java.util.Map<String, Object>) (((java.util.Map<
             String,
             Object>) (sqlClientInfoResponse.getResult().get("default"))).get("general"))).get("tables");
-        assertTrue(tables.containsKey(index + "_0"));
+        assertTrue(tables.containsKey(index));
 
         assertTrue(highLevelClient().indices().delete(new DeleteIndexRequest(index), RequestOptions.DEFAULT).isAcknowledged());
     }
@@ -158,7 +158,8 @@ public class BasicIT extends AbstractHavenaskRestTestCase {
                         new CreateIndexRequest(index).settings(
                             Settings.builder()
                                 .put(EngineSettings.ENGINE_TYPE_SETTING.getKey(), EngineSettings.ENGINE_HAVENASK)
-                                .put("index.number_of_shards", shardsNum)
+                                // TODO 暂时只支持单shard
+                                // .put("index.number_of_shards", shardsNum)
                                 .put("number_of_replicas", 0)
                                 .build()
                         ).mapping(Map.of("properties", Map.of("content" + i, Map.of("type", "keyword")))),
@@ -175,10 +176,11 @@ public class BasicIT extends AbstractHavenaskRestTestCase {
             // GET index
             assertEquals(true, highLevelClient().indices().exists(new GetIndexRequest(index), RequestOptions.DEFAULT));
             GetIndexResponse getIndexResponse = highLevelClient().indices().get(new GetIndexRequest(index), RequestOptions.DEFAULT);
-            assertEquals(
-                new MappingMetadata("_doc", Map.of("dynamic", "false", "properties", Map.of("content" + i, Map.of("type", "keyword")))),
-                getIndexResponse.getMappings().get(index)
+            MappingMetadata expectedMappingMetaData = new MappingMetadata(
+                "_doc",
+                Map.of("dynamic", "false", "properties", Map.of("content" + i, Map.of("type", "keyword")))
             );
+            assertTrue(mappingsEquals(expectedMappingMetaData.source(), getIndexResponse.getMappings().get(index).source()));
 
             // put doc
             int randomDocNum = randomIntBetween(1, 4);
@@ -224,7 +226,8 @@ public class BasicIT extends AbstractHavenaskRestTestCase {
                         new CreateIndexRequest(indexs.get(i)).settings(
                             Settings.builder()
                                 .put(EngineSettings.ENGINE_TYPE_SETTING.getKey(), EngineSettings.ENGINE_HAVENASK)
-                                .put("index.number_of_shards", shardsNum)
+                                // TODO 暂时只支持单shard
+                                // .put("index.number_of_shards", shardsNum)
                                 .put("number_of_replicas", 0)
                                 .build()
                         ).mapping(Map.of("properties", Map.of("content" + i, Map.of("type", "keyword")))),
@@ -247,10 +250,11 @@ public class BasicIT extends AbstractHavenaskRestTestCase {
         for (int i = 0; i < randomNum; i++) {
             assertEquals(true, highLevelClient().indices().exists(new GetIndexRequest(indexs.get(i)), RequestOptions.DEFAULT));
             GetIndexResponse getIndexResponse = highLevelClient().indices().get(new GetIndexRequest(indexs.get(i)), RequestOptions.DEFAULT);
-            assertEquals(
-                new MappingMetadata("_doc", Map.of("dynamic", "false", "properties", Map.of("content" + i, Map.of("type", "keyword")))),
-                getIndexResponse.getMappings().get(indexs.get(i))
+            MappingMetadata expectedMappingMetaData = new MappingMetadata(
+                "_doc",
+                Map.of("dynamic", "false", "properties", Map.of("content" + i, Map.of("type", "keyword")))
             );
+            assertTrue(mappingsEquals(expectedMappingMetaData.source(), getIndexResponse.getMappings().get(indexs.get(i)).source()));
         }
 
         // put and get doc
