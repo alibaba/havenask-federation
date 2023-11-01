@@ -14,10 +14,13 @@
 
 package org.havenask.engine;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.havenask.action.admin.cluster.health.ClusterHealthRequest;
 import org.havenask.action.admin.cluster.health.ClusterHealthResponse;
 import org.havenask.action.admin.indices.delete.DeleteIndexRequest;
@@ -40,8 +43,32 @@ import org.havenask.common.xcontent.XContentHelper;
 import org.havenask.common.xcontent.XContentType;
 import org.havenask.engine.index.engine.EngineSettings;
 import org.havenask.index.mapper.MapperService;
+import org.junit.AfterClass;
 
 public class BasicIT extends AbstractHavenaskRestTestCase {
+
+    // static logger
+    private static final Logger logger = LogManager.getLogger(BasicIT.class);
+    private static final String[] BasicITIndices = {
+        "index_crud",
+        "index_index_method",
+        "create_and_delete_test",
+        "create_and_delete_test" };
+
+    @AfterClass
+    public static void cleanIndices() {
+        try {
+            for (String index : BasicITIndices) {
+                if (highLevelClient().indices().exists(new GetIndexRequest(index), RequestOptions.DEFAULT)) {
+                    highLevelClient().indices().delete(new DeleteIndexRequest(index), RequestOptions.DEFAULT);
+                    logger.info("clean index {}", index);
+                }
+            }
+        } catch (IOException e) {
+            logger.error("clean index failed", e);
+        }
+    }
+
     public void testCRUD() throws Exception {
         String index = "index_crud";
         assertTrue(

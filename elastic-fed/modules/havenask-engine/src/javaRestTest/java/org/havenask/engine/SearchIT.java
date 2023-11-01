@@ -17,6 +17,8 @@ package org.havenask.engine;
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.havenask.action.admin.cluster.health.ClusterHealthRequest;
 import org.havenask.action.admin.cluster.health.ClusterHealthResponse;
 import org.havenask.action.admin.indices.delete.DeleteIndexRequest;
@@ -39,8 +41,27 @@ import org.havenask.engine.index.query.HnswQueryBuilder;
 import org.havenask.index.query.QueryBuilders;
 import org.havenask.search.builder.KnnSearchBuilder;
 import org.havenask.search.builder.SearchSourceBuilder;
+import org.junit.AfterClass;
 
 public class SearchIT extends AbstractHavenaskRestTestCase {
+    // static logger
+    private static final Logger logger = LogManager.getLogger(SearchIT.class);
+    private static final String[] SearchITIndices = { "single_shard_test", "multi_shard_test", "multi_vector_test" };
+
+    @AfterClass
+    public static void cleanIndices() {
+        try {
+            for (String index : SearchITIndices) {
+                if (highLevelClient().indices().exists(new GetIndexRequest(index), RequestOptions.DEFAULT)) {
+                    highLevelClient().indices().delete(new DeleteIndexRequest(index), RequestOptions.DEFAULT);
+                    logger.info("clean index {}", index);
+                }
+            }
+        } catch (IOException e) {
+            logger.error("clean index failed", e);
+        }
+    }
+
     public void testSingleShardKnn() throws Exception {
         String index = "single_shard_test";
         String fieldName = "image";

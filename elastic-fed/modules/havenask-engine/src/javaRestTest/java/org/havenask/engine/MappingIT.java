@@ -21,6 +21,8 @@ import java.util.HashMap;
 import java.util.Locale;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.havenask.action.admin.cluster.health.ClusterHealthRequest;
 import org.havenask.action.admin.cluster.health.ClusterHealthResponse;
 import org.havenask.action.admin.indices.delete.DeleteIndexRequest;
@@ -40,8 +42,32 @@ import org.havenask.common.xcontent.XContentType;
 import org.havenask.engine.index.engine.EngineSettings;
 import org.havenask.engine.index.query.HnswQueryBuilder;
 import org.havenask.search.builder.SearchSourceBuilder;
+import org.junit.AfterClass;
 
 public class MappingIT extends AbstractHavenaskRestTestCase {
+    // static logger
+    private static final Logger logger = LogManager.getLogger(BasicIT.class);
+    private static final String[] BasicITIndices = {
+        "index_supported_data_type",
+        "index_unsupported_data_type",
+        "index_vector_data",
+        "index_vector_data_with_partial_params",
+        "index_test_illegal_vector_params_check" };
+
+    @AfterClass
+    public static void cleanIndices() {
+        try {
+            for (String index : BasicITIndices) {
+                if (highLevelClient().indices().exists(new GetIndexRequest(index), RequestOptions.DEFAULT)) {
+                    highLevelClient().indices().delete(new DeleteIndexRequest(index), RequestOptions.DEFAULT);
+                    logger.info("clean index {}", index);
+                }
+            }
+        } catch (IOException e) {
+            logger.error("clean index failed", e);
+        }
+    }
+
     // test supported data type
     public void testSupportedDataType() throws Exception {
         String index = "index_supported_data_type";
