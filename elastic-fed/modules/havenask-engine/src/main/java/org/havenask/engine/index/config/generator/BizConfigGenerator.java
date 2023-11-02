@@ -39,7 +39,7 @@ public class BizConfigGenerator {
     public static final String DEFAULT_DIR = "default";
     public static final String CLUSTER_DIR = "clusters";
     public static final String CLUSTER_FILE_SUFFIX = "_cluster.json";
-    private static final String PLUGINS_DIR = "plugins";
+    public static final String PLUGINS_DIR = "plugins";
     public static final String SCHEMAS_DIR = "schemas";
     public static final String SCHEMAS_FILE_SUFFIX = "_schema.json";
     public static final String DATA_TABLES_DIR = "data_tables";

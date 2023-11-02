@@ -238,13 +238,6 @@ examples:
         if not self.configPath.startswith('/'):
             self.configPath = os.path.join(os.getcwd(), self.configPath)
 
-        if not os.path.exists(self.configPath):
-           defaultConfigPath = sys.path[0] + "/config.tar.gz"
-           os.system("mkdir %s && tar -zxvf %s --strip-components 1 -C %s" % (self.configPath, defaultConfigPath, self.configPath))
-        if not os.path.exists(self.indexPath):
-           defaultIndexPath = sys.path[0] + "/runtimedata.tar.gz"
-           os.system("mkdir %s && tar -zxvf %s --strip-components 1 -C %s" % (self.indexPath, defaultIndexPath, self.indexPath))
-
         self.onlineConfigPath = os.path.join(self.configPath, "bizs")
         self.offlineConfigPath = os.path.join(self.configPath, "table")
         tableVersions = sorted(map(lambda x:int(x), os.listdir(self.offlineConfigPath)))
