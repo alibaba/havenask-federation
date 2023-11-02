@@ -47,6 +47,9 @@ public class SearchIT extends AbstractHavenaskRestTestCase {
     // static logger
     private static final Logger logger = LogManager.getLogger(SearchIT.class);
     private static final String[] SearchITIndices = { "single_shard_test", "multi_shard_test", "multi_vector_test" };
+    private static final int TEST_SINGLE_SHARD_KNN_INDEX_POS = 0;
+    private static final int TEST_MULTI_SHARD_KNN_INDEX_POS = 1;
+    private static final int TEST_MULTI_KNN_QUERY_INDEX_POS = 2;
 
     @AfterClass
     public static void cleanIndices() {
@@ -63,7 +66,7 @@ public class SearchIT extends AbstractHavenaskRestTestCase {
     }
 
     public void testSingleShardKnn() throws Exception {
-        String index = "single_shard_test";
+        String index = SearchITIndices[TEST_SINGLE_SHARD_KNN_INDEX_POS];
         String fieldName = "image";
         String similarity = "l2_norm";
         int vectorDims = 2;
@@ -132,7 +135,7 @@ public class SearchIT extends AbstractHavenaskRestTestCase {
     }
 
     public void testMultiShardKnn() throws Exception {
-        String index = "multi_shard_test";
+        String index = SearchITIndices[TEST_MULTI_SHARD_KNN_INDEX_POS];
         String fieldName = "image";
         String similarity = "l2_norm";
         int vectorDims = 2;
@@ -221,7 +224,7 @@ public class SearchIT extends AbstractHavenaskRestTestCase {
     }
 
     public void testMultiKnnQuery() throws Exception {
-        String index = "multi_vector_test";
+        String index = SearchITIndices[TEST_MULTI_KNN_QUERY_INDEX_POS];
         String[] fieldNames = { "field1", "field2" };
         int[] multiVectorDims = { 2, 2 };
         String[] similarities = { "l2_norm", "dot_product" };

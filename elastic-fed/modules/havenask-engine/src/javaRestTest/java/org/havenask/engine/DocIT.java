@@ -50,6 +50,10 @@ public class DocIT extends AbstractHavenaskRestTestCase {
     // static logger
     private static final Logger logger = LogManager.getLogger(DocIT.class);
     private static final String[] DocITIndices = { "index_doc_method", "index_multi_data_type", "illegal_vector_test", "update_doc_test" };
+    private static final int TEST_DOC_METHOD_INDEX_POS = 0;
+    private static final int TEST_MULTI_DATA_TYPE_INDEX_POS = 1;
+    private static final int TEST_ILLEGAL_VECTOR_TEST_INDEX_POS = 2;
+    private static final int TEST_UPDATE_DOC_TEST_INDEX_POS = 3;
 
     @AfterClass
     public static void cleanIndices() {
@@ -67,7 +71,7 @@ public class DocIT extends AbstractHavenaskRestTestCase {
 
     // test document api, PUT/POST/DELETE and bulk
     public void testDocMethod() throws Exception {
-        String index = "index_doc_method";
+        String index = DocITIndices[TEST_DOC_METHOD_INDEX_POS];
         // create index
         Settings settings = Settings.builder()
             .put(EngineSettings.ENGINE_TYPE_SETTING.getKey(), EngineSettings.ENGINE_HAVENASK)
@@ -175,7 +179,7 @@ public class DocIT extends AbstractHavenaskRestTestCase {
 
     // test common data type(int, double, boolean, date, text, keyword, array)
     public void testMultiDataType() throws Exception {
-        String index = "index_multi_data_type";
+        String index = DocITIndices[TEST_MULTI_DATA_TYPE_INDEX_POS];
         // create index with multi data type
         Settings settings = Settings.builder()
             .put(EngineSettings.ENGINE_TYPE_SETTING.getKey(), EngineSettings.ENGINE_HAVENASK)
@@ -275,7 +279,7 @@ public class DocIT extends AbstractHavenaskRestTestCase {
     }
 
     public void testIllegalVectorParams() throws Exception {
-        String index = "illegal_vector_test";
+        String index = DocITIndices[TEST_ILLEGAL_VECTOR_TEST_INDEX_POS];
         String fieldName = "vector";
         int vectorDims = 2;
         String similarity = "dot_product";
@@ -324,7 +328,7 @@ public class DocIT extends AbstractHavenaskRestTestCase {
     }
 
     public void testUpdateDoc() throws Exception {
-        String index = "update_doc_test";
+        String index = DocITIndices[TEST_UPDATE_DOC_TEST_INDEX_POS];
         int loopCount = 10;
 
         assertTrue(
