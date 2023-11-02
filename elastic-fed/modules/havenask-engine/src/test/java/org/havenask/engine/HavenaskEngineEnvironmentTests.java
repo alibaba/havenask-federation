@@ -43,8 +43,8 @@ import static org.havenask.engine.index.config.generator.BizConfigGenerator.DEFA
 import static org.havenask.engine.index.config.generator.TableConfigGenerator.TABLE_DIR;
 
 public class HavenaskEngineEnvironmentTests extends HavenaskTestCase {
-    // test deleteShardDirectoryUnderLock
-    public void testDeleteShardDirectoryUnderLock() throws IOException {
+    // test testDeleteIndexDirectoryUnderLock
+    public void testDeleteIndexDirectoryUnderLock() throws IOException {
         ShardId shardId = new ShardId("indexFile", "indexFile", 0);
         String tableName = Utils.getHavenaskTableName(shardId);
         Path workDir = createTempDir();
@@ -82,7 +82,10 @@ public class HavenaskEngineEnvironmentTests extends HavenaskTestCase {
             .build();
 
         ShardLock shardLock = new DummyShardLock(shardId);
-        havenaskEngineEnvironment.deleteShardDirectoryUnderLock(shardLock, new IndexSettings(build, Settings.EMPTY));
+        havenaskEngineEnvironment.deleteIndexDirectoryUnderLock(
+            shardLock.getShardId().getIndex(),
+            new IndexSettings(build, Settings.EMPTY)
+        );
         TestCase.assertFalse(Files.exists(indexFile));
     }
 }

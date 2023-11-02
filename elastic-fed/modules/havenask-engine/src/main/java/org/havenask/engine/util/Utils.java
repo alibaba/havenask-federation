@@ -202,7 +202,7 @@ public class Utils {
     }
 
     public static String getHavenaskTableName(ShardId shardId) {
-        return String.format(Locale.ROOT, "%s_%s", shardId.getIndexName(), shardId.id());
+        return shardId.getIndexName();
     }
 
     public static String getVersionFile(Integer version) {

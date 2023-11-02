@@ -15,12 +15,15 @@
 package org.havenask.engine;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
@@ -43,13 +46,14 @@ import org.havenask.common.settings.Settings;
 import org.havenask.common.unit.TimeValue;
 import org.havenask.common.util.concurrent.AbstractAsyncTask;
 import org.havenask.core.internal.io.IOUtils;
+import org.havenask.engine.index.config.ZoneBiz;
 import org.havenask.engine.index.engine.EngineSettings;
 import org.havenask.engine.rpc.HavenaskClient;
 import org.havenask.engine.rpc.HeartbeatTargetResponse;
-import org.havenask.engine.rpc.TargetInfo;
-import org.havenask.engine.rpc.UpdateHeartbeatTargetRequest;
 import org.havenask.engine.rpc.QrsClient;
 import org.havenask.engine.rpc.SqlClientInfoResponse;
+import org.havenask.engine.rpc.TargetInfo;
+import org.havenask.engine.rpc.UpdateHeartbeatTargetRequest;
 import org.havenask.engine.util.Utils;
 import org.havenask.threadpool.ThreadPool;
 
@@ -80,6 +84,7 @@ public class MetaDataSyncer extends AbstractLifecycleComponent {
     private static final String HAVENASK_WORKSPACCE = "local_search_12000";
     private static final String HAVENASK_SEARCHER_HOME = "general_p0_r0";
     private static final String HAVENASK_QRS_HOME = "qrs";
+    private static final String DEFAULT_BIZ_CONFIG = "zones/general/default_biz.json";
     private static final String[] cm2ConfigBizNames = {
         "general.para_search_2",
         "general.para_search_2.search",
@@ -339,6 +344,9 @@ public class MetaDataSyncer extends AbstractLifecycleComponent {
         }
         subDirNames.add(TABLE_NAME_IN0);
 
+        // update table info
+        generateDefaultBizConfig(subDirNames);
+
         searcherTargetInfo.table_info = new HashMap<>();
         for (String subDir : subDirNames) {
             Path versionPath = defaultRuntimeDataPath.resolve(subDir).resolve(INDEX_SUB_PATH);
@@ -462,6 +470,19 @@ public class MetaDataSyncer extends AbstractLifecycleComponent {
             }
         }
         return subDirNames;
+    }
+
+    private synchronized void generateDefaultBizConfig(List<String> indexList) throws IOException {
+        Path defaultBizConfigPath = defaultBizsPath.resolve(DEFAULT_BIZ_CONFIG);
+        String strZone = Files.readString(defaultBizConfigPath, StandardCharsets.UTF_8);
+        ZoneBiz zoneBiz = ZoneBiz.parse(strZone);
+        zoneBiz.turing_options_config.dependency_table = new HashSet<>(indexList);
+        Files.write(
+            defaultBizConfigPath,
+            zoneBiz.toString().getBytes(StandardCharsets.UTF_8),
+            StandardOpenOption.CREATE,
+            StandardOpenOption.TRUNCATE_EXISTING
+        );
     }
 
     private static boolean qrsTableCheck(List<String> subDirNames, SqlClientInfoResponse sqlClientInfoResponse) {

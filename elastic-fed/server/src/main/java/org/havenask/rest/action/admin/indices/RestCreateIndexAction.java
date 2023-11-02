@@ -39,6 +39,11 @@
 
 package org.havenask.rest.action.admin.indices;
 
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 import org.havenask.action.admin.indices.create.CreateIndexRequest;
 import org.havenask.action.support.ActiveShardCount;
 import org.havenask.client.node.NodeClient;
@@ -49,11 +54,6 @@ import org.havenask.index.mapper.MapperService;
 import org.havenask.rest.BaseRestHandler;
 import org.havenask.rest.RestRequest;
 import org.havenask.rest.action.RestToXContentListener;
-
-import java.io.IOException;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
 import static java.util.Collections.singletonList;
 import static java.util.Collections.singletonMap;
@@ -94,14 +94,7 @@ public class RestCreateIndexAction extends BaseRestHandler {
 
         createIndexRequest.timeout(request.paramAsTime("timeout", createIndexRequest.timeout()));
         createIndexRequest.masterNodeTimeout(request.paramAsTime("master_timeout", createIndexRequest.masterNodeTimeout()));
-
-        String engine = createIndexRequest.settings().get("index.engine");
-        String waitForActiveShards = request.param("wait_for_active_shards");
-        if (waitForActiveShards == null && (engine != null && engine.equals("havenask"))) {
-            createIndexRequest.waitForActiveShards(ActiveShardCount.NONE);
-        } else {
-            createIndexRequest.waitForActiveShards(ActiveShardCount.parseString(waitForActiveShards));
-        }
+        createIndexRequest.waitForActiveShards(ActiveShardCount.parseString(request.param("wait_for_active_shards")));
         return channel -> client.admin().indices().create(createIndexRequest, new RestToXContentListener<>(channel));
     }
 

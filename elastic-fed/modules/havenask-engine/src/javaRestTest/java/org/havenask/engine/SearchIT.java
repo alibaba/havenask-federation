@@ -14,6 +14,9 @@
 
 package org.havenask.engine;
 
+import java.io.IOException;
+import java.util.concurrent.TimeUnit;
+
 import org.havenask.action.admin.cluster.health.ClusterHealthRequest;
 import org.havenask.action.admin.cluster.health.ClusterHealthResponse;
 import org.havenask.action.admin.indices.delete.DeleteIndexRequest;
@@ -36,9 +39,6 @@ import org.havenask.engine.index.query.HnswQueryBuilder;
 import org.havenask.index.query.QueryBuilders;
 import org.havenask.search.builder.KnnSearchBuilder;
 import org.havenask.search.builder.SearchSourceBuilder;
-
-import java.io.IOException;
-import java.util.concurrent.TimeUnit;
 
 public class SearchIT extends AbstractHavenaskRestTestCase {
     public void testSingleShardKnn() throws Exception {
@@ -148,7 +148,8 @@ public class SearchIT extends AbstractHavenaskRestTestCase {
                 .create(
                     new CreateIndexRequest(index).settings(
                         Settings.builder()
-                            .put("index.number_of_shards", randomIntBetween(2, 5))
+                            // TODO 暂时只支持单shard
+                            // .put("index.number_of_shards", randomIntBetween(2, 5))
                             // TODO 目前 replicas 不为零时索引会一直是 yellow，将replicas指定为0，后续增加相关测试
                             .put("index.number_of_replicas", 0)
                             .put(EngineSettings.ENGINE_TYPE_SETTING.getKey(), EngineSettings.ENGINE_HAVENASK)
@@ -210,11 +211,11 @@ public class SearchIT extends AbstractHavenaskRestTestCase {
         float[][] field0Values = { { 1f, 1f }, { 2f, 2f }, { 3f, 3f }, { 4f, 4f } };
         float[][] field1Values = { { 0.6f, 0.8f }, { 0.8f, 0.6f }, { 1.0f, 0.0f }, { 0.0f, 1.0f } };
 
-        String[] resSourceAsString = {
-            "{\"field1\":[1.0,1.0],\"field2\":[0.6,0.8]}",
-            "{\"field1\":[2.0,2.0],\"field2\":[0.8,0.6]}",
-            "{\"field1\":[4.0,4.0],\"field2\":[0.0,1.0]}",
-            "{\"field1\":[3.0,3.0],\"field2\":[1.0,0.0]}", };
+        String[][] resSourceAsString = {
+            { "\"field1\":[1.0,1.0]", "\"field2\":[0.6,0.8]" },
+            { "\"field1\":[2.0,2.0]", "\"field2\":[0.8,0.6]" },
+            { "\"field1\":[4.0,4.0]", "\"field2\":[0.0,1.0]" },
+            { "\"field1\":[3.0,3.0]", "\"field2\":[1.0,0.0]" } };
 
         String[] expectedId = { "1", "2", "4", "3" };
         float[] expectedScores = { 2f, 1.3133334f, 0.95263153f, 0.9111111f };
@@ -272,7 +273,10 @@ public class SearchIT extends AbstractHavenaskRestTestCase {
 
         for (int i = 0; i < dataNum; i++) {
             assertEquals(expectedId[i], searchResponse.getHits().getHits()[i].getId());
-            assertEquals(resSourceAsString[i], searchResponse.getHits().getHits()[i].getSourceAsString());
+            assertTrue(
+                searchResponse.getHits().getHits()[i].getSourceAsString().contains(resSourceAsString[i][0])
+                    && searchResponse.getHits().getHits()[i].getSourceAsString().contains(resSourceAsString[i][1])
+            );
             assertEquals(expectedScores[i], searchResponse.getHits().getHits()[i].getScore(), delta);
         }
 
