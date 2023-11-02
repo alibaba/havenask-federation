@@ -39,7 +39,7 @@ import org.havenask.plugins.NodeEnvironmentPlugin.CustomEnvironment;
 import static org.havenask.env.Environment.PATH_HOME_SETTING;
 
 public class HavenaskEngineEnvironment implements CustomEnvironment {
-    public static final String DEFAULT_DATA_PATH = "data_havenask";
+    public static final String DEFAULT_DATA_PATH = "havenask";
     public static final String HAVENASK_CONFIG_PATH = "config";
     public static final String HAVENASK_RUNTIMEDATA_PATH = "runtimedata";
     public static final String HAVENASK_TABLE_CONFIG_PATH = "table";
@@ -64,10 +64,12 @@ public class HavenaskEngineEnvironment implements CustomEnvironment {
 
     public HavenaskEngineEnvironment(final Environment environment, final Settings settings) {
         this.environment = environment;
-        final Path homeFile = PathUtils.get(PATH_HOME_SETTING.get(settings)).normalize();
         if (HAVENASK_PATH_DATA_SETTING.exists(settings)) {
             dataPath = PathUtils.get(HAVENASK_PATH_DATA_SETTING.get(settings)).normalize();
+        } else if (this.environment.dataFiles().length >= 1) {
+            dataPath = this.environment.dataFiles()[0].resolve(DEFAULT_DATA_PATH);
         } else {
+            Path homeFile = PathUtils.get(PATH_HOME_SETTING.get(settings)).toAbsolutePath().normalize();
             dataPath = homeFile.resolve(DEFAULT_DATA_PATH);
         }
 

@@ -36,8 +36,7 @@ import static org.havenask.common.xcontent.XContentType.JSON;
 public class HavenaskHttpClient implements HavenaskClient {
     private static final String HEART_BEAT_URL = "/HeartbeatService/heartbeat";
 
-    protected OkHttpClient client = AccessController.doPrivileged(
-        (PrivilegedAction<OkHttpClient>)() -> new OkHttpClient());
+    protected OkHttpClient client = AccessController.doPrivileged((PrivilegedAction<OkHttpClient>) () -> new OkHttpClient());
     protected final String url;
 
     public HavenaskHttpClient(int port) {
