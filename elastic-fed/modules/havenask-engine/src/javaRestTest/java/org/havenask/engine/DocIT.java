@@ -113,6 +113,7 @@ public class DocIT extends AbstractHavenaskRestTestCase {
         putDoc(index, Map.of("seq", 4, "content", "欢迎使用4", "time", "20230715"));
 
         /// get index data count
+        waitSqlResponseExists("select count(*) from " + index, 1);
         SqlResponse sqlResponse = getSqlResponse("select count(*) from " + index);
 
         assertEquals(1, sqlResponse.getRowCount());
@@ -262,6 +263,7 @@ public class DocIT extends AbstractHavenaskRestTestCase {
         String sqlStr = "select * from "
             + index
             + " where my_keyword='keyword' AND my_text='text' AND my_integer=1 AND my_double=1.5 AND my_boolean='T' ";
+        waitSqlResponseExists(sqlStr, 1);
         SqlResponse bulkSqlResponse = getSqlResponse(sqlStr);
         java.util.Map<String, Integer> dataIndexMap = new HashMap<>();
         for (int i = 0; i < bulkSqlResponse.getSqlResult().getColumnName().length; i++) {
@@ -393,5 +395,12 @@ public class DocIT extends AbstractHavenaskRestTestCase {
             .getJSONObject("store")
             .getLong("size_in_bytes");
         assertTrue(storeSize >= 10240L);
+    }
+
+    protected void waitSqlResponseExists(String sqlStr, int expectedRowCount) throws Exception {
+        assertBusy(() -> {
+            SqlResponse sqlResponse = getSqlResponse(sqlStr);
+            assertEquals(expectedRowCount, sqlResponse.getRowCount());
+        }, 10, TimeUnit.SECONDS);
     }
 }

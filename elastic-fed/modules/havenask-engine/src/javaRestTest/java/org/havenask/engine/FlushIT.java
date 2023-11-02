@@ -29,7 +29,6 @@
 package org.havenask.engine;
 
 import java.io.IOException;
-import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
@@ -276,11 +275,13 @@ public class FlushIT extends AbstractHavenaskRestTestCase {
     }
 
     private void checkLocalPoint(String index, Set<Long> expectedCheckpontValue) throws Exception {
-        assertBusy(()-> {
+        assertBusy(() -> {
             long tempLocalCheckpoint = getLocalCheckpoint(index);
-            assertTrue("checkpoint should be "+ expectedCheckpontValue.toString() + ", but get: " + tempLocalCheckpoint,
-                    expectedCheckpontValue.contains(tempLocalCheckpoint));
+            assertTrue(
+                "checkpoint should be " + expectedCheckpontValue.toString() + ", but get: " + tempLocalCheckpoint,
+                expectedCheckpontValue.contains(tempLocalCheckpoint)
+            );
         }, 10, TimeUnit.SECONDS);
-        logger.info("checkpoint should be {}, checkpoint is {}", expectedCheckpontValue.toString(),getLocalCheckpoint(index));
+        logger.info("checkpoint should be {}, checkpoint is {}", expectedCheckpontValue.toString(), getLocalCheckpoint(index));
     }
 }
