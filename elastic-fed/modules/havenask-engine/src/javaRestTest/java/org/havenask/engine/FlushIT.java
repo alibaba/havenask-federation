@@ -29,6 +29,8 @@
 package org.havenask.engine;
 
 import java.io.IOException;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 import com.alibaba.fastjson.JSONObject;
@@ -204,15 +206,7 @@ public class FlushIT extends AbstractHavenaskRestTestCase {
         highLevelClient().index(new IndexRequest(index).source(Map.of("foo", "multi flush test 3")), RequestOptions.DEFAULT);
 
         // checkpoint will be 0 or 1, in most case it will be 0
-        if (getLocalCheckpoint(index) == 0) {
-            // print log
-            logger.info("common case: checkpoint is 0");
-        } else if (getLocalCheckpoint(index) == 1) {
-            // print log
-            logger.info("corner case: checkpoint is 1");
-        } else {
-            fail("checkpoint should be 0 or 1, but get " + getLocalCheckpoint(index));
-        }
+        checkLocalPoint(index, Set.of(0L, 1L));
 
         // check max_seq_no
         assertEquals(3, getMaxSeqNo(index));
@@ -225,15 +219,7 @@ public class FlushIT extends AbstractHavenaskRestTestCase {
         highLevelClient().index(new IndexRequest(index).source(Map.of("foo", "multi flush test 5")), RequestOptions.DEFAULT);
 
         // checkpoint will be 2 or 3, in most case it will be 2
-        if (getLocalCheckpoint(index) == 2) {
-            // print log
-            logger.info("common case: checkpoint is 2");
-        } else if (getLocalCheckpoint(index) == 3) {
-            // print log
-            logger.info("corner case: checkpoint is 3");
-        } else {
-            fail("checkpoint should be 2 or 3, but get " + getLocalCheckpoint(index));
-        }
+        checkLocalPoint(index, Set.of(2L, 3L));
 
         // create many docs
         for (int i = 6; i <= 16; i++) {
@@ -250,18 +236,8 @@ public class FlushIT extends AbstractHavenaskRestTestCase {
         highLevelClient().index(new IndexRequest(index).source(Map.of("foo", "multi flush test 19")), RequestOptions.DEFAULT);
 
         // checkpoint will be 15, 16 or 17, in most case it will be 15 or 16
-        if (getLocalCheckpoint(index) == 15) {
-            // print log
-            logger.info("common case: checkpoint is 15");
-        } else if (getLocalCheckpoint(index) == 16) {
-            // print log
-            logger.info("common case: checkpoint is 16");
-        } else if (getLocalCheckpoint(index) == 17) {
-            // print log
-            logger.info("corner case: checkpoint is 17");
-        } else {
-            fail("checkpoint should be 15, 16 or 17, but get " + getLocalCheckpoint(index));
-        }
+        checkLocalPoint(index, Set.of(15L, 16L, 17L));
+
         // check max_seq_no
         assertEquals(19, getMaxSeqNo(index));
     }
@@ -297,5 +273,14 @@ public class FlushIT extends AbstractHavenaskRestTestCase {
             .getJSONObject(0)
             .getJSONObject("seq_no")
             .getLong("max_seq_no");
+    }
+
+    private void checkLocalPoint(String index, Set<Long> expectedCheckpontValue) throws Exception {
+        assertBusy(()-> {
+            long tempLocalCheckpoint = getLocalCheckpoint(index);
+            assertTrue("checkpoint should be "+ expectedCheckpontValue.toString() + ", but get: " + tempLocalCheckpoint,
+                    expectedCheckpontValue.contains(tempLocalCheckpoint));
+        }, 10, TimeUnit.SECONDS);
+        logger.info("checkpoint should be {}, checkpoint is {}", expectedCheckpontValue.toString(),getLocalCheckpoint(index));
     }
 }
