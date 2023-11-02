@@ -49,17 +49,17 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
     private static final Logger LOGGER = LogManager.getLogger(NativeProcessControlService.class);
     public static final String SEARCHER_ROLE = "searcher";
     public static final String QRS_ROLE = "qrs";
-    private static final String START_SEARCHER_COMMAND = "cd %s;python %s/havenask/command/general_search_starter.py -i "
+    private static final String START_SEARCHER_COMMAND = "cd %s;python %s/havenask-command/general_search_starter.py -i "
         + "%s -c %s -b /ha3_install -T in0 -p 30468,30480 --role searcher --httpBindPort %d --arpcBindPort %d "
         + "--grpcBindPort %d >> search.log 2>> search.error.log";
-    private static final String START_QRS_COMMAND = "cd %s;python %s/havenask/command/general_search_starter.py -i "
+    private static final String START_QRS_COMMAND = "cd %s;python %s/havenask-command/general_search_starter.py -i "
         + "%s -c %s -b /ha3_install -T in0 -p 30468,30480 --role qrs --httpBindPort %d --arpcBindPort %d >> qrs.log "
         + "2>> qrs.error.log";
-    private static final String UPDATE_SEARCHER_COMMAND = "cd %s;python %s/havenask/command/general_search_updater.py -i "
+    private static final String UPDATE_SEARCHER_COMMAND = "cd %s;python %s/havenask-command/general_search_updater.py -i "
         + "%s -c %s -T in0 -p 30468,30480 --role searcher >> search.log 2>> search.error.log";
-    private static final String UPDATE_QRS_COMMAND = "cd %s;python %s/havenask/command/general_search_updater.py -i "
+    private static final String UPDATE_QRS_COMMAND = "cd %s;python %s/havenask-command/general_search_updater.py -i "
         + "%s -c %s -T in0 -p 30468,30480 --role qrs >> qrs.log 2>> qrs.error.log";
-    private static final String STOP_HAVENASK_COMMAND = "cd %s;python %s/havenask/command/general_search_stop.py"
+    private static final String STOP_HAVENASK_COMMAND = "cd %s;python %s/havenask-command/general_search_stop.py"
         + " -c /ha3_install/usr/local/etc/sql/sql_alog.conf >> search.log 2>> search.error.log";
     private static final String CHECK_HAVENASK_ALIVE_COMMAND =
         "ps aux | grep ha_sql | grep 'roleType=%s' | grep -v grep | awk '{print $2}'";
@@ -155,7 +155,7 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
             Locale.ROOT,
             START_SEARCHER_COMMAND,
             havenaskEngineEnvironment.getDataPath().toAbsolutePath(),
-            environment.configFile().toAbsolutePath(),
+            environment.binFile().toAbsolutePath(),
             havenaskEngineEnvironment.getRuntimedataPath(),
             havenaskEngineEnvironment.getConfigPath(),
             searcherHttpPort,
@@ -166,7 +166,7 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
             Locale.ROOT,
             START_QRS_COMMAND,
             havenaskEngineEnvironment.getDataPath().toAbsolutePath(),
-            environment.configFile().toAbsolutePath(),
+            environment.binFile().toAbsolutePath(),
             havenaskEngineEnvironment.getRuntimedataPath(),
             havenaskEngineEnvironment.getConfigPath(),
             qrsHttpPort,
@@ -176,7 +176,7 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
             Locale.ROOT,
             STOP_HAVENASK_COMMAND,
             havenaskEngineEnvironment.getDataPath().toAbsolutePath(),
-            environment.configFile().toAbsolutePath()
+            environment.binFile().toAbsolutePath()
         );
         this.commandTimeout = HAVENASK_COMMAND_TIMEOUT_SETTING.get(settings);
         clusterService.getClusterSettings().addSettingsUpdateConsumer(HAVENASK_COMMAND_TIMEOUT_SETTING, this::setCommandTimeout);
