@@ -19,11 +19,9 @@ import java.util.Iterator;
 import java.util.Map;
 
 import com.carrotsearch.randomizedtesting.annotations.ThreadLeakFilters;
-import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.havenask.action.bulk.BackoffPolicy;
 import org.havenask.common.bytes.BytesReference;
-import org.havenask.common.settings.Settings;
 import org.havenask.common.unit.TimeValue;
 import org.havenask.common.xcontent.XContentBuilder;
 import org.havenask.common.xcontent.XContentType;
@@ -39,7 +37,6 @@ import suez.service.proto.ErrorCode;
 import static org.havenask.engine.index.engine.HavenaskEngine.DEFAULT_TIMEOUT;
 import static org.havenask.engine.index.engine.HavenaskEngine.MAX_RETRY;
 import static org.havenask.engine.index.engine.HavenaskEngine.buildProducerRecord;
-import static org.havenask.engine.index.engine.HavenaskEngine.initKafkaProducer;
 import static org.havenask.engine.index.engine.HavenaskEngine.toHaIndex;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -162,13 +159,6 @@ public class HavenaskEngineTests extends EngineTestCase {
         );
         assertEquals(record.topic(), "topicName");
         assertEquals(record.partition(), Integer.valueOf(0));
-    }
-
-    // test initKafkaProducer
-    public void testInitKafkaProducer() {
-        Settings settings = Settings.builder().put(EngineSettings.HAVENASK_REALTIME_BOOTSTRAP_SERVERS.getKey(), "127.0.0.1:9092").build();
-        KafkaProducer<String, String> producer = initKafkaProducer(settings);
-        assertNotNull(producer);
     }
 
     // test retryWrite

@@ -54,13 +54,15 @@ public class HavenaskEngineEnvironmentTests extends HavenaskTestCase {
             .put(EngineSettings.ENGINE_TYPE_SETTING.getKey(), EngineSettings.ENGINE_HAVENASK)
             .put(DiscoveryModule.DISCOVERY_TYPE_SETTING.getKey(), SINGLE_NODE_DISCOVERY_TYPE)
             .build();
-        Path indexFile = workDir.resolve(HavenaskEngineEnvironment.DEFAULT_DATA_PATH)
+        Path indexFile = workDir.resolve("data")
+            .resolve(HavenaskEngineEnvironment.DEFAULT_DATA_PATH)
             .resolve(HavenaskEngineEnvironment.HAVENASK_RUNTIMEDATA_PATH)
             .resolve(tableName);
         Files.createDirectories(indexFile);
         TestCase.assertTrue(Files.exists(indexFile));
 
-        Path configPath = workDir.resolve(HavenaskEngineEnvironment.DEFAULT_DATA_PATH)
+        Path configPath = workDir.resolve("data")
+            .resolve(HavenaskEngineEnvironment.DEFAULT_DATA_PATH)
             .resolve(HavenaskEngineEnvironment.HAVENASK_CONFIG_PATH);
         Files.createDirectories(configPath.resolve(TABLE_DIR).resolve("0"));
         Files.createDirectories(configPath.resolve(BIZ_DIR).resolve(DEFAULT_DIR).resolve("0"));
