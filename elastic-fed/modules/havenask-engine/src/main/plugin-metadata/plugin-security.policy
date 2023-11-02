@@ -1,4 +1,7 @@
 grant {
   permission java.io.FilePermission "<<ALL FILES>>", "read,write,delete,execute";
   permission javax.management.MBeanServerPermission "createMBeanServer";
+  permission java.net.NetPermission "getProxySelector";
+  permission java.lang.RuntimePermission "*";
+  permission java.net.SocketPermission "*", "accept, connect, listen, resolve";
 };

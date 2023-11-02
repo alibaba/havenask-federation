@@ -39,22 +39,6 @@
 
 package org.havenask.bootstrap;
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-import org.apache.logging.log4j.message.ParameterizedMessage;
-import org.apache.lucene.util.Constants;
-import org.havenask.cluster.coordination.ClusterBootstrapService;
-import org.havenask.common.SuppressForbidden;
-import org.havenask.common.io.PathUtils;
-import org.havenask.common.settings.Setting;
-import org.havenask.common.transport.BoundTransportAddress;
-import org.havenask.common.transport.TransportAddress;
-import org.havenask.discovery.DiscoveryModule;
-import org.havenask.index.IndexModule;
-import org.havenask.monitor.jvm.JvmInfo;
-import org.havenask.monitor.process.ProcessProbe;
-import org.havenask.node.NodeValidationException;
-
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -70,6 +54,22 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.message.ParameterizedMessage;
+import org.apache.lucene.util.Constants;
+import org.havenask.cluster.coordination.ClusterBootstrapService;
+import org.havenask.common.SuppressForbidden;
+import org.havenask.common.io.PathUtils;
+import org.havenask.common.settings.Setting;
+import org.havenask.common.transport.BoundTransportAddress;
+import org.havenask.common.transport.TransportAddress;
+import org.havenask.discovery.DiscoveryModule;
+import org.havenask.index.IndexModule;
+import org.havenask.monitor.jvm.JvmInfo;
+import org.havenask.monitor.process.ProcessProbe;
+import org.havenask.node.NodeValidationException;
 
 import static org.havenask.cluster.coordination.ClusterBootstrapService.INITIAL_MASTER_NODES_SETTING;
 import static org.havenask.discovery.DiscoveryModule.DISCOVERY_SEED_PROVIDERS_SETTING;
@@ -234,8 +234,7 @@ final class BootstrapChecks {
         checks.add(new OnOutOfMemoryErrorCheck());
         checks.add(new EarlyAccessCheck());
         checks.add(new G1GCCheck());
-        // TODO 屏蔽all permission check
-        // checks.add(new AllPermissionCheck());
+        checks.add(new AllPermissionCheck());
         checks.add(new DiscoveryConfiguredCheck());
         return Collections.unmodifiableList(checks);
     }

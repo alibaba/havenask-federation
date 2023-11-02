@@ -77,4 +77,4 @@ ${error.file}
 -Djava.security.policy=config/security.policy
 
 # for debug
-# -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=0.0.0.0:5005
+#-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=0.0.0.0:5005
