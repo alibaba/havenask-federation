@@ -14,10 +14,7 @@
 
 package org.havenask.engine.rpc.http;
 
-import java.io.IOException;
-
 import com.alibaba.fastjson.JSONObject;
-
 import okhttp3.HttpUrl;
 import okhttp3.Request;
 import okhttp3.Response;
@@ -27,6 +24,8 @@ import org.havenask.engine.rpc.QrsClient;
 import org.havenask.engine.rpc.QrsSqlRequest;
 import org.havenask.engine.rpc.QrsSqlResponse;
 import org.havenask.engine.rpc.SqlClientInfoResponse;
+
+import java.io.IOException;
 
 public class QrsHttpClient extends HavenaskHttpClient implements QrsClient {
     private static final Logger logger = LogManager.getLogger(QrsHttpClient.class);
@@ -39,6 +38,7 @@ public class QrsHttpClient extends HavenaskHttpClient implements QrsClient {
 
     @Override
     public QrsSqlResponse executeSql(QrsSqlRequest qrsSqlRequest) throws IOException {
+        long start = System.currentTimeMillis();
         HttpUrl.Builder urlBuilder = HttpUrl.parse(url + SQL_URL).newBuilder();
         String query = qrsSqlRequest.getSql();
         if (qrsSqlRequest.getKvpair() != null) {
@@ -46,9 +46,10 @@ public class QrsHttpClient extends HavenaskHttpClient implements QrsClient {
         }
         urlBuilder.addQueryParameter("query", query);
         String url = urlBuilder.build().toString();
-        logger.debug("execute sql: {}", url);
         Request request = new Request.Builder().url(url).build();
         Response response = client.newCall(request).execute();
+        long end = System.currentTimeMillis();
+        logger.debug("execute sql: {} cost: {} ms", url, end - start);
         return new QrsSqlResponse(response.body().string(), response.code());
     }
 

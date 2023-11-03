@@ -14,10 +14,8 @@
 
 package org.havenask.engine.index.engine;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.search.Collector;
 import org.apache.lucene.search.Query;
@@ -42,9 +40,14 @@ import org.havenask.search.internal.ContextIndexSearcher;
 import org.havenask.search.internal.ReaderContext;
 import org.havenask.search.query.QuerySearchResult;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+
 import static org.havenask.engine.search.rest.RestHavenaskSqlAction.SQL_DATABASE;
 
 public class HavenaskIndexSearcher extends ContextIndexSearcher {
+    private static final Logger logger = LogManager.getLogger(HavenaskIndexSearcher.class);
     public static final String IDS_CONTEXT = "havenask_ids";
     private static final int ID_POS = 0;
     private static final int SCORE_POS = 1;
@@ -77,14 +80,17 @@ public class HavenaskIndexSearcher extends ContextIndexSearcher {
         QrsSqlRequest request = new QrsSqlRequest(sql, kvpair);
         QrsSqlResponse response = qrsHttpClient.executeSql(request);
         if (false == Strings.isNullOrEmpty(response.getResult())) {
-            buildQuerySearchResult(searchContext.queryResult(), response.getResult(), searchContext.readerContext());
+            SqlResponse sqlResponse = SqlResponse.parse(response.getResult());
+            if (logger.isDebugEnabled()) {
+                logger.debug("sql: {}, sqlResponse took: {} ms", sql, sqlResponse.getTotalTime());
+            }
+            buildQuerySearchResult(searchContext.queryResult(), sqlResponse, searchContext.readerContext());
         }
         searchContext.skipQueryCollectors(true);
     }
 
-    public static void buildQuerySearchResult(QuerySearchResult querySearchResult, String sqlResponseStr, ReaderContext readerContext)
+    public static void buildQuerySearchResult(QuerySearchResult querySearchResult, SqlResponse sqlResponse, ReaderContext readerContext)
         throws IOException {
-        SqlResponse sqlResponse = SqlResponse.parse(sqlResponseStr);
         ScoreDoc[] queryScoreDocs = new ScoreDoc[sqlResponse.getRowCount()];
         List<String> idList = new ArrayList<>(sqlResponse.getRowCount());
         float maxScore = 0;

@@ -14,14 +14,6 @@
 
 package org.havenask.engine.search;
 
-import java.io.IOException;
-import java.util.List;
-import java.util.Arrays;
-import java.util.ArrayList;
-import java.util.Map;
-import java.util.HashMap;
-import java.util.Collections;
-
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.lucene.search.TotalHits;
@@ -34,6 +26,7 @@ import org.havenask.engine.rpc.QrsClient;
 import org.havenask.engine.rpc.QrsSqlRequest;
 import org.havenask.engine.rpc.QrsSqlResponse;
 import org.havenask.engine.search.fetch.FetchSourcePhase;
+import org.havenask.engine.search.fetch.FetchSubPhase.HitContent;
 import org.havenask.engine.search.fetch.FetchSubPhaseProcessor;
 import org.havenask.engine.util.Utils;
 import org.havenask.index.mapper.MapperService;
@@ -47,11 +40,19 @@ import org.havenask.search.fetch.FetchPhaseExecutionException;
 import org.havenask.search.fetch.FetchSubPhase;
 import org.havenask.search.internal.SearchContext;
 import org.havenask.tasks.TaskCancelledException;
-import org.havenask.engine.search.fetch.FetchSubPhase.HitContent;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import static org.havenask.engine.search.rest.RestHavenaskSqlAction.SQL_DATABASE;
 
 public class HavenaskFetchPhase implements FetchPhase {
+    private static final Logger logger = LogManager.getLogger(HavenaskFetchPhase.class);
     private final QrsClient qrsHttpClient;
     private static final int SOURCE_POS = 0;
     private static final int ID_POS = 1;
@@ -130,7 +131,11 @@ public class HavenaskFetchPhase implements FetchPhase {
         String kvpair = "format:full_json;timeout:10000;databaseName:" + SQL_DATABASE;
         QrsSqlRequest request = new QrsSqlRequest(sqlQuery.toString(), kvpair);
         QrsSqlResponse response = qrsHttpClient.executeSql(request);
-        return SqlResponse.parse(response.getResult());
+        SqlResponse sqlResponse = SqlResponse.parse(response.getResult());
+        if (logger.isDebugEnabled()) {
+            logger.debug("fetch ids length: {}, havenask sqlResponse took: {} ms", context.docIdsToLoadSize(), sqlResponse.getTotalTime());
+        }
+        return sqlResponse;
     }
 
     public void transferSqlResponse2FetchResult(DocIdToIndex[] docs, List<String> idList, SqlResponse sqlResponse, SearchContext context)
