@@ -14,10 +14,13 @@
 
 package org.havenask.engine;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.havenask.action.admin.cluster.health.ClusterHealthRequest;
 import org.havenask.action.admin.cluster.health.ClusterHealthResponse;
 import org.havenask.action.admin.indices.delete.DeleteIndexRequest;
@@ -40,10 +43,38 @@ import org.havenask.common.xcontent.XContentHelper;
 import org.havenask.common.xcontent.XContentType;
 import org.havenask.engine.index.engine.EngineSettings;
 import org.havenask.index.mapper.MapperService;
+import org.junit.AfterClass;
 
 public class BasicIT extends AbstractHavenaskRestTestCase {
+
+    // static logger
+    private static final Logger logger = LogManager.getLogger(BasicIT.class);
+    private static final String[] BasicITIndices = {
+        "index_crud",
+        "index_index_method",
+        "create_and_delete_same_index_test",
+        "create_and_delete_diff_index_test" };
+    private static final int TEST_CRUD_INDEX_POS = 0;
+    private static final int TEST_INDEX_METHOD_INDEX_POS = 1;
+    private static final int TEST_CREATE_AND_DELETE_SAME_INDEX_INDEX_POS = 2;
+    private static final int TEST_CREATE_AND_DELETE_DIFF_INDEX_INDEX_POS = 3;
+
+    @AfterClass
+    public static void cleanIndices() {
+        try {
+            for (String index : BasicITIndices) {
+                if (highLevelClient().indices().exists(new GetIndexRequest(index), RequestOptions.DEFAULT)) {
+                    highLevelClient().indices().delete(new DeleteIndexRequest(index), RequestOptions.DEFAULT);
+                    logger.info("clean index {}", index);
+                }
+            }
+        } catch (IOException e) {
+            logger.error("clean index failed", e);
+        }
+    }
+
     public void testCRUD() throws Exception {
-        String index = "index_crud";
+        String index = BasicITIndices[TEST_CRUD_INDEX_POS];
         assertTrue(
             highLevelClient().indices()
                 .create(
@@ -86,7 +117,7 @@ public class BasicIT extends AbstractHavenaskRestTestCase {
 
     // create index, get index, delete index, HEAD index and set mapping
     public void testIndexMethod() throws Exception {
-        String index = "index_index_method";
+        String index = BasicITIndices[TEST_INDEX_METHOD_INDEX_POS];
         // create index
         assertTrue(
             highLevelClient().indices()
@@ -150,7 +181,7 @@ public class BasicIT extends AbstractHavenaskRestTestCase {
         int randomTimes = randomIntBetween(2, 6);
         for (int i = 0; i < randomTimes; i++) {
             int shardsNum = randomIntBetween(1, 6);
-            String index = "create_and_delete_test";
+            String index = BasicITIndices[TEST_CREATE_AND_DELETE_SAME_INDEX_INDEX_POS];
             // create index
             assertTrue(
                 highLevelClient().indices()
@@ -211,10 +242,10 @@ public class BasicIT extends AbstractHavenaskRestTestCase {
 
     public void testCreateAndDeleteDiffIndex() throws Exception {
         int randomNum = randomIntBetween(2, 6);
-        String baseName = "create_and_delete_test";
-        List<String> indexs = new ArrayList<>();
+        String baseName = BasicITIndices[TEST_CREATE_AND_DELETE_DIFF_INDEX_INDEX_POS];
+        List<String> indices = new ArrayList<>();
         for (int i = 0; i < randomNum; i++) {
-            indexs.add(baseName + i);
+            indices.add(baseName + i);
         }
 
         // create indexs
@@ -223,7 +254,7 @@ public class BasicIT extends AbstractHavenaskRestTestCase {
             assertTrue(
                 highLevelClient().indices()
                     .create(
-                        new CreateIndexRequest(indexs.get(i)).settings(
+                        new CreateIndexRequest(indices.get(i)).settings(
                             Settings.builder()
                                 .put(EngineSettings.ENGINE_TYPE_SETTING.getKey(), EngineSettings.ENGINE_HAVENASK)
                                 // TODO 暂时只支持单shard
@@ -238,7 +269,7 @@ public class BasicIT extends AbstractHavenaskRestTestCase {
         }
 
         for (int i = 0; i < randomNum; i++) {
-            String curIndex = indexs.get(i);
+            String curIndex = indices.get(i);
             assertBusy(() -> {
                 ClusterHealthResponse clusterHealthResponse = highLevelClient().cluster()
                     .health(new ClusterHealthRequest(curIndex), RequestOptions.DEFAULT);
@@ -248,13 +279,14 @@ public class BasicIT extends AbstractHavenaskRestTestCase {
 
         // get index
         for (int i = 0; i < randomNum; i++) {
-            assertEquals(true, highLevelClient().indices().exists(new GetIndexRequest(indexs.get(i)), RequestOptions.DEFAULT));
-            GetIndexResponse getIndexResponse = highLevelClient().indices().get(new GetIndexRequest(indexs.get(i)), RequestOptions.DEFAULT);
+            assertEquals(true, highLevelClient().indices().exists(new GetIndexRequest(indices.get(i)), RequestOptions.DEFAULT));
+            GetIndexResponse getIndexResponse = highLevelClient().indices()
+                .get(new GetIndexRequest(indices.get(i)), RequestOptions.DEFAULT);
             MappingMetadata expectedMappingMetaData = new MappingMetadata(
                 "_doc",
                 Map.of("dynamic", "false", "properties", Map.of("content" + i, Map.of("type", "keyword")))
             );
-            assertTrue(mappingsEquals(expectedMappingMetaData.source(), getIndexResponse.getMappings().get(indexs.get(i)).source()));
+            assertTrue(mappingsEquals(expectedMappingMetaData.source(), getIndexResponse.getMappings().get(indices.get(i)).source()));
         }
 
         // put and get doc
@@ -263,14 +295,14 @@ public class BasicIT extends AbstractHavenaskRestTestCase {
             for (int j = 0; j < randomDocNum; j++) {
                 String curId = String.valueOf(i) + String.valueOf(j);
                 highLevelClient().index(
-                    new IndexRequest(indexs.get(i)).id(curId).source(Map.of("content" + i, "欢迎使用" + j), XContentType.JSON),
+                    new IndexRequest(indices.get(i)).id(curId).source(Map.of("content" + i, "欢迎使用" + j), XContentType.JSON),
                     RequestOptions.DEFAULT
                 );
             }
 
             for (int j = 0; j < randomDocNum; j++) {
                 String curId = String.valueOf(i) + String.valueOf(j);
-                String curIndex = indexs.get(i);
+                String curIndex = indices.get(i);
                 assertBusy(() -> {
                     GetResponse getResponse = highLevelClient().get(new GetRequest(curIndex, curId), RequestOptions.DEFAULT);
                     assertEquals(true, getResponse.isExists());
@@ -283,8 +315,8 @@ public class BasicIT extends AbstractHavenaskRestTestCase {
 
         // delete index
         for (int i = 0; i < randomNum; i++) {
-            assertTrue(highLevelClient().indices().delete(new DeleteIndexRequest(indexs.get(i)), RequestOptions.DEFAULT).isAcknowledged());
-            assertEquals(false, highLevelClient().indices().exists(new GetIndexRequest(indexs.get(i)), RequestOptions.DEFAULT));
+            assertTrue(highLevelClient().indices().delete(new DeleteIndexRequest(indices.get(i)), RequestOptions.DEFAULT).isAcknowledged());
+            assertEquals(false, highLevelClient().indices().exists(new GetIndexRequest(indices.get(i)), RequestOptions.DEFAULT));
         }
     }
 

@@ -14,6 +14,15 @@
 
 package org.havenask.engine;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Locale;
+import java.util.concurrent.TimeUnit;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.havenask.action.admin.cluster.health.ClusterHealthRequest;
 import org.havenask.action.admin.cluster.health.ClusterHealthResponse;
 import org.havenask.action.admin.indices.delete.DeleteIndexRequest;
@@ -34,18 +43,41 @@ import org.havenask.engine.index.engine.EngineSettings;
 import org.havenask.engine.index.mapper.DenseVectorFieldMapper;
 import org.havenask.engine.index.query.HnswQueryBuilder;
 import org.havenask.search.builder.SearchSourceBuilder;
+import org.junit.AfterClass;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Locale;
-import java.util.concurrent.TimeUnit;
 
 public class MappingIT extends AbstractHavenaskRestTestCase {
+    // static logger
+    private static final Logger logger = LogManager.getLogger(MappingIT.class);
+    private static final String[] MappingITIndices = {
+        "index_supported_data_type",
+        "index_unsupported_data_type",
+        "index_vector_data",
+        "index_vector_data_with_partial_params",
+        "index_test_illegal_vector_params_check" };
+    private static final int TEST_SUPPORTED_DATA_TYPE_INDEX_POS = 0;
+    private static final int TEST_UNSUPPORTED_DATA_TYPE_INDEX_POS = 1;
+    private static final int TEST_VECTOR_DATA_INDEX_POS = 2;
+    private static final int TEST_VECTOR_DATA_WITH_PARTIAL_PARAMS_INDEX_POS = 3;
+    private static final int TEST_ILLEGAL_VECTOR_PARAMS_CHECK_INDEX_POS = 4;
+
+    @AfterClass
+    public static void cleanIndices() {
+        try {
+            for (String index : MappingITIndices) {
+                if (highLevelClient().indices().exists(new GetIndexRequest(index), RequestOptions.DEFAULT)) {
+                    highLevelClient().indices().delete(new DeleteIndexRequest(index), RequestOptions.DEFAULT);
+                    logger.info("clean index {}", index);
+                }
+            }
+        } catch (IOException e) {
+            logger.error("clean index failed", e);
+        }
+    }
+
     // test supported data type
     public void testSupportedDataType() throws Exception {
-        String index = "index_supported_data_type";
+        String index = MappingITIndices[TEST_SUPPORTED_DATA_TYPE_INDEX_POS];
         // create index
         assertTrue(
             highLevelClient().indices()
@@ -109,7 +141,7 @@ public class MappingIT extends AbstractHavenaskRestTestCase {
 
     // test unsupported data type
     public void testUnsupportedDataType() throws Exception {
-        String index = "index_unsupported_data_type";
+        String index = MappingITIndices[TEST_UNSUPPORTED_DATA_TYPE_INDEX_POS];
 
         ArrayList<String> unsupportedDataType = new ArrayList<String>(
             Arrays.asList(
@@ -170,7 +202,7 @@ public class MappingIT extends AbstractHavenaskRestTestCase {
     public void testVectorData() throws Exception {
         final int TYPE_POS = 0;
 
-        String index = "index_vector_data";
+        String index = MappingITIndices[TEST_VECTOR_DATA_INDEX_POS];
         String fieldName = "image";
         int vectorDims = 2;
         String similarity = "L2_NORM";
@@ -351,7 +383,7 @@ public class MappingIT extends AbstractHavenaskRestTestCase {
     @SuppressWarnings("unchecked")
     public void testVectorDataWithPartialParams() throws Exception {
         final int TYPE_POS = 0;
-        String index = "index_vector_data_with_partial_params";
+        String index = MappingITIndices[TEST_VECTOR_DATA_WITH_PARTIAL_PARAMS_INDEX_POS];
         String fieldName = "image";
         int vectorDims = 2;
         String similarity = "L2_NORM";
@@ -488,7 +520,7 @@ public class MappingIT extends AbstractHavenaskRestTestCase {
     }
 
     public void testIllegalVectorParamsCheck() throws Exception {
-        String index = "index_test_illegal_vector_params_check";
+        String index = MappingITIndices[TEST_ILLEGAL_VECTOR_PARAMS_CHECK_INDEX_POS];
         String fieldName = "image";
         int vectorDims = 2;
         String similarity = "DOT_PRODUCT";
