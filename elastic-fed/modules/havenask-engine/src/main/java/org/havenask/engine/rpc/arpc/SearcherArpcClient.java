@@ -62,6 +62,7 @@ public class SearcherArpcClient implements SearcherClient, Closeable {
 
     @Override
     public WriteResponse write(WriteRequest request) {
+        long start = System.nanoTime();
         Write write = Write.newBuilder().setHashId(request.getHashid()).setStr(request.getSource()).build();
         suez.service.proto.WriteRequest writeRequest = suez.service.proto.WriteRequest.newBuilder()
             .setTableName(request.getTable())
@@ -73,6 +74,10 @@ public class SearcherArpcClient implements SearcherClient, Closeable {
                 init();
             }
             suez.service.proto.WriteResponse writeResponse = blockingStub.writeTable(controller, writeRequest);
+            if (logger.isDebugEnabled()) {
+                long end = System.nanoTime();
+                logger.debug("write {}, length: {}, cost: {} us", request.getTable(), request.getSource().length(), (end - start) / 1000);
+            }
 
             if (writeResponse == null) {
                 resetChannel();

@@ -14,17 +14,16 @@
 
 package org.havenask.engine.index.config;
 
+import com.alibaba.fastjson.JSONArray;
+import com.alibaba.fastjson.JSONObject;
+import com.alibaba.fastjson.annotation.JSONField;
+import org.havenask.common.Strings;
+import org.havenask.engine.util.JsonPrettyFormatter;
+
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-
-import com.alibaba.fastjson.JSONArray;
-import com.alibaba.fastjson.JSONObject;
-import com.alibaba.fastjson.annotation.JSONField;
-
-import org.havenask.common.Strings;
-import org.havenask.engine.util.JsonPrettyFormatter;
 
 public class Schema {
     public Summarys summarys = new Summarys();
@@ -237,6 +236,6 @@ public class Schema {
         if (!Strings.isNullOrEmpty(table_type)) {
             rawSchemaObj.put("table_type", table_type);
         }
-        return JsonPrettyFormatter.toString(rawSchemaObj);
+        return JsonPrettyFormatter.toJsonString(rawSchemaObj);
     }
 }

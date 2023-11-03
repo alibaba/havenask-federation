@@ -18,7 +18,7 @@ import org.havenask.common.collect.List;
 import org.havenask.common.settings.Settings;
 import org.havenask.engine.HavenaskEnginePlugin;
 import org.havenask.engine.index.mapper.DenseVectorFieldMapper;
-import org.havenask.engine.index.query.HnswQueryBuilder;
+import org.havenask.engine.index.query.KnnQueryBuilder;
 import org.havenask.index.mapper.MapperService;
 import org.havenask.index.mapper.MapperServiceTestCase;
 import org.havenask.index.query.QueryBuilders;
@@ -79,7 +79,7 @@ public class QueryTransformerTests extends MapperServiceTestCase {
 
     public void testProximaQuery() throws IOException {
         SearchSourceBuilder builder = new SearchSourceBuilder();
-        builder.query(new HnswQueryBuilder("field", new float[] { 1.0f, 2.0f }, 20));
+        builder.query(new KnnQueryBuilder("field", new float[] { 1.0f, 2.0f }, 20));
         String sql = QueryTransformer.toSql("table", builder, mapperService);
         assertEquals(
             "select _id, (1/(1+vector_score('field'))) as _score from table where MATCHINDEX('field', '1.0,2.0&n=20') order by _score desc",

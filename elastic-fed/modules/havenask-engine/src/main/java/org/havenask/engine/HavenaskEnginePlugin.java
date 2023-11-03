@@ -14,18 +14,6 @@
 
 package org.havenask.engine;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.function.Supplier;
-
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.lucene.store.Directory;
@@ -51,8 +39,7 @@ import org.havenask.engine.index.HavenaskIndexEventListener;
 import org.havenask.engine.index.engine.EngineSettings;
 import org.havenask.engine.index.engine.HavenaskEngine;
 import org.havenask.engine.index.mapper.DenseVectorFieldMapper;
-import org.havenask.engine.index.query.HnswQueryBuilder;
-import org.havenask.engine.index.query.LinearQueryBuilder;
+import org.havenask.engine.index.query.KnnQueryBuilder;
 import org.havenask.engine.index.store.HavenaskStore;
 import org.havenask.engine.rpc.HavenaskClient;
 import org.havenask.engine.rpc.QrsClient;
@@ -101,6 +88,18 @@ import org.havenask.threadpool.ExecutorBuilder;
 import org.havenask.threadpool.ScalingExecutorBuilder;
 import org.havenask.threadpool.ThreadPool;
 import org.havenask.watcher.ResourceWatcherService;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.function.Supplier;
 
 import static org.havenask.engine.NativeProcessControlService.HAVENASK_QRS_HTTP_PORT_SETTING;
 import static org.havenask.engine.index.engine.EngineSettings.ENGINE_HAVENASK;
@@ -311,14 +310,8 @@ public class HavenaskEnginePlugin extends Plugin
 
     @Override
     public List<QuerySpec<?>> getQueries() {
-        QuerySpec<HnswQueryBuilder> hnsw = new QuerySpec<>(HnswQueryBuilder.NAME, HnswQueryBuilder::new, HnswQueryBuilder::fromXContent);
-        QuerySpec<LinearQueryBuilder> linear = new QuerySpec<>(
-            LinearQueryBuilder.NAME,
-            LinearQueryBuilder::new,
-            LinearQueryBuilder::fromXContent
-        );
-
-        return Arrays.asList(hnsw, linear);
+        QuerySpec<KnnQueryBuilder> hnsw = new QuerySpec<>(KnnQueryBuilder.NAME, KnnQueryBuilder::new, KnnQueryBuilder::fromXContent);
+        return Arrays.asList(hnsw);
     }
 
     @Override

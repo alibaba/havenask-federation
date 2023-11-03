@@ -32,7 +32,7 @@ import java.util.Collection;
 
 import static org.havenask.common.xcontent.XContentFactory.jsonBuilder;
 
-public class HnswQueryBuilderTests extends AbstractQueryTestCase<HnswQueryBuilder> {
+public class KnnQueryBuilderTests extends AbstractQueryTestCase<KnnQueryBuilder> {
     @Override
     protected Collection<Class<? extends Plugin>> getPlugins() {
         return Arrays.asList(HavenaskEnginePlugin.class, TestGeoShapeFieldMapperPlugin.class);
@@ -55,21 +55,21 @@ public class HnswQueryBuilderTests extends AbstractQueryTestCase<HnswQueryBuilde
     }
 
     @Override
-    protected HnswQueryBuilder doCreateTestQueryBuilder() {
+    protected KnnQueryBuilder doCreateTestQueryBuilder() {
         String fieldName = "vector";
         float[] vector = { 1.5f, 2.5f };
         int size = 10;
-        return new HnswQueryBuilder(fieldName, vector, size);
+        return new KnnQueryBuilder(fieldName, vector, size);
     }
 
     @Override
-    protected void doAssertLuceneQuery(HnswQueryBuilder queryBuilder, Query query, QueryShardContext context) throws IOException {
+    protected void doAssertLuceneQuery(KnnQueryBuilder queryBuilder, Query query, QueryShardContext context) throws IOException {
         return;
     }
 
     public void testFromJson() throws IOException {
         String json = "{\n"
-            + "    \"hnsw\": {\n"
+            + "    \"knn\": {\n"
             + "      \"feature\": {\n"
             + "        \"vector\": [1.5, 2.5],\n"
             + "        \"size\": 10\n"
@@ -77,7 +77,7 @@ public class HnswQueryBuilderTests extends AbstractQueryTestCase<HnswQueryBuilde
             + "    }\n"
             + "}";
 
-        HnswQueryBuilder parsed = (HnswQueryBuilder) parseQuery(json);
+        KnnQueryBuilder parsed = (KnnQueryBuilder) parseQuery(json);
         assertEquals(json, "feature", parsed.getFieldName());
         assertEquals(10, parsed.getSize());
         float[] expectedVector = new float[] { 1.5f, 2.5f };

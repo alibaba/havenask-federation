@@ -14,10 +14,6 @@
 
 package org.havenask.engine.index.engine;
 
-import java.io.IOException;
-import java.util.Iterator;
-import java.util.Map;
-
 import com.carrotsearch.randomizedtesting.annotations.ThreadLeakFilters;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.havenask.action.bulk.BackoffPolicy;
@@ -33,6 +29,10 @@ import org.havenask.index.engine.EngineTestCase;
 import org.havenask.index.mapper.ParsedDocument;
 import org.havenask.index.shard.ShardId;
 import suez.service.proto.ErrorCode;
+
+import java.io.IOException;
+import java.util.Iterator;
+import java.util.Map;
 
 import static org.havenask.engine.index.engine.HavenaskEngine.DEFAULT_TIMEOUT;
 import static org.havenask.engine.index.engine.HavenaskEngine.MAX_RETRY;
@@ -189,6 +189,26 @@ public class HavenaskEngineTests extends EngineTestCase {
         when(searcherClient.write(writeRequest)).thenReturn(writeResponse);
         when(writeResponse.getErrorCode()).thenReturn(ErrorCode.TBS_ERROR_OTHERS);
         when(writeResponse.getErrorMessage()).thenReturn("doc queue is full");
+        long start = System.currentTimeMillis();
+        WriteResponse response = HavenaskEngine.retryWrite(mock(ShardId.class), searcherClient, writeRequest);
+        long cost = System.currentTimeMillis() - start;
+        Iterator<TimeValue> backoff = BackoffPolicy.exponentialBackoff(DEFAULT_TIMEOUT, MAX_RETRY).iterator();
+        long backoffTime = 0;
+        while (backoff.hasNext()) {
+            backoffTime += backoff.next().millis();
+        }
+
+        assertTrue(cost > backoffTime);
+        assertEquals(response, writeResponse);
+    }
+
+    public void testRetryNoValidTable() {
+        SearcherClient searcherClient = mock(SearcherClient.class);
+        WriteRequest writeRequest = mock(WriteRequest.class);
+        WriteResponse writeResponse = mock(WriteResponse.class);
+        when(searcherClient.write(writeRequest)).thenReturn(writeResponse);
+        when(writeResponse.getErrorCode()).thenReturn(ErrorCode.TBS_ERROR_OTHERS);
+        when(writeResponse.getErrorMessage()).thenReturn("no valid table/range for WriteRequest table: test hashid: 25383");
         long start = System.currentTimeMillis();
         WriteResponse response = HavenaskEngine.retryWrite(mock(ShardId.class), searcherClient, writeRequest);
         long cost = System.currentTimeMillis() - start;
