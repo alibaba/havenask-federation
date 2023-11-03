@@ -31,27 +31,27 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-public class HnswQueryBuilder extends ProximaQueryBuilder<HnswQueryBuilder> {
+public class KnnQueryBuilder extends ProximaQueryBuilder<KnnQueryBuilder> {
 
     public static final ParseField EF_FIELD = new ParseField("ef");
     public static final ParseField MAX_SCAN_NUM_FIELD = new ParseField("max_scan_num");
 
-    public static final String NAME = "hnsw";
+    public static final String NAME = "knn";
 
     private final Integer ef;
     private final Integer maxScanNum;
 
-    public HnswQueryBuilder(String fieldName, float[] vector, int size) {
+    public KnnQueryBuilder(String fieldName, float[] vector, int size) {
         this(fieldName, vector, size, null, null, null);
     }
 
-    public HnswQueryBuilder(String fieldName, float[] vector, int size, SearchFilter searchFilter, Integer ef, Integer maxScanNum) {
+    public KnnQueryBuilder(String fieldName, float[] vector, int size, SearchFilter searchFilter, Integer ef, Integer maxScanNum) {
         super(fieldName, vector, size, searchFilter);
         this.ef = ef;
         this.maxScanNum = maxScanNum;
     }
 
-    public HnswQueryBuilder(StreamInput in) throws IOException {
+    public KnnQueryBuilder(StreamInput in) throws IOException {
         super(in);
         this.ef = in.readOptionalVInt();
         this.maxScanNum = in.readOptionalVInt();
@@ -82,11 +82,11 @@ public class HnswQueryBuilder extends ProximaQueryBuilder<HnswQueryBuilder> {
         }
         DenseVectorFieldMapper.DenseVectorFieldType mapper = (DenseVectorFieldMapper.DenseVectorFieldType) fieldType;
         // TODO fix it
-        return new HnswQuery(fieldName, vector, size, searchFilter, ef, maxScanNum);
+        return new KnnQuery(fieldName, vector, size, searchFilter, ef, maxScanNum);
     }
 
     @Override
-    protected boolean innerDoEquals(HnswQueryBuilder other) {
+    protected boolean innerDoEquals(KnnQueryBuilder other) {
         return Objects.equals(ef, other.ef) && Objects.equals(maxScanNum, other.maxScanNum);
     }
 
@@ -103,7 +103,7 @@ public class HnswQueryBuilder extends ProximaQueryBuilder<HnswQueryBuilder> {
         return maxScanNum;
     }
 
-    public static HnswQueryBuilder fromXContent(XContentParser parser) throws IOException {
+    public static KnnQueryBuilder fromXContent(XContentParser parser) throws IOException {
         String fieldName = null;
         List<Object> vector = null;
         int size = 0;
@@ -178,7 +178,7 @@ public class HnswQueryBuilder extends ProximaQueryBuilder<HnswQueryBuilder> {
             array[i] = ((Number) vector.get(i)).floatValue();
         }
         // float[] array = vector.toArray(); // TODO: avoid arrayCopy?
-        HnswQueryBuilder graphQuery = new HnswQueryBuilder(fieldName, array, size, searchFilter, ef, maxScanNum);
+        KnnQueryBuilder graphQuery = new KnnQueryBuilder(fieldName, array, size, searchFilter, ef, maxScanNum);
         graphQuery.queryName(queryName);
         graphQuery.boost(boost);
 

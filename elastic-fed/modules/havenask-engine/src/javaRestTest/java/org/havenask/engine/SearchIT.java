@@ -38,14 +38,11 @@ import org.havenask.common.xcontent.XContentFactory;
 import org.havenask.common.xcontent.XContentType;
 import org.havenask.engine.index.engine.EngineSettings;
 import org.havenask.engine.index.mapper.DenseVectorFieldMapper;
-import org.havenask.engine.index.query.HnswQueryBuilder;
+import org.havenask.engine.index.query.KnnQueryBuilder;
 import org.havenask.index.query.QueryBuilders;
 import org.havenask.search.builder.KnnSearchBuilder;
 import org.havenask.search.builder.SearchSourceBuilder;
 import org.junit.AfterClass;
-
-import java.io.IOException;
-import java.util.concurrent.TimeUnit;
 
 public class SearchIT extends AbstractHavenaskRestTestCase {
     // static logger
@@ -115,8 +112,8 @@ public class SearchIT extends AbstractHavenaskRestTestCase {
         // get data with _search
         SearchRequest searchRequest = new SearchRequest(index);
         SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-        HnswQueryBuilder hnswQueryBuilder = new HnswQueryBuilder(fieldName, new float[] { 1.5f, 2.5f }, 10);
-        searchSourceBuilder.query(hnswQueryBuilder);
+        KnnQueryBuilder knnQueryBuilder = new KnnQueryBuilder(fieldName, new float[] { 1.5f, 2.5f }, 10);
+        searchSourceBuilder.query(knnQueryBuilder);
         searchRequest.source(searchSourceBuilder);
 
         // 执行查询请求并获取相应结果
@@ -204,8 +201,8 @@ public class SearchIT extends AbstractHavenaskRestTestCase {
         // get data with _search
         SearchRequest searchRequest = new SearchRequest(index);
         SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-        HnswQueryBuilder hnswQueryBuilder = new HnswQueryBuilder(fieldName, new float[] { 1.1f, 1.1f }, 10);
-        searchSourceBuilder.query(hnswQueryBuilder);
+        KnnQueryBuilder knnQueryBuilder = new KnnQueryBuilder(fieldName, new float[] { 1.1f, 1.1f }, 10);
+        searchSourceBuilder.query(knnQueryBuilder);
         searchRequest.source(searchSourceBuilder);
 
         // 执行查询请求并获取相应结果

@@ -41,7 +41,7 @@ import org.havenask.common.xcontent.XContentFactory;
 import org.havenask.common.xcontent.XContentType;
 import org.havenask.engine.index.engine.EngineSettings;
 import org.havenask.engine.index.mapper.DenseVectorFieldMapper;
-import org.havenask.engine.index.query.HnswQueryBuilder;
+import org.havenask.engine.index.query.KnnQueryBuilder;
 import org.havenask.search.builder.SearchSourceBuilder;
 import org.junit.AfterClass;
 
@@ -345,8 +345,8 @@ public class MappingIT extends AbstractHavenaskRestTestCase {
             // get data with _search
             SearchRequest searchRequest = new SearchRequest(index);
             SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-            HnswQueryBuilder hnswQueryBuilder = new HnswQueryBuilder(fieldName, new float[] { 1.5f, 2.5f }, 10);
-            searchSourceBuilder.query(hnswQueryBuilder);
+            KnnQueryBuilder knnQueryBuilder = new KnnQueryBuilder(fieldName, new float[] { 1.5f, 2.5f }, 10);
+            searchSourceBuilder.query(knnQueryBuilder);
             searchRequest.source(searchSourceBuilder);
 
             // 执行查询请求并获取相应结果
@@ -496,8 +496,8 @@ public class MappingIT extends AbstractHavenaskRestTestCase {
         // get data with _search
         SearchRequest searchRequest = new SearchRequest(index);
         SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-        HnswQueryBuilder hnswQueryBuilder = new HnswQueryBuilder(fieldName, new float[] { 1.5f, 2.5f }, 10);
-        searchSourceBuilder.query(hnswQueryBuilder);
+        KnnQueryBuilder knnQueryBuilder = new KnnQueryBuilder(fieldName, new float[] { 1.5f, 2.5f }, 10);
+        searchSourceBuilder.query(knnQueryBuilder);
         searchRequest.source(searchSourceBuilder);
 
         // 执行查询请求并获取相应结果
@@ -597,8 +597,8 @@ public class MappingIT extends AbstractHavenaskRestTestCase {
         try {
             SearchRequest wrongSearchRequest = new SearchRequest(index);
             SearchSourceBuilder wrongSearchSourceBuilder = new SearchSourceBuilder();
-            HnswQueryBuilder wrongHnswQueryBuilder = new HnswQueryBuilder(fieldName, new float[] { 1f, 2f }, 10);
-            wrongSearchSourceBuilder.query(wrongHnswQueryBuilder);
+            KnnQueryBuilder wrongKnnQueryBuilder = new KnnQueryBuilder(fieldName, new float[] { 1f, 2f }, 10);
+            wrongSearchSourceBuilder.query(wrongKnnQueryBuilder);
             wrongSearchRequest.source(wrongSearchSourceBuilder);
         } catch (Exception e) {
             assertTrue(e.getCause().toString().contains("The [dot_product] similarity can only be used with unit-length vectors."));
@@ -606,8 +606,8 @@ public class MappingIT extends AbstractHavenaskRestTestCase {
 
         SearchRequest searchRequest = new SearchRequest(index);
         SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-        HnswQueryBuilder hnswQueryBuilder = new HnswQueryBuilder(fieldName, new float[] { 0.6f, 0.8f }, 10);
-        searchSourceBuilder.query(hnswQueryBuilder);
+        KnnQueryBuilder knnQueryBuilder = new KnnQueryBuilder(fieldName, new float[] { 0.6f, 0.8f }, 10);
+        searchSourceBuilder.query(knnQueryBuilder);
         searchRequest.source(searchSourceBuilder);
 
         // 执行查询请求并获取相应结果

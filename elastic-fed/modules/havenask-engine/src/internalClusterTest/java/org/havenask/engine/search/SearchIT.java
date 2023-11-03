@@ -27,7 +27,7 @@ import org.havenask.common.settings.Settings;
 import org.havenask.common.xcontent.XContentType;
 import org.havenask.engine.HavenaskITTestCase;
 import org.havenask.engine.index.engine.EngineSettings;
-import org.havenask.engine.index.query.HnswQueryBuilder;
+import org.havenask.engine.index.query.KnnQueryBuilder;
 import org.havenask.plugins.Plugin;
 import org.havenask.search.builder.KnnSearchBuilder;
 import org.havenask.search.builder.SearchSourceBuilder;
@@ -59,8 +59,8 @@ public class SearchIT extends HavenaskITTestCase {
         }, 30, TimeUnit.SECONDS);
 
         SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-        HnswQueryBuilder hnswQueryBuilder = new HnswQueryBuilder("vector", new float[] { 1.5f, 2.5f }, 10);
-        searchSourceBuilder.query(hnswQueryBuilder);
+        KnnQueryBuilder knnQueryBuilder = new KnnQueryBuilder("vector", new float[] { 1.5f, 2.5f }, 10);
+        searchSourceBuilder.query(knnQueryBuilder);
         SearchResponse searchResponse = client().prepareSearch(index).setSource(searchSourceBuilder).get();
         assertEquals(searchResponse.getHits().getTotalHits().value, 2);
     }
@@ -144,8 +144,8 @@ public class SearchIT extends HavenaskITTestCase {
         String[] exclude1 = new String[] {};
 
         SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-        HnswQueryBuilder hnswQueryBuilder = new HnswQueryBuilder("vector", new float[] { 1.5f, 2.5f }, 10);
-        searchSourceBuilder.query(hnswQueryBuilder);
+        KnnQueryBuilder knnQueryBuilder = new KnnQueryBuilder("vector", new float[] { 1.5f, 2.5f }, 10);
+        searchSourceBuilder.query(knnQueryBuilder);
         searchSourceBuilder.fetchSource(include1, exclude1);
         SearchResponse searchResponse = client().prepareSearch(index).setSource(searchSourceBuilder).get();
         assertEquals(searchResponse.getHits().getTotalHits().value, 2);
@@ -154,8 +154,8 @@ public class SearchIT extends HavenaskITTestCase {
         String[] exclude2 = new String[] { "key1" };
 
         SearchSourceBuilder searchSourceBuilder2 = new SearchSourceBuilder();
-        HnswQueryBuilder hnswQueryBuilder2 = new HnswQueryBuilder("vector", new float[] { 1.5f, 2.5f }, 10);
-        searchSourceBuilder2.query(hnswQueryBuilder2);
+        KnnQueryBuilder knnQueryBuilder2 = new KnnQueryBuilder("vector", new float[] { 1.5f, 2.5f }, 10);
+        searchSourceBuilder2.query(knnQueryBuilder2);
         searchSourceBuilder2.fetchSource(include2, exclude2);
         SearchResponse searchResponse2 = client().prepareSearch(index).setSource(searchSourceBuilder2).get();
         assertEquals(searchResponse2.getHits().getTotalHits().value, 2);
