@@ -14,15 +14,6 @@
 
 package org.havenask.engine.index.mapper;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Objects;
-
 import org.apache.lucene.search.Query;
 import org.havenask.Version;
 import org.havenask.common.Explicit;
@@ -42,9 +33,18 @@ import org.havenask.index.mapper.ValueFetcher;
 import org.havenask.index.query.QueryShardContext;
 import org.havenask.search.lookup.SearchLookup;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Objects;
+
 public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
 
-    public static final String CONTENT_TYPE = "dense_vector";
+    public static final String CONTENT_TYPE = "vector";
     private static final int DIM_MAX = 2048;
 
     private static DenseVectorFieldMapper toType(FieldMapper in) {
@@ -1041,7 +1041,7 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
 
         @Override
         public ValueFetcher valueFetcher(MapperService mapperService, SearchLookup searchLookup, String format) {
-            throw new UnsupportedOperationException("valueFetcher not supported for dense_vector");
+            throw new UnsupportedOperationException("valueFetcher not supported for vector");
         }
 
         @Override
@@ -1051,7 +1051,7 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
 
         @Override
         public Query termQuery(Object value, QueryShardContext context) {
-            throw new UnsupportedOperationException("termQuery not supported for dense_vector");
+            throw new UnsupportedOperationException("termQuery not supported for vector");
         }
     }
 

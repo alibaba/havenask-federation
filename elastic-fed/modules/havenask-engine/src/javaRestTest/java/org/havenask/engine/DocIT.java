@@ -21,7 +21,6 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import com.alibaba.fastjson.JSONObject;
-
 import org.apache.http.util.EntityUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -42,6 +41,7 @@ import org.havenask.common.xcontent.XContentBuilder;
 import org.havenask.common.xcontent.XContentFactory;
 import org.havenask.common.xcontent.XContentType;
 import org.havenask.engine.index.engine.EngineSettings;
+import org.havenask.engine.index.mapper.DenseVectorFieldMapper;
 import org.havenask.engine.index.query.HnswQueryBuilder;
 import org.havenask.search.builder.SearchSourceBuilder;
 import org.junit.AfterClass;
@@ -370,7 +370,7 @@ public class DocIT extends AbstractHavenaskRestTestCase {
         mappingBuilder.startObject()
             .startObject("properties")
             .startObject(fieldName)
-            .field("type", "dense_vector")
+            .field("type", DenseVectorFieldMapper.CONTENT_TYPE)
             .field("dims", vectorDims)
             .field("similarity", similarity)
             .endObject()

@@ -37,11 +37,15 @@ import org.havenask.common.xcontent.XContentBuilder;
 import org.havenask.common.xcontent.XContentFactory;
 import org.havenask.common.xcontent.XContentType;
 import org.havenask.engine.index.engine.EngineSettings;
+import org.havenask.engine.index.mapper.DenseVectorFieldMapper;
 import org.havenask.engine.index.query.HnswQueryBuilder;
 import org.havenask.index.query.QueryBuilders;
 import org.havenask.search.builder.KnnSearchBuilder;
 import org.havenask.search.builder.SearchSourceBuilder;
 import org.junit.AfterClass;
+
+import java.io.IOException;
+import java.util.concurrent.TimeUnit;
 
 public class SearchIT extends AbstractHavenaskRestTestCase {
     // static logger
@@ -314,7 +318,7 @@ public class SearchIT extends AbstractHavenaskRestTestCase {
         mappingBuilder.startObject()
             .startObject("properties")
             .startObject(fieldName)
-            .field("type", "dense_vector")
+            .field("type", DenseVectorFieldMapper.CONTENT_TYPE)
             .field("dims", vectorDims)
             .field("similarity", similarity)
             .endObject()
@@ -337,7 +341,7 @@ public class SearchIT extends AbstractHavenaskRestTestCase {
                 for (int i = 0; i < length; i++) {
                     mappingBuilder.startObject(fieldNames[i]);
                     {
-                        mappingBuilder.field("type", "dense_vector");
+                        mappingBuilder.field("type", DenseVectorFieldMapper.CONTENT_TYPE);
                         mappingBuilder.field("dims", multiVectorDims[i]);
                         mappingBuilder.field("similarity", similaritys[i]);
                     }

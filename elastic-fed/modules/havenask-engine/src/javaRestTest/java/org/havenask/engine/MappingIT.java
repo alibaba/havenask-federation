@@ -40,6 +40,7 @@ import org.havenask.common.xcontent.XContentBuilder;
 import org.havenask.common.xcontent.XContentFactory;
 import org.havenask.common.xcontent.XContentType;
 import org.havenask.engine.index.engine.EngineSettings;
+import org.havenask.engine.index.mapper.DenseVectorFieldMapper;
 import org.havenask.engine.index.query.HnswQueryBuilder;
 import org.havenask.search.builder.SearchSourceBuilder;
 import org.junit.AfterClass;
@@ -646,7 +647,7 @@ public class MappingIT extends AbstractHavenaskRestTestCase {
             {
                 mappingBuilder.startObject(fieldName);
                 {
-                    mappingBuilder.field("type", "dense_vector");
+                    mappingBuilder.field("type", DenseVectorFieldMapper.CONTENT_TYPE);
                     mappingBuilder.field("dims", vectorDims);
                     mappingBuilder.field("similarity", similarity);
                     if (indexOptionNames != null && indexOptionNames.length > 0) {
@@ -704,7 +705,7 @@ public class MappingIT extends AbstractHavenaskRestTestCase {
         properties.put(fieldName, fieldMap);
         fieldMap.put("dims", vectorDims);
         fieldMap.put("similarity", similarity);
-        fieldMap.put("type", "dense_vector");
+        fieldMap.put("type", DenseVectorFieldMapper.CONTENT_TYPE);
         if (indexOptionNames != null) {
             java.util.Map<String, Object> indexOptions = new HashMap<>();
             fieldMap.put("index_options", indexOptions);
