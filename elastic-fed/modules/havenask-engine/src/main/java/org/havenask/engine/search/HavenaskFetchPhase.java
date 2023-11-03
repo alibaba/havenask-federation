@@ -128,6 +128,7 @@ public class HavenaskFetchPhase implements FetchPhase {
             }
         }
         sqlQuery.append(")");
+        sqlQuery.append(" limit " + context.docIdsToLoadSize());
         String kvpair = "format:full_json;timeout:10000;databaseName:" + SQL_DATABASE;
         QrsSqlRequest request = new QrsSqlRequest(sqlQuery.toString(), kvpair);
         QrsSqlResponse response = qrsHttpClient.executeSql(request);
