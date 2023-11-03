@@ -33,10 +33,10 @@ public class JsonPrettyFormatter {
     }
 
     public static <T> T fromJsonString(String jsonString, Class<T> clazz) {
-        return JSON.parseObject(jsonString, clazz);
+        return AccessController.doPrivileged((PrivilegedAction<T>) () -> JSON.parseObject(jsonString, clazz));
     }
 
     public static JSONObject fromString(String jsonString) {
-        return JSON.parseObject(jsonString);
+        return AccessController.doPrivileged((PrivilegedAction<JSONObject>) () -> return JSON.parseObject(jsonString););
     }
 }
