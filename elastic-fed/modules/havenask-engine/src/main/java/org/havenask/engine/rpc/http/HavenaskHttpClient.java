@@ -14,10 +14,6 @@
 
 package org.havenask.engine.rpc.http;
 
-import java.io.IOException;
-import java.security.AccessController;
-import java.security.PrivilegedAction;
-
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -30,6 +26,10 @@ import org.havenask.common.xcontent.XContentParser;
 import org.havenask.engine.rpc.HavenaskClient;
 import org.havenask.engine.rpc.HeartbeatTargetResponse;
 import org.havenask.engine.rpc.UpdateHeartbeatTargetRequest;
+
+import java.io.IOException;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
 
 import static org.havenask.common.xcontent.XContentType.JSON;
 
@@ -46,7 +46,13 @@ public class HavenaskHttpClient implements HavenaskClient {
     @Override
     public HeartbeatTargetResponse getHeartbeatTarget() throws IOException {
         Request request = new Request.Builder().url(url + HEART_BEAT_URL).build();
-        Response response = client.newCall(request).execute();
+        Response response = AccessController.doPrivileged((PrivilegedAction<Response>) () -> {
+            try {
+                return client.newCall(request).execute();
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        });
         try (
             XContentParser parser = JSON.xContent()
                 .createParser(NamedXContentRegistry.EMPTY, LoggingDeprecationHandler.INSTANCE, response.body().byteStream())
@@ -60,7 +66,14 @@ public class HavenaskHttpClient implements HavenaskClient {
     public HeartbeatTargetResponse updateHeartbeatTarget(UpdateHeartbeatTargetRequest request) throws IOException {
         RequestBody body = RequestBody.create(MediaType.parse("application/json"), Strings.toString(request));
         Request httpRequest = new Request.Builder().url(url + HEART_BEAT_URL).post(body).build();
-        Response response = client.newCall(httpRequest).execute();
+
+        Response response = AccessController.doPrivileged((PrivilegedAction<Response>) () -> {
+            try {
+                return client.newCall(httpRequest).execute();
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        });
         try (
             XContentParser parser = JSON.xContent()
                 .createParser(NamedXContentRegistry.EMPTY, LoggingDeprecationHandler.INSTANCE, response.body().byteStream())
