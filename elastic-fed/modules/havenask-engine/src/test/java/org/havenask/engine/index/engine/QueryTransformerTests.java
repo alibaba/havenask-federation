@@ -14,12 +14,10 @@
 
 package org.havenask.engine.index.engine;
 
-import java.io.IOException;
-import java.util.Collection;
-
 import org.havenask.common.collect.List;
 import org.havenask.common.settings.Settings;
 import org.havenask.engine.HavenaskEnginePlugin;
+import org.havenask.engine.index.mapper.DenseVectorFieldMapper;
 import org.havenask.engine.index.query.HnswQueryBuilder;
 import org.havenask.index.mapper.MapperService;
 import org.havenask.index.mapper.MapperServiceTestCase;
@@ -28,6 +26,9 @@ import org.havenask.plugins.Plugin;
 import org.havenask.search.builder.KnnSearchBuilder;
 import org.havenask.search.builder.SearchSourceBuilder;
 import org.junit.Before;
+
+import java.io.IOException;
+import java.util.Collection;
 
 import static java.util.Collections.singletonList;
 
@@ -47,21 +48,21 @@ public class QueryTransformerTests extends MapperServiceTestCase {
             {
                 b.startObject("field");
                 {
-                    b.field("type", "dense_vector");
+                    b.field("type", DenseVectorFieldMapper.CONTENT_TYPE);
                     b.field("dims", 2);
                     b.field("similarity", "l2_norm");
                 }
                 b.endObject();
                 b.startObject("field1");
                 {
-                    b.field("type", "dense_vector");
+                    b.field("type", DenseVectorFieldMapper.CONTENT_TYPE);
                     b.field("dims", 2);
                     b.field("similarity", "l2_norm");
                 }
                 b.endObject();
                 b.startObject("field2");
                 {
-                    b.field("type", "dense_vector");
+                    b.field("type", DenseVectorFieldMapper.CONTENT_TYPE);
                     b.field("dims", 2);
                     b.field("similarity", "dot_product");
                 }

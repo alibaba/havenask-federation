@@ -14,11 +14,7 @@
 
 package org.havenask.engine;
 
-import java.io.IOException;
-import java.util.concurrent.TimeUnit;
-
 import com.alibaba.fastjson.JSONObject;
-
 import org.apache.http.util.EntityUtils;
 import org.havenask.action.admin.cluster.health.ClusterHealthRequest;
 import org.havenask.action.admin.cluster.health.ClusterHealthResponse;
@@ -44,8 +40,12 @@ import org.havenask.common.xcontent.XContentBuilder;
 import org.havenask.common.xcontent.XContentFactory;
 import org.havenask.common.xcontent.XContentType;
 import org.havenask.engine.index.engine.EngineSettings;
+import org.havenask.engine.index.mapper.DenseVectorFieldMapper;
 import org.havenask.engine.index.query.HnswQueryBuilder;
 import org.havenask.search.builder.SearchSourceBuilder;
+
+import java.io.IOException;
+import java.util.concurrent.TimeUnit;
 
 public class DocIT extends AbstractHavenaskRestTestCase {
     // test document api, PUT/POST/DELETE and bulk
@@ -431,7 +431,7 @@ public class DocIT extends AbstractHavenaskRestTestCase {
         mappingBuilder.startObject()
             .startObject("properties")
             .startObject(fieldName)
-            .field("type", "dense_vector")
+            .field("type", DenseVectorFieldMapper.CONTENT_TYPE)
             .field("dims", vectorDims)
             .field("similarity", similarity)
             .endObject()

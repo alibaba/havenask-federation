@@ -19,6 +19,7 @@ import org.havenask.common.Strings;
 import org.havenask.common.compress.CompressedXContent;
 import org.havenask.common.xcontent.XContentBuilder;
 import org.havenask.engine.HavenaskEnginePlugin;
+import org.havenask.engine.index.mapper.DenseVectorFieldMapper;
 import org.havenask.index.mapper.MapperService;
 import org.havenask.index.query.QueryShardContext;
 import org.havenask.plugins.Plugin;
@@ -43,7 +44,7 @@ public class HnswQueryBuilderTests extends AbstractQueryTestCase<HnswQueryBuilde
             .startObject("_doc")
             .startObject("properties")
             .startObject("vector")
-            .field("type", "dense_vector")
+            .field("type", DenseVectorFieldMapper.CONTENT_TYPE)
             .field("dims", 2)
             .endObject()
             .endObject()

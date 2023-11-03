@@ -28,16 +28,17 @@
 
 package org.havenask.engine.index.config.generator;
 
-import java.io.IOException;
-import java.util.Collection;
-import java.util.Locale;
-
 import org.havenask.common.settings.Settings;
 import org.havenask.engine.HavenaskEnginePlugin;
 import org.havenask.engine.index.config.Schema;
+import org.havenask.engine.index.mapper.DenseVectorFieldMapper;
 import org.havenask.index.mapper.MapperService;
 import org.havenask.index.mapper.MapperServiceTestCase;
 import org.havenask.plugins.Plugin;
+
+import java.io.IOException;
+import java.util.Collection;
+import java.util.Locale;
 
 import static java.util.Collections.singletonList;
 
@@ -435,7 +436,7 @@ public class SchemaGeneratorTests extends MapperServiceTestCase {
             {
                 b.startObject("field");
                 {
-                    b.field("type", "dense_vector");
+                    b.field("type", DenseVectorFieldMapper.CONTENT_TYPE);
                     b.field("dims", 128);
                 }
                 b.endObject();
@@ -535,7 +536,7 @@ public class SchemaGeneratorTests extends MapperServiceTestCase {
             {
                 b.startObject("linear_field");
                 {
-                    b.field("type", "dense_vector");
+                    b.field("type", DenseVectorFieldMapper.CONTENT_TYPE);
                     b.field("dims", 128);
                     b.startObject("index_options");
                     {
@@ -561,7 +562,7 @@ public class SchemaGeneratorTests extends MapperServiceTestCase {
 
                 b.startObject("qc_field");
                 {
-                    b.field("type", "dense_vector");
+                    b.field("type", DenseVectorFieldMapper.CONTENT_TYPE);
                     b.field("dims", 128);
                     b.startObject("index_options");
                     {
@@ -604,7 +605,7 @@ public class SchemaGeneratorTests extends MapperServiceTestCase {
 
                 b.startObject("hnsw_field");
                 {
-                    b.field("type", "dense_vector");
+                    b.field("type", DenseVectorFieldMapper.CONTENT_TYPE);
                     b.field("dims", 128);
                     b.startObject("index_options");
                     {

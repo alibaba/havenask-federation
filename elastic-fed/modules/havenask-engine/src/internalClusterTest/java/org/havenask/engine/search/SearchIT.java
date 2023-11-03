@@ -14,10 +14,6 @@
 
 package org.havenask.engine.search;
 
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.concurrent.TimeUnit;
-
 import com.carrotsearch.randomizedtesting.annotations.ThreadLeakFilters;
 import org.apache.lucene.util.LuceneTestCase.AwaitsFix;
 import org.havenask.ArpcThreadLeakFilter;
@@ -35,6 +31,10 @@ import org.havenask.engine.index.query.HnswQueryBuilder;
 import org.havenask.plugins.Plugin;
 import org.havenask.search.builder.KnnSearchBuilder;
 import org.havenask.search.builder.SearchSourceBuilder;
+
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.concurrent.TimeUnit;
 
 @ThreadLeakFilters(filters = { OkHttpThreadLeakFilter.class, ArpcThreadLeakFilter.class })
 @AwaitsFix(bugUrl = "https://github.com/alibaba/havenask-federation/issues/256")
@@ -80,7 +80,7 @@ public class SearchIT extends HavenaskITTestCase {
         String mapping = "{\n"
             + "  \"properties\": {\n"
             + "    \"vector\": {\n"
-            + "      \"type\": \"dense_vector\",\n"
+            + "      \"type\": \"vector\",\n"
             + "      \"dims\": 2\n"
             + "    }\n"
             + "  }\n"
@@ -113,7 +113,7 @@ public class SearchIT extends HavenaskITTestCase {
         String mapping = "{\n"
             + "  \"properties\": {\n"
             + "    \"vector\": {\n"
-            + "      \"type\": \"dense_vector\",\n"
+            + "      \"type\": \"vector\",\n"
             + "      \"dims\": 2\n"
             + "    }\n"
             + "  }\n"

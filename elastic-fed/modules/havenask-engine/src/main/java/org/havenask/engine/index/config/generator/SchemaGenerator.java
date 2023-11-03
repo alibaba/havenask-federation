@@ -28,6 +28,27 @@
 
 package org.havenask.engine.index.config.generator;
 
+import com.alibaba.fastjson.JSON;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.havenask.common.io.Streams;
+import org.havenask.common.settings.Settings;
+import org.havenask.engine.index.config.Analyzers;
+import org.havenask.engine.index.config.Schema;
+import org.havenask.engine.index.config.Schema.FieldInfo;
+import org.havenask.engine.index.config.Schema.VectorIndex;
+import org.havenask.engine.index.engine.EngineSettings;
+import org.havenask.engine.index.mapper.DenseVectorFieldMapper.Algorithm;
+import org.havenask.engine.index.mapper.DenseVectorFieldMapper.DenseVectorFieldType;
+import org.havenask.engine.index.mapper.DenseVectorFieldMapper.HnswIndexOptions;
+import org.havenask.engine.index.mapper.DenseVectorFieldMapper.IndexOptions;
+import org.havenask.engine.index.mapper.DenseVectorFieldMapper.LinearIndexOptions;
+import org.havenask.engine.index.mapper.DenseVectorFieldMapper.QCIndexOptions;
+import org.havenask.index.mapper.IdFieldMapper;
+import org.havenask.index.mapper.MappedFieldType;
+import org.havenask.index.mapper.MapperService;
+import org.havenask.index.mapper.TextSearchInfo;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -41,28 +62,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-
-import com.alibaba.fastjson.JSON;
-
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-import org.havenask.common.io.Streams;
-import org.havenask.common.settings.Settings;
-import org.havenask.engine.index.config.Analyzers;
-import org.havenask.engine.index.config.Schema;
-import org.havenask.engine.index.config.Schema.FieldInfo;
-import org.havenask.engine.index.config.Schema.VectorIndex;
-import org.havenask.engine.index.engine.EngineSettings;
-import org.havenask.engine.index.mapper.DenseVectorFieldMapper.Algorithm;
-import org.havenask.engine.index.mapper.DenseVectorFieldMapper.DenseVectorFieldType;
-import org.havenask.engine.index.mapper.DenseVectorFieldMapper.QCIndexOptions;
-import org.havenask.engine.index.mapper.DenseVectorFieldMapper.LinearIndexOptions;
-import org.havenask.engine.index.mapper.DenseVectorFieldMapper.HnswIndexOptions;
-import org.havenask.engine.index.mapper.DenseVectorFieldMapper.IndexOptions;
-import org.havenask.index.mapper.IdFieldMapper;
-import org.havenask.index.mapper.MappedFieldType;
-import org.havenask.index.mapper.MapperService;
-import org.havenask.index.mapper.TextSearchInfo;
 
 public class SchemaGenerator {
     // have deprecated fields or not support now.
@@ -112,7 +111,7 @@ public class SchemaGenerator {
         Map.entry("byte", "INT8"),
         Map.entry("boolean", "STRING"),
         Map.entry("date", "UINT64"),
-        Map.entry("dense_vector", "STRING")
+        Map.entry("vector", "STRING")
     );
 
     Logger logger = LogManager.getLogger(SchemaGenerator.class);

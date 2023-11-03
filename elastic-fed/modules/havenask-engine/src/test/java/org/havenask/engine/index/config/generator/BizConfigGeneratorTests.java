@@ -14,6 +14,14 @@
 
 package org.havenask.engine.index.config.generator;
 
+import org.havenask.common.settings.Settings;
+import org.havenask.engine.HavenaskEnginePlugin;
+import org.havenask.engine.index.config.ZoneBiz;
+import org.havenask.engine.index.mapper.DenseVectorFieldMapper;
+import org.havenask.index.mapper.MapperService;
+import org.havenask.index.mapper.MapperServiceTestCase;
+import org.havenask.plugins.Plugin;
+
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -21,13 +29,6 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.Collection;
 import java.util.Locale;
-
-import org.havenask.common.settings.Settings;
-import org.havenask.engine.HavenaskEnginePlugin;
-import org.havenask.engine.index.config.ZoneBiz;
-import org.havenask.index.mapper.MapperService;
-import org.havenask.index.mapper.MapperServiceTestCase;
-import org.havenask.plugins.Plugin;
 
 import static java.util.Collections.singletonList;
 import static org.havenask.engine.index.config.generator.BizConfigGenerator.BIZ_DIR;
@@ -270,7 +271,7 @@ public class BizConfigGeneratorTests extends MapperServiceTestCase {
             {
                 b.startObject("field");
                 {
-                    b.field("type", "dense_vector");
+                    b.field("type", DenseVectorFieldMapper.CONTENT_TYPE);
                     b.field("dims", 128);
                 }
                 b.endObject();

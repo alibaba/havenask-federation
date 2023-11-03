@@ -14,10 +14,6 @@
 
 package org.havenask.engine.index.mapper;
 
-import java.io.IOException;
-import java.util.Arrays;
-import java.util.Collection;
-
 import org.apache.lucene.index.IndexableField;
 import org.havenask.common.settings.Settings;
 import org.havenask.common.xcontent.XContentBuilder;
@@ -29,6 +25,10 @@ import org.havenask.index.mapper.MapperService;
 import org.havenask.index.mapper.MapperTestCase;
 import org.havenask.index.mapper.ParsedDocument;
 import org.havenask.plugins.Plugin;
+
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.Collection;
 
 import static java.util.Collections.singletonList;
 import static org.hamcrest.Matchers.containsString;
@@ -44,7 +44,7 @@ public class DenseVectorFieldMapperTests extends MapperTestCase {
 
     @Override
     protected void minimalMapping(XContentBuilder b) throws IOException {
-        b.field("type", "dense_vector").field("dims", 4);
+        b.field("type", DenseVectorFieldMapper.CONTENT_TYPE).field("dims", 4);
     }
 
     @Override
@@ -56,19 +56,19 @@ public class DenseVectorFieldMapperTests extends MapperTestCase {
     protected void registerParameters(ParameterChecker checker) throws IOException {
         checker.registerConflictCheck(
             "dims",
-            fieldMapping(b -> b.field("type", "dense_vector").field("dims", 4)),
-            fieldMapping(b -> b.field("type", "dense_vector").field("dims", 5))
+            fieldMapping(b -> b.field("type", DenseVectorFieldMapper.CONTENT_TYPE).field("dims", 4)),
+            fieldMapping(b -> b.field("type", DenseVectorFieldMapper.CONTENT_TYPE).field("dims", 5))
         );
         checker.registerConflictCheck(
             "similarity",
-            fieldMapping(b -> b.field("type", "dense_vector").field("dims", 4).field("similarity", "dot_product")),
-            fieldMapping(b -> b.field("type", "dense_vector").field("dims", 4).field("similarity", "l2_norm"))
+            fieldMapping(b -> b.field("type", DenseVectorFieldMapper.CONTENT_TYPE).field("dims", 4).field("similarity", "dot_product")),
+            fieldMapping(b -> b.field("type", DenseVectorFieldMapper.CONTENT_TYPE).field("dims", 4).field("similarity", "l2_norm"))
         );
         checker.registerConflictCheck(
             "index_options",
-            fieldMapping(b -> b.field("type", "dense_vector").field("dims", 4).field("similarity", "dot_product")),
+            fieldMapping(b -> b.field("type", DenseVectorFieldMapper.CONTENT_TYPE).field("dims", 4).field("similarity", "dot_product")),
             fieldMapping(
-                b -> b.field("type", "dense_vector")
+                b -> b.field("type", DenseVectorFieldMapper.CONTENT_TYPE)
                     .field("dims", 4)
                     .field("similarity", "dot_product")
                     .startObject("index_options")
@@ -85,7 +85,7 @@ public class DenseVectorFieldMapperTests extends MapperTestCase {
 
     public void testFieldType() throws IOException {
         MapperService mapperService = createMapperService(fieldMapping(b -> {
-            b.field("type", "dense_vector");
+            b.field("type", DenseVectorFieldMapper.CONTENT_TYPE);
             b.field("dims", 4);
             b.field("similarity", "dot_product");
             b.startObject("index_options");
@@ -100,7 +100,7 @@ public class DenseVectorFieldMapperTests extends MapperTestCase {
 
     public void testIndexedVector() throws IOException {
         DocumentMapper mapper = createDocumentMapper(fieldMapping(b -> {
-            b.field("type", "dense_vector");
+            b.field("type", DenseVectorFieldMapper.CONTENT_TYPE);
             b.field("dims", 4);
             b.field("similarity", "dot_product");
             b.startObject("index_options");
@@ -124,13 +124,13 @@ public class DenseVectorFieldMapperTests extends MapperTestCase {
         // invalid dims
         MapperParsingException e = expectThrows(
             MapperParsingException.class,
-            () -> createDocumentMapper(fieldMapping(b -> b.field("type", "dense_vector").field("dims", 0)))
+            () -> createDocumentMapper(fieldMapping(b -> b.field("type", DenseVectorFieldMapper.CONTENT_TYPE).field("dims", 0)))
         );
         assertThat(e.getMessage(), containsString("Dimension value must be greater than 0 for vector: field"));
 
         MapperParsingException e2 = expectThrows(
             MapperParsingException.class,
-            () -> createDocumentMapper(fieldMapping(b -> b.field("type", "dense_vector").field("dims", 10000)))
+            () -> createDocumentMapper(fieldMapping(b -> b.field("type", DenseVectorFieldMapper.CONTENT_TYPE).field("dims", 10000)))
         );
         assertThat(e2.getMessage(), containsString("Dimension value must be less than 2048 for vector: field"));
 
@@ -138,7 +138,9 @@ public class DenseVectorFieldMapperTests extends MapperTestCase {
         MapperParsingException e3 = expectThrows(
             MapperParsingException.class,
             () -> createDocumentMapper(
-                fieldMapping(b -> b.field("type", "dense_vector").field("dims", 3).field("similarity", "wrong_similarity"))
+                fieldMapping(
+                    b -> b.field("type", DenseVectorFieldMapper.CONTENT_TYPE).field("dims", 3).field("similarity", "wrong_similarity")
+                )
             )
         );
         assertThat(e3.getMessage(), containsString("No similarity matches wrong_similarity"));
@@ -148,7 +150,7 @@ public class DenseVectorFieldMapperTests extends MapperTestCase {
             MapperParsingException.class,
             () -> createDocumentMapper(
                 fieldMapping(
-                    b -> b.field("type", "dense_vector")
+                    b -> b.field("type", DenseVectorFieldMapper.CONTENT_TYPE)
                         .field("dims", 3)
                         .field("similarity", "dot_product")
                         .startObject("index_options")
@@ -164,7 +166,7 @@ public class DenseVectorFieldMapperTests extends MapperTestCase {
             MapperParsingException.class,
             () -> createDocumentMapper(
                 fieldMapping(
-                    b -> b.field("type", "dense_vector")
+                    b -> b.field("type", DenseVectorFieldMapper.CONTENT_TYPE)
                         .field("dims", 3)
                         .field("similarity", "dot_product")
                         .startObject("index_options")
@@ -179,7 +181,7 @@ public class DenseVectorFieldMapperTests extends MapperTestCase {
 
     public void testWriteWrongDims() throws Exception {
         DocumentMapper mapper = createDocumentMapper(fieldMapping(b -> {
-            b.field("type", "dense_vector");
+            b.field("type", DenseVectorFieldMapper.CONTENT_TYPE);
             b.field("dims", 4);
             b.field("similarity", "dot_product");
             b.startObject("index_options");
@@ -194,7 +196,7 @@ public class DenseVectorFieldMapperTests extends MapperTestCase {
 
     public void testWriteIllegalVectorParams() throws Exception {
         DocumentMapper mapper = createDocumentMapper(fieldMapping(b -> {
-            b.field("type", "dense_vector");
+            b.field("type", DenseVectorFieldMapper.CONTENT_TYPE);
             b.field("dims", 2);
             b.field("similarity", "dot_product");
         }));
