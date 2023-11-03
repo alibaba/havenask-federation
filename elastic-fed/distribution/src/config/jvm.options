@@ -73,8 +73,5 @@ ${error.file}
 # JDK 9+ GC logging
 9-:-Xlog:gc*,gc+age=trace,safepoint:file=${loggc}:utctime,pid,tags:filecount=32,filesize=64m
 
-# security policy
--Djava.security.policy=config/security.policy
-
 # for debug
 #-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=0.0.0.0:5005
