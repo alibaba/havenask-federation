@@ -37,6 +37,6 @@ public class JsonPrettyFormatter {
     }
 
     public static JSONObject fromString(String jsonString) {
-        return AccessController.doPrivileged((PrivilegedAction<JSONObject>) () -> return JSON.parseObject(jsonString););
+        return AccessController.doPrivileged((PrivilegedAction<JSONObject>) () -> JSON.parseObject(jsonString));
     }
 }
