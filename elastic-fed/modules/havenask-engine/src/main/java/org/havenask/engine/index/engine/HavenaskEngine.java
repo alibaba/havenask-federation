@@ -14,30 +14,9 @@
 
 package org.havenask.engine.index.engine;
 
-import java.io.Closeable;
-import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.nio.charset.StandardCharsets;
-import java.security.AccessController;
-import java.security.PrivilegedAction;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.function.BiFunction;
-import java.util.function.Function;
-import java.util.function.LongConsumer;
-import java.util.function.LongSupplier;
-
-import javax.management.MBeanTrustPermission;
-
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
-
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.DescribeTopicsResult;
 import org.apache.kafka.clients.admin.KafkaAdminClient;
@@ -101,6 +80,25 @@ import org.havenask.index.translog.TranslogDeletionPolicy;
 import org.havenask.search.DefaultSearchContext;
 import org.havenask.search.internal.ContextIndexSearcher;
 import suez.service.proto.ErrorCode;
+
+import javax.management.MBeanTrustPermission;
+import java.io.Closeable;
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.charset.StandardCharsets;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.function.BiFunction;
+import java.util.function.Function;
+import java.util.function.LongConsumer;
+import java.util.function.LongSupplier;
 
 import static org.havenask.engine.search.rest.RestHavenaskSqlAction.SQL_DATABASE;
 
@@ -516,7 +514,8 @@ public class HavenaskEngine extends InternalEngine {
         if ((writeResponse.getErrorCode() == ErrorCode.TBS_ERROR_UNKOWN
             && writeResponse.getErrorMessage().contains("write response is null"))
             || (writeResponse.getErrorCode() == ErrorCode.TBS_ERROR_OTHERS
-                && writeResponse.getErrorMessage().contains("doc queue is full"))) {
+                && (writeResponse.getErrorMessage().contains("doc queue is full")
+                    || writeResponse.getErrorMessage().contains("no valid table/range")))) {
             return true;
         } else {
             return false;
