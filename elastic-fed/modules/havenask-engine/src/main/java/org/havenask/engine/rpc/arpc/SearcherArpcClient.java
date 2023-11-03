@@ -14,14 +14,10 @@
 
 package org.havenask.engine.rpc.arpc;
 
-import java.io.Closeable;
-import java.io.IOException;
-
 import com.alibaba.search.common.arpc.ANetRPCChannel;
 import com.alibaba.search.common.arpc.ANetRPCChannelManager;
 import com.alibaba.search.common.arpc.ANetRPCController;
 import com.alibaba.search.common.arpc.exceptions.ArpcException;
-
 import com.google.protobuf.ServiceException;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -34,6 +30,9 @@ import suez.service.proto.ErrorCode;
 import suez.service.proto.ErrorInfo;
 import suez.service.proto.TableService;
 import suez.service.proto.Write;
+
+import java.io.Closeable;
+import java.io.IOException;
 
 public class SearcherArpcClient implements SearcherClient, Closeable {
     private static final Logger logger = LogManager.getLogger(SearcherArpcClient.class);
@@ -61,6 +60,7 @@ public class SearcherArpcClient implements SearcherClient, Closeable {
 
     @Override
     public WriteResponse write(WriteRequest request) {
+        long start = System.nanoTime();
         Write write = Write.newBuilder().setHashId(request.getHashid()).setStr(request.getSource()).build();
         suez.service.proto.WriteRequest writeRequest = suez.service.proto.WriteRequest.newBuilder()
             .setTableName(request.getTable())
@@ -72,6 +72,10 @@ public class SearcherArpcClient implements SearcherClient, Closeable {
                 init();
             }
             suez.service.proto.WriteResponse writeResponse = blockingStub.writeTable(controller, writeRequest);
+            if (logger.isDebugEnabled()) {
+                long end = System.nanoTime();
+                logger.debug("write {}, length: {}, cost: {} ns", request.getTable(), request.getSource().length(), end - start);
+            }
 
             if (writeResponse == null) {
                 resetChannel();

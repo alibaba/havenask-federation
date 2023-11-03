@@ -14,27 +14,27 @@
 
 package org.havenask.engine.index.engine;
 
-import java.io.IOException;
-import java.util.List;
-
-import org.havenask.search.internal.ReaderContext;
-import org.havenask.search.query.QuerySearchResult;
-import org.havenask.test.HavenaskTestCase;
-import java.util.UUID;
-
 import org.apache.lucene.search.QueryCachingPolicy;
+import org.havenask.client.ha.SqlResponse;
 import org.havenask.common.UUIDs;
 import org.havenask.index.IndexService;
 import org.havenask.index.query.QueryShardContext;
 import org.havenask.index.shard.IndexShard;
 import org.havenask.index.shard.ShardId;
+import org.havenask.search.internal.ReaderContext;
 import org.havenask.search.internal.ShardSearchContextId;
+import org.havenask.search.query.QuerySearchResult;
+import org.havenask.test.HavenaskTestCase;
 import org.havenask.threadpool.TestThreadPool;
 import org.havenask.threadpool.ThreadPool;
 
-import static org.mockito.Matchers.eq;
+import java.io.IOException;
+import java.util.List;
+import java.util.UUID;
+
 import static org.mockito.Matchers.anyObject;
 import static org.mockito.Matchers.anyString;
+import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -73,7 +73,8 @@ public class HavenaskIndexSearcherTests extends HavenaskTestCase {
             String[] resStr1 = new String[] { "4", "3", "2", "1" };
             float[] resFloat1 = new float[] { 9.6800F, 7.2600F, 4.8400F, 2.4200F };
             int rowNum1 = resStr1.length;
-            HavenaskIndexSearcher.buildQuerySearchResult(querySearchResult, sqlResponseStr1, readerContext);
+            SqlResponse sqlResponse = SqlResponse.parse(sqlResponseStr1);
+            HavenaskIndexSearcher.buildQuerySearchResult(querySearchResult, sqlResponse, readerContext);
             assertEquals(4L, querySearchResult.topDocs().topDocs.totalHits.value);
             assertEquals(9.6800F, querySearchResult.getMaxScore(), delta);
             List<String> ids1 = readerContext.getFromContext(IDS_CONTEXT);
