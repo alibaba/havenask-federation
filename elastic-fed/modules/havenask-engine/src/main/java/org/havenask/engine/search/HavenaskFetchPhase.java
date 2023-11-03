@@ -133,7 +133,7 @@ public class HavenaskFetchPhase implements FetchPhase {
         QrsSqlResponse response = qrsHttpClient.executeSql(request);
         SqlResponse sqlResponse = SqlResponse.parse(response.getResult());
         if (logger.isDebugEnabled()) {
-            logger.debug("fetch ids length: {}, havenask sqlResponse took: {}", context.docIdsToLoadSize(), sqlResponse.getTotalTime());
+            logger.debug("fetch ids length: {}, havenask sqlResponse took: {} ms", context.docIdsToLoadSize(), sqlResponse.getTotalTime());
         }
         return sqlResponse;
     }

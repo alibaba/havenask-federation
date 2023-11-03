@@ -74,7 +74,7 @@ public class SearcherArpcClient implements SearcherClient, Closeable {
             suez.service.proto.WriteResponse writeResponse = blockingStub.writeTable(controller, writeRequest);
             if (logger.isDebugEnabled()) {
                 long end = System.nanoTime();
-                logger.debug("write {}, length: {}, cost: {} ns", request.getTable(), request.getSource().length(), end - start);
+                logger.debug("write {}, length: {}, cost: {} us", request.getTable(), request.getSource().length(), (end - start) / 1000);
             }
 
             if (writeResponse == null) {

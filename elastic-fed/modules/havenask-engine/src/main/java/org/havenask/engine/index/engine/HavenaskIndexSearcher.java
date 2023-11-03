@@ -82,7 +82,7 @@ public class HavenaskIndexSearcher extends ContextIndexSearcher {
         if (false == Strings.isNullOrEmpty(response.getResult())) {
             SqlResponse sqlResponse = SqlResponse.parse(response.getResult());
             if (logger.isDebugEnabled()) {
-                logger.debug("sql: {}, sqlResponse took: {}", sql, sqlResponse.getTotalTime());
+                logger.debug("sql: {}, sqlResponse took: {} ms", sql, sqlResponse.getTotalTime());
             }
             buildQuerySearchResult(searchContext.queryResult(), sqlResponse, searchContext.readerContext());
         }
