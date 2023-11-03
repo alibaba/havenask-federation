@@ -108,18 +108,11 @@ public class SearcherArpcClient implements SearcherClient, Closeable {
     private void resetChannel() {
         logger.info("searcher arpc client reset");
         try {
-            AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
-                try {
-                    manager.closeChannel(host, port);
-                    channel = manager.openChannel(host, port);
-                } catch (ArpcException e) {
-                    throw new RuntimeException(e);
-                }
-                return null;
-            });
-        } catch (RuntimeException e) {
+            manager.closeChannel(host, port);
+        } catch (ArpcException e) {
             logger.warn("reset channel error", e);
         }
+        channel = AccessController.doPrivileged((PrivilegedAction<ANetRPCChannel>) () -> manager.openChannel(host, port));
         blockingStub = TableService.newBlockingStub(channel);
         logger.info("searcher arpc client reset, reset BlockingStub success");
         controller.reset();
@@ -139,7 +132,7 @@ public class SearcherArpcClient implements SearcherClient, Closeable {
 
     private void init() {
         logger.info("searcher arpc client init");
-        channel = manager.openChannel(host, port);
+        channel = AccessController.doPrivileged((PrivilegedAction<ANetRPCChannel>) () -> manager.openChannel(host, port));
         logger.info("Open Channel");
         blockingStub = TableService.newBlockingStub(channel);
         logger.info("Open BlockingStub");
