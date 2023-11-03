@@ -14,14 +14,10 @@
 
 package org.havenask.engine.rpc.arpc;
 
-import java.io.Closeable;
-import java.io.IOException;
-
 import com.alibaba.search.common.arpc.ANetRPCChannel;
 import com.alibaba.search.common.arpc.ANetRPCChannelManager;
 import com.alibaba.search.common.arpc.ANetRPCController;
 import com.alibaba.search.common.arpc.exceptions.ArpcException;
-
 import com.google.protobuf.ServiceException;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -34,6 +30,11 @@ import suez.service.proto.ErrorCode;
 import suez.service.proto.ErrorInfo;
 import suez.service.proto.TableService;
 import suez.service.proto.Write;
+
+import java.io.Closeable;
+import java.io.IOException;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
 
 public class SearcherArpcClient implements SearcherClient, Closeable {
     private static final Logger logger = LogManager.getLogger(SearcherArpcClient.class);
@@ -107,9 +108,16 @@ public class SearcherArpcClient implements SearcherClient, Closeable {
     private void resetChannel() {
         logger.info("searcher arpc client reset");
         try {
-            manager.closeChannel(host, port);
-            channel = manager.openChannel(host, port);
-        } catch (ArpcException e) {
+            AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
+                try {
+                    manager.closeChannel(host, port);
+                    channel = manager.openChannel(host, port);
+                } catch (ArpcException e) {
+                    throw new RuntimeException(e);
+                }
+                return null;
+            });
+        } catch (RuntimeException e) {
             logger.warn("reset channel error", e);
         }
         blockingStub = TableService.newBlockingStub(channel);
