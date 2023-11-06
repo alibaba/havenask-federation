@@ -16,6 +16,7 @@ package org.havenask.engine.util;
 
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
+import com.alibaba.fastjson.parser.Feature;
 import com.alibaba.fastjson.serializer.SerializerFeature;
 
 import java.security.AccessController;
@@ -38,5 +39,9 @@ public class JsonPrettyFormatter {
 
     public static JSONObject fromString(String jsonString) {
         return AccessController.doPrivileged((PrivilegedAction<JSONObject>) () -> JSON.parseObject(jsonString));
+    }
+
+    public static JSONObject fromStringByOrder(String jsonString) {
+        return AccessController.doPrivileged((PrivilegedAction<JSONObject>) () -> JSON.parseObject(jsonString, Feature.OrderedField));
     }
 }

@@ -14,7 +14,6 @@
 
 package org.havenask.engine.index.engine;
 
-import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import org.apache.kafka.clients.admin.AdminClient;
@@ -60,6 +59,7 @@ import org.havenask.engine.rpc.SqlClientInfoResponse;
 import org.havenask.engine.rpc.TargetInfo;
 import org.havenask.engine.rpc.WriteRequest;
 import org.havenask.engine.rpc.WriteResponse;
+import org.havenask.engine.util.JsonPrettyFormatter;
 import org.havenask.engine.util.Utils;
 import org.havenask.index.engine.Engine;
 import org.havenask.index.engine.EngineConfig;
@@ -537,7 +537,7 @@ public class HavenaskEngine extends InternalEngine {
             String kvpair = "format:full_json;timeout:10000;databaseName:" + SQL_DATABASE;
             QrsSqlRequest request = new QrsSqlRequest(sql, kvpair);
             QrsSqlResponse response = qrsHttpClient.executeSql(request);
-            JSONObject jsonObject = JSON.parseObject(response.getResult());
+            JSONObject jsonObject = JsonPrettyFormatter.fromString(response.getResult());
             JSONObject sqlResult = jsonObject.getJSONObject("sql_result");
             JSONArray datas = sqlResult.getJSONArray("data");
             if (datas.size() == 0) {
@@ -798,7 +798,7 @@ public class HavenaskEngine extends InternalEngine {
             String kvpair = "format:full_json;timeout:10000;databaseName:" + SQL_DATABASE;
             QrsSqlRequest request = new QrsSqlRequest(sql, kvpair);
             QrsSqlResponse response = qrsHttpClient.executeSql(request);
-            JSONObject jsonObject = JSON.parseObject(response.getResult());
+            JSONObject jsonObject = JsonPrettyFormatter.fromString(response.getResult());
             JSONObject sqlResult = jsonObject.getJSONObject("sql_result");
             JSONArray datas = sqlResult.getJSONArray("data");
             if (datas.size() != 0) {

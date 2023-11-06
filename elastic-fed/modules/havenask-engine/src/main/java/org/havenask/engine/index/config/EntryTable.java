@@ -14,12 +14,11 @@
 
 package org.havenask.engine.index.config;
 
+import com.alibaba.fastjson.JSONObject;
+import org.havenask.engine.util.JsonPrettyFormatter;
+
 import java.util.LinkedHashMap;
 import java.util.Map;
-
-import com.alibaba.fastjson.JSON;
-import com.alibaba.fastjson.JSONObject;
-import com.alibaba.fastjson.parser.Feature;
 
 public class EntryTable {
 
@@ -38,7 +37,7 @@ public class EntryTable {
     }
 
     public static EntryTable parse(String content) {
-        JSONObject jsonObject = JSON.parseObject(content, Feature.OrderedField);
+        JSONObject jsonObject = JsonPrettyFormatter.fromStringByOrder(content);
         EntryTable entryTable = new EntryTable();
         entryTable.files = parseFiles(jsonObject.getJSONObject("files"));
         entryTable.packageFiles = parseFiles(jsonObject.getJSONObject("package_files"));

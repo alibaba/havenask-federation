@@ -33,6 +33,8 @@ import suez.service.proto.Write;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
 
 public class SearcherArpcClient implements SearcherClient, Closeable {
     private static final Logger logger = LogManager.getLogger(SearcherArpcClient.class);
@@ -112,10 +114,10 @@ public class SearcherArpcClient implements SearcherClient, Closeable {
         logger.info("searcher arpc client reset");
         try {
             manager.closeChannel(host, port);
-            channel = manager.openChannel(host, port);
         } catch (ArpcException e) {
             logger.warn("reset channel error", e);
         }
+        channel = AccessController.doPrivileged((PrivilegedAction<ANetRPCChannel>) () -> manager.openChannel(host, port));
         blockingStub = TableService.newBlockingStub(channel);
         logger.info("searcher arpc client reset, reset BlockingStub success");
         controller.reset();
@@ -135,7 +137,7 @@ public class SearcherArpcClient implements SearcherClient, Closeable {
 
     private void init() {
         logger.info("searcher arpc client init");
-        channel = manager.openChannel(host, port);
+        channel = AccessController.doPrivileged((PrivilegedAction<ANetRPCChannel>) () -> manager.openChannel(host, port));
         logger.info("Open Channel");
         blockingStub = TableService.newBlockingStub(channel);
         logger.info("Open BlockingStub");

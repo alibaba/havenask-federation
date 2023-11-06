@@ -14,6 +14,13 @@
 
 package org.havenask.engine.util;
 
+import com.alibaba.fastjson.JSONObject;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.havenask.SpecialPermission;
+import org.havenask.common.collect.Tuple;
+import org.havenask.index.shard.ShardId;
+
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
@@ -25,15 +32,6 @@ import java.security.PrivilegedExceptionAction;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.stream.Stream;
-
-import com.alibaba.fastjson.JSON;
-import com.alibaba.fastjson.JSONObject;
-
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-import org.havenask.SpecialPermission;
-import org.havenask.common.collect.Tuple;
-import org.havenask.index.shard.ShardId;
 
 public class Utils {
     public static <T> T doPrivileged(PrivilegedExceptionAction<T> operation) throws Exception {
@@ -132,7 +130,7 @@ public class Utils {
     private static String getIndexLocator(Path jsonPath) {
         try {
             String content = Files.readString(jsonPath);
-            JSONObject jsonObject = JSON.parseObject(content);
+            JSONObject jsonObject = JsonPrettyFormatter.fromString(content);
             return jsonObject.getString("locator");
         } catch (Exception e) {
             logger.error("get index locator failed in file [{}]", jsonPath);

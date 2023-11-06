@@ -26,6 +26,8 @@ import org.havenask.engine.rpc.QrsSqlResponse;
 import org.havenask.engine.rpc.SqlClientInfoResponse;
 
 import java.io.IOException;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
 
 public class QrsHttpClient extends HavenaskHttpClient implements QrsClient {
     private static final Logger logger = LogManager.getLogger(QrsHttpClient.class);
@@ -47,7 +49,13 @@ public class QrsHttpClient extends HavenaskHttpClient implements QrsClient {
         urlBuilder.addQueryParameter("query", query);
         String url = urlBuilder.build().toString();
         Request request = new Request.Builder().url(url).build();
-        Response response = client.newCall(request).execute();
+        Response response = AccessController.doPrivileged((PrivilegedAction<Response>) () -> {
+            try {
+                return client.newCall(request).execute();
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        });
         long end = System.currentTimeMillis();
         logger.debug("execute sql: {} cost: {} ms", url, end - start);
         return new QrsSqlResponse(response.body().string(), response.code());
@@ -58,7 +66,13 @@ public class QrsHttpClient extends HavenaskHttpClient implements QrsClient {
         HttpUrl.Builder urlBuilder = HttpUrl.parse(url + SQL_TABLE_INFO_URL).newBuilder();
         String url = urlBuilder.build().toString();
         Request request = new Request.Builder().url(url).build();
-        Response response = client.newCall(request).execute();
+        Response response = AccessController.doPrivileged((PrivilegedAction<Response>) () -> {
+            try {
+                return client.newCall(request).execute();
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        });
         String responseStr = response.body().string();
         JSONObject jsonObject = JSONObject.parseObject(responseStr);
         int errorCode = -1;
