@@ -14,22 +14,7 @@
 
 package org.havenask.engine.index.store;
 
-import java.io.ByteArrayOutputStream;
-import java.io.EOFException;
-import java.io.IOException;
-import java.io.OutputStream;
-import java.nio.ByteBuffer;
-import java.nio.channels.SeekableByteChannel;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.Map;
-
-import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
-
 import org.apache.logging.log4j.message.ParameterizedMessage;
 import org.apache.lucene.index.IndexCommit;
 import org.apache.lucene.store.BufferedIndexInput;
@@ -43,12 +28,26 @@ import org.havenask.common.Strings;
 import org.havenask.engine.index.config.EntryTable;
 import org.havenask.engine.index.engine.EngineSettings;
 import org.havenask.engine.index.engine.HavenaskEngine.HavenaskCommitInfo;
+import org.havenask.engine.util.JsonPrettyFormatter;
 import org.havenask.engine.util.Utils;
 import org.havenask.env.ShardLock;
 import org.havenask.index.IndexSettings;
 import org.havenask.index.shard.ShardId;
 import org.havenask.index.store.Store;
 import org.havenask.index.store.StoreFileMetadata;
+
+import java.io.ByteArrayOutputStream;
+import java.io.EOFException;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.ByteBuffer;
+import java.nio.channels.SeekableByteChannel;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 import static org.apache.lucene.index.IndexFileNames.SEGMENTS;
 
@@ -95,7 +94,7 @@ public class HavenaskStore extends Store {
         }
         String versionFile = HAVENASK_VERSION_FILE_PREFIX + commitVersion;
         String content = Files.readString(shardPath.resolve(versionFile));
-        JSONObject jsonObject = JSON.parseObject(content);
+        JSONObject jsonObject = JsonPrettyFormatter.fromString(content);
         String fenceName = jsonObject.getString("fence_name");
 
         String entryTableFile = HAVENASK_ENTRY_TABLE_FILE_PREFIX + commitVersion;

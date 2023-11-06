@@ -28,7 +28,6 @@
 
 package org.havenask.engine.index.config.generator;
 
-import com.alibaba.fastjson.JSON;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.havenask.common.io.Streams;
@@ -44,6 +43,7 @@ import org.havenask.engine.index.mapper.DenseVectorFieldMapper.HnswIndexOptions;
 import org.havenask.engine.index.mapper.DenseVectorFieldMapper.IndexOptions;
 import org.havenask.engine.index.mapper.DenseVectorFieldMapper.LinearIndexOptions;
 import org.havenask.engine.index.mapper.DenseVectorFieldMapper.QCIndexOptions;
+import org.havenask.engine.util.JsonPrettyFormatter;
 import org.havenask.index.mapper.IdFieldMapper;
 import org.havenask.index.mapper.MappedFieldType;
 import org.havenask.index.mapper.MapperService;
@@ -84,7 +84,7 @@ public class SchemaGenerator {
         }
         try (InputStream is = getClass().getResourceAsStream("/config/analyzer.json")) {
             String analyzerText = Streams.copyToString(new InputStreamReader(is, StandardCharsets.UTF_8));
-            Analyzers analyzers = JSON.parseObject(analyzerText, Analyzers.class);
+            Analyzers analyzers = JsonPrettyFormatter.fromJsonString(analyzerText, Analyzers.class);
             this.analyzers = Collections.unmodifiableSet(analyzers.analyzers.keySet());
             return this.analyzers;
         } catch (IOException e) {
