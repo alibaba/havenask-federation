@@ -14,15 +14,6 @@
 
 package org.havenask.engine.index.store;
 
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.NoSuchFileException;
-import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
-import java.util.List;
-import java.util.Map;
-
 import org.apache.lucene.index.IndexCommit;
 import org.apache.lucene.index.SegmentInfos;
 import org.apache.lucene.store.IOContext;
@@ -41,6 +32,15 @@ import org.havenask.index.store.StoreFileMetadata;
 import org.havenask.test.DummyShardLock;
 import org.havenask.test.HavenaskTestCase;
 import org.junit.Before;
+
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
+import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
+import java.util.List;
+import java.util.Map;
 
 import static org.hamcrest.CoreMatchers.containsString;
 
@@ -216,5 +216,31 @@ public class HavenaskStoreTests extends HavenaskTestCase {
         assertEquals(Files.readString(dataPath.resolve("test")), "test content");
         assertEquals(Files.readString(dataPath.resolve("dir1/test")), "test dir1 content");
         assertEquals(Files.readString(dataPath.resolve("dir1/dir2/test")), "test dir1 dir2 content");
+    }
+
+    public void testRenameExistTempFilesSafe() throws IOException {
+        String prefix = "recovery." + UUIDs.randomBase64UUID() + ".";
+        Map<String, String> tempFileMap = Map.of(
+            prefix + "test",
+            "test",
+            prefix + "dir1/test",
+            "dir1/test",
+            prefix + "dir1/dir2/test",
+            "dir1/dir2/test"
+        );
+
+        Files.createDirectories(dataPath.resolve(prefix + "dir1/dir2"));
+        Files.createDirectories(dataPath.resolve("dir1/dir2"));
+        Files.write(dataPath.resolve(prefix + "test"), "test content new".getBytes(StandardCharsets.UTF_8));
+        Files.write(dataPath.resolve(prefix + "dir1/test"), "test dir1 content new".getBytes(StandardCharsets.UTF_8));
+        Files.write(dataPath.resolve(prefix + "dir1/dir2/test"), "test dir1 dir2 content new".getBytes(StandardCharsets.UTF_8));
+        Files.write(dataPath.resolve("test"), "test content".getBytes(StandardCharsets.UTF_8));
+        Files.write(dataPath.resolve("dir1/test"), "test dir1 content".getBytes(StandardCharsets.UTF_8));
+        Files.write(dataPath.resolve("dir1/dir2/test"), "test dir1 dir2 content".getBytes(StandardCharsets.UTF_8));
+        havenaskStore.renameHavenaskTempFilesSafe(tempFileMap);
+
+        assertEquals(Files.readString(dataPath.resolve("test")), "test content new");
+        assertEquals(Files.readString(dataPath.resolve("dir1/test")), "test dir1 content new");
+        assertEquals(Files.readString(dataPath.resolve("dir1/dir2/test")), "test dir1 dir2 content new");
     }
 }

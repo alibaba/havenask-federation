@@ -49,6 +49,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 import static org.apache.lucene.index.IndexFileNames.SEGMENTS;
 
 public class HavenaskStore extends Store {
@@ -313,7 +314,7 @@ public class HavenaskStore extends Store {
                 if (Files.notExists(fileDir)) {
                     Files.createDirectories(fileDir);
                 }
-                Files.move(tempFilePath, filePath);
+                Files.move(tempFilePath, filePath, REPLACE_EXISTING);
             } catch (IOException e) {
                 logger.debug("rename havenask temp file failed", e);
             }
