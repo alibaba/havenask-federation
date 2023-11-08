@@ -82,7 +82,7 @@ public class PeerRecoveryIT extends AbstractHavenaskRestTestCase {
 
         int docValue = 0;
         for (int i = 0; i < loopCount; i++) {
-            // 减少replica，写入文档
+            // 减少replica，写入doc
             assertTrue(setReplicaNum(index, 0));
 
             for (int j = 0; j < 50; j++) {
@@ -172,9 +172,7 @@ public class PeerRecoveryIT extends AbstractHavenaskRestTestCase {
             );
         }
 
-        // delete index and HEAD index
-        assertTrue(highLevelClient().indices().delete(new DeleteIndexRequest(index), RequestOptions.DEFAULT).isAcknowledged());
-        assertEquals(false, highLevelClient().indices().exists(new GetIndexRequest(index), RequestOptions.DEFAULT));
+        deleteAndHeadIndex(index);
     }
 
     private void compareResponsesHits(SearchResponse response1, SearchResponse response2) {
