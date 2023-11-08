@@ -189,11 +189,7 @@ public class MetaDataSyncer extends AbstractLifecycleComponent {
                 return;
             }
 
-            ClusterState clusterState = new ClusterState(
-                clusterService.state().getVersion(),
-                clusterService.state().stateUUID(),
-                clusterService.state()
-            );
+            ClusterState clusterState = clusterService.state();
 
             synchronized (this) {
                 // 同步元数据,触发条件:

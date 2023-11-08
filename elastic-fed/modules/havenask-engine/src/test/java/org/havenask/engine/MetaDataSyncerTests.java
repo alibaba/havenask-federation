@@ -157,7 +157,7 @@ public class MetaDataSyncerTests extends HavenaskTestCase {
 
         // generate metaDataSyncer
         metaDataSyncer = new MetaDataSyncer(clusterService, null, havenaskEngineEnvironment, nativeProcessControlService, null, null);
-        this.clusterState = clusterState;
+        this.clusterState = state;
         // get defaultRuntimeDataPath
         defaultRuntimeDataPath = havenaskEngineEnvironment.getRuntimedataPath();
     }
