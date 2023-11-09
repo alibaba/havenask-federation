@@ -34,6 +34,7 @@ import java.util.regex.Pattern;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.havenask.cluster.ClusterState;
 import org.havenask.cluster.metadata.IndexMetadata;
 import org.havenask.cluster.node.DiscoveryNode;
 import org.havenask.cluster.routing.RoutingNode;
@@ -188,6 +189,8 @@ public class MetaDataSyncer extends AbstractLifecycleComponent {
                 return;
             }
 
+            ClusterState clusterState = clusterService.state();
+
             synchronized (this) {
                 // 同步元数据,触发条件:
                 // 1. pending为true
@@ -198,10 +201,10 @@ public class MetaDataSyncer extends AbstractLifecycleComponent {
                     LOGGER.info("update heartbeat target, synced: {}, pending: {}, syncTimes: {}", synced.get(), pending.get(), syncTimes);
 
                     try {
-                        UpdateHeartbeatTargetRequest qrsTargetRequest = createQrsUpdateHeartbeatTargetRequest();
+                        UpdateHeartbeatTargetRequest qrsTargetRequest = createQrsUpdateHeartbeatTargetRequest(clusterState);
                         HeartbeatTargetResponse qrsResponse = qrsClient.updateHeartbeatTarget(qrsTargetRequest);
 
-                        UpdateHeartbeatTargetRequest searcherTargetRequest = createSearcherUpdateHeartbeatTargetRequest();
+                        UpdateHeartbeatTargetRequest searcherTargetRequest = createSearcherUpdateHeartbeatTargetRequest(clusterState);
                         HeartbeatTargetResponse searcherResponse = searcherClient.updateHeartbeatTarget(searcherTargetRequest);
 
                         boolean qrsEquals = qrsTargetRequest.getTargetInfo().equals(qrsResponse.getSignature());
@@ -231,7 +234,7 @@ public class MetaDataSyncer extends AbstractLifecycleComponent {
 
                             // 在qrs与searcher都同步成功后，再check qrs的table
                             SqlClientInfoResponse sqlClientInfoResponse = ((QrsClient) qrsClient).executeSqlClientInfo();
-                            List<String> subDirNames = getSubDirNames(clusterService);
+                            List<String> subDirNames = getSubDirNames(clusterState);
                             boolean qrsTableSynced = qrsTableCheck(subDirNames, sqlClientInfoResponse);
                             if (false == qrsTableSynced) {
                                 LOGGER.trace(
@@ -284,8 +287,8 @@ public class MetaDataSyncer extends AbstractLifecycleComponent {
         searcherTargetInfo.set(null);
     }
 
-    public UpdateHeartbeatTargetRequest createQrsUpdateHeartbeatTargetRequest() throws IOException {
-        String ip = NetworkAddress.format(clusterService.state().nodes().getLocalNode().getAddress().address().getAddress());
+    public UpdateHeartbeatTargetRequest createQrsUpdateHeartbeatTargetRequest(ClusterState clusterState) throws IOException {
+        String ip = NetworkAddress.format(clusterState.nodes().getLocalNode().getAddress().address().getAddress());
 
         int searcherTcpPort = nativeProcessControlService.getSearcherTcpPort();
         int searcherGrpcPort = nativeProcessControlService.getSearcherGrpcPort();
@@ -323,7 +326,7 @@ public class MetaDataSyncer extends AbstractLifecycleComponent {
         return new UpdateHeartbeatTargetRequest(qrsTargetInfo);
     }
 
-    public UpdateHeartbeatTargetRequest createSearcherUpdateHeartbeatTargetRequest() throws IOException {
+    public UpdateHeartbeatTargetRequest createSearcherUpdateHeartbeatTargetRequest(ClusterState clusterState) throws IOException {
         createConfigLink(HAVENASK_SEARCHER_HOME, "biz", "default", defaultBizsPath, env.getDataPath());
         Path indexRootPath = env.getDataPath().resolve(HAVENASK_WORKSPACCE).resolve(HAVENASK_SEARCHER_HOME).resolve(INDEX_ROOT_POSTFIX);
 
@@ -338,7 +341,7 @@ public class MetaDataSyncer extends AbstractLifecycleComponent {
         );
         searcherTargetInfo.biz_info = new TargetInfo.BizInfo(defaultBizsPath);
 
-        List<String> subDirNames = getSubDirNames(clusterService);
+        List<String> subDirNames = getSubDirNames(clusterState);
         for (String tableName : subDirNames) {
             createConfigLink(HAVENASK_SEARCHER_HOME, "table", tableName, defaultTablePath, env.getDataPath());
         }
@@ -455,15 +458,15 @@ public class MetaDataSyncer extends AbstractLifecycleComponent {
         return String.valueOf(maxId);
     }
 
-    private static List<String> getSubDirNames(ClusterService clusterService) {
+    private static List<String> getSubDirNames(ClusterState clusterState) {
         List<String> subDirNames = new ArrayList<>();
-        RoutingNode localRoutingNode = clusterService.state().getRoutingNodes().node(clusterService.state().nodes().getLocalNodeId());
+        RoutingNode localRoutingNode = clusterState.getRoutingNodes().node(clusterState.nodes().getLocalNodeId());
         if (localRoutingNode == null) {
             throw new RuntimeException("localRoutingNode is null");
         }
 
         for (ShardRouting shardRouting : localRoutingNode) {
-            IndexMetadata indexMetadata = clusterService.state().metadata().index(shardRouting.getIndexName());
+            IndexMetadata indexMetadata = clusterState.metadata().index(shardRouting.getIndexName());
             if (EngineSettings.isHavenaskEngine(indexMetadata.getSettings())) {
                 String tableName = Utils.getHavenaskTableName(shardRouting.shardId());
                 subDirNames.add(tableName);

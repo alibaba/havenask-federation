@@ -54,6 +54,8 @@ import static org.mockito.Mockito.when;
 
 public class MetaDataSyncerTests extends HavenaskTestCase {
     private MetaDataSyncer metaDataSyncer;
+
+    private ClusterState clusterState;
     private Path defaultRuntimeDataPath;
 
     private static final int TARGET_VERSION = 1651870394;
@@ -155,7 +157,7 @@ public class MetaDataSyncerTests extends HavenaskTestCase {
 
         // generate metaDataSyncer
         metaDataSyncer = new MetaDataSyncer(clusterService, null, havenaskEngineEnvironment, nativeProcessControlService, null, null);
-
+        this.clusterState = state;
         // get defaultRuntimeDataPath
         defaultRuntimeDataPath = havenaskEngineEnvironment.getRuntimedataPath();
     }
@@ -169,7 +171,7 @@ public class MetaDataSyncerTests extends HavenaskTestCase {
 
     @AwaitsFix(bugUrl = "https://github.com/alibaba/havenask-federation/issues/256")
     public void testCreateQrsUpdateHeartbeatTargetRequest() throws Exception {
-        UpdateHeartbeatTargetRequest qrsTargetRequest = metaDataSyncer.createQrsUpdateHeartbeatTargetRequest();
+        UpdateHeartbeatTargetRequest qrsTargetRequest = metaDataSyncer.createQrsUpdateHeartbeatTargetRequest(clusterState);
         TargetInfo.ServiceInfo serviceInfo = qrsTargetRequest.getServiceInfo();
 
         assertEquals(TARGET_VERSION, qrsTargetRequest.getTargetVersion());
@@ -200,7 +202,7 @@ public class MetaDataSyncerTests extends HavenaskTestCase {
             Files.createDirectories(versionPath);
             Files.createFile(FilePath);
         }
-        UpdateHeartbeatTargetRequest searcherTargetRequest = metaDataSyncer.createSearcherUpdateHeartbeatTargetRequest();
+        UpdateHeartbeatTargetRequest searcherTargetRequest = metaDataSyncer.createSearcherUpdateHeartbeatTargetRequest(clusterState);
 
         TargetInfo.ServiceInfo serviceInfo = searcherTargetRequest.getServiceInfo();
         Map<String, Map<String, TargetInfo.TableInfo>> tableInfos = searcherTargetRequest.getTableInfo();
