@@ -126,7 +126,6 @@ public class PeerRecoveryIT extends AbstractHavenaskRestTestCase {
         Settings settings = Settings.builder()
             .put(EngineSettings.ENGINE_TYPE_SETTING.getKey(), EngineSettings.ENGINE_HAVENASK)
             .put("number_of_replicas", 1)
-            // .put("refresh_interval", "200ms")
             .put("index.havenask.flush.max_doc_count", 2)
             .build();
 
