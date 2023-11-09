@@ -16,6 +16,7 @@ package org.havenask.engine.index.store;
 
 import org.apache.lucene.index.IndexCommit;
 import org.apache.lucene.index.SegmentInfos;
+import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexOutput;
 import org.havenask.Version;
@@ -27,6 +28,7 @@ import org.havenask.engine.HavenaskEngineEnvironment;
 import org.havenask.engine.util.Utils;
 import org.havenask.index.IndexSettings;
 import org.havenask.index.shard.ShardId;
+import org.havenask.index.store.Store;
 import org.havenask.index.store.Store.OnClose;
 import org.havenask.index.store.StoreFileMetadata;
 import org.havenask.test.DummyShardLock;
@@ -39,10 +41,13 @@ import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import static org.hamcrest.CoreMatchers.containsString;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 public class HavenaskStoreTests extends HavenaskTestCase {
     private HavenaskStore havenaskStore;
@@ -69,7 +74,10 @@ public class HavenaskStoreTests extends HavenaskTestCase {
             .resolve("partition_0_65535");
         Files.createDirectories(dataPath);
 
-        havenaskStore = new HavenaskStore(shardId, indexSettings, null, new DummyShardLock(shardId), OnClose.EMPTY, dataPath);
+        Directory directory = mock(Directory.class);
+        when(directory.listAll()).thenReturn(new String[] { "existDir/existFile" });
+
+        havenaskStore = new HavenaskStore(shardId, indexSettings, directory, new DummyShardLock(shardId), OnClose.EMPTY, dataPath);
     }
 
     public void testGetHavenaskMetadata() throws IOException {
@@ -242,5 +250,48 @@ public class HavenaskStoreTests extends HavenaskTestCase {
         assertEquals(Files.readString(dataPath.resolve("test")), "test content new");
         assertEquals(Files.readString(dataPath.resolve("dir1/test")), "test dir1 content new");
         assertEquals(Files.readString(dataPath.resolve("dir1/dir2/test")), "test dir1 dir2 content new");
+    }
+
+    public void testCleanFilesAndDirectories() throws IOException {
+        String prefix = "recovery." + UUIDs.randomBase64UUID() + ".";
+
+        String dir1Name = prefix + "dir1";
+        String dir2Name = prefix + "dir1/dir2";
+        String test1Name = prefix + "dir1/test1";
+        String test2Name = prefix + "dir1/dir2/test2";
+        String existDirName = "existDir";
+        String existFileName = "existDir/existFile";
+
+        Path dir1 = dataPath.resolve(dir1Name);
+        Path dir2 = dataPath.resolve(dir2Name);
+        Path test1 = dataPath.resolve(test1Name);
+        Path test2 = dataPath.resolve(test2Name);
+        Path existDir = dataPath.resolve(existDirName);
+        Path existFile = dataPath.resolve(existFileName);
+
+        Map<String, StoreFileMetadata> metadata = new HashMap<>();
+        metadata.put(existDirName, null);
+        metadata.put(existFileName, null);
+        Store.MetadataSnapshot sourceMetadata = new Store.MetadataSnapshot(metadata, null, 0L);
+
+        Files.createDirectories(dir2);
+        Files.createDirectories(existDir);
+        Files.write(test1, "test dir1 test1".getBytes(StandardCharsets.UTF_8));
+        Files.write(test2, "test dir1 dir2 test2".getBytes(StandardCharsets.UTF_8));
+        Files.write(existFile, "test existFile".getBytes(StandardCharsets.UTF_8));
+        assertTrue(Files.exists(dir1));
+        assertTrue(Files.exists(dir2));
+        assertTrue(Files.exists(test1));
+        assertTrue(Files.exists(test2));
+        assertTrue(Files.exists(existDir));
+        assertTrue(Files.exists(existFile));
+
+        havenaskStore.cleanFilesAndDirectories(sourceMetadata);
+        assertFalse(Files.exists(dir1));
+        assertFalse(Files.exists(dir2));
+        assertFalse(Files.exists(test1));
+        assertFalse(Files.exists(test2));
+        assertTrue(Files.exists(existDir));
+        assertTrue(Files.exists(existFile));
     }
 }
