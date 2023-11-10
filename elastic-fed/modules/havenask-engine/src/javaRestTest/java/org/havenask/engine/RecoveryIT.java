@@ -64,6 +64,8 @@ import org.havenask.common.settings.Settings;
 import org.havenask.common.xcontent.XContentType;
 import org.havenask.engine.index.engine.EngineSettings;
 import org.junit.AfterClass;
+import org.junit.Assume;
+import org.junit.Before;
 
 public class RecoveryIT extends AbstractHavenaskRestTestCase {
 
@@ -72,6 +74,16 @@ public class RecoveryIT extends AbstractHavenaskRestTestCase {
     private static final Logger logger = LogManager.getLogger(RecoveryIT.class);
 
     private final long testDocCount = 100;
+
+    @Before
+    public void isSingleNode() throws IOException {
+        ClusterHealthResponse clusterHealthResponse = highLevelClient().cluster()
+            .health(new ClusterHealthRequest(), RequestOptions.DEFAULT);
+        if (clusterHealthResponse.getNumberOfNodes() > 1) {
+            logger.info("number_of_nodes more than 1, Skipping tests in Recovery");
+            Assume.assumeTrue(false);
+        }
+    }
 
     public void testRecoverySingleShard() throws Exception {
         // create index

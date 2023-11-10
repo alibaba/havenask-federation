@@ -52,6 +52,7 @@ import org.havenask.common.settings.Settings;
 import org.havenask.common.xcontent.XContentType;
 import org.havenask.engine.index.engine.EngineSettings;
 import org.junit.AfterClass;
+import org.junit.Assume;
 import org.junit.Before;
 
 public class FlushIT extends AbstractHavenaskRestTestCase {
@@ -86,6 +87,16 @@ public class FlushIT extends AbstractHavenaskRestTestCase {
     static IndexAndMaxDocCount[] indices = new IndexAndMaxDocCount[] {
         new IndexAndMaxDocCount("flush_test", 5),
         new IndexAndMaxDocCount("multi_flush_test", 2), };
+
+    @Before
+    public void isSingleNode() throws IOException {
+        ClusterHealthResponse clusterHealthResponse = highLevelClient().cluster()
+            .health(new ClusterHealthRequest(), RequestOptions.DEFAULT);
+        if (clusterHealthResponse.getNumberOfNodes() > 1) {
+            logger.info("number_of_nodes more than 1, Skipping tests in FlushIT");
+            Assume.assumeTrue(false);
+        }
+    }
 
     @AfterClass
     public static void cleanNeededIndex() {
