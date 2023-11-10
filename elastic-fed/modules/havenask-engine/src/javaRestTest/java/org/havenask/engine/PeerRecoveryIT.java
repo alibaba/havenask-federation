@@ -34,7 +34,6 @@ import org.havenask.index.query.MatchAllQueryBuilder;
 import org.havenask.search.builder.SearchSourceBuilder;
 import org.junit.AfterClass;
 import org.junit.Assume;
-import org.junit.Before;
 
 import java.io.IOException;
 import java.util.HashSet;
@@ -47,16 +46,6 @@ public class PeerRecoveryIT extends AbstractHavenaskRestTestCase {
     private static final String[] PeerRecoveryITIndices = { "two_shard_peer_recovery_test", "kill_searcher_then_peer_recovery_test" };
     private static final int TEST_TWO_SHARD_PEER_RECOVERY_INDEX_POS = 0;
     private static final int TEST_KILL_SEARCHER_THEN_PEER_RECOVERY_INDEX_POS = 1;
-
-    @Before
-    public void isMultiNodes() throws IOException {
-        ClusterHealthResponse clusterHealthResponse = highLevelClient().cluster()
-            .health(new ClusterHealthRequest(), RequestOptions.DEFAULT);
-        if (clusterHealthResponse.getNumberOfNodes() < 2) {
-            logger.info("number_of_nodes less then 2, Skipping tests in PeerRecoveryIT");
-            Assume.assumeTrue(false);
-        }
-    }
 
     @AfterClass
     public static void cleanIndices() {
@@ -73,6 +62,8 @@ public class PeerRecoveryIT extends AbstractHavenaskRestTestCase {
     }
 
     public void testTwoShardPeerRecovery() throws Exception {
+        isMultiNodes();
+
         String index = PeerRecoveryITIndices[TEST_TWO_SHARD_PEER_RECOVERY_INDEX_POS];
         int loopCount = 5;
         int querySize = 250;
@@ -127,6 +118,8 @@ public class PeerRecoveryIT extends AbstractHavenaskRestTestCase {
     }
 
     public void testKillSearcherThenPeerRecovery() throws Exception {
+        isMultiNodes();
+
         String index = PeerRecoveryITIndices[TEST_KILL_SEARCHER_THEN_PEER_RECOVERY_INDEX_POS];
 
         int loopCount = 5;
@@ -184,6 +177,15 @@ public class PeerRecoveryIT extends AbstractHavenaskRestTestCase {
         }
 
         deleteAndHeadIndex(index);
+    }
+
+    public void isMultiNodes() throws IOException {
+        ClusterHealthResponse clusterHealthResponse = highLevelClient().cluster()
+            .health(new ClusterHealthRequest(), RequestOptions.DEFAULT);
+        if (clusterHealthResponse.getNumberOfNodes() < 2) {
+            logger.info("number_of_nodes less then 2, Skipping tests in PeerRecoveryIT");
+            Assume.assumeTrue(false);
+        }
     }
 
     private void compareResponsesHits(SearchResponse response1, SearchResponse response2) {
