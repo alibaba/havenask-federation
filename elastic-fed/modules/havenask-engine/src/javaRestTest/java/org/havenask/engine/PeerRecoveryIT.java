@@ -62,7 +62,7 @@ public class PeerRecoveryIT extends AbstractHavenaskRestTestCase {
     }
 
     public void testTwoShardPeerRecovery() throws Exception {
-        isMultiNodes();
+        assumeTrue("number_of_nodes less then 2, Skip func: testTwoShardPeerRecovery()", isMultiNodes());
 
         String index = PeerRecoveryITIndices[TEST_TWO_SHARD_PEER_RECOVERY_INDEX_POS];
         int loopCount = 5;
@@ -179,13 +179,10 @@ public class PeerRecoveryIT extends AbstractHavenaskRestTestCase {
         deleteAndHeadIndex(index);
     }
 
-    public void isMultiNodes() throws IOException {
+    public boolean isMultiNodes() throws IOException {
         ClusterHealthResponse clusterHealthResponse = highLevelClient().cluster()
             .health(new ClusterHealthRequest(), RequestOptions.DEFAULT);
-        if (clusterHealthResponse.getNumberOfNodes() < 2) {
-            logger.info("number_of_nodes less then 2, Skipping tests in PeerRecoveryIT");
-            Assume.assumeTrue(false);
-        }
+        return clusterHealthResponse.getNumberOfNodes() >= 2 ? true : false;
     }
 
     private void compareResponsesHits(SearchResponse response1, SearchResponse response2) {

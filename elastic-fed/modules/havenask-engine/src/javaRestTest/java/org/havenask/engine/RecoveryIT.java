@@ -75,7 +75,7 @@ public class RecoveryIT extends AbstractHavenaskRestTestCase {
     private final long testDocCount = 100;
 
     public void testRecoverySingleShard() throws Exception {
-        isSingleNode();
+        assumeTrue("number_of_nodes more than 1, Skip func: testRecoverySingleShard()", isSingleNode());
 
         // create index
         assertTrue(
@@ -159,13 +159,10 @@ public class RecoveryIT extends AbstractHavenaskRestTestCase {
         }, 10, TimeUnit.SECONDS);
     }
 
-    public void isSingleNode() throws IOException {
+    public boolean isSingleNode() throws IOException {
         ClusterHealthResponse clusterHealthResponse = highLevelClient().cluster()
             .health(new ClusterHealthRequest(), RequestOptions.DEFAULT);
-        if (clusterHealthResponse.getNumberOfNodes() > 1) {
-            logger.info("number_of_nodes more than 1, Skipping tests in Recovery");
-            Assume.assumeTrue(false);
-        }
+        return clusterHealthResponse.getNumberOfNodes() == 1 ? true : false;
     }
 
     @AfterClass
