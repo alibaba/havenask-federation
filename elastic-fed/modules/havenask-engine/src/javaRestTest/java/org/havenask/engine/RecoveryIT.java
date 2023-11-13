@@ -64,7 +64,6 @@ import org.havenask.common.settings.Settings;
 import org.havenask.common.xcontent.XContentType;
 import org.havenask.engine.index.engine.EngineSettings;
 import org.junit.AfterClass;
-import org.junit.Assume;
 
 public class RecoveryIT extends AbstractHavenaskRestTestCase {
 
@@ -162,7 +161,7 @@ public class RecoveryIT extends AbstractHavenaskRestTestCase {
     public boolean isSingleNode() throws IOException {
         ClusterHealthResponse clusterHealthResponse = highLevelClient().cluster()
             .health(new ClusterHealthRequest(), RequestOptions.DEFAULT);
-        return clusterHealthResponse.getNumberOfNodes() == 1 ? true : false;
+        return clusterHealthResponse.getNumberOfNodes() == 1;
     }
 
     @AfterClass

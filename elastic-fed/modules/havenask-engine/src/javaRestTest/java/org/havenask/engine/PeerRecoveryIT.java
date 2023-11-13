@@ -33,7 +33,6 @@ import org.havenask.engine.index.engine.EngineSettings;
 import org.havenask.index.query.MatchAllQueryBuilder;
 import org.havenask.search.builder.SearchSourceBuilder;
 import org.junit.AfterClass;
-import org.junit.Assume;
 
 import java.io.IOException;
 import java.util.HashSet;
@@ -118,7 +117,7 @@ public class PeerRecoveryIT extends AbstractHavenaskRestTestCase {
     }
 
     public void testKillSearcherThenPeerRecovery() throws Exception {
-        isMultiNodes();
+        assumeTrue("number_of_nodes less then 2, Skip func: testTwoShardPeerRecovery()", isMultiNodes());
 
         String index = PeerRecoveryITIndices[TEST_KILL_SEARCHER_THEN_PEER_RECOVERY_INDEX_POS];
 
@@ -182,7 +181,7 @@ public class PeerRecoveryIT extends AbstractHavenaskRestTestCase {
     public boolean isMultiNodes() throws IOException {
         ClusterHealthResponse clusterHealthResponse = highLevelClient().cluster()
             .health(new ClusterHealthRequest(), RequestOptions.DEFAULT);
-        return clusterHealthResponse.getNumberOfNodes() >= 2 ? true : false;
+        return clusterHealthResponse.getNumberOfNodes() >= 2;
     }
 
     private void compareResponsesHits(SearchResponse response1, SearchResponse response2) {
