@@ -22,6 +22,8 @@ import java.nio.file.StandardOpenOption;
 import java.util.Locale;
 import java.util.function.Function;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.havenask.HavenaskException;
 import org.havenask.common.io.PathUtils;
 import org.havenask.common.settings.Setting;
@@ -31,6 +33,7 @@ import org.havenask.core.internal.io.IOUtils;
 import org.havenask.engine.index.config.generator.BizConfigGenerator;
 import org.havenask.engine.index.config.generator.TableConfigGenerator;
 import org.havenask.engine.index.engine.EngineSettings;
+import org.havenask.engine.rpc.TargetInfo;
 import org.havenask.engine.util.Utils;
 import org.havenask.env.Environment;
 import org.havenask.env.ShardLock;
@@ -38,6 +41,7 @@ import org.havenask.index.Index;
 import org.havenask.index.IndexSettings;
 import org.havenask.index.shard.ShardId;
 import org.havenask.plugins.NodeEnvironmentPlugin.CustomEnvironment;
+import org.havenask.threadpool.ThreadPool;
 
 import static org.havenask.engine.index.config.generator.BizConfigGenerator.BIZ_DIR;
 import static org.havenask.engine.index.config.generator.BizConfigGenerator.CLUSTER_DIR;
@@ -61,6 +65,7 @@ import static org.havenask.engine.index.config.generator.TableConfigGenerator.TA
 import static org.havenask.env.Environment.PATH_HOME_SETTING;
 
 public class HavenaskEngineEnvironment implements CustomEnvironment {
+    private static final Logger LOGGER = LogManager.getLogger(NativeProcessControlService.class);
     public static final String DEFAULT_DATA_PATH = "havenask";
     public static final String HAVENASK_CONFIG_PATH = "config";
     public static final String HAVENASK_RUNTIMEDATA_PATH = "runtimedata";
@@ -186,6 +191,10 @@ public class HavenaskEngineEnvironment implements CustomEnvironment {
         this.metaDataSyncer = metaDataSyncer;
     }
 
+    public MetaDataSyncer getMetaDataSyncer() {
+        return this.metaDataSyncer;
+    }
+
     @Override
     public void deleteIndexDirectoryUnderLock(Index index, IndexSettings indexSettings) throws IOException {
         if (EngineSettings.isHavenaskEngine(indexSettings.getSettings()) == false) {
@@ -195,15 +204,60 @@ public class HavenaskEngineEnvironment implements CustomEnvironment {
         BizConfigGenerator.removeBiz(tableName, configPath);
         TableConfigGenerator.removeTable(tableName, configPath);
         Path indexDir = runtimedataPath.resolve(tableName);
-        IOUtils.rm(indexDir);
-        if (metaDataSyncer != null) {
-            metaDataSyncer.setPendingSync();
-        }
+
+        final ThreadPool threadPool = metaDataSyncer.getThreadPool();
+        asyncRemoveIndexDir(threadPool, tableName, indexDir);
     }
 
     @Override
     public void deleteShardDirectoryUnderLock(ShardLock lock, IndexSettings indexSettings) throws IOException {
         // TODO 删除shard先不做处理,在删除index的时候处理,后续支持多shard后再处理
+    }
+
+    /**
+     * 异步移除删除索引后残留的runtimedata数据信息
+     */
+    public void asyncRemoveIndexDir(final ThreadPool threadPool, String tableName, Path indexDir) {
+        threadPool.executor(HavenaskEnginePlugin.HAVENASK_THREAD_POOL_NAME).execute(() -> {
+            try {
+                if (metaDataSyncer != null) {
+                    metaDataSyncer.setPendingSync();
+                }
+
+                checkIndexIsDeletedInSearcher(metaDataSyncer, tableName);
+
+                IOUtils.rm(indexDir);
+            } catch (IOException e) {
+                LOGGER.warn("remove index dir failed, table name: [{}]， error: [{}]", tableName, e);
+            }
+        });
+    }
+
+    private void checkIndexIsDeletedInSearcher(MetaDataSyncer metaDataSyncer, String tableName) throws IOException {
+        long timeout = 60000;
+        long sleepInterval = 1000;
+        while (timeout > 0) {
+            TargetInfo targetInfo = metaDataSyncer.getSearcherTargetInfo();
+            if (targetInfo != null && !targetInfo.table_info.containsKey(tableName)) {
+                break;
+            }
+            if (targetInfo == null) {
+                LOGGER.debug("targetInfo is null while delete index, table name: [{}], try to retry", tableName);
+            } else {
+                // TODO:这个log是否是必要的
+                LOGGER.debug("havenask table status still in searcher while delete index, table name: [{}], try to retry", tableName);
+                timeout -= sleepInterval;
+                try {
+                    Thread.sleep(sleepInterval);
+                } catch (InterruptedException ex) {
+                    // pass
+                }
+            }
+        }
+
+        if (timeout <= 0) {
+            throw new IOException("delete check havenask table status timeout");
+        }
     }
 
     private void initConfig() throws IOException {

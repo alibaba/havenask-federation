@@ -150,6 +150,10 @@ public class MetaDataSyncer extends AbstractLifecycleComponent {
         randomVersion = random.nextInt(100000) + 1;
     }
 
+    public ThreadPool getThreadPool() {
+        return this.threadPool;
+    }
+
     @Override
     protected void doStart() {
         if (enabled && isDataNode && syncTask == null) {
