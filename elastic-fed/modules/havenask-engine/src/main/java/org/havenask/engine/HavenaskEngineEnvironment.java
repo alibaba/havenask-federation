@@ -246,12 +246,12 @@ public class HavenaskEngineEnvironment implements CustomEnvironment {
             } else {
                 // TODO:这个log是否是必要的
                 LOGGER.debug("havenask table status still in searcher while delete index, table name: [{}], try to retry", tableName);
-                timeout -= sleepInterval;
-                try {
-                    Thread.sleep(sleepInterval);
-                } catch (InterruptedException ex) {
-                    // pass
-                }
+            }
+            timeout -= sleepInterval;
+            try {
+                Thread.sleep(sleepInterval);
+            } catch (InterruptedException ex) {
+                // pass
             }
         }
 
