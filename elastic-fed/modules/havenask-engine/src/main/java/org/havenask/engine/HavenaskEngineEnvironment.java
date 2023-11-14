@@ -227,6 +227,8 @@ public class HavenaskEngineEnvironment implements CustomEnvironment {
                 checkIndexIsDeletedInSearcher(metaDataSyncer, tableName);
 
                 IOUtils.rm(indexDir);
+
+                LOGGER.info("remove index dir successful, table name :[{}]", tableName);
             } catch (IOException e) {
                 LOGGER.warn("remove index dir failed, table name: [{}]， error: [{}]", tableName, e);
             }
@@ -239,6 +241,7 @@ public class HavenaskEngineEnvironment implements CustomEnvironment {
         while (timeout > 0) {
             TargetInfo targetInfo = metaDataSyncer.getSearcherTargetInfo();
             if (targetInfo != null && !targetInfo.table_info.containsKey(tableName)) {
+                LOGGER.debug("targetInfo update successfully while delete index, table name: [{}], try to retry", tableName);
                 break;
             }
             if (targetInfo == null) {
