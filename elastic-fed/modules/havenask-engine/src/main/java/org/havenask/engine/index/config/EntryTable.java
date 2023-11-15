@@ -60,7 +60,7 @@ public class EntryTable {
                 file.length = fileJson.getLong("length");
                 if (file.length == -2) {
                     file.type = Type.DIR;
-                    file.length = Integer.MAX_VALUE;
+                    file.length = 0;
                 } else {
                     file.type = Type.FILE;
                 }
