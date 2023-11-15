@@ -18,18 +18,21 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.havenask.action.admin.cluster.health.ClusterHealthRequest;
 import org.havenask.action.admin.cluster.health.ClusterHealthResponse;
+import org.havenask.action.admin.indices.delete.DeleteIndexRequest;
 import org.havenask.action.admin.indices.settings.put.UpdateSettingsRequest;
 import org.havenask.action.search.SearchRequest;
 import org.havenask.action.search.SearchResponse;
 import org.havenask.client.Request;
 import org.havenask.client.RequestOptions;
 import org.havenask.client.Response;
+import org.havenask.client.indices.GetIndexRequest;
 import org.havenask.cluster.health.ClusterHealthStatus;
 import org.havenask.common.collect.Map;
 import org.havenask.common.settings.Settings;
 import org.havenask.engine.index.engine.EngineSettings;
 import org.havenask.index.query.MatchAllQueryBuilder;
 import org.havenask.search.builder.SearchSourceBuilder;
+import org.junit.AfterClass;
 
 import java.io.IOException;
 import java.util.HashSet;
@@ -43,27 +46,27 @@ public class PeerRecoveryIT extends AbstractHavenaskRestTestCase {
     private static final int TEST_TWO_SHARD_PEER_RECOVERY_INDEX_POS = 0;
     private static final int TEST_KILL_SEARCHER_THEN_PEER_RECOVERY_INDEX_POS = 1;
 
-    // @AfterClass
-    // public static void cleanIndices() {
-    // try {
-    // for (String index : PeerRecoveryITIndices) {
-    // if (highLevelClient().indices().exists(new GetIndexRequest(index), RequestOptions.DEFAULT)) {
-    // highLevelClient().indices().delete(new DeleteIndexRequest(index), RequestOptions.DEFAULT);
-    // logger.info("clean index {}", index);
-    // }
-    // }
-    // } catch (IOException e) {
-    // logger.error("clean index failed", e);
-    // }
-    // }
+    @AfterClass
+    public static void cleanIndices() {
+        try {
+            for (String index : PeerRecoveryITIndices) {
+                if (highLevelClient().indices().exists(new GetIndexRequest(index), RequestOptions.DEFAULT)) {
+                    highLevelClient().indices().delete(new DeleteIndexRequest(index), RequestOptions.DEFAULT);
+                    logger.info("clean index {}", index);
+                }
+            }
+        } catch (IOException e) {
+            logger.error("clean index failed", e);
+        }
+    }
 
     public void testTwoShardPeerRecovery() throws Exception {
-        assumeTrue("number_of_nodes less then 2, Skip func: testTwoShardPeerRecovery()", isMultiNodes());
+        assumeTrue("number_of_nodes less then 2, Skip func: testTwoShardPeerRecovery()", clusterIsMultiNodes());
 
         String index = PeerRecoveryITIndices[TEST_TWO_SHARD_PEER_RECOVERY_INDEX_POS];
         int loopCount = 5;
         int querySize = 250;
-        int waitIndexReduce = 10000;  // 10s
+        int waitIndexReduce = 15000;  // 15s
         String primaryPreference = "primary";
         String replicaPreference = "replication";
 
@@ -114,7 +117,7 @@ public class PeerRecoveryIT extends AbstractHavenaskRestTestCase {
     }
 
     public void testKillSearcherThenPeerRecovery() throws Exception {
-        assumeTrue("number_of_nodes less then 2, Skip func: testTwoShardPeerRecovery()", isMultiNodes());
+        assumeTrue("number_of_nodes less then 2, Skip func: testTwoShardPeerRecovery()", clusterIsMultiNodes());
 
         String index = PeerRecoveryITIndices[TEST_KILL_SEARCHER_THEN_PEER_RECOVERY_INDEX_POS];
 
@@ -173,12 +176,6 @@ public class PeerRecoveryIT extends AbstractHavenaskRestTestCase {
         }
 
         deleteAndHeadIndex(index);
-    }
-
-    public boolean isMultiNodes() throws IOException {
-        ClusterHealthResponse clusterHealthResponse = highLevelClient().cluster()
-            .health(new ClusterHealthRequest(), RequestOptions.DEFAULT);
-        return clusterHealthResponse.getNumberOfNodes() >= 2;
     }
 
     private void compareResponsesHits(SearchResponse response1, SearchResponse response2) {
