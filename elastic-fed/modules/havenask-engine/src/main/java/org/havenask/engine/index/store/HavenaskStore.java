@@ -36,7 +36,6 @@ import org.havenask.index.shard.ShardId;
 import org.havenask.index.store.Store;
 import org.havenask.index.store.StoreFileMetadata;
 
-import java.io.ByteArrayOutputStream;
 import java.io.EOFException;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -116,23 +115,26 @@ public class HavenaskStore extends Store {
             if (false == Strings.isEmpty(fenceName) && name.equals("")) {
                 fileMap.forEach((fileName, file) -> {
                     String realPath = fenceName + "/" + fileName;
-                    StoreFileMetadata storeFileMetadata = new StoreFileMetadata(realPath, file.length, "", HAVENASK_VERSION);
+                    StoreFileMetadata storeFileMetadata = new StoreFileMetadata(realPath, file.length, file.type.name(), HAVENASK_VERSION);
                     // version文件需要拷贝到最外层目录
                     if (fileName.startsWith("version.")) {
-                        metadata.put(fileName, new StoreFileMetadata(fileName, file.length, "", HAVENASK_VERSION));
+                        metadata.put(fileName, new StoreFileMetadata(fileName, file.length, file.type.name(), HAVENASK_VERSION));
                     }
                     metadata.put(realPath, storeFileMetadata);
                 });
             } else {
                 fileMap.forEach((fileName, file) -> {
-                    StoreFileMetadata storeFileMetadata = new StoreFileMetadata(fileName, file.length, "", HAVENASK_VERSION);
+                    StoreFileMetadata storeFileMetadata = new StoreFileMetadata(fileName, file.length, file.type.name(), HAVENASK_VERSION);
                     metadata.put(fileName, storeFileMetadata);
                 });
             }
         });
 
         // add entry_table file
-        metadata.put(entryTablePathStr, new StoreFileMetadata(entryTablePathStr, entryTableContent.length(), "", HAVENASK_VERSION));
+        metadata.put(
+            entryTablePathStr,
+            new StoreFileMetadata(entryTablePathStr, entryTableContent.length(), EntryTable.Type.FILE.name(), HAVENASK_VERSION)
+        );
 
         return metadata;
     }
@@ -147,14 +149,7 @@ public class HavenaskStore extends Store {
                 Files.createDirectories(fileDir);
             }
 
-            OutputStream os;
-            if (metadata.length() < 0) {
-                Files.createDirectories(filePath);
-                os = new ByteArrayOutputStream();
-            } else {
-                os = Files.newOutputStream(shardPath.resolve(fileName), StandardOpenOption.WRITE, StandardOpenOption.CREATE_NEW);
-            }
-
+            OutputStream os = Files.newOutputStream(shardPath.resolve(fileName), StandardOpenOption.WRITE, StandardOpenOption.CREATE_NEW);
             return new OutputStreamIndexOutput(
                 "OutputStreamIndexOutput(path=\"" + shardPath.resolve(fileName) + "\")",
                 fileName,
@@ -346,10 +341,12 @@ public class HavenaskStore extends Store {
 
             if (Files.notExists(shardPath.resolve(name))) {
                 try {
-                    if (metadata.length() >= Integer.MAX_VALUE) {
-                        Files.createDirectories(shardPath.resolve(name));
-                    } else if (metadata.length() == 0) {
-                        Files.createFile(shardPath.resolve(name));
+                    if (metadata.length() == 0) {
+                        if (metadata.checksum().equals(EntryTable.Type.DIR.name())) {
+                            Files.createDirectories(shardPath.resolve(name));
+                        } else {
+                            Files.createFile(shardPath.resolve(name));
+                        }
                     }
                 } catch (IOException e) {
                     logger.warn(new ParameterizedMessage("cleanupAndVerify: failed to create file [{}]", name), e);
