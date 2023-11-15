@@ -205,6 +205,7 @@ public class HavenaskEngineEnvironment implements CustomEnvironment {
         TableConfigGenerator.removeTable(tableName, configPath);
         Path indexDir = runtimedataPath.resolve(tableName);
 
+        // TODO: ThreadPool的获取是否可以优化
         final ThreadPool threadPool = metaDataSyncer.getThreadPool();
         asyncRemoveIndexDir(threadPool, tableName, indexDir);
     }
@@ -222,10 +223,9 @@ public class HavenaskEngineEnvironment implements CustomEnvironment {
             try {
                 if (metaDataSyncer != null) {
                     metaDataSyncer.setPendingSync();
+                    checkIndexIsDeletedInSearcher(metaDataSyncer, tableName);
                 }
-
-                checkIndexIsDeletedInSearcher(metaDataSyncer, tableName);
-
+                // TODO : checkIndexIsDeletedInSearcher()如果超时, 则不会执行IOUtils.rm(indexDir)导致无法删除索引
                 IOUtils.rm(indexDir);
 
                 LOGGER.info("remove index dir successful, table name :[{}]", tableName);
@@ -247,7 +247,6 @@ public class HavenaskEngineEnvironment implements CustomEnvironment {
             if (targetInfo == null) {
                 LOGGER.debug("targetInfo is null while delete index, table name: [{}], try to retry", tableName);
             } else {
-                // TODO:这个log是否是必要的
                 LOGGER.debug("havenask table status still in searcher while delete index, table name: [{}], try to retry", tableName);
             }
             timeout -= sleepInterval;

@@ -237,8 +237,6 @@ public class BasicIT extends AbstractHavenaskRestTestCase {
             // delete index
             assertTrue(highLevelClient().indices().delete(new DeleteIndexRequest(index), RequestOptions.DEFAULT).isAcknowledged());
             assertEquals(false, highLevelClient().indices().exists(new GetIndexRequest(index), RequestOptions.DEFAULT));
-
-            Thread.sleep(10000);
         }
     }
 

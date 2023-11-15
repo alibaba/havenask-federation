@@ -66,7 +66,7 @@ public class PeerRecoveryIT extends AbstractHavenaskRestTestCase {
         String index = PeerRecoveryITIndices[TEST_TWO_SHARD_PEER_RECOVERY_INDEX_POS];
         int loopCount = 5;
         int querySize = 250;
-        int waitIndexReduce = 15000;  // 15s
+        int waitIndexReduce = 10000;  // 10s
         String primaryPreference = "primary";
         String replicaPreference = "replication";
 

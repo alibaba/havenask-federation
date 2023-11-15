@@ -49,7 +49,7 @@ import org.junit.AfterClass;
 public class DocIT extends AbstractHavenaskRestTestCase {
     // static logger
     private static final Logger logger = LogManager.getLogger(DocIT.class);
-    private static final String[] DocITIndices = { "index_doc_method1", "index_multi_data_type", "illegal_vector_test", "update_doc_test" };
+    private static final String[] DocITIndices = { "index_doc_method", "index_multi_data_type", "illegal_vector_test", "update_doc_test" };
     private static final int TEST_DOC_METHOD_INDEX_POS = 0;
     private static final int TEST_MULTI_DATA_TYPE_INDEX_POS = 1;
     private static final int TEST_ILLEGAL_VECTOR_TEST_INDEX_POS = 2;
