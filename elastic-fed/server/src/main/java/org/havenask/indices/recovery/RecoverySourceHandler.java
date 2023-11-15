@@ -39,25 +39,6 @@
 
 package org.havenask.indices.recovery;
 
-import java.io.Closeable;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.Deque;
-import java.util.List;
-import java.util.Locale;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentLinkedDeque;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.function.Consumer;
-import java.util.function.IntSupplier;
-import java.util.stream.StreamSupport;
-
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.message.ParameterizedMessage;
 import org.apache.lucene.index.CorruptIndexException;
@@ -111,6 +92,25 @@ import org.havenask.index.translog.Translog;
 import org.havenask.threadpool.ThreadPool;
 import org.havenask.transport.RemoteTransportException;
 import org.havenask.transport.Transports;
+
+import java.io.Closeable;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.Deque;
+import java.util.List;
+import java.util.Locale;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentLinkedDeque;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Consumer;
+import java.util.function.IntSupplier;
+import java.util.stream.StreamSupport;
 
 /**
  * RecoverySourceHandler handles the three phases of shard recovery, which is
@@ -917,8 +917,8 @@ public class RecoverySourceHandler {
     }
 
     public void sendFiles(Store store, StoreFileMetadata[] files, IntSupplier translogOps, ActionListener<Void> listener) {
-        // 过滤files中文件长度小于等于0的文件
-        files = Arrays.stream(files).filter(f -> f.length() > 0 && f.length() < Integer.MAX_VALUE).sorted(
+        // 过滤files中文件长度大于0的文件
+        files = Arrays.stream(files).filter(f -> f.length() > 0).sorted(
             Comparator.comparingLong(StoreFileMetadata::length)).toArray(
             StoreFileMetadata[]::new); // send smallest first
 
