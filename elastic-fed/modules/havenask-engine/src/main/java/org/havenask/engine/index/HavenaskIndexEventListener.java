@@ -15,9 +15,11 @@
 package org.havenask.engine.index;
 
 import java.io.IOException;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import org.havenask.HavenaskException;
 import org.havenask.engine.HavenaskEngineEnvironment;
+import org.havenask.engine.MetaDataSyncer;
 import org.havenask.engine.index.config.generator.BizConfigGenerator;
 import org.havenask.engine.index.config.generator.RuntimeSegmentGenerator;
 import org.havenask.engine.index.config.generator.TableConfigGenerator;
@@ -28,14 +30,21 @@ import org.havenask.index.shard.IndexShard;
 public class HavenaskIndexEventListener implements IndexEventListener {
 
     private final HavenaskEngineEnvironment env;
+    private final MetaDataSyncer metaDataSyncer;
 
-    public HavenaskIndexEventListener(HavenaskEngineEnvironment env) {
+    public HavenaskIndexEventListener(HavenaskEngineEnvironment env, MetaDataSyncer metaDataSyncer) {
         this.env = env;
+        this.metaDataSyncer = metaDataSyncer;
     }
 
     @Override
     public void afterIndexShardCreated(IndexShard indexShard) {
         String tableName = Utils.getHavenaskTableName(indexShard.shardId());
+        ReentrantReadWriteLock indexLock = metaDataSyncer != null ? metaDataSyncer.getIndexLock(tableName) : null;
+        if (indexLock != null) {
+            // TODO:是否使用tryLock设置超时时间更好
+            indexLock.writeLock().lock();
+        }
         try {
             BizConfigGenerator.generateBiz(
                 tableName,
@@ -59,6 +68,10 @@ public class HavenaskIndexEventListener implements IndexEventListener {
             );
         } catch (IOException e) {
             throw new HavenaskException("generate havenask config error", e);
+        } finally {
+            if (indexLock != null) {
+                indexLock.writeLock().unlock();
+            }
         }
     }
 }

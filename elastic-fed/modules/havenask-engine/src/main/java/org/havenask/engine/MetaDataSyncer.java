@@ -29,6 +29,7 @@ import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -123,6 +124,8 @@ public class MetaDataSyncer extends AbstractLifecycleComponent {
     private AtomicReference<TargetInfo> searcherTargetInfo = new AtomicReference<>();
     private int syncTimes = 0;
 
+    private Map<String, ReentrantReadWriteLock> indexLockMap = new HashMap<>();
+
     public MetaDataSyncer(
         ClusterService clusterService,
         ThreadPool threadPool,
@@ -152,6 +155,13 @@ public class MetaDataSyncer extends AbstractLifecycleComponent {
 
     public ThreadPool getThreadPool() {
         return this.threadPool;
+    }
+
+    public ReentrantReadWriteLock getIndexLock(String tableName) {
+        if (indexLockMap.containsKey(tableName) == false) {
+            indexLockMap.put(tableName, new ReentrantReadWriteLock());
+        }
+        return indexLockMap.get(tableName);
     }
 
     @Override

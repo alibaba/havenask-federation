@@ -20,6 +20,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.Locale;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Function;
 
 import org.apache.logging.log4j.LogManager;
@@ -220,6 +221,10 @@ public class HavenaskEngineEnvironment implements CustomEnvironment {
      */
     public void asyncRemoveIndexDir(final ThreadPool threadPool, String tableName, Path indexDir) {
         threadPool.executor(HavenaskEnginePlugin.HAVENASK_THREAD_POOL_NAME).execute(() -> {
+            ReentrantReadWriteLock indexLock = metaDataSyncer != null ? metaDataSyncer.getIndexLock(tableName) : null;
+            if (indexLock != null) {
+                indexLock.writeLock().lock();
+            }
             try {
                 if (metaDataSyncer != null) {
                     metaDataSyncer.setPendingSync();
@@ -231,6 +236,10 @@ public class HavenaskEngineEnvironment implements CustomEnvironment {
                 LOGGER.info("remove index dir successful, table name :[{}]", tableName);
             } catch (IOException e) {
                 LOGGER.warn("remove index dir failed, table name: [{}]， error: [{}]", tableName, e);
+            } finally {
+                if (indexLock != null) {
+                    indexLock.writeLock().unlock();
+                }
             }
         });
     }
