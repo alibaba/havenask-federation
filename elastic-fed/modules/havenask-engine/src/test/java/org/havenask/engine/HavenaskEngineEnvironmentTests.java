@@ -14,6 +14,7 @@
 
 package org.havenask.engine;
 
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -51,7 +52,7 @@ import static org.mockito.Mockito.when;
 
 public class HavenaskEngineEnvironmentTests extends HavenaskTestCase {
     // test testDeleteIndexDirectoryUnderLock
-    public void testDeleteIndexDirectoryUnderLock() throws Exception {
+    public void testDeleteIndexDirectoryUnderLock() throws IOException {
         ShardId shardId = new ShardId("indexFile", "indexFile", 0);
         String tableName = Utils.getHavenaskTableName(shardId);
         Path workDir = createTempDir();
@@ -60,7 +61,6 @@ public class HavenaskEngineEnvironmentTests extends HavenaskTestCase {
             .put(HavenaskEnginePlugin.HAVENASK_ENGINE_ENABLED_SETTING.getKey(), true)
             .put(EngineSettings.ENGINE_TYPE_SETTING.getKey(), EngineSettings.ENGINE_HAVENASK)
             .put(DiscoveryModule.DISCOVERY_TYPE_SETTING.getKey(), SINGLE_NODE_DISCOVERY_TYPE)
-            .put("node.name", HavenaskEnginePlugin.HAVENASK_THREAD_POOL_NAME)
             .build();
         Path indexFile = workDir.resolve("data")
             .resolve(HavenaskEngineEnvironment.DEFAULT_DATA_PATH)
