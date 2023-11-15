@@ -240,7 +240,7 @@ public class HavenaskEngineEnvironment implements CustomEnvironment {
             } finally {
                 if (indexLock != null) {
                     indexLock.writeLock().unlock();
-                    LOGGER.debug("release lock while deleting index, table name :[{}]", tableName);
+                    LOGGER.debug("release lock after deleting index, table name :[{}]", tableName);
                 }
             }
         });

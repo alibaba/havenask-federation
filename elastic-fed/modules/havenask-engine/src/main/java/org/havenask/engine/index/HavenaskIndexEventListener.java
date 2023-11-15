@@ -17,6 +17,8 @@ package org.havenask.engine.index;
 import java.io.IOException;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.havenask.HavenaskException;
 import org.havenask.engine.HavenaskEngineEnvironment;
 import org.havenask.engine.MetaDataSyncer;
@@ -28,6 +30,7 @@ import org.havenask.index.shard.IndexEventListener;
 import org.havenask.index.shard.IndexShard;
 
 public class HavenaskIndexEventListener implements IndexEventListener {
+    private static final Logger LOGGER = LogManager.getLogger(HavenaskIndexEventListener.class);
 
     private final HavenaskEngineEnvironment env;
     private final MetaDataSyncer metaDataSyncer;
@@ -44,6 +47,7 @@ public class HavenaskIndexEventListener implements IndexEventListener {
         if (indexLock != null) {
             // TODO:是否使用tryLock设置超时时间更好
             indexLock.writeLock().lock();
+            LOGGER.debug("get lock while creating shard, table name :[{}]", tableName);
         }
         try {
             BizConfigGenerator.generateBiz(
@@ -71,6 +75,7 @@ public class HavenaskIndexEventListener implements IndexEventListener {
         } finally {
             if (indexLock != null) {
                 indexLock.writeLock().unlock();
+                LOGGER.debug("release lock after creating shard, table name :[{}]", tableName);
             }
         }
     }
