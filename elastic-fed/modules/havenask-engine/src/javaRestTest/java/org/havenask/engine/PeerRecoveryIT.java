@@ -66,7 +66,6 @@ public class PeerRecoveryIT extends AbstractHavenaskRestTestCase {
         String index = PeerRecoveryITIndices[TEST_TWO_SHARD_PEER_RECOVERY_INDEX_POS];
         int loopCount = 5;
         int querySize = 250;
-        int waitIndexReduce = 10000;  // 10s
         String primaryPreference = "primary";
         String replicaPreference = "replication";
 
@@ -91,9 +90,6 @@ public class PeerRecoveryIT extends AbstractHavenaskRestTestCase {
                 putDoc(index, Map.of("foo", "value" + docValue));
                 docValue++;
             }
-
-            // TODO:防止减少replication时相关索引信息还没有清空就进行peer recovery流程，加入等待时间，待优化
-            Thread.sleep(waitIndexReduce);
 
             // 增加replica，触发peer recovery
             assertTrue(setReplicaNum(index, 1));

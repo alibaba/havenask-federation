@@ -224,6 +224,7 @@ public class HavenaskEngineEnvironment implements CustomEnvironment {
             ReentrantReadWriteLock indexLock = metaDataSyncer != null ? metaDataSyncer.getIndexLock(tableName) : null;
             if (indexLock != null) {
                 indexLock.writeLock().lock();
+                LOGGER.debug("get lock while deleting index, table name :[{}]", tableName);
             }
             try {
                 if (metaDataSyncer != null) {
@@ -239,6 +240,7 @@ public class HavenaskEngineEnvironment implements CustomEnvironment {
             } finally {
                 if (indexLock != null) {
                     indexLock.writeLock().unlock();
+                    LOGGER.debug("release lock while deleting index, table name :[{}]", tableName);
                 }
             }
         });
@@ -250,13 +252,13 @@ public class HavenaskEngineEnvironment implements CustomEnvironment {
         while (timeout > 0) {
             TargetInfo targetInfo = metaDataSyncer.getSearcherTargetInfo();
             if (targetInfo != null && !targetInfo.table_info.containsKey(tableName)) {
-                LOGGER.debug("targetInfo update successfully while delete index, table name: [{}], try to retry", tableName);
+                LOGGER.debug("targetInfo update successfully while deleting index, table name: [{}], try to retry", tableName);
                 break;
             }
             if (targetInfo == null) {
-                LOGGER.debug("targetInfo is null while delete index, table name: [{}], try to retry", tableName);
+                LOGGER.debug("targetInfo is null while deleting index, table name: [{}], try to retry", tableName);
             } else {
-                LOGGER.debug("havenask table status still in searcher while delete index, table name: [{}], try to retry", tableName);
+                LOGGER.debug("havenask table status still in searcher while deleting index, table name: [{}], try to retry", tableName);
             }
             timeout -= sleepInterval;
             try {
@@ -267,7 +269,7 @@ public class HavenaskEngineEnvironment implements CustomEnvironment {
         }
 
         if (timeout <= 0) {
-            throw new IOException("delete check havenask table status timeout");
+            throw new IOException("check havenask table status timeout while deleting index");
         }
     }
 
