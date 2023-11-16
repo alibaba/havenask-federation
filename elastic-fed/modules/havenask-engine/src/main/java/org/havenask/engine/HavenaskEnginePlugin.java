@@ -57,6 +57,7 @@ import org.havenask.engine.search.rest.RestHavenaskSqlClientInfoAction;
 import org.havenask.engine.stop.action.HavenaskStopAction;
 import org.havenask.engine.stop.action.TransportHavenaskStopAction;
 import org.havenask.engine.stop.rest.RestHavenaskStop;
+import org.havenask.engine.util.RangeUtil;
 import org.havenask.env.Environment;
 import org.havenask.env.NodeEnvironment;
 import org.havenask.env.ShardLock;
@@ -103,7 +104,6 @@ import java.util.function.Supplier;
 
 import static org.havenask.engine.NativeProcessControlService.HAVENASK_QRS_HTTP_PORT_SETTING;
 import static org.havenask.engine.index.engine.EngineSettings.ENGINE_HAVENASK;
-import static org.havenask.engine.util.Utils.INDEX_SUB_PATH;
 import static org.havenask.index.store.FsDirectoryFactory.INDEX_LOCK_FACTOR_SETTING;
 
 public class HavenaskEnginePlugin extends Plugin
@@ -341,7 +341,8 @@ public class HavenaskEnginePlugin extends Plugin
             @Override
             public Store newStore(ShardId shardId, IndexSettings indexSettings, Directory directory, ShardLock shardLock, OnClose onClose) {
                 HavenaskEngineEnvironment env = havenaskEngineEnvironmentSetOnce.get();
-                Path shardPath = env.getShardPath(shardId).resolve(INDEX_SUB_PATH);
+                String partitionName = RangeUtil.getRangePartition(indexSettings.getNumberOfShards(), shardId.id());
+                Path shardPath = env.getShardPath(shardId).resolve("generation_0").resolve(partitionName);
                 return new HavenaskStore(shardId, indexSettings, directory, shardLock, onClose, shardPath);
             }
         });

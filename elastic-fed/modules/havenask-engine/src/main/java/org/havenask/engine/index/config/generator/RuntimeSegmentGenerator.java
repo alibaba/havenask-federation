@@ -14,17 +14,19 @@
 
 package org.havenask.engine.index.config.generator;
 
+import org.havenask.common.Nullable;
+import org.havenask.common.settings.Settings;
+import org.havenask.engine.index.config.Schema;
+import org.havenask.engine.util.RangeUtil;
+import org.havenask.index.mapper.MapperService;
+import org.havenask.index.shard.ShardId;
+
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.Locale;
-
-import org.havenask.common.Nullable;
-import org.havenask.common.settings.Settings;
-import org.havenask.engine.index.config.Schema;
-import org.havenask.index.mapper.MapperService;
 
 public class RuntimeSegmentGenerator {
     public static final String VERSION_FILE_NAME = "version.0";
@@ -168,24 +170,38 @@ public class RuntimeSegmentGenerator {
     public static final String SCHEMA_FILE_NAME = "schema.json";
 
     private final Path runtimedataPath;
-    private final String indexName;
+    private final ShardId shardId;
+    private final int numberOfShards;
     private final Settings indexSettings;
     private final MapperService mapperService;
 
-    public RuntimeSegmentGenerator(String indexName, Settings indexSettings, @Nullable MapperService mapperService, Path runtimedataPath) {
-        this.indexName = indexName;
+    public RuntimeSegmentGenerator(
+        ShardId shardId,
+        int numberOfShards,
+        Settings indexSettings,
+        @Nullable MapperService mapperService,
+        Path runtimedataPath
+    ) {
+        this.shardId = shardId;
+        this.numberOfShards = numberOfShards;
         this.indexSettings = indexSettings;
         this.mapperService = mapperService;
         this.runtimedataPath = runtimedataPath;
     }
 
     public void generate() throws IOException {
-        Path dataPath = runtimedataPath.resolve(indexName).resolve("generation_0").resolve("partition_0_65535");
-        if (Files.exists(dataPath)) {
+        String indexName = shardId.getIndexName();
+        String partitionName = RangeUtil.getRangePartition(numberOfShards, shardId.id());
+
+        Path dataPath = runtimedataPath.resolve(indexName).resolve("generation_0").resolve(partitionName);
+        if (false == Files.exists(dataPath)) {
+            Files.createDirectories(dataPath);
+        }
+
+        if (Files.exists(dataPath.resolve(VERSION_FILE_NAME))) {
             return;
         }
 
-        Files.createDirectories(dataPath);
         Files.write(
             dataPath.resolve(VERSION_FILE_NAME),
             VERSION_FILE_CONTENT.getBytes(StandardCharsets.UTF_8),
@@ -234,10 +250,16 @@ public class RuntimeSegmentGenerator {
         );
     }
 
-    public static void generateRuntimeSegment(String indexName, Settings indexSettings, MapperService mapperService, Path runtimedataPath)
-        throws IOException {
+    public static void generateRuntimeSegment(
+        ShardId shardId,
+        int numberOfShards,
+        Settings indexSettings,
+        MapperService mapperService,
+        Path runtimedataPath
+    ) throws IOException {
         RuntimeSegmentGenerator runtimeSegmentGenerator = new RuntimeSegmentGenerator(
-            indexName,
+            shardId,
+            numberOfShards,
             indexSettings,
             mapperService,
             runtimedataPath

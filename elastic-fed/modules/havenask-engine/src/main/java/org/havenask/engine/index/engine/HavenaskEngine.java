@@ -60,6 +60,7 @@ import org.havenask.engine.rpc.TargetInfo;
 import org.havenask.engine.rpc.WriteRequest;
 import org.havenask.engine.rpc.WriteResponse;
 import org.havenask.engine.util.JsonPrettyFormatter;
+import org.havenask.engine.util.RangeUtil;
 import org.havenask.engine.util.Utils;
 import org.havenask.index.engine.Engine;
 import org.havenask.index.engine.EngineConfig;
@@ -118,6 +119,7 @@ public class HavenaskEngine extends InternalEngine {
     private KafkaProducer<String, String> producer = null;
     private volatile HavenaskCommitInfo lastCommitInfo = null;
     private CheckpointCalc checkpointCalc = null;
+    private final String partitionName;
 
     public HavenaskEngine(
         EngineConfig engineConfig,
@@ -138,6 +140,7 @@ public class HavenaskEngine extends InternalEngine {
         this.metaDataSyncer = metaDataSyncer;
         this.shardId = engineConfig.getShardId();
         this.tableName = Utils.getHavenaskTableName(shardId);
+        this.partitionName = RangeUtil.getRangePartition(engineConfig.getIndexSettings().getNumberOfShards(), shardId.id());
         this.realTimeEnable = EngineSettings.HAVENASK_REALTIME_ENABLE.get(engineConfig.getIndexSettings().getSettings());
         this.kafkaTopic = realTimeEnable
             ? EngineSettings.HAVENASK_REALTIME_TOPIC_NAME.get(engineConfig.getIndexSettings().getSettings())
@@ -621,7 +624,9 @@ public class HavenaskEngine extends InternalEngine {
         long checkpoint = getPersistedLocalCheckpoint();
         checkpointCalc.addCheckpoint(time, checkpoint);
 
-        Tuple<Long, Long> tuple = Utils.getVersionAndIndexCheckpoint(env.getRuntimedataPath().resolve(tableName));
+        Tuple<Long, Long> tuple = Utils.getVersionAndIndexCheckpoint(
+            env.getRuntimedataPath().resolve(tableName).resolve("generation_0").resolve(partitionName)
+        );
         if (tuple == null) {
             logger.debug(
                 "havenask engine maybeRefresh failed, checkpoint not found, source: {}, time: {}, checkpoint: {}, "

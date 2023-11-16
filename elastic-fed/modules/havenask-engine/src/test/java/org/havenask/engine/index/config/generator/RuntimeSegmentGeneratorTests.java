@@ -14,17 +14,18 @@
 
 package org.havenask.engine.index.config.generator;
 
+import org.havenask.common.settings.Settings;
+import org.havenask.engine.HavenaskEnginePlugin;
+import org.havenask.index.mapper.MapperService;
+import org.havenask.index.mapper.MapperServiceTestCase;
+import org.havenask.index.shard.ShardId;
+import org.havenask.plugins.Plugin;
+
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Collection;
 import java.util.Locale;
-
-import org.havenask.common.settings.Settings;
-import org.havenask.engine.HavenaskEnginePlugin;
-import org.havenask.index.mapper.MapperService;
-import org.havenask.index.mapper.MapperServiceTestCase;
-import org.havenask.plugins.Plugin;
 
 import static java.util.Collections.singletonList;
 
@@ -38,8 +39,10 @@ public class RuntimeSegmentGeneratorTests extends MapperServiceTestCase {
         String indexName = randomAlphaOfLength(5);
         MapperService mapperService = createMapperService(fieldMapping(b -> b.field("type", "keyword")));
         Path runtimePath = createTempDir();
+        ShardId shardId = new ShardId(indexName, "_na_", 0);
         RuntimeSegmentGenerator runtimeSegmentGenerator = new RuntimeSegmentGenerator(
-            indexName,
+            shardId,
+            1,
             Settings.EMPTY,
             mapperService,
             runtimePath
