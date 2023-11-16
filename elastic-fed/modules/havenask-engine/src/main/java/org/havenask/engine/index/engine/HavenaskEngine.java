@@ -432,8 +432,8 @@ public class HavenaskEngine extends InternalEngine {
                             + writeResponse.getErrorMessage()
                     );
                 }
-                if (logger.isDebugEnabled()) {
-                    logger.debug(
+                if (logger.isTraceEnabled()) {
+                    logger.trace(
                         "[{}] index into lucene, id: {}, version: {}, primaryTerm: {}, seqNo: {}, cost: {} us",
                         shardId,
                         index.id(),
