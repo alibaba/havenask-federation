@@ -440,7 +440,8 @@ public class HavenaskEngine extends InternalEngine {
                         index.version(),
                         index.primaryTerm(),
                         index.seqNo(),
-                        (System.nanoTime() - start) / 1000);
+                        (System.nanoTime() - start) / 1000
+                    );
                 }
                 return new IndexResult(index.version(), index.primaryTerm(), index.seqNo(), true);
             } catch (IOException e) {
