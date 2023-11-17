@@ -262,7 +262,7 @@ public class HavenaskEngine extends InternalEngine {
                     }
                 }
 
-                if (tableInfo != null || false == tableInfo.partitions.containsKey(partitionId)) {
+                if (tableInfo == null || false == tableInfo.partitions.containsKey(partitionId)) {
                     throw new IOException("havenask partition not found in searcher");
                 }
 
