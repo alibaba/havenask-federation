@@ -251,6 +251,10 @@ public class HavenaskEngine extends InternalEngine {
                     throw new IOException("havenask table not found in searcher");
                 }
 
+                if (false == targetInfo.table_info.get(tableName).containsKey(partitionName)) {
+                    throw new IOException("havenask partition not found in searcher");
+                }
+
                 SqlClientInfoResponse sqlClientInfoResponse = qrsHttpClient.executeSqlClientInfo();
                 if (sqlClientInfoResponse.getErrorCode() != 0) {
                     throw new IOException("havenask execute sql client info failed");

@@ -14,24 +14,6 @@
 
 package org.havenask.engine;
 
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.DirectoryStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
-import java.nio.file.StandardOpenOption;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Random;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.havenask.cluster.ClusterState;
@@ -41,6 +23,7 @@ import org.havenask.cluster.routing.RoutingNode;
 import org.havenask.cluster.routing.ShardRouting;
 import org.havenask.cluster.service.ClusterService;
 import org.havenask.common.Strings;
+import org.havenask.common.collect.Tuple;
 import org.havenask.common.component.AbstractLifecycleComponent;
 import org.havenask.common.network.NetworkAddress;
 import org.havenask.common.settings.Settings;
@@ -55,8 +38,28 @@ import org.havenask.engine.rpc.QrsClient;
 import org.havenask.engine.rpc.SqlClientInfoResponse;
 import org.havenask.engine.rpc.TargetInfo;
 import org.havenask.engine.rpc.UpdateHeartbeatTargetRequest;
+import org.havenask.engine.util.RangeUtil;
 import org.havenask.engine.util.Utils;
 import org.havenask.threadpool.ThreadPool;
+
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.DirectoryStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
+import java.nio.file.StandardOpenOption;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Random;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import static org.havenask.engine.HavenaskEnginePlugin.HAVENASK_THREAD_POOL_NAME;
 
@@ -351,32 +354,49 @@ public class MetaDataSyncer extends AbstractLifecycleComponent {
         generateDefaultBizConfig(subDirNames);
 
         searcherTargetInfo.table_info = new HashMap<>();
+        Map<String, Tuple<Integer, Set<Integer>>> indexShards = getIndexShards(clusterState);
         for (String subDir : subDirNames) {
-            Path versionPath = defaultRuntimeDataPath.resolve(subDir).resolve(INDEX_SUB_PATH);
-            boolean hasRealTime = false;
-            if (TABLE_NAME_IN0 != subDir) {
-                hasRealTime = true;
-            }
-            int tableMode = hasRealTime ? 1 : 0;
-            int tableType = hasRealTime ? 2 : 3;
             String configPath = defaultTablePath.toString();
             String indexRoot = indexRootPath.toString();
-            int totalPartitionCount = DEFAULT_TOTAL_PARTITION_COUNT;
 
-            TargetInfo.TableInfo.Partition curPartition = new TargetInfo.TableInfo.Partition();
-            curPartition.inc_version = extractIncVersion(Utils.getIndexMaxVersion(versionPath));
+            TargetInfo.TableInfo curTableInfo;
+            if (TABLE_NAME_IN0 == subDir) {
+                int tableMode = 0;
+                int tableType = 3;
 
-            TargetInfo.TableInfo curTableInfo = new TargetInfo.TableInfo(
-                tableMode,
-                tableType,
-                configPath,
-                indexRoot,
-                totalPartitionCount,
-                DEFAULT_PARTITION_NAME,
-                curPartition
-            );
+                int totalPartitionCount = DEFAULT_TOTAL_PARTITION_COUNT;
 
-            Map<String, TargetInfo.TableInfo> innerMap = new HashMap<String, TargetInfo.TableInfo>() {
+                Path versionPath = defaultRuntimeDataPath.resolve(subDir).resolve(INDEX_SUB_PATH);
+                TargetInfo.TableInfo.Partition curPartition = new TargetInfo.TableInfo.Partition();
+                curPartition.inc_version = extractIncVersion(Utils.getIndexMaxVersion(versionPath));
+
+                curTableInfo = new TargetInfo.TableInfo(
+                    tableMode,
+                    tableType,
+                    configPath,
+                    indexRoot,
+                    totalPartitionCount,
+                    DEFAULT_PARTITION_NAME,
+                    curPartition
+                );
+            } else {
+                int tableMode = 1;
+                int tableType = 2;
+                Tuple<Integer, Set<Integer>> shards = indexShards.get(subDir);
+                int totalPartitionCount = shards.v1();
+                Map<String, TargetInfo.TableInfo.Partition> partitions = new HashMap<>();
+                shards.v2().forEach(shardId -> {
+                    String partitionName = RangeUtil.getRangePartition(totalPartitionCount, shardId);
+                    String partitionId = RangeUtil.getRangeName(totalPartitionCount, shardId);
+                    TargetInfo.TableInfo.Partition curPartition = new TargetInfo.TableInfo.Partition();
+                    Path versionPath = defaultRuntimeDataPath.resolve(subDir).resolve("generation_0").resolve(partitionName);
+                    curPartition.inc_version = extractIncVersion(Utils.getIndexMaxVersion(versionPath));
+                    partitions.put(partitionId, curPartition);
+                });
+                curTableInfo = new TargetInfo.TableInfo(tableMode, tableType, configPath, indexRoot, totalPartitionCount, partitions);
+            }
+
+            Map<String, TargetInfo.TableInfo> innerMap = new HashMap<>() {
                 {
                     put(getMaxGenerationId(defaultRuntimeDataPath, subDir), curTableInfo);
                 }
@@ -473,6 +493,28 @@ public class MetaDataSyncer extends AbstractLifecycleComponent {
             }
         }
         return subDirNames;
+    }
+
+    private static Map<String, Tuple<Integer, Set<Integer>>> getIndexShards(ClusterState clusterState) {
+        Map<String, Tuple<Integer, Set<Integer>>> indexShards = new HashMap<>();
+        RoutingNode localRoutingNode = clusterState.getRoutingNodes().node(clusterState.nodes().getLocalNodeId());
+        if (localRoutingNode == null) {
+            throw new RuntimeException("localRoutingNode is null");
+        }
+
+        for (ShardRouting shardRouting : localRoutingNode) {
+            IndexMetadata indexMetadata = clusterState.metadata().index(shardRouting.getIndexName());
+            if (EngineSettings.isHavenaskEngine(indexMetadata.getSettings())) {
+                if (indexShards.containsKey(shardRouting.getIndexName())) {
+                    indexShards.get(shardRouting.getIndexName()).v2().add(shardRouting.getId());
+                } else {
+                    Set<Integer> shards = new HashSet<>();
+                    shards.add(shardRouting.getId());
+                    indexShards.put(shardRouting.getIndexName(), new Tuple<>(indexMetadata.getNumberOfShards(), shards));
+                }
+            }
+        }
+        return indexShards;
     }
 
     private synchronized void generateDefaultBizConfig(List<String> indexList) throws IOException {

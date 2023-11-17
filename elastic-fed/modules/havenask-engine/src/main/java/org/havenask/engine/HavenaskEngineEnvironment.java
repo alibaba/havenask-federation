@@ -14,14 +14,6 @@
 
 package org.havenask.engine;
 
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
-import java.util.Locale;
-import java.util.function.Function;
-
 import org.havenask.HavenaskException;
 import org.havenask.common.io.PathUtils;
 import org.havenask.common.settings.Setting;
@@ -31,6 +23,7 @@ import org.havenask.core.internal.io.IOUtils;
 import org.havenask.engine.index.config.generator.BizConfigGenerator;
 import org.havenask.engine.index.config.generator.TableConfigGenerator;
 import org.havenask.engine.index.engine.EngineSettings;
+import org.havenask.engine.util.RangeUtil;
 import org.havenask.engine.util.Utils;
 import org.havenask.env.Environment;
 import org.havenask.env.ShardLock;
@@ -38,6 +31,14 @@ import org.havenask.index.Index;
 import org.havenask.index.IndexSettings;
 import org.havenask.index.shard.ShardId;
 import org.havenask.plugins.NodeEnvironmentPlugin.CustomEnvironment;
+
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
+import java.util.Locale;
+import java.util.function.Function;
 
 import static org.havenask.engine.index.config.generator.BizConfigGenerator.BIZ_DIR;
 import static org.havenask.engine.index.config.generator.BizConfigGenerator.CLUSTER_DIR;
@@ -203,7 +204,12 @@ public class HavenaskEngineEnvironment implements CustomEnvironment {
 
     @Override
     public void deleteShardDirectoryUnderLock(ShardLock lock, IndexSettings indexSettings) throws IOException {
-        // TODO 删除shard先不做处理,在删除index的时候处理,后续支持多shard后再处理
+        String partitionName = RangeUtil.getRangePartition(indexSettings.getNumberOfShards(), lock.getShardId().id());
+        Path shardDir = runtimedataPath.resolve(indexSettings.getIndex().getName()).resolve("generation_0").resolve(partitionName);
+        IOUtils.rm(shardDir);
+        if (metaDataSyncer != null) {
+            metaDataSyncer.setPendingSync();
+        }
     }
 
     private void initConfig() throws IOException {

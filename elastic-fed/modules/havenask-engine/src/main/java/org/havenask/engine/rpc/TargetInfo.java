@@ -14,15 +14,14 @@
 
 package org.havenask.engine.rpc;
 
+import com.alibaba.fastjson.annotation.JSONField;
+import org.havenask.engine.util.JsonPrettyFormatter;
+
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-
-import com.alibaba.fastjson.annotation.JSONField;
-
-import org.havenask.engine.util.JsonPrettyFormatter;
 
 public class TargetInfo {
     public AppInfo app_info;
@@ -321,6 +320,22 @@ public class TargetInfo {
 
         public TableInfo() {
 
+        }
+
+        public TableInfo(
+            Integer tableMode,
+            Integer tableType,
+            String configPath,
+            String indexRoot,
+            Integer totalPartitionCount,
+            Map<String, Partition> partitions
+        ) {
+            table_mode = tableMode;
+            table_type = tableType;
+            config_path = configPath;
+            index_root = indexRoot;
+            total_partition_count = totalPartitionCount;
+            this.partitions = partitions;
         }
 
         public TableInfo(
