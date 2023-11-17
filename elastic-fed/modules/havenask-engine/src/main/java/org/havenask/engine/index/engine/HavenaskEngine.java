@@ -252,7 +252,17 @@ public class HavenaskEngine extends InternalEngine {
                     throw new IOException("havenask table not found in searcher");
                 }
 
-                if (false == targetInfo.table_info.get(tableName).containsKey(partitionId)) {
+                TargetInfo.TableInfo tableInfo = null;
+                int maxGeneration = -1;
+                for (Map.Entry<String, TargetInfo.TableInfo> entry : targetInfo.table_info.get(tableName).entrySet()) {
+                    String k = entry.getKey();
+                    TargetInfo.TableInfo v = entry.getValue();
+                    if (Integer.valueOf(k) > maxGeneration) {
+                        tableInfo = v;
+                    }
+                }
+
+                if (tableInfo != null || false == tableInfo.partitions.containsKey(partitionId)) {
                     throw new IOException("havenask partition not found in searcher");
                 }
 
