@@ -34,8 +34,8 @@ public class RangeUtil {
 
     /**
      * get range by partCount and partId
-     * @param partCount
-     * @param partId
+     * @param partCount partition count
+     * @param partId partition id
      * @return range, null if not found
      */
     public static PartitionRange getRange(int partCount, int partId) {
