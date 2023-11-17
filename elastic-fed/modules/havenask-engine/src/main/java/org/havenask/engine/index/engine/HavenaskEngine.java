@@ -244,6 +244,7 @@ public class HavenaskEngine extends InternalEngine {
     private void checkTableStatus() throws IOException {
         long timeout = 60000;
         long sleepInterval = 1000;
+        String partitionId = RangeUtil.getRangeName(engineConfig.getIndexSettings().getNumberOfShards(), shardId.id());
         while (timeout > 0) {
             try {
                 TargetInfo targetInfo = metaDataSyncer.getSearcherTargetInfo();
@@ -251,7 +252,7 @@ public class HavenaskEngine extends InternalEngine {
                     throw new IOException("havenask table not found in searcher");
                 }
 
-                if (false == targetInfo.table_info.get(tableName).containsKey(partitionName)) {
+                if (false == targetInfo.table_info.get(tableName).containsKey(partitionId)) {
                     throw new IOException("havenask partition not found in searcher");
                 }
 
