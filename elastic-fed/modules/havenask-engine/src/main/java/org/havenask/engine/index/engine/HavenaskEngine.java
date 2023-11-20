@@ -402,6 +402,7 @@ public class HavenaskEngine extends InternalEngine {
 
     @Override
     protected IndexResult indexIntoLucene(Index index, IndexingStrategy plan) throws IOException {
+        long start = System.nanoTime();
         index.parsedDoc().updateSeqID(index.seqNo(), index.primaryTerm());
         index.parsedDoc().version().setLongValue(plan.versionForIndexing);
         Map<String, String> haDoc = toHaIndex(index.parsedDoc());
@@ -429,6 +430,17 @@ public class HavenaskEngine extends InternalEngine {
                             + writeResponse.getErrorCode()
                             + ", error message:"
                             + writeResponse.getErrorMessage()
+                    );
+                }
+                if (logger.isTraceEnabled()) {
+                    logger.trace(
+                        "[{}] index into lucene, id: {}, version: {}, primaryTerm: {}, seqNo: {}, cost: {} us",
+                        shardId,
+                        index.id(),
+                        index.version(),
+                        index.primaryTerm(),
+                        index.seqNo(),
+                        (System.nanoTime() - start) / 1000
                     );
                 }
                 return new IndexResult(index.version(), index.primaryTerm(), index.seqNo(), true);
