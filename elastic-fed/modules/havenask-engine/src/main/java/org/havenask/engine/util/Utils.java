@@ -84,13 +84,11 @@ public class Utils {
     }
 
     private static final Logger logger = LogManager.getLogger(Utils.class);
-    public static final String INDEX_SUB_PATH = "generation_0/partition_0_65535";
 
     /**
      * return max version and the locator timestamp in the max version file under the certain index directory
      */
-    public static Tuple<Long, Long> getVersionAndIndexCheckpoint(Path indexPath) {
-        Path versionFilePath = indexPath.resolve(INDEX_SUB_PATH);
+    public static Tuple<Long, Long> getVersionAndIndexCheckpoint(Path versionFilePath) {
         String maxIndexVersionFile = getIndexMaxVersion(versionFilePath);
         // no version file or directory not exists
         if (Objects.equals(maxIndexVersionFile, null)) return null;
@@ -99,7 +97,7 @@ public class Utils {
             return null;
         }
 
-        Path filePath = indexPath.resolve(INDEX_SUB_PATH).resolve(maxIndexVersionFile);
+        Path filePath = versionFilePath.resolve(maxIndexVersionFile);
         String locator = getIndexLocator(filePath);
 
         Long version = Long.parseLong(maxIndexVersionFile.substring(maxIndexVersionFile.indexOf('.') + 1));

@@ -28,16 +28,14 @@
 
 package org.havenask.engine.util;
 
+import org.havenask.common.collect.Tuple;
+import org.havenask.test.HavenaskTestCase;
+
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Locale;
-
-import org.havenask.common.collect.Tuple;
-import org.havenask.test.HavenaskTestCase;
-
-import static org.havenask.engine.util.Utils.INDEX_SUB_PATH;
 
 public class UtilsTests extends HavenaskTestCase {
     private final Path configPath;
@@ -100,7 +98,7 @@ public class UtilsTests extends HavenaskTestCase {
 
     // create directory for certain index
     private Path mkIndexDir(String indexName) {
-        Path path = configPath.resolve(indexName).resolve(INDEX_SUB_PATH);
+        Path path = configPath.resolve(indexName).resolve("generation_0").resolve("partition_0_65535");
 
         try {
             Files.createDirectories(path);
@@ -113,7 +111,7 @@ public class UtilsTests extends HavenaskTestCase {
     // test get index checkpoint in the case of complex file names
     public void testGetIndexCheckpointComplexFileNames() {
         String testIndex = "in0";
-        Path indexPath = configPath.resolve(testIndex);
+        Path indexPath = configPath.resolve(testIndex).resolve("generation_0").resolve("partition_0_65535");
         Path dirPath = mkIndexDir(testIndex);
 
         writeTestFile(dirPath, "version.1", prefix + "0100000000000000" + suffix);
@@ -133,7 +131,7 @@ public class UtilsTests extends HavenaskTestCase {
     // test get index checkpoint in the case of version number is big
     public void testGetIndexCheckpointBigVersionNum() {
         String testIndex = "in1";
-        Path indexPath = configPath.resolve(testIndex);
+        Path indexPath = configPath.resolve(testIndex).resolve("generation_0").resolve("partition_0_65535");
         Path dirPath = mkIndexDir(testIndex);
 
         writeTestFile(dirPath, "version.1", prefix + "0100000000000000" + suffix);
@@ -151,7 +149,7 @@ public class UtilsTests extends HavenaskTestCase {
     // test get index checkpoint in the case of multi index, and some index number is negative
     public void testGetIndexCheckpointMultiIndex() {
         String testIndex2 = "in2";
-        Path indexPath2 = configPath.resolve(testIndex2);
+        Path indexPath2 = configPath.resolve(testIndex2).resolve("generation_0").resolve("partition_0_65535");
         Path dirPath_in2 = mkIndexDir(testIndex2);
 
         writeTestFile(dirPath_in2, "version.-1", prefix + "0100000000000000" + suffix);
@@ -159,7 +157,7 @@ public class UtilsTests extends HavenaskTestCase {
         writeTestFile(dirPath_in2, "version.1", prefix + "gg00000000000000" + suffix);
 
         String testIndex3 = "in3";
-        Path indexPath3 = configPath.resolve(testIndex3);
+        Path indexPath3 = configPath.resolve(testIndex3).resolve("generation_0").resolve("partition_0_65535");
         Path dirPath_in3 = mkIndexDir(testIndex3);
 
         writeTestFile(dirPath_in3, "version.-1", prefix + "ffff000000000000" + suffix);
@@ -176,7 +174,7 @@ public class UtilsTests extends HavenaskTestCase {
     // test get index checkpoint in the case of no index directory
     public void testGetIndexCheckpointNoDir() {
         String testIndex = "in4";
-        Path indexPath = configPath.resolve(testIndex);
+        Path indexPath = configPath.resolve(testIndex).resolve("generation_0").resolve("partition_0_65535");
 
         Tuple<Long, Long> tuple = Utils.getVersionAndIndexCheckpoint(indexPath);
         assertNull(tuple);
@@ -185,7 +183,7 @@ public class UtilsTests extends HavenaskTestCase {
     // test get index checkpoint in the case of no version file
     public void testGetIndexCheckpointNoFile() {
         String testIndex = "in5";
-        Path indexPath = configPath.resolve(testIndex);
+        Path indexPath = configPath.resolve(testIndex).resolve("generation_0").resolve("partition_0_65535");
 
         mkIndexDir(testIndex);
 

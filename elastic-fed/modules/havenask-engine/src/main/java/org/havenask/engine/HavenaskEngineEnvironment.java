@@ -35,6 +35,7 @@ import org.havenask.engine.index.config.generator.BizConfigGenerator;
 import org.havenask.engine.index.config.generator.TableConfigGenerator;
 import org.havenask.engine.index.engine.EngineSettings;
 import org.havenask.engine.rpc.TargetInfo;
+import org.havenask.engine.util.RangeUtil;
 import org.havenask.engine.util.Utils;
 import org.havenask.env.Environment;
 import org.havenask.env.ShardLock;
@@ -66,7 +67,7 @@ import static org.havenask.engine.index.config.generator.TableConfigGenerator.TA
 import static org.havenask.env.Environment.PATH_HOME_SETTING;
 
 public class HavenaskEngineEnvironment implements CustomEnvironment {
-    private static final Logger LOGGER = LogManager.getLogger(NativeProcessControlService.class);
+    private static final Logger LOGGER = LogManager.getLogger(HavenaskEngineEnvironment.class);
     public static final String DEFAULT_DATA_PATH = "havenask";
     public static final String HAVENASK_CONFIG_PATH = "config";
     public static final String HAVENASK_RUNTIMEDATA_PATH = "runtimedata";
@@ -213,7 +214,12 @@ public class HavenaskEngineEnvironment implements CustomEnvironment {
 
     @Override
     public void deleteShardDirectoryUnderLock(ShardLock lock, IndexSettings indexSettings) throws IOException {
-        // TODO 删除shard先不做处理,在删除index的时候处理,后续支持多shard后再处理
+        String partitionName = RangeUtil.getRangePartition(indexSettings.getNumberOfShards(), lock.getShardId().id());
+        Path shardDir = runtimedataPath.resolve(indexSettings.getIndex().getName()).resolve("generation_0").resolve(partitionName);
+        IOUtils.rm(shardDir);
+        if (metaDataSyncer != null) {
+            metaDataSyncer.setPendingSync();
+        }
     }
 
     /**

@@ -40,7 +40,7 @@ public class QrsHttpClient extends HavenaskHttpClient implements QrsClient {
 
     @Override
     public QrsSqlResponse executeSql(QrsSqlRequest qrsSqlRequest) throws IOException {
-        long start = System.currentTimeMillis();
+        long start = System.nanoTime();
         HttpUrl.Builder urlBuilder = HttpUrl.parse(url + SQL_URL).newBuilder();
         String query = qrsSqlRequest.getSql();
         if (qrsSqlRequest.getKvpair() != null) {
@@ -56,8 +56,8 @@ public class QrsHttpClient extends HavenaskHttpClient implements QrsClient {
                 throw new RuntimeException(e);
             }
         });
-        long end = System.currentTimeMillis();
-        logger.debug("execute sql: {} cost: {} ms", url, end - start);
+        long end = System.nanoTime();
+        logger.debug("execute sql: {} cost: {} us", url, (end - start) / 1000);
         return new QrsSqlResponse(response.body().string(), response.code());
     }
 

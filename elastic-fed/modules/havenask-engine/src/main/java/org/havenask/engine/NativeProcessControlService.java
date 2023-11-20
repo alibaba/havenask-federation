@@ -14,18 +14,6 @@
 
 package org.havenask.engine;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Path;
-import java.security.AccessController;
-import java.security.PrivilegedAction;
-import java.util.HashSet;
-import java.util.Locale;
-import java.util.Objects;
-import java.util.Set;
-import java.util.concurrent.TimeUnit;
-
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.message.ParameterizedMessage;
@@ -45,12 +33,24 @@ import org.havenask.env.NodeEnvironment;
 import org.havenask.index.engine.EngineException;
 import org.havenask.threadpool.ThreadPool;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
+import java.util.HashSet;
+import java.util.Locale;
+import java.util.Objects;
+import java.util.Set;
+import java.util.concurrent.TimeUnit;
+
 public class NativeProcessControlService extends AbstractLifecycleComponent {
     private static final Logger LOGGER = LogManager.getLogger(NativeProcessControlService.class);
     public static final String SEARCHER_ROLE = "searcher";
     public static final String QRS_ROLE = "qrs";
     private static final String START_SEARCHER_COMMAND = "cd %s;python %s/havenask-command/general_search_starter.py -i "
-        + "%s -c %s -b /ha3_install -T in0 -p 30468,30480 --role searcher --httpBindPort %d --arpcBindPort %d "
+        + "%s -c %s -b /ha3_install -T in0 -p 30468,30480 --enableMultiPartition --role searcher --httpBindPort %d --arpcBindPort %d "
         + "--grpcBindPort %d >> search.log 2>> search.error.log";
     private static final String START_QRS_COMMAND = "cd %s;python %s/havenask-command/general_search_starter.py -i "
         + "%s -c %s -b /ha3_install -T in0 -p 30468,30480 --role qrs --httpBindPort %d --arpcBindPort %d >> qrs.log "

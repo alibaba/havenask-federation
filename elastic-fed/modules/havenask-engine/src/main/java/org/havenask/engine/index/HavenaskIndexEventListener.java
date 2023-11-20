@@ -25,7 +25,7 @@ import org.havenask.engine.MetaDataSyncer;
 import org.havenask.engine.index.config.generator.BizConfigGenerator;
 import org.havenask.engine.index.config.generator.RuntimeSegmentGenerator;
 import org.havenask.engine.index.config.generator.TableConfigGenerator;
-import org.havenask.engine.util.Utils;
+import org.havenask.index.IndexService;
 import org.havenask.index.shard.IndexEventListener;
 import org.havenask.index.shard.IndexShard;
 
@@ -41,8 +41,8 @@ public class HavenaskIndexEventListener implements IndexEventListener {
     }
 
     @Override
-    public void afterIndexShardCreated(IndexShard indexShard) {
-        String tableName = Utils.getHavenaskTableName(indexShard.shardId());
+    public void afterIndexCreated(IndexService indexService) {
+        String tableName = indexService.index().getName();
         ReentrantReadWriteLock indexLock = metaDataSyncer != null ? metaDataSyncer.getIndexLock(tableName) : null;
         if (indexLock != null) {
             // TODO:是否使用tryLock设置超时时间更好
@@ -52,20 +52,28 @@ public class HavenaskIndexEventListener implements IndexEventListener {
         try {
             BizConfigGenerator.generateBiz(
                 tableName,
-                indexShard.indexSettings().getSettings(),
-                indexShard.mapperService(),
+                indexService.getIndexSettings().getSettings(),
+                indexService.mapperService(),
                 env.getConfigPath()
             );
             TableConfigGenerator.generateTable(
                 tableName,
-                indexShard.indexSettings().getSettings(),
-                indexShard.mapperService(),
+                indexService.getIndexSettings().getSettings(),
+                indexService.mapperService(),
                 env.getConfigPath()
             );
+        } catch (IOException e) {
+            throw new HavenaskException("generate havenask config error", e);
+        }
+    }
 
+    @Override
+    public void afterIndexShardCreated(IndexShard indexShard) {
+        try {
             // 初始化segment信息
             RuntimeSegmentGenerator.generateRuntimeSegment(
-                tableName,
+                indexShard.shardId(),
+                indexShard.indexSettings().getNumberOfShards(),
                 indexShard.indexSettings().getSettings(),
                 indexShard.mapperService(),
                 env.getRuntimedataPath()
