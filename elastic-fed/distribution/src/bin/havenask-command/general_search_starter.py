@@ -1102,6 +1102,8 @@ examples:
             atables = os.listdir(self.indexPath)
             zoneGid = self._getMaxGenerationId(self.indexPath, self.mainTableName)
             partitions = self._getPartitions(self.indexPath, self.mainTableName, zoneGid)
+            total_partition_count = self._getTotalPartitionCount(partitions[0])
+
             fullPartition = "0_65535"
             partCnt = len(partitions)
             if self.enableMultiPartition:
@@ -1154,7 +1156,7 @@ examples:
                           "table_type" : tableType,
                           "index_root" : self.createRuntimedirLink(zoneDirName),
                           "config_path": self.createConfigLink(zoneDirName, 'table', tableName, self.offlineConfigPath),
-                          "total_partition_count":len(curTablePartitions),
+                          "total_partition_count":total_partition_count,
                           "partitions": {
                           }
                       }
@@ -1230,6 +1232,12 @@ examples:
         # sort by from of partitions
         partitions.sort(key=lambda x:int(x.split('_')[0]))
         return partitions
+
+    def _getTotalPartitionCount(self, partition):
+        p_from = int(partition.split('_')[0])
+        p_to = int(partition.split('_')[1])
+        p_count = p_to - p_from + 1
+        return int(round(65536.0 / p_count))
 
     def _getSchema(self, path, clusterName, generationId, partition):
         filePath = os.path.join(path, clusterName, 'generation_' + str(generationId), 'partition_' + partition, "schema.json")
