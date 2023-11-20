@@ -20,7 +20,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.Locale;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Function;
 
 import org.apache.logging.log4j.LogManager;
@@ -207,6 +207,9 @@ public class HavenaskEngineEnvironment implements CustomEnvironment {
         TableConfigGenerator.removeTable(tableName, configPath);
         Path indexDir = runtimedataPath.resolve(tableName);
 
+        if (metaDataSyncer == null) {
+            throw new RuntimeException("metaDataSyncer is null while deleting index");
+        }
         // TODO: ThreadPool的获取是否可以优化
         final ThreadPool threadPool = metaDataSyncer.getThreadPool();
         asyncRemoveIndexDir(threadPool, tableName, indexDir);
@@ -227,11 +230,9 @@ public class HavenaskEngineEnvironment implements CustomEnvironment {
      */
     public void asyncRemoveIndexDir(final ThreadPool threadPool, String tableName, Path indexDir) {
         threadPool.executor(HavenaskEnginePlugin.HAVENASK_THREAD_POOL_NAME).execute(() -> {
-            ReentrantReadWriteLock indexLock = metaDataSyncer != null ? metaDataSyncer.getIndexLock(tableName) : null;
-            if (indexLock != null) {
-                indexLock.writeLock().lock();
-                LOGGER.debug("get lock while deleting index, table name :[{}]", tableName);
-            }
+            ReentrantLock indexLock = metaDataSyncer.getIndexLock(tableName);
+            indexLock.lock();
+            LOGGER.debug("get lock while deleting index, table name :[{}]", tableName);
             try {
                 if (metaDataSyncer != null) {
                     metaDataSyncer.setPendingSync();
@@ -239,15 +240,14 @@ public class HavenaskEngineEnvironment implements CustomEnvironment {
                 }
                 // TODO : checkIndexIsDeletedInSearcher()如果超时, 则不会执行IOUtils.rm(indexDir)导致无法删除索引
                 IOUtils.rm(indexDir);
+                metaDataSyncer.deleteIndexLock(tableName);
 
                 LOGGER.info("remove index dir successful, table name :[{}]", tableName);
-            } catch (IOException e) {
+            } catch (Exception e) {
                 LOGGER.warn("remove index dir failed, table name: [{}]， error: [{}]", tableName, e);
             } finally {
-                if (indexLock != null) {
-                    indexLock.writeLock().unlock();
-                    LOGGER.debug("release lock after deleting index, table name :[{}]", tableName);
-                }
+                indexLock.unlock();
+                LOGGER.debug("release lock after deleting index, table name :[{}]", tableName);
             }
         });
     }

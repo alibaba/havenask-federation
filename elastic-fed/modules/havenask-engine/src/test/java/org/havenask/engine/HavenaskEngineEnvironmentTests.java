@@ -21,6 +21,7 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.HashMap;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.locks.ReentrantLock;
 
 import junit.framework.TestCase;
 import org.havenask.Version;
@@ -98,6 +99,7 @@ public class HavenaskEngineEnvironmentTests extends HavenaskTestCase {
         TargetInfo targetInfo = new TargetInfo();
         targetInfo.table_info = new HashMap<>();
         when(metaDataSyncer.getSearcherTargetInfo()).thenReturn(targetInfo);
+        when(metaDataSyncer.getIndexLock(tableName)).thenReturn(new ReentrantLock());
 
         havenaskEngineEnvironment.setMetaDataSyncer(metaDataSyncer);
 

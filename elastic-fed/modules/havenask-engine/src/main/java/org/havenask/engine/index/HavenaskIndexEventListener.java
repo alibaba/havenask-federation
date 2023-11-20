@@ -15,7 +15,8 @@
 package org.havenask.engine.index;
 
 import java.io.IOException;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.ReentrantLock;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -43,13 +44,14 @@ public class HavenaskIndexEventListener implements IndexEventListener {
     @Override
     public void afterIndexCreated(IndexService indexService) {
         String tableName = indexService.index().getName();
-        ReentrantReadWriteLock indexLock = metaDataSyncer != null ? metaDataSyncer.getIndexLock(tableName) : null;
-        if (indexLock != null) {
-            // TODO:是否使用tryLock设置超时时间更好
-            indexLock.writeLock().lock();
-            LOGGER.debug("get lock while creating shard, table name :[{}]", tableName);
-        }
+        ReentrantLock indexLock = metaDataSyncer.getIndexLock(tableName);
         try {
+            if (indexLock.tryLock(60, TimeUnit.SECONDS)) {
+                LOGGER.debug("get lock while creating shard, table name :[{}]", tableName);
+            } else {
+                LOGGER.debug("failed to get lock while creating shard, out of time, table name :[{}]", tableName);
+            }
+
             BizConfigGenerator.generateBiz(
                 tableName,
                 indexService.getIndexSettings().getSettings(),
@@ -62,8 +64,13 @@ public class HavenaskIndexEventListener implements IndexEventListener {
                 indexService.mapperService(),
                 env.getConfigPath()
             );
-        } catch (IOException e) {
-            throw new HavenaskException("generate havenask config error", e);
+
+            metaDataSyncer.addIndexLock(tableName, indexLock);
+        } catch (Exception e) {
+            throw new HavenaskException("generate havenask config error : ", e);
+        } finally {
+            indexLock.unlock();
+            LOGGER.debug("release lock after creating shard, table name :[{}]", tableName);
         }
     }
 
@@ -80,11 +87,6 @@ public class HavenaskIndexEventListener implements IndexEventListener {
             );
         } catch (IOException e) {
             throw new HavenaskException("generate havenask config error", e);
-        } finally {
-            if (indexLock != null) {
-                indexLock.writeLock().unlock();
-                LOGGER.debug("release lock after creating shard, table name :[{}]", tableName);
-            }
         }
     }
 }
