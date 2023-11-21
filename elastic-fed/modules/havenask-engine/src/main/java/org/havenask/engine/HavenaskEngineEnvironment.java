@@ -20,6 +20,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.Locale;
+import java.util.Map;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Function;
 
@@ -219,14 +220,19 @@ public class HavenaskEngineEnvironment implements CustomEnvironment {
     public void deleteShardDirectoryUnderLock(ShardLock lock, IndexSettings indexSettings) throws IOException {
         String partitionName = RangeUtil.getRangePartition(indexSettings.getNumberOfShards(), lock.getShardId().id());
         Path shardDir = runtimedataPath.resolve(indexSettings.getIndex().getName()).resolve("generation_0").resolve(partitionName);
-        IOUtils.rm(shardDir);
-        if (metaDataSyncer != null) {
-            metaDataSyncer.setPendingSync();
+
+        if (metaDataSyncer == null) {
+            throw new RuntimeException("metaDataSyncer is null while deleting shard");
         }
+
+        String tableName = indexSettings.getIndex().getName();
+        String partitionId = RangeUtil.getRangeName(indexSettings.getNumberOfShards(), lock.getShardId().id());
+        final ThreadPool threadPool = metaDataSyncer.getThreadPool();
+        asyncRemoveShardRuntimeDir(threadPool, tableName, partitionId, shardDir);
     }
 
     /**
-     * 异步移除删除索引后残留的runtimedata数据信息
+     * 异步移除删除索引后runtimedata的数据信息
      */
     public void asyncRemoveIndexDir(final ThreadPool threadPool, String tableName, Path indexDir) {
         threadPool.executor(HavenaskEnginePlugin.HAVENASK_THREAD_POOL_NAME).execute(() -> {
@@ -236,18 +242,60 @@ public class HavenaskEngineEnvironment implements CustomEnvironment {
             try {
                 if (metaDataSyncer != null) {
                     metaDataSyncer.setPendingSync();
-                    checkIndexIsDeletedInSearcher(metaDataSyncer, tableName);
+                    try {
+                        checkIndexIsDeletedInSearcher(metaDataSyncer, tableName);
+                    } catch (IOException e) {
+                        LOGGER.error(
+                            "checkIndexIsDeletedInSearcher failed while deleting index, table name: [{}]， error: [{}]",
+                            tableName,
+                            e
+                        );
+                    }
                 }
-                // TODO : checkIndexIsDeletedInSearcher()如果超时, 则不会执行IOUtils.rm(indexDir)导致无法删除索引
                 IOUtils.rm(indexDir);
-                metaDataSyncer.deleteIndexLock(tableName);
 
                 LOGGER.info("remove index dir successful, table name :[{}]", tableName);
             } catch (Exception e) {
                 LOGGER.warn("remove index dir failed, table name: [{}]， error: [{}]", tableName, e);
             } finally {
+                metaDataSyncer.deleteIndexLock(tableName);
                 indexLock.unlock();
                 LOGGER.debug("release lock after deleting index, table name :[{}]", tableName);
+            }
+        });
+    }
+
+    /**
+     * 异步删除减少shard时runtimedata内的数据信息
+     */
+    public void asyncRemoveShardRuntimeDir(final ThreadPool threadPool, String tableName, String partitionId, Path shardDir) {
+        threadPool.executor(HavenaskEnginePlugin.HAVENASK_THREAD_POOL_NAME).execute(() -> {
+            ReentrantLock indexLock = metaDataSyncer.getIndexLock(tableName);
+            indexLock.lock();
+            LOGGER.debug("get lock while deleting shard, table name :[{}], partitionId:[{}]", tableName, partitionId);
+            try {
+                if (metaDataSyncer != null) {
+                    metaDataSyncer.setPendingSync();
+                    try {
+                        checkShardIsDeletedInSearcher(metaDataSyncer, tableName, partitionId);
+                    } catch (IOException e) {
+                        LOGGER.error(
+                            "checkShardIsDeletedInSearcher failed while deleting shard, "
+                                + "table name: [{}], partitionId:[{}], error: [{}]",
+                            tableName,
+                            partitionId,
+                            e
+                        );
+                    }
+                }
+                IOUtils.rm(shardDir);
+
+                LOGGER.info("remove shard dir successful, table name :[{}], partitionId:[{}]", tableName, partitionId);
+            } catch (Exception e) {
+                LOGGER.warn("remove shard dir failed, table name: [{}]，partitionId:[{}], error: [{}]", tableName, partitionId, e);
+            } finally {
+                indexLock.unlock();
+                LOGGER.debug("release lock after deleting index, table name :[{}], partitionId[{}]", tableName, partitionId);
             }
         });
     }
@@ -257,8 +305,8 @@ public class HavenaskEngineEnvironment implements CustomEnvironment {
         long sleepInterval = 1000;
         while (timeout > 0) {
             TargetInfo targetInfo = metaDataSyncer.getSearcherTargetInfo();
-            if (targetInfo != null && !targetInfo.table_info.containsKey(tableName)) {
-                LOGGER.debug("targetInfo update successfully while deleting index, table name: [{}], try to retry", tableName);
+            if (targetInfo != null && false == targetInfo.table_info.containsKey(tableName)) {
+                LOGGER.debug("targetInfo update successfully while deleting index, table name: [{}]", tableName);
                 break;
             }
             if (targetInfo == null) {
@@ -276,6 +324,58 @@ public class HavenaskEngineEnvironment implements CustomEnvironment {
 
         if (timeout <= 0) {
             throw new IOException("check havenask table status timeout while deleting index");
+        }
+    }
+
+    private void checkShardIsDeletedInSearcher(MetaDataSyncer metaDataSyncer, String tableName, String partitionId) throws IOException {
+        long timeout = 60000;
+        long sleepInterval = 1000;
+        while (timeout > 0) {
+            TargetInfo targetInfo = metaDataSyncer.getSearcherTargetInfo();
+            if (targetInfo == null || false == targetInfo.table_info.containsKey(tableName)) {
+                throw new IOException("havenask table not found in searcher");
+            }
+
+            TargetInfo.TableInfo tableInfo = null;
+            int maxGeneration = -1;
+            for (Map.Entry<String, TargetInfo.TableInfo> entry : targetInfo.table_info.get(tableName).entrySet()) {
+                String k = entry.getKey();
+                TargetInfo.TableInfo v = entry.getValue();
+                if (Integer.valueOf(k) > maxGeneration) {
+                    tableInfo = v;
+                }
+            }
+
+            if (tableInfo != null || false == tableInfo.partitions.containsKey(partitionId)) {
+                LOGGER.debug(
+                    "targetInfo update successfully while deleting shard, table name: [{}], partitionId: [{}]",
+                    tableName,
+                    partitionId
+                );
+                break;
+            } else if (targetInfo == null) {
+                LOGGER.debug(
+                    "targetInfo is null while deleting shard, table name: [{}], partitionId: [{}], try to retry",
+                    tableName,
+                    partitionId
+                );
+            } else {
+                LOGGER.debug(
+                    "shard info still in searcher while deleting shard, table name: [{}], partitionId: [{}], try to retry",
+                    tableName,
+                    partitionId
+                );
+            }
+            timeout -= sleepInterval;
+            try {
+                Thread.sleep(sleepInterval);
+            } catch (InterruptedException ex) {
+                // pass
+            }
+        }
+
+        if (timeout <= 0) {
+            throw new IOException("check shard info timeout while deleting shard");
         }
     }
 

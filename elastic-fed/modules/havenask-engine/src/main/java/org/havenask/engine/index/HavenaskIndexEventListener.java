@@ -14,7 +14,6 @@
 
 package org.havenask.engine.index;
 
-import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -47,9 +46,9 @@ public class HavenaskIndexEventListener implements IndexEventListener {
         ReentrantLock indexLock = metaDataSyncer.getIndexLock(tableName);
         try {
             if (indexLock.tryLock(60, TimeUnit.SECONDS)) {
-                LOGGER.debug("get lock while creating shard, table name :[{}]", tableName);
+                LOGGER.debug("get lock while creating index, table name :[{}]", tableName);
             } else {
-                LOGGER.debug("failed to get lock while creating shard, out of time, table name :[{}]", tableName);
+                LOGGER.debug("failed to get lock while creating index, out of time, table name :[{}]", tableName);
             }
 
             BizConfigGenerator.generateBiz(
@@ -64,19 +63,29 @@ public class HavenaskIndexEventListener implements IndexEventListener {
                 indexService.mapperService(),
                 env.getConfigPath()
             );
-
-            metaDataSyncer.addIndexLock(tableName, indexLock);
         } catch (Exception e) {
             throw new HavenaskException("generate havenask config error : ", e);
         } finally {
+            metaDataSyncer.addIndexLock(tableName, indexLock);
             indexLock.unlock();
-            LOGGER.debug("release lock after creating shard, table name :[{}]", tableName);
+            LOGGER.debug("release lock after creating index, table name :[{}]", tableName);
         }
     }
 
     @Override
     public void afterIndexShardCreated(IndexShard indexShard) {
+        String tableName = indexShard.shardId().getIndexName();
+        ReentrantLock indexLock = metaDataSyncer.getIndexLock(tableName);
         try {
+            if (indexLock.tryLock(60, TimeUnit.SECONDS)) {
+                LOGGER.debug("get lock while creating shard, index name: [{}], shardId :[{}]", tableName, indexShard.shardId().getId());
+            } else {
+                LOGGER.debug(
+                    "failed to get lock while creating shard, out of time, index name: [{}], shardId :[{}]",
+                    tableName,
+                    indexShard.shardId().getId()
+                );
+            }
             // 初始化segment信息
             RuntimeSegmentGenerator.generateRuntimeSegment(
                 indexShard.shardId(),
@@ -85,8 +94,11 @@ public class HavenaskIndexEventListener implements IndexEventListener {
                 indexShard.mapperService(),
                 env.getRuntimedataPath()
             );
-        } catch (IOException e) {
+        } catch (Exception e) {
             throw new HavenaskException("generate havenask config error", e);
+        } finally {
+            indexLock.unlock();
+            LOGGER.debug("release lock after creating index, table name :[{}], shardId :[{}]", tableName, indexShard.shardId().getId());
         }
     }
 }
