@@ -18,7 +18,6 @@ import com.alibaba.fastjson.annotation.JSONField;
 import org.havenask.engine.util.JsonPrettyFormatter;
 
 import java.nio.file.Path;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -318,10 +317,6 @@ public class TargetInfo {
         public Integer rt_status;
         public Long timestamp_to_skip;
 
-        public TableInfo() {
-
-        }
-
         public TableInfo(
             Integer tableMode,
             Integer tableType,
@@ -336,24 +331,6 @@ public class TargetInfo {
             index_root = indexRoot;
             total_partition_count = totalPartitionCount;
             this.partitions = partitions;
-        }
-
-        public TableInfo(
-            Integer tableMode,
-            Integer tableType,
-            String configPath,
-            String indexRoot,
-            Integer totalPartitionCount,
-            String curPartitionName,
-            Partition curPartition
-        ) {
-            table_mode = tableMode;
-            table_type = tableType;
-            config_path = configPath;
-            index_root = indexRoot;
-            total_partition_count = totalPartitionCount;
-            partitions = new HashMap<>();
-            partitions.put(curPartitionName, curPartition);
         }
 
         @Override
