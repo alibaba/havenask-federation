@@ -71,7 +71,7 @@ public class MetaDataSyncer extends AbstractLifecycleComponent {
     private static final int DEFAULT_PART_COUNT = 1;
     private static final int DEFAULT_PART_ID = 0;
     private static final int DEFAULT_VERSION = 0;
-    private static final int DEFAULT_TOTAL_PARTITION_COUNT = 1;
+    private static final int IN0_PARTITION_COUNT = 2;
     private static final int BASE_VERSION = 2104320000;
     private static final boolean DEFAULT_SUPPORT_HEARTBEAT = true;
     private static final boolean CLEAN_DISK = false;
@@ -83,8 +83,10 @@ public class MetaDataSyncer extends AbstractLifecycleComponent {
     private static final String BIZS_PATH_POSTFIX = "default/0";
     private static final String TABLE_PATH_POSTFIX = "0";
     private static final String INDEX_ROOT_POSTFIX = "runtimedata";
-    private static final String DEFAULT_PARTITION_NAME = "0_65535";
-    private static final String INDEX_SUB_PATH = "generation_0/partition_0_65535";
+    private static final String DEFAULT_PARTITION_NAME0 = "0_32767";
+    private static final String DEFAULT_PARTITION_NAME1 = "32768_65535";
+    private static final String INDEX_SUB_PATH0 = "generation_0/partition_0_32767";
+    private static final String INDEX_SUB_PATH1 = "generation_0/partition_32768_65535";
     private static final String HAVENASK_WORKSPACCE = "local_search_12000";
     private static final String HAVENASK_SEARCHER_HOME = "general_p0_r0";
     private static final String HAVENASK_QRS_HOME = "qrs";
@@ -364,21 +366,23 @@ public class MetaDataSyncer extends AbstractLifecycleComponent {
                 int tableMode = 0;
                 int tableType = 3;
 
-                int totalPartitionCount = DEFAULT_TOTAL_PARTITION_COUNT;
+                int totalPartitionCount = IN0_PARTITION_COUNT;
+                Map<String, TargetInfo.TableInfo.Partition> partitions = new HashMap<>();
+                {
+                    Path versionPath = defaultRuntimeDataPath.resolve(subDir).resolve(INDEX_SUB_PATH0);
+                    TargetInfo.TableInfo.Partition curPartition = new TargetInfo.TableInfo.Partition();
+                    curPartition.inc_version = extractIncVersion(Utils.getIndexMaxVersion(versionPath));
+                    partitions.put(DEFAULT_PARTITION_NAME0, curPartition);
+                }
 
-                Path versionPath = defaultRuntimeDataPath.resolve(subDir).resolve(INDEX_SUB_PATH);
-                TargetInfo.TableInfo.Partition curPartition = new TargetInfo.TableInfo.Partition();
-                curPartition.inc_version = extractIncVersion(Utils.getIndexMaxVersion(versionPath));
+                {
+                    Path versionPath = defaultRuntimeDataPath.resolve(subDir).resolve(INDEX_SUB_PATH1);
+                    TargetInfo.TableInfo.Partition curPartition = new TargetInfo.TableInfo.Partition();
+                    curPartition.inc_version = extractIncVersion(Utils.getIndexMaxVersion(versionPath));
+                    partitions.put(DEFAULT_PARTITION_NAME1, curPartition);
+                }
 
-                curTableInfo = new TargetInfo.TableInfo(
-                    tableMode,
-                    tableType,
-                    configPath,
-                    indexRoot,
-                    totalPartitionCount,
-                    DEFAULT_PARTITION_NAME,
-                    curPartition
-                );
+                curTableInfo = new TargetInfo.TableInfo(tableMode, tableType, configPath, indexRoot, totalPartitionCount, partitions);
             } else {
                 int tableMode = 1;
                 int tableType = 2;
