@@ -317,6 +317,10 @@ public class TargetInfo {
         public Integer rt_status;
         public Long timestamp_to_skip;
 
+        public TableInfo() {
+
+        }
+
         public TableInfo(
             Integer tableMode,
             Integer tableType,
