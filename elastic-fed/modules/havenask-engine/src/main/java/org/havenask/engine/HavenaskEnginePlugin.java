@@ -25,6 +25,7 @@ import org.havenask.action.ActionResponse;
 import org.havenask.client.Client;
 import org.havenask.cluster.metadata.IndexNameExpressionResolver;
 import org.havenask.cluster.node.DiscoveryNodes;
+import org.havenask.cluster.routing.OperationRouting;
 import org.havenask.cluster.service.ClusterService;
 import org.havenask.common.io.stream.NamedWriteableRegistry;
 import org.havenask.common.settings.ClusterSettings;
@@ -164,6 +165,7 @@ public class HavenaskEnginePlugin extends Plugin
 
     public HavenaskEnginePlugin(Settings settings) {
         this.settings = settings;
+        OperationRouting.customShardIdGenerator = RangeUtil::calculateScaledShardId;
     }
 
     @Override

@@ -115,7 +115,8 @@ public class HavenaskEngineEnvironment implements CustomEnvironment {
 
             runtimedataPath = dataPath.resolve(HAVENASK_RUNTIMEDATA_PATH);
             if (Files.exists(runtimedataPath) == false) {
-                initRuntimeData();
+                initRuntimeData("partition_0_32767");
+                initRuntimeData("partition_32768_65535");
             }
         } catch (IOException e) {
             throw new HavenaskException("havenask init engine environment error", e);
@@ -667,8 +668,8 @@ public class HavenaskEngineEnvironment implements CustomEnvironment {
         );
     }
 
-    private void initRuntimeData() throws IOException {
-        Path dataPath = runtimedataPath.resolve("in0").resolve("generation_0").resolve("partition_0_65535");
+    private void initRuntimeData(String part) throws IOException {
+        Path dataPath = runtimedataPath.resolve("in0").resolve("generation_0").resolve(part);
         if (Files.exists(dataPath)) {
             return;
         }
