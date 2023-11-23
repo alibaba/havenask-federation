@@ -27,6 +27,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
@@ -130,7 +132,7 @@ public class MetaDataSyncer extends AbstractLifecycleComponent {
     private AtomicReference<TargetInfo> searcherTargetInfo = new AtomicReference<>();
     private int syncTimes = 0;
 
-    private Map<String, ReentrantLock> indexLockMap = new HashMap<>();
+    private ConcurrentMap<String, ReentrantLock> indexLockMap = new ConcurrentHashMap<>();
 
     public MetaDataSyncer(
         ClusterService clusterService,
