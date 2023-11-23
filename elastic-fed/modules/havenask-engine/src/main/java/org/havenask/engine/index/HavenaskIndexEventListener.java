@@ -45,12 +45,13 @@ public class HavenaskIndexEventListener implements IndexEventListener {
         String tableName = indexService.index().getName();
         ReentrantLock indexLock = metaDataSyncer.getIndexLock(tableName);
         try {
-            if (indexLock.tryLock(60, TimeUnit.SECONDS)) {
-                LOGGER.debug("get lock while creating index, table name :[{}]", tableName);
-            } else {
-                LOGGER.debug("failed to get lock while creating index, out of time, table name :[{}]", tableName);
+            if (indexLock != null) {
+                if (indexLock.tryLock(60, TimeUnit.SECONDS)) {
+                    LOGGER.debug("get lock while creating index, table name :[{}]", tableName);
+                } else {
+                    LOGGER.debug("failed to get lock while creating index, out of time, table name :[{}]", tableName);
+                }
             }
-
             BizConfigGenerator.generateBiz(
                 tableName,
                 indexService.getIndexSettings().getSettings(),
@@ -66,9 +67,14 @@ public class HavenaskIndexEventListener implements IndexEventListener {
         } catch (Exception e) {
             throw new HavenaskException("generate havenask config error : ", e);
         } finally {
-            metaDataSyncer.addIndexLock(tableName, indexLock);
-            indexLock.unlock();
-            LOGGER.debug("release lock after creating index, table name :[{}]", tableName);
+            if (indexLock != null) {
+                try {
+                    indexLock.unlock();
+                    LOGGER.debug("release lock after creating index, table name :[{}]", tableName);
+                } catch (IllegalMonitorStateException e) {
+                    LOGGER.error("release lock error afterIndexCreated", e);
+                }
+            }
         }
     }
 
@@ -77,14 +83,16 @@ public class HavenaskIndexEventListener implements IndexEventListener {
         String tableName = indexShard.shardId().getIndexName();
         ReentrantLock indexLock = metaDataSyncer.getIndexLock(tableName);
         try {
-            if (indexLock.tryLock(60, TimeUnit.SECONDS)) {
-                LOGGER.debug("get lock while creating shard, index name: [{}], shardId :[{}]", tableName, indexShard.shardId().getId());
-            } else {
-                LOGGER.debug(
-                    "failed to get lock while creating shard, out of time, index name: [{}], shardId :[{}]",
-                    tableName,
-                    indexShard.shardId().getId()
-                );
+            if (indexLock != null) {
+                if (indexLock.tryLock(60, TimeUnit.SECONDS)) {
+                    LOGGER.debug("get lock while creating shard, index name: [{}], shardId :[{}]", tableName, indexShard.shardId().getId());
+                } else {
+                    LOGGER.debug(
+                        "failed to get lock while creating shard, out of time, index name: [{}], shardId :[{}]",
+                        tableName,
+                        indexShard.shardId().getId()
+                    );
+                }
             }
             // 初始化segment信息
             RuntimeSegmentGenerator.generateRuntimeSegment(
@@ -97,8 +105,18 @@ public class HavenaskIndexEventListener implements IndexEventListener {
         } catch (Exception e) {
             throw new HavenaskException("generate havenask config error", e);
         } finally {
-            indexLock.unlock();
-            LOGGER.debug("release lock after creating index, table name :[{}], shardId :[{}]", tableName, indexShard.shardId().getId());
+            if (indexLock != null) {
+                try {
+                    indexLock.unlock();
+                    LOGGER.debug(
+                        "release lock after creating index, table name :[{}], shardId :[{}]",
+                        tableName,
+                        indexShard.shardId().getId()
+                    );
+                } catch (IllegalMonitorStateException e) {
+                    LOGGER.error("release lock error afterIndexShardCreated", e);
+                }
+            }
         }
     }
 }

@@ -218,7 +218,7 @@ public class HavenaskEngineEnvironment implements CustomEnvironment {
     }
 
     @Override
-    public void deleteShardDirectoryUnderLock(ShardLock lock, IndexSettings indexSettings) throws IOException {
+    public void deleteShardDirectoryUnderLock(ShardLock lock, IndexSettings indexSettings) {
         String partitionName = RangeUtil.getRangePartition(indexSettings.getNumberOfShards(), lock.getShardId().id());
         Path shardDir = runtimedataPath.resolve(indexSettings.getIndex().getName()).resolve("generation_0").resolve(partitionName);
 
@@ -237,7 +237,7 @@ public class HavenaskEngineEnvironment implements CustomEnvironment {
      */
     public void asyncRemoveIndexDir(final ThreadPool threadPool, String tableName, Path indexDir) {
         threadPool.executor(HavenaskEnginePlugin.HAVENASK_THREAD_POOL_NAME).execute(() -> {
-            ReentrantLock indexLock = metaDataSyncer.getIndexLock(tableName);
+            ReentrantLock indexLock = metaDataSyncer.getIndexLockAndCreateIfNotExist(tableName);
             indexLock.lock();
             LOGGER.debug("get lock while deleting index, table name :[{}]", tableName);
             try {
@@ -271,7 +271,7 @@ public class HavenaskEngineEnvironment implements CustomEnvironment {
      */
     public void asyncRemoveShardRuntimeDir(final ThreadPool threadPool, String tableName, String partitionId, Path shardDir) {
         threadPool.executor(HavenaskEnginePlugin.HAVENASK_THREAD_POOL_NAME).execute(() -> {
-            ReentrantLock indexLock = metaDataSyncer.getIndexLock(tableName);
+            ReentrantLock indexLock = metaDataSyncer.getIndexLockAndCreateIfNotExist(tableName);
             indexLock.lock();
             LOGGER.debug("get lock while deleting shard, table name :[{}], partitionId:[{}]", tableName, partitionId);
             try {
@@ -295,6 +295,7 @@ public class HavenaskEngineEnvironment implements CustomEnvironment {
             } catch (Exception e) {
                 LOGGER.warn("remove shard dir failed, table name: [{}]，partitionId:[{}], error: [{}]", tableName, partitionId, e);
             } finally {
+                metaDataSyncer.deleteIndexLock(tableName);
                 indexLock.unlock();
                 LOGGER.debug("release lock after deleting index, table name :[{}], partitionId[{}]", tableName, partitionId);
             }

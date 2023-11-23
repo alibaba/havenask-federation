@@ -41,6 +41,7 @@ import org.havenask.index.shard.ShardId;
 import org.havenask.test.DummyShardLock;
 import org.havenask.test.HavenaskTestCase;
 import org.havenask.threadpool.ThreadPool;
+import org.junit.Before;
 
 import static org.havenask.discovery.DiscoveryModule.SINGLE_NODE_DISCOVERY_TYPE;
 import static org.havenask.engine.index.config.generator.BizConfigGenerator.BIZ_DIR;
@@ -52,43 +53,63 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 public class HavenaskEngineEnvironmentTests extends HavenaskTestCase {
-    // test testDeleteIndexDirectoryUnderLock
-    public void testDeleteIndexDirectoryUnderLock() throws IOException {
-        ShardId shardId = new ShardId("indexFile", "indexFile", 0);
-        String tableName = Utils.getHavenaskTableName(shardId);
-        Path workDir = createTempDir();
-        Settings settings = Settings.builder()
+    private static ShardId shardId;
+    private static String tableName;
+    private static Path workDir;
+    private static Settings settings;
+    private static ZoneBiz zoneBiz;
+    private static Environment environment;
+    private static HavenaskEngineEnvironment havenaskEngineEnvironment;
+    private static IndexMetadata build;
+    private static ShardLock shardLock;
+    private static ReentrantLock indexLock;
+
+    @Before
+    public void initialEnvironment() {
+        shardId = new ShardId("indexFile", "indexFile", 0);
+        tableName = Utils.getHavenaskTableName(shardId);
+        workDir = createTempDir();
+
+        settings = Settings.builder()
             .put(Environment.PATH_HOME_SETTING.getKey(), workDir.toString())
             .put(HavenaskEnginePlugin.HAVENASK_ENGINE_ENABLED_SETTING.getKey(), true)
             .put(EngineSettings.ENGINE_TYPE_SETTING.getKey(), EngineSettings.ENGINE_HAVENASK)
             .put(DiscoveryModule.DISCOVERY_TYPE_SETTING.getKey(), SINGLE_NODE_DISCOVERY_TYPE)
             .build();
+        zoneBiz = new ZoneBiz();
+        environment = TestEnvironment.newEnvironment(settings);
+        havenaskEngineEnvironment = new HavenaskEngineEnvironment(environment, settings);
+        build = IndexMetadata.builder(shardId.getIndexName())
+            .settings(Settings.builder().put(IndexMetadata.SETTING_VERSION_CREATED, Version.CURRENT).put(settings))
+            .numberOfShards(1)
+            .numberOfReplicas(0)
+            .build();
+        shardLock = new DummyShardLock(shardId);
+        indexLock = new ReentrantLock();
+    }
+
+    public void testDeleteIndexDirectoryUnderLock() throws IOException {
         Path indexFile = workDir.resolve("data")
             .resolve(HavenaskEngineEnvironment.DEFAULT_DATA_PATH)
             .resolve(HavenaskEngineEnvironment.HAVENASK_RUNTIMEDATA_PATH)
             .resolve(tableName);
-        Files.createDirectories(indexFile);
-        TestCase.assertTrue(Files.exists(indexFile));
 
         Path configPath = workDir.resolve("data")
             .resolve(HavenaskEngineEnvironment.DEFAULT_DATA_PATH)
             .resolve(HavenaskEngineEnvironment.HAVENASK_CONFIG_PATH);
+
+        Files.createDirectories(indexFile);
+        TestCase.assertTrue(Files.exists(indexFile));
+
         Files.createDirectories(configPath.resolve(TABLE_DIR).resolve("0"));
         Files.createDirectories(configPath.resolve(BIZ_DIR).resolve(DEFAULT_DIR).resolve("0"));
         Files.createDirectories(configPath.resolve(BIZ_DIR).resolve(DEFAULT_DIR).resolve("0").resolve("zones").resolve("general"));
-        ZoneBiz zoneBiz = new ZoneBiz();
+
         Files.write(
             configPath.resolve(BIZ_DIR).resolve(DEFAULT_DIR).resolve("0").resolve(DEFAULT_BIZ_CONFIG),
             zoneBiz.toString().getBytes(StandardCharsets.UTF_8),
             StandardOpenOption.CREATE
         );
-        Environment environment = TestEnvironment.newEnvironment(settings);
-        HavenaskEngineEnvironment havenaskEngineEnvironment = new HavenaskEngineEnvironment(environment, settings);
-        IndexMetadata build = IndexMetadata.builder(randomAlphaOfLength(5))
-            .settings(Settings.builder().put(IndexMetadata.SETTING_VERSION_CREATED, Version.CURRENT).put(settings))
-            .numberOfShards(1)
-            .numberOfReplicas(0)
-            .build();
 
         ThreadPool threadPool = mock(ThreadPool.class);
         ExecutorService executorService = HavenaskExecutors.newDirectExecutorService();
@@ -99,16 +120,50 @@ public class HavenaskEngineEnvironmentTests extends HavenaskTestCase {
         TargetInfo targetInfo = new TargetInfo();
         targetInfo.table_info = new HashMap<>();
         when(metaDataSyncer.getSearcherTargetInfo()).thenReturn(targetInfo);
-        when(metaDataSyncer.getIndexLock(tableName)).thenReturn(new ReentrantLock());
+
+        when(metaDataSyncer.getIndexLockAndCreateIfNotExist(tableName)).thenReturn(indexLock);
+        when(metaDataSyncer.getIndexLock(tableName)).thenReturn(indexLock);
 
         havenaskEngineEnvironment.setMetaDataSyncer(metaDataSyncer);
 
-        ShardLock shardLock = new DummyShardLock(shardId);
         havenaskEngineEnvironment.deleteIndexDirectoryUnderLock(
             shardLock.getShardId().getIndex(),
             new IndexSettings(build, Settings.EMPTY)
         );
 
         TestCase.assertFalse(Files.exists(indexFile));
+    }
+
+    public void testDeleteShardDirectoryUnderLock() throws IOException {
+        Path indexFile = workDir.resolve("data")
+            .resolve(HavenaskEngineEnvironment.DEFAULT_DATA_PATH)
+            .resolve(HavenaskEngineEnvironment.HAVENASK_RUNTIMEDATA_PATH)
+            .resolve(tableName);
+
+        String partitionName = "partition_0_65535";
+        Path shardFile = indexFile.resolve("generation_0").resolve(partitionName);
+        Files.createDirectories(shardFile);
+        TestCase.assertTrue(Files.exists(shardFile));
+
+        ThreadPool threadPool = mock(ThreadPool.class);
+        ExecutorService executorService = HavenaskExecutors.newDirectExecutorService();
+        when(threadPool.executor(anyString())).thenReturn(executorService);
+
+        MetaDataSyncer metaDataSyncer = mock(MetaDataSyncer.class);
+        when(metaDataSyncer.getThreadPool()).thenReturn(threadPool);
+        TargetInfo targetInfo = new TargetInfo();
+        targetInfo.table_info = new HashMap<>();
+        when(metaDataSyncer.getSearcherTargetInfo()).thenReturn(targetInfo);
+
+        when(metaDataSyncer.getIndexLockAndCreateIfNotExist(tableName)).thenReturn(indexLock);
+        when(metaDataSyncer.getIndexLock(tableName)).thenReturn(indexLock);
+
+        IndexSettings indexSettings = new IndexSettings(build, Settings.EMPTY);
+
+        havenaskEngineEnvironment.setMetaDataSyncer(metaDataSyncer);
+
+        havenaskEngineEnvironment.deleteShardDirectoryUnderLock(shardLock, indexSettings);
+
+        TestCase.assertFalse(Files.exists(shardFile));
     }
 }

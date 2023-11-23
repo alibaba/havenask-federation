@@ -163,10 +163,14 @@ public class MetaDataSyncer extends AbstractLifecycleComponent {
         return this.threadPool;
     }
 
-    public ReentrantLock getIndexLock(String tableName) {
+    public ReentrantLock getIndexLockAndCreateIfNotExist(String tableName) {
         if (indexLockMap.containsKey(tableName) == false) {
             indexLockMap.put(tableName, new ReentrantLock());
         }
+        return indexLockMap.get(tableName);
+    }
+
+    public ReentrantLock getIndexLock(String tableName) {
         return indexLockMap.get(tableName);
     }
 
