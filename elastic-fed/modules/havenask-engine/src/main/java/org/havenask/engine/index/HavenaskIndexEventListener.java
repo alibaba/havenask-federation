@@ -72,7 +72,7 @@ public class HavenaskIndexEventListener implements IndexEventListener {
                     indexLock.unlock();
                     LOGGER.debug("release lock after creating index, table name :[{}]", tableName);
                 } catch (IllegalMonitorStateException e) {
-                    LOGGER.error("release lock error afterIndexCreated", e);
+                    LOGGER.error("release lock error after creating index", e);
                 }
             }
         }
@@ -109,12 +109,12 @@ public class HavenaskIndexEventListener implements IndexEventListener {
                 try {
                     indexLock.unlock();
                     LOGGER.debug(
-                        "release lock after creating index, table name :[{}], shardId :[{}]",
+                        "release lock after creating shard, table name :[{}], shardId :[{}]",
                         tableName,
                         indexShard.shardId().getId()
                     );
                 } catch (IllegalMonitorStateException e) {
-                    LOGGER.error("release lock error afterIndexShardCreated", e);
+                    LOGGER.error("release lock error after creating shard", e);
                 }
             }
         }

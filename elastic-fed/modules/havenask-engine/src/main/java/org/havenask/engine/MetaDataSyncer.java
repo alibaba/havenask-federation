@@ -174,10 +174,6 @@ public class MetaDataSyncer extends AbstractLifecycleComponent {
         return indexLockMap.get(tableName);
     }
 
-    public void addIndexLock(String tableName, ReentrantLock indexLock) {
-        indexLockMap.put(tableName, indexLock);
-    }
-
     public void deleteIndexLock(String tableName) {
         indexLockMap.remove(tableName);
     }
