@@ -14,9 +14,16 @@
 
 package org.havenask.engine.util;
 
+import org.havenask.Version;
+import org.havenask.cluster.metadata.IndexMetadata;
+import org.havenask.cluster.routing.OperationRouting;
+import org.havenask.common.settings.Settings;
+import org.havenask.engine.index.engine.HashAlgorithm;
 import org.havenask.test.HavenaskTestCase;
 
 import java.util.List;
+
+import static org.havenask.engine.util.RangeUtil.calculateScaledShardId;
 
 public class RangeUtilTests extends HavenaskTestCase {
 
@@ -129,6 +136,78 @@ public class RangeUtilTests extends HavenaskTestCase {
         testGetRangeIdxByHashId(RangeUtil.MAX_PARTITION_RANGE, RangeUtil.MAX_PARTITION_RANGE, 1);
         for (int i = 1; i <= 1024; ++i) {
             testGetRangeIdxByHashId(0, RangeUtil.MAX_PARTITION_RANGE, i);
+        }
+    }
+
+    // test calculateScaledShardId
+    public void testCalculateScaledShardId() {
+
+        // default
+        {
+            IndexMetadata indexMetadata = IndexMetadata.builder("test")
+                .settings(
+                    Settings.builder()
+                        .put("index.version.created", Version.CURRENT.id)
+                        .put("index.number_of_shards", 10)
+                        .put("index.number_of_replicas", 0)
+                )
+                .build();
+            assertEquals(
+                OperationRouting.defaultCalculateScaledShardId(indexMetadata, "0", 0),
+                calculateScaledShardId(indexMetadata, "0", 0)
+            );
+            assertEquals(
+                OperationRouting.defaultCalculateScaledShardId(indexMetadata, "1", 1),
+                calculateScaledShardId(indexMetadata, "1", 1)
+            );
+            assertEquals(
+                OperationRouting.defaultCalculateScaledShardId(indexMetadata, "2", 0),
+                calculateScaledShardId(indexMetadata, "2", 0)
+            );
+            assertEquals(
+                OperationRouting.defaultCalculateScaledShardId(indexMetadata, "3", 1),
+                calculateScaledShardId(indexMetadata, "3", 1)
+            );
+        }
+
+        // havenask
+        {
+            IndexMetadata indexMetadata = IndexMetadata.builder("test")
+                .settings(
+                    Settings.builder()
+                        .put("index.version.created", Version.CURRENT.id)
+                        .put("index.number_of_shards", 10)
+                        .put("index.number_of_replicas", 0)
+                        .put("index.engine", "havenask")
+                )
+                .build();
+            assertEquals(
+                RangeUtil.getRangeIdxByHashId(
+                    0,
+                    HashAlgorithm.HASH_SIZE - 1,
+                    indexMetadata.getNumberOfShards(),
+                    (int) HashAlgorithm.getHashId("0")
+                ),
+                calculateScaledShardId(indexMetadata, "0", 0)
+            );
+            assertEquals(
+                RangeUtil.getRangeIdxByHashId(
+                    0,
+                    HashAlgorithm.HASH_SIZE - 1,
+                    indexMetadata.getNumberOfShards(),
+                    (int) HashAlgorithm.getHashId("1")
+                ),
+                calculateScaledShardId(indexMetadata, "1", 1)
+            );
+            assertEquals(
+                RangeUtil.getRangeIdxByHashId(
+                    0,
+                    HashAlgorithm.HASH_SIZE - 1,
+                    indexMetadata.getNumberOfShards(),
+                    (int) HashAlgorithm.getHashId("2")
+                ),
+                calculateScaledShardId(indexMetadata, "2", 0)
+            );
         }
     }
 }
