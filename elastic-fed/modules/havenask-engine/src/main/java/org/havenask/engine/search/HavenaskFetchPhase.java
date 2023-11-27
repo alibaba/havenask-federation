@@ -171,6 +171,9 @@ public class HavenaskFetchPhase implements FetchPhase {
                     processor.process(hit);
                 }
                 hits[i] = hit.getHit();
+            } else if (context.hasFetchSourceContext() && false == context.fetchSourceContext().fetchSource()) {
+                // TODO： "_source"为false 的情况目前在这里处理，后续可以考虑优化为sql语法直接不获取_source内容
+                hits[i] = hit.getHit();
             } else {
                 hits[i] = hit.getHit();
                 hits[i].sourceRef(new BytesArray((String) source));

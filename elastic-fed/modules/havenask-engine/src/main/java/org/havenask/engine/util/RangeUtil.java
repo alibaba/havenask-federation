@@ -14,6 +14,11 @@
 
 package org.havenask.engine.util;
 
+import org.havenask.cluster.metadata.IndexMetadata;
+import org.havenask.cluster.routing.OperationRouting;
+import org.havenask.engine.index.engine.EngineSettings;
+import org.havenask.engine.index.engine.HashAlgorithm;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -132,6 +137,15 @@ public class RangeUtil {
         @Override
         public int hashCode() {
             return Objects.hash(first, second);
+        }
+    }
+
+    public static int calculateScaledShardId(IndexMetadata indexMetadata, String effectiveRouting, int partitionOffset) {
+        if (EngineSettings.isHavenaskEngine(indexMetadata.getSettings())) {
+            long hashId = HashAlgorithm.getHashId(effectiveRouting);
+            return getRangeIdxByHashId(0, HashAlgorithm.HASH_SIZE - 1, indexMetadata.getNumberOfShards(), (int) hashId);
+        } else {
+            return OperationRouting.defaultCalculateScaledShardId(indexMetadata, effectiveRouting, partitionOffset);
         }
     }
 }
