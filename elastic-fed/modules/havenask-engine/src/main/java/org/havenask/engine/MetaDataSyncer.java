@@ -16,7 +16,9 @@ package org.havenask.engine;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.havenask.cluster.ClusterChangedEvent;
 import org.havenask.cluster.ClusterState;
+import org.havenask.cluster.ClusterStateApplier;
 import org.havenask.cluster.metadata.IndexMetadata;
 import org.havenask.cluster.node.DiscoveryNode;
 import org.havenask.cluster.routing.RoutingNode;
@@ -34,7 +36,6 @@ import org.havenask.engine.index.config.ZoneBiz;
 import org.havenask.engine.index.engine.EngineSettings;
 import org.havenask.engine.rpc.HavenaskClient;
 import org.havenask.engine.rpc.HeartbeatTargetResponse;
-import org.havenask.engine.rpc.QrsClient;
 import org.havenask.engine.rpc.SqlClientInfoResponse;
 import org.havenask.engine.rpc.TargetInfo;
 import org.havenask.engine.rpc.UpdateHeartbeatTargetRequest;
@@ -63,10 +64,11 @@ import java.util.regex.Pattern;
 
 import static org.havenask.engine.HavenaskEnginePlugin.HAVENASK_THREAD_POOL_NAME;
 
-public class MetaDataSyncer extends AbstractLifecycleComponent {
+public class MetaDataSyncer extends AbstractLifecycleComponent implements ClusterStateApplier {
     private static final Logger LOGGER = LogManager.getLogger(MetaDataSyncer.class);
 
     private static final int MAX_SYNC_TIMES = 30;
+    private static final int MAX_QRS_SYNC_TIMES = 120;
     private static final int TARGET_VERSION = 1651870394;
     private static final int DEFAULT_PART_COUNT = 1;
     private static final int DEFAULT_PART_ID = 0;
@@ -114,11 +116,13 @@ public class MetaDataSyncer extends AbstractLifecycleComponent {
     private boolean running;
     private final boolean enabled;
     private final boolean isDataNode;
-
+    private final boolean isIngestNode;
+    private Set<String> qrsIndexNamesSet = new HashSet<>();
     private int randomVersion;
     private int generalSqlRandomVersion;
     private Random random;
 
+    private AtomicBoolean qrsIsUpdating = new AtomicBoolean(false);
     // synced标识metadata当前是否已经同步
     // pending标识是否需要同步, 解决元数据并发修改和更新的同步问题, 由于同步是异步的, 所以需要pending标识是否需要同步
     private AtomicBoolean synced = new AtomicBoolean(false);
@@ -147,15 +151,20 @@ public class MetaDataSyncer extends AbstractLifecycleComponent {
 
         Settings settings = clusterService.getSettings();
         isDataNode = DiscoveryNode.isDataNode(settings);
+        isIngestNode = DiscoveryNode.isIngestNode(settings);
+        if (isIngestNode) {
+            clusterService.addStateApplier(this);
+        }
         enabled = HavenaskEnginePlugin.HAVENASK_ENGINE_ENABLED_SETTING.get(settings);
 
         random = new Random();
         randomVersion = random.nextInt(100000) + 1;
+        generalSqlRandomVersion = random.nextInt(100000) + 1;
     }
 
     @Override
     protected void doStart() {
-        if (enabled && isDataNode && syncTask == null) {
+        if (enabled && (isDataNode || isIngestNode) && syncTask == null) {
             syncTask = new SyncTask(threadPool, TimeValue.timeValueSeconds(1));
             syncTask.rescheduleIfNecessary();
             running = true;
@@ -191,78 +200,61 @@ public class MetaDataSyncer extends AbstractLifecycleComponent {
             if (false == running) {
                 return;
             }
+            if (isDataNode) {
+                ClusterState clusterState = clusterService.state();
 
-            ClusterState clusterState = clusterService.state();
+                synchronized (this) {
+                    // 同步元数据,触发条件:
+                    // 1. pending为true
+                    // 2. synced为false
+                    // 3. syncTimes小于MAX_SYNC_TIMES
+                    if (pending.getAndSet(false) == true || synced.get() == false || syncTimes > MAX_SYNC_TIMES) {
+                        // update searcher heartbeat target
+                        LOGGER.info(
+                            "update searcher heartbeat target, synced: {}, pending: {}, syncTimes: {}",
+                            synced.get(),
+                            pending.get(),
+                            syncTimes
+                        );
 
-            synchronized (this) {
-                // 同步元数据,触发条件:
-                // 1. pending为true
-                // 2. synced为false
-                // 3. syncTimes小于MAX_SYNC_TIMES
-                if (pending.getAndSet(false) == true || synced.get() == false || syncTimes > MAX_SYNC_TIMES) {
-                    // update heartbeat target
-                    LOGGER.info("update heartbeat target, synced: {}, pending: {}, syncTimes: {}", synced.get(), pending.get(), syncTimes);
+                        try {
+                            UpdateHeartbeatTargetRequest searcherTargetRequest = createSearcherUpdateHeartbeatTargetRequest(clusterState);
+                            HeartbeatTargetResponse searcherResponse = searcherClient.updateHeartbeatTarget(searcherTargetRequest);
 
-                    try {
-                        UpdateHeartbeatTargetRequest qrsTargetRequest = createQrsUpdateHeartbeatTargetRequest(clusterState);
-                        HeartbeatTargetResponse qrsResponse = qrsClient.updateHeartbeatTarget(qrsTargetRequest);
+                            boolean searcherEquals = searcherTargetRequest.getTargetInfo().equals(searcherResponse.getSignature());
 
-                        UpdateHeartbeatTargetRequest searcherTargetRequest = createSearcherUpdateHeartbeatTargetRequest(clusterState);
-                        HeartbeatTargetResponse searcherResponse = searcherClient.updateHeartbeatTarget(searcherTargetRequest);
+                            if (searcherEquals) {
+                                // TODO: randomVersion的内容如何修改
+                                randomVersion = random.nextInt(100000) + 1;
+                                LOGGER.trace("searcher Equals success, update version");
 
-                        boolean qrsEquals = qrsTargetRequest.getTargetInfo().equals(qrsResponse.getSignature());
-                        boolean searcherEquals = searcherTargetRequest.getTargetInfo().equals(searcherResponse.getSignature());
-
-                        if (false == qrsEquals) {
-                            LOGGER.trace(
-                                "update qrs heartbeat target failed, qrsTargetRequest: {}, qrsResponse: {}",
-                                Strings.toString(qrsTargetRequest),
-                                Strings.toString(qrsResponse)
-                            );
-                        }
-
-                        if (false == searcherEquals) {
-                            LOGGER.trace(
-                                "update searcher heartbeat target failed, searcherTargetRequest: {}, searcherResponse: {}",
-                                Strings.toString(searcherTargetRequest),
-                                Strings.toString(searcherResponse)
-                            );
-                        }
-
-                        if (qrsEquals && searcherEquals) {
-                            // 在每次两个request都更新成功时更新两个randomVersion
-                            randomVersion = random.nextInt(100000) + 1;
-                            generalSqlRandomVersion = random.nextInt(100000) + 1;
-                            LOGGER.trace("qrsEquals && searcherEquals success!!!!  update version");
-
-                            // 在qrs与searcher都同步成功后，再check qrs的table
-                            SqlClientInfoResponse sqlClientInfoResponse = ((QrsClient) qrsClient).executeSqlClientInfo();
-                            List<String> subDirNames = getSubDirNames(clusterState);
-                            boolean qrsTableSynced = qrsTableCheck(subDirNames, sqlClientInfoResponse);
-                            if (false == qrsTableSynced) {
-                                LOGGER.trace(
-                                    "update qrs table info failed, required table names : {}, sqlClientInfo's tables : {}",
-                                    subDirNames.toString(),
-                                    sqlClientInfoResponse.getResult()
-                                        .getJSONObject("default")
-                                        .getJSONObject("general")
-                                        .getJSONObject("tables")
-                                        .keySet()
-                                        .toString()
-                                );
-                            } else {
-                                LOGGER.info("update heartbeat target success");
+                                LOGGER.info("update searcher heartbeat target success");
                                 synced.set(true);
                                 searcherTargetInfo.set(searcherResponse.getCustomInfo());
                                 syncTimes = 0;
                                 return;
+                            } else {
+                                LOGGER.trace(
+                                    "update searcher heartbeat target failed, searcherTargetRequest: {}, searcherResponse: {}",
+                                    Strings.toString(searcherTargetRequest),
+                                    Strings.toString(searcherResponse)
+                                );
                             }
+                        } catch (Throwable e) {
+                            LOGGER.error("update searcher heartbeat target failed", e);
                         }
-                    } catch (Throwable e) {
-                        LOGGER.error("update heartbeat target failed", e);
-                    }
 
-                    synced.set(false);
+                        synced.set(false);
+                    } else {
+                        syncTimes++;
+                    }
+                }
+            }
+            if (isIngestNode) {
+                if (syncTimes > MAX_SYNC_TIMES && false == qrsIsUpdating.getAndSet(true)) {
+                    LOGGER.trace("update qrs target, guaranteed");
+                    updateQrsTargetInfo(clusterService.state());
+                    syncTimes = 0;
                 } else {
                     syncTimes++;
                 }
@@ -272,6 +264,71 @@ public class MetaDataSyncer extends AbstractLifecycleComponent {
         protected String getThreadPool() {
             return HAVENASK_THREAD_POOL_NAME;
         }
+    }
+
+    @Override
+    public void applyClusterState(ClusterChangedEvent event) {
+        // TODO: 是否需要类似searcher的30s触发一次的兜底同步逻辑
+        if (isIngestNode && ShouldQrsNeedUpdate(event.state()) && false == qrsIsUpdating.getAndSet(true)) {
+            // update qrs target
+            updateQrsTargetInfo(event.state());
+            syncTimes = 0;
+        }
+    }
+
+    private boolean ShouldQrsNeedUpdate(ClusterState clusterState) {
+        Set<String> currentQrsIndexNamesSet = new HashSet<>();
+        currentQrsIndexNamesSet.addAll(getSubDirNames(clusterState));
+
+        // check 是否有索引级别的增删
+        if (false == (qrsIndexNamesSet.containsAll(currentQrsIndexNamesSet) && currentQrsIndexNamesSet.containsAll(qrsIndexNamesSet))) {
+            qrsIndexNamesSet = currentQrsIndexNamesSet;
+            return true;
+        }
+
+        // TODO: check 分片的搬迁是否要更新qrs
+        
+        return false;
+    }
+
+    private void updateQrsTargetInfo(ClusterState clusterState) {
+        threadPool.executor(HavenaskEnginePlugin.HAVENASK_THREAD_POOL_NAME).execute(() -> {
+            boolean qrsEquals = false;
+            int qrsSyncTimes = 0;
+            try {
+                while (false == qrsEquals) {
+                    UpdateHeartbeatTargetRequest qrsTargetRequest = createQrsUpdateHeartbeatTargetRequest(clusterState);
+                    HeartbeatTargetResponse qrsResponse = qrsClient.updateHeartbeatTarget(qrsTargetRequest);
+
+                    qrsEquals = qrsTargetRequest.getTargetInfo().equals(qrsResponse.getSignature());
+                    if (false == qrsEquals) {
+                        LOGGER.trace(
+                            "update qrs heartbeat target failed, qrsTargetRequest: {}, qrsResponse: {}",
+                            Strings.toString(qrsTargetRequest),
+                            Strings.toString(qrsResponse)
+                        );
+                        Thread.sleep(1000);
+                        ++qrsSyncTimes;
+                        if (qrsSyncTimes > MAX_QRS_SYNC_TIMES) {
+                            LOGGER.error("update qrs heartbeat target time out, qrsSyncTimes: {}", qrsSyncTimes);
+                            qrsIsUpdating.set(false);
+                            return;
+                        }
+                    }
+                }
+            } catch (Throwable e) {
+                LOGGER.error("update qrs heartbeat target failed", e);
+            }
+
+            if (qrsEquals) {
+                randomVersion = random.nextInt(100000) + 1;
+                generalSqlRandomVersion = random.nextInt(100000) + 1;
+                LOGGER.trace("searcher Equals success, update version");
+
+                LOGGER.info("update qrs heartbeat target success");
+                qrsIsUpdating.set(false);
+            }
+        });
     }
 
     /**
@@ -528,6 +585,11 @@ public class MetaDataSyncer extends AbstractLifecycleComponent {
             StandardOpenOption.CREATE,
             StandardOpenOption.TRUNCATE_EXISTING
         );
+    }
+
+    private void initialQrsIndexNamesSet(ClusterState clusterState) {
+        List<String> indexNames = getSubDirNames(clusterState);
+        qrsIndexNamesSet.addAll(indexNames);
     }
 
     private static boolean qrsTableCheck(List<String> subDirNames, SqlClientInfoResponse sqlClientInfoResponse) {

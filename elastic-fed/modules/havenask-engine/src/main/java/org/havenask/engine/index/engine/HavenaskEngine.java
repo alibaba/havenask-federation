@@ -55,7 +55,6 @@ import org.havenask.engine.rpc.QrsClient;
 import org.havenask.engine.rpc.QrsSqlRequest;
 import org.havenask.engine.rpc.QrsSqlResponse;
 import org.havenask.engine.rpc.SearcherClient;
-import org.havenask.engine.rpc.SqlClientInfoResponse;
 import org.havenask.engine.rpc.TargetInfo;
 import org.havenask.engine.rpc.WriteRequest;
 import org.havenask.engine.rpc.WriteResponse;
@@ -266,18 +265,6 @@ public class HavenaskEngine extends InternalEngine {
                     throw new IOException("havenask partition not found in searcher");
                 }
 
-                SqlClientInfoResponse sqlClientInfoResponse = qrsHttpClient.executeSqlClientInfo();
-                if (sqlClientInfoResponse.getErrorCode() != 0) {
-                    throw new IOException("havenask execute sql client info failed");
-                }
-
-                if (false == sqlClientInfoResponse.getResult()
-                    .getJSONObject("default")
-                    .getJSONObject("general")
-                    .getJSONObject("tables")
-                    .containsKey(tableName)) {
-                    throw new IOException("havenask table not found in qrs");
-                }
                 return;
             } catch (Exception e) {
                 logger.debug(
