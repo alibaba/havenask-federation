@@ -51,6 +51,7 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -252,6 +253,7 @@ public class MetaDataSyncer extends AbstractLifecycleComponent implements Cluste
                     }
                 }
             }
+
             if (isIngestNode) {
                 if (syncTimes > MAX_SYNC_TIMES && false == qrsIsUpdating.getAndSet(true)) {
                     LOGGER.trace("update qrs target, guaranteed");
@@ -271,25 +273,24 @@ public class MetaDataSyncer extends AbstractLifecycleComponent implements Cluste
     @Override
     public void applyClusterState(ClusterChangedEvent event) {
         // TODO: 是否需要类似searcher的30s触发一次的兜底同步逻辑
-        if (isIngestNode && ShouldQrsNeedUpdate(event.state()) && false == qrsIsUpdating.getAndSet(true)) {
+        if (isIngestNode && shouldUpdateQrs(event.previousState(), event.state()) && false == qrsIsUpdating.getAndSet(true)) {
             // update qrs target
             updateQrsTargetInfo(event.state());
             syncTimes = 0;
         }
     }
 
-    private boolean ShouldQrsNeedUpdate(ClusterState clusterState) {
-        Set<String> currentQrsIndexNamesSet = new HashSet<>();
-        currentQrsIndexNamesSet.addAll(getSubDirNames(clusterState));
-
+    private boolean shouldUpdateQrs(ClusterState prevClusterState, ClusterState curClusterState) {
         // check 是否有索引级别的增删
-        if (false == (qrsIndexNamesSet.containsAll(currentQrsIndexNamesSet) && currentQrsIndexNamesSet.containsAll(qrsIndexNamesSet))) {
-            qrsIndexNamesSet = currentQrsIndexNamesSet;
+        if (isHavenaskIndexChanged(prevClusterState, curClusterState)) {
             return true;
         }
 
         // TODO: check 分片的搬迁是否要更新qrs
-        
+        if (isHavenaskShardChanged(prevClusterState, curClusterState)) {
+            return true;
+        }
+
         return false;
     }
 
@@ -335,6 +336,7 @@ public class MetaDataSyncer extends AbstractLifecycleComponent implements Cluste
 
     /**
      * 获取searcher target info
+     *
      * @return searcher target info
      */
     public TargetInfo getSearcherTargetInfo() {
@@ -591,11 +593,6 @@ public class MetaDataSyncer extends AbstractLifecycleComponent implements Cluste
         );
     }
 
-    private void initialQrsIndexNamesSet(ClusterState clusterState) {
-        List<String> indexNames = getSubDirNames(clusterState);
-        qrsIndexNamesSet.addAll(indexNames);
-    }
-
     private static boolean qrsTableCheck(List<String> subDirNames, SqlClientInfoResponse sqlClientInfoResponse) {
         boolean qrsTableSynced = true;
         Map<String, Object> expectedSubNames = sqlClientInfoResponse.getResult()
@@ -609,5 +606,35 @@ public class MetaDataSyncer extends AbstractLifecycleComponent implements Cluste
             }
         }
         return qrsTableSynced;
+    }
+
+    private boolean isHavenaskIndexChanged(ClusterState prevClusterState, ClusterState curClusterState) {
+        Set<String> prevIndexNamesSet = new HashSet<>(Arrays.asList(prevClusterState.metadata().indices().keys().toArray(String.class)));
+        Set<String> currentIndexNamesSet = new HashSet<>(Arrays.asList(curClusterState.metadata().indices().keys().toArray(String.class)));
+        Set<String> prevDiff = new HashSet<>(prevIndexNamesSet);
+        Set<String> curDiff = new HashSet<>(currentIndexNamesSet);
+        prevDiff.removeAll(currentIndexNamesSet);
+        curDiff.removeAll(prevIndexNamesSet);
+
+        for (String indexName : prevDiff) {
+            IndexMetadata indexMetadata = prevClusterState.metadata().index(indexName);
+            if (EngineSettings.isHavenaskEngine(indexMetadata.getSettings())) {
+                return true;
+            }
+        }
+
+        for (String indexName : curDiff) {
+            IndexMetadata indexMetadata = curClusterState.metadata().index(indexName);
+            if (EngineSettings.isHavenaskEngine(indexMetadata.getSettings())) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private boolean isHavenaskShardChanged(ClusterState prevClusterState, ClusterState curClusterState) {
+
+        return false;
     }
 }
