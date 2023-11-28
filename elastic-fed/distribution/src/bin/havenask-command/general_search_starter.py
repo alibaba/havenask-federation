@@ -400,9 +400,16 @@ examples:
                 json.dump(self.gigInfos, f)
 
         if self.role == "all" or self.role == "qrs":
+            with open(os.path.join(self.workdir, "readyZones.json"), "r") as f:
+                self.gigInfos = json.load(f)
             qrs_ret = self.startQrs()
             if qrs_ret != 0:
                 return qrs_ret, ("", "start qrs failed", -1)
+
+            ret = self.loadQrsTarget(terminator.left_time())
+            if ret != 0:
+                return ret, ("", "load qrs target failed", -1)
+
 
         return 0, ("", "", 0)
 
