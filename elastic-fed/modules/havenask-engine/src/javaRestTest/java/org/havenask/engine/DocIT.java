@@ -71,6 +71,8 @@ public class DocIT extends AbstractHavenaskRestTestCase {
 
     // test document api, PUT/POST/DELETE and bulk
     public void testDocMethod() throws Exception {
+        assumeTrue("number_of_nodes more than 1, Skip func: testDocMethod()", clusterIsSingleNode());
+
         String index = DocITIndices[TEST_DOC_METHOD_INDEX_POS];
         // create index
         Settings settings = Settings.builder()

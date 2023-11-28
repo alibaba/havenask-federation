@@ -111,6 +111,7 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
     private final ThreadPool threadPool;
     private final boolean enabled;
     private final boolean isDataNode;
+    private final boolean isIngestNode;
     private final Environment environment;
     private final NodeEnvironment nodeEnvironment;
     private final HavenaskEngineEnvironment havenaskEngineEnvironment;
@@ -141,6 +142,7 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
         this.clusterService = clusterService;
         Settings settings = clusterService.getSettings();
         isDataNode = DiscoveryNode.isDataNode(settings);
+        isIngestNode = DiscoveryNode.isIngestNode(settings);
         enabled = HavenaskEnginePlugin.HAVENASK_ENGINE_ENABLED_SETTING.get(settings);
         this.threadPool = threadPool;
         this.environment = environment;
@@ -203,7 +205,7 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
             processControlTask = null;
         }
 
-        if (enabled && isDataNode) {
+        if (enabled && (isDataNode || isIngestNode)) {
             LOGGER.info("stop local searcher, qrs process");
             AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
                 try {
@@ -222,7 +224,6 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
                 } catch (Exception e) {
                     LOGGER.warn("stop local searcher,qrs failed", e);
                 }
-
                 return null;
             });
         }
@@ -274,7 +275,9 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
                         client.admin().cluster().reroute(Requests.clusterRerouteRequest().setRetryFailed(true)).actionGet();
                     }
                 }
+            }
 
+            if (isIngestNode) {
                 if (false == checkProcessAlive(QRS_ROLE)) {
                     LOGGER.info("start qrs process...");
                     // 启动qrs
@@ -311,7 +314,9 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
                     }
                 }
             }
+        }
 
+        if (isIngestNode) {
             LOGGER.info("start qrs process...");
             while (false == checkProcessAlive(QRS_ROLE)) {
                 // 启动qrs

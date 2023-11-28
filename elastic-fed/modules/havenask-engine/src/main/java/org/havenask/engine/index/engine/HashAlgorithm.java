@@ -18,7 +18,7 @@ import org.havenask.common.SuppressForbidden;
 
 @SuppressForbidden(reason = "hash algorithm")
 public final class HashAlgorithm {
-    static long HASH_SIZE = 65536;
+    public static int HASH_SIZE = 65536;
     static long DEFAULT_RANGE_TO = HASH_SIZE - 1;
     static long CRYPT_TABLE[] = {
         0x55C636E2L,

@@ -79,6 +79,11 @@ public class OperationRouting {
 
     private List<String> awarenessAttributes;
     private boolean useAdaptiveReplicaSelection;
+    public static CustomShardIdGenerator customShardIdGenerator;
+
+    public interface CustomShardIdGenerator {
+        int apply(IndexMetadata indexMetadata, String effectiveRouting, int partitionOffset);
+    }
 
     public OperationRouting(Settings settings, ClusterSettings clusterSettings) {
         // whether to ignore awareness attributes when routing requests
@@ -328,11 +333,18 @@ public class OperationRouting {
     }
 
     private static int calculateScaledShardId(IndexMetadata indexMetadata, String effectiveRouting, int partitionOffset) {
+        if (customShardIdGenerator != null) {
+            return customShardIdGenerator.apply(indexMetadata, effectiveRouting, partitionOffset);
+        } else {
+            return defaultCalculateScaledShardId(indexMetadata, effectiveRouting, partitionOffset);
+        }
+    }
+
+    public static int defaultCalculateScaledShardId(IndexMetadata indexMetadata, String effectiveRouting, int partitionOffset) {
         final int hash = Murmur3HashFunction.hash(effectiveRouting) + partitionOffset;
 
         // we don't use IMD#getNumberOfShards since the index might have been shrunk such that we need to use the size
         // of original index to hash documents
         return Math.floorMod(hash, indexMetadata.getRoutingNumShards()) / indexMetadata.getRoutingFactor();
     }
-
 }
