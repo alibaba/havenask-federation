@@ -560,7 +560,8 @@ public class HavenaskEngine extends InternalEngine {
         try {
             String sql = String.format(
                 Locale.ROOT,
-                "select _routing,_seq_no,_primary_term,_version,_source from %s_summary_ where _id='%s'",
+                "select /*+ SCAN_ATTR(partitionIds='%d')*/ _routing,_seq_no,_primary_term,_version,_source from %s_summary_ where _id='%s'",
+                shardId.id(),
                 tableName,
                 get.id()
             );
@@ -826,7 +827,7 @@ public class HavenaskEngine extends InternalEngine {
     long getDocCount() {
         long docCount = 0;
         try {
-            String sql = String.format(Locale.ROOT, "select count(*) from %s", tableName);
+            String sql = String.format(Locale.ROOT, "select /*+ SCAN_ATTR(partitionIds='%d')*/ count(*) from %s", shardId.id(), tableName);
             String kvpair = "format:full_json;timeout:10000;databaseName:" + SQL_DATABASE;
             QrsSqlRequest request = new QrsSqlRequest(sql, kvpair);
             QrsSqlResponse response = qrsHttpClient.executeSql(request);
