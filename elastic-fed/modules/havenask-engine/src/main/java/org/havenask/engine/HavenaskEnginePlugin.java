@@ -306,7 +306,9 @@ public class HavenaskEnginePlugin extends Plugin
     @Override
     public void onIndexModule(IndexModule indexModule) {
         if (EngineSettings.isHavenaskEngine(indexModule.getSettings())) {
-            indexModule.addIndexEventListener(new HavenaskIndexEventListener(havenaskEngineEnvironmentSetOnce.get()));
+            indexModule.addIndexEventListener(
+                new HavenaskIndexEventListener(havenaskEngineEnvironmentSetOnce.get(), metaDataSyncerSetOnce.get())
+            );
         }
     }
 
