@@ -1102,7 +1102,6 @@ examples:
             atables = os.listdir(self.indexPath)
             zoneGid = self._getMaxGenerationId(self.indexPath, self.mainTableName)
             partitions = self._getPartitions(self.indexPath, self.mainTableName, zoneGid)
-            total_partition_count = self._getTotalPartitionCount(partitions[0])
 
             fullPartition = "0_65535"
             partCnt = len(partitions)
@@ -1143,6 +1142,8 @@ examples:
                             raise Exception("table %s : len(curTablePartitions)(%d) != maxPartCnt(%d)" % (tableName, curTablePartitionCnt, maxPartCnt))
                     else:
                         tablePartition = curTablePartitions
+
+                    total_partition_count = self._getTotalPartitionCount(curTablePartitions[0])
 
                     tableGid = curTableGid
                     zoneDirName = self.genRoleName((zoneName, partId, replicaId))
