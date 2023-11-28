@@ -14,6 +14,27 @@
 
 package org.havenask.engine;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.DirectoryStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
+import java.nio.file.StandardOpenOption;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Random;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.locks.ReentrantLock;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.havenask.cluster.ClusterChangedEvent;
@@ -36,7 +57,6 @@ import org.havenask.engine.index.config.ZoneBiz;
 import org.havenask.engine.index.engine.EngineSettings;
 import org.havenask.engine.rpc.HavenaskClient;
 import org.havenask.engine.rpc.HeartbeatTargetResponse;
-import org.havenask.engine.rpc.SqlClientInfoResponse;
 import org.havenask.engine.rpc.TargetInfo;
 import org.havenask.engine.rpc.UpdateHeartbeatTargetRequest;
 import org.havenask.engine.util.RangeUtil;
@@ -58,10 +78,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import static org.havenask.engine.HavenaskEnginePlugin.HAVENASK_THREAD_POOL_NAME;
 
@@ -120,7 +136,6 @@ public class MetaDataSyncer extends AbstractLifecycleComponent implements Cluste
     private final boolean enabled;
     private final boolean isDataNode;
     private final boolean isIngestNode;
-    private Set<String> qrsIndexNamesSet = new HashSet<>();
     private int randomVersion;
     private int generalSqlRandomVersion;
     private Random random;
@@ -132,6 +147,8 @@ public class MetaDataSyncer extends AbstractLifecycleComponent implements Cluste
     private AtomicBoolean pending = new AtomicBoolean(false);
     private AtomicReference<TargetInfo> searcherTargetInfo = new AtomicReference<>();
     private int syncTimes = 0;
+
+    private ConcurrentMap<String, ReentrantLock> indexLockMap = new ConcurrentHashMap<>();
 
     public MetaDataSyncer(
         ClusterService clusterService,
@@ -163,6 +180,25 @@ public class MetaDataSyncer extends AbstractLifecycleComponent implements Cluste
         random = new Random();
         randomVersion = random.nextInt(100000) + 1;
         generalSqlRandomVersion = random.nextInt(100000) + 1;
+    }
+
+    public ThreadPool getThreadPool() {
+        return this.threadPool;
+    }
+
+    public ReentrantLock getIndexLockAndCreateIfNotExist(String tableName) {
+        if (indexLockMap.containsKey(tableName) == false) {
+            indexLockMap.put(tableName, new ReentrantLock());
+        }
+        return indexLockMap.get(tableName);
+    }
+
+    public ReentrantLock getIndexLock(String tableName) {
+        return indexLockMap.get(tableName);
+    }
+
+    public void deleteIndexLock(String tableName) {
+        indexLockMap.remove(tableName);
     }
 
     @Override
@@ -619,7 +655,7 @@ public class MetaDataSyncer extends AbstractLifecycleComponent implements Cluste
     }
 
     private boolean isHavenaskShardChanged(ClusterState prevClusterState, ClusterState curClusterState) {
-        // TODO : shard搬迁情况的确认
+        // TODO : 识别shard搬迁的case
         return false;
     }
 }

@@ -61,12 +61,11 @@ public class PeerRecoveryIT extends AbstractHavenaskRestTestCase {
     }
 
     public void testTwoShardPeerRecovery() throws Exception {
-        assumeTrue("number_of_nodes less then 2, Skip func: testTwoShardPeerRecovery()", isMultiNodes());
+        assumeTrue("number_of_nodes less then 2, Skip func: testTwoShardPeerRecovery()", clusterIsMultiNodes());
 
         String index = PeerRecoveryITIndices[TEST_TWO_SHARD_PEER_RECOVERY_INDEX_POS];
         int loopCount = 5;
         int querySize = 250;
-        int waitIndexReduce = 10000;  // 10s
         String primaryPreference = "primary";
         String replicaPreference = "replication";
 
@@ -92,9 +91,6 @@ public class PeerRecoveryIT extends AbstractHavenaskRestTestCase {
                 docValue++;
             }
 
-            // TODO:防止减少replication时相关索引信息还没有清空就进行peer recovery流程，加入等待时间，待优化
-            Thread.sleep(waitIndexReduce);
-
             // 增加replica，触发peer recovery
             assertTrue(setReplicaNum(index, 1));
             waitIndexGreen(index);
@@ -117,7 +113,7 @@ public class PeerRecoveryIT extends AbstractHavenaskRestTestCase {
     }
 
     public void testKillSearcherThenPeerRecovery() throws Exception {
-        assumeTrue("number_of_nodes less then 2, Skip func: testTwoShardPeerRecovery()", isMultiNodes());
+        assumeTrue("number_of_nodes less then 2, Skip func: testTwoShardPeerRecovery()", clusterIsMultiNodes());
 
         String index = PeerRecoveryITIndices[TEST_KILL_SEARCHER_THEN_PEER_RECOVERY_INDEX_POS];
 
@@ -176,12 +172,6 @@ public class PeerRecoveryIT extends AbstractHavenaskRestTestCase {
         }
 
         deleteAndHeadIndex(index);
-    }
-
-    public boolean isMultiNodes() throws IOException {
-        ClusterHealthResponse clusterHealthResponse = highLevelClient().cluster()
-            .health(new ClusterHealthRequest(), RequestOptions.DEFAULT);
-        return clusterHealthResponse.getNumberOfNodes() >= 2;
     }
 
     private void compareResponsesHits(SearchResponse response1, SearchResponse response2) {

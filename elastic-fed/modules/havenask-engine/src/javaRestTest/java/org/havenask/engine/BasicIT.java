@@ -74,6 +74,8 @@ public class BasicIT extends AbstractHavenaskRestTestCase {
     }
 
     public void testCRUD() throws Exception {
+        assumeTrue("number_of_nodes more than 1, Skip func: testCRUD()", clusterIsSingleNode());
+
         String index = BasicITIndices[TEST_CRUD_INDEX_POS];
         assertTrue(
             highLevelClient().indices()
@@ -172,9 +174,7 @@ public class BasicIT extends AbstractHavenaskRestTestCase {
         assertTrue(mappingsEquals(expectedMappingMetaData.source(), resMappingMetaData.source()));
 
         // delete index and HEAD index
-        assertEquals(true, highLevelClient().indices().exists(new GetIndexRequest(index), RequestOptions.DEFAULT));
-        assertTrue(highLevelClient().indices().delete(new DeleteIndexRequest(index), RequestOptions.DEFAULT).isAcknowledged());
-        assertEquals(false, highLevelClient().indices().exists(new GetIndexRequest(index), RequestOptions.DEFAULT));
+        deleteAndHeadIndex(index);
     }
 
     public void testCreateAndDeleteSameIndex() throws Exception {
