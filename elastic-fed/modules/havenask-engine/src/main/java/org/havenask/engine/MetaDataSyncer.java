@@ -593,21 +593,6 @@ public class MetaDataSyncer extends AbstractLifecycleComponent implements Cluste
         );
     }
 
-    private static boolean qrsTableCheck(List<String> subDirNames, SqlClientInfoResponse sqlClientInfoResponse) {
-        boolean qrsTableSynced = true;
-        Map<String, Object> expectedSubNames = sqlClientInfoResponse.getResult()
-            .getJSONObject("default")
-            .getJSONObject("general")
-            .getJSONObject("tables");
-        for (String subDir : subDirNames) {
-            if (false == expectedSubNames.containsKey(subDir)) {
-                qrsTableSynced = false;
-                break;
-            }
-        }
-        return qrsTableSynced;
-    }
-
     private boolean isHavenaskIndexChanged(ClusterState prevClusterState, ClusterState curClusterState) {
         Set<String> prevIndexNamesSet = new HashSet<>(Arrays.asList(prevClusterState.metadata().indices().keys().toArray(String.class)));
         Set<String> currentIndexNamesSet = new HashSet<>(Arrays.asList(curClusterState.metadata().indices().keys().toArray(String.class)));
@@ -634,7 +619,7 @@ public class MetaDataSyncer extends AbstractLifecycleComponent implements Cluste
     }
 
     private boolean isHavenaskShardChanged(ClusterState prevClusterState, ClusterState curClusterState) {
-
+        // TODO : shard搬迁情况的确认
         return false;
     }
 }
