@@ -14,6 +14,8 @@
 
 package org.havenask.engine;
 
+import static org.havenask.engine.HavenaskEnginePlugin.HAVENASK_THREAD_POOL_NAME;
+
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.DirectoryStream;
@@ -27,6 +29,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -63,10 +66,6 @@ import org.havenask.engine.util.RangeUtil;
 import org.havenask.engine.util.Utils;
 import org.havenask.threadpool.ThreadPool;
 
-import java.util.Set;
-
-import static org.havenask.engine.HavenaskEnginePlugin.HAVENASK_THREAD_POOL_NAME;
-
 public class MetaDataSyncer extends AbstractLifecycleComponent {
     private static final Logger LOGGER = LogManager.getLogger(MetaDataSyncer.class);
 
@@ -95,7 +94,16 @@ public class MetaDataSyncer extends AbstractLifecycleComponent {
     private static final String HAVENASK_SEARCHER_HOME = "general_p0_r0";
     private static final String HAVENASK_QRS_HOME = "qrs";
     private static final String DEFAULT_BIZ_CONFIG = "zones/general/default_biz.json";
-    private static final String[] cm2ConfigBizNames = { "general.default_sql" };
+    private static final String[] cm2ConfigBizNames = {
+            "general.para_search_2",
+            "general.para_search_2.search",
+            "general.default_sql",
+            "general.para_search_4",
+            "general.default.search",
+            "general.default_agg",
+            "general.default_agg.search",
+            "general.default",
+            "general.para_search_4.search" };
 
     private final Path defaultBizsPath;
     private final Path defaultTablePath;
