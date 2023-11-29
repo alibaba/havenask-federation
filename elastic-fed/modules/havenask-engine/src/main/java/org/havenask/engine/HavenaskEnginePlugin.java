@@ -49,8 +49,10 @@ import org.havenask.engine.rpc.arpc.SearcherArpcClient;
 import org.havenask.engine.rpc.http.QrsHttpClient;
 import org.havenask.engine.rpc.http.SearcherHttpClient;
 import org.havenask.engine.search.HavenaskFetchPhase;
+import org.havenask.engine.search.action.HavenaskSearchAction;
 import org.havenask.engine.search.action.HavenaskSqlAction;
 import org.havenask.engine.search.action.HavenaskSqlClientInfoAction;
+import org.havenask.engine.search.action.TransportHavenaskSearchAction;
 import org.havenask.engine.search.action.TransportHavenaskSqlAction;
 import org.havenask.engine.search.action.TransportHavenaskSqlClientInfoAction;
 import org.havenask.engine.search.rest.RestHavenaskSqlAction;
@@ -260,7 +262,8 @@ public class HavenaskEnginePlugin extends Plugin
         return Arrays.asList(
             new ActionHandler<>(HavenaskSqlAction.INSTANCE, TransportHavenaskSqlAction.class),
             new ActionHandler<>(HavenaskSqlClientInfoAction.INSTANCE, TransportHavenaskSqlClientInfoAction.class),
-            new ActionHandler<>(HavenaskStopAction.INSTANCE, TransportHavenaskStopAction.class)
+            new ActionHandler<>(HavenaskStopAction.INSTANCE, TransportHavenaskStopAction.class),
+            new ActionHandler<>(HavenaskSearchAction.INSTANCE, TransportHavenaskSearchAction.class)
         );
     }
 

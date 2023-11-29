@@ -164,6 +164,7 @@ examples:
         self.parser.add_option('', '--searcherLocalSubscribe', action='store_true', dest='searcherLocalSubscribe', default=False)
         self.parser.add_option('', '--enablePublishTableTopoInfo', action='store_true', dest='enablePublishTableTopoInfo', default=False)
         self.parser.add_option('', '--force_tablet_load', action='store_true', dest='forceTabletLoad', default=False)
+        self.parser.add_option('', '--qrsLoadTarget', action='store_true', dest='qrsLoadTarget', default=False)
 
     def parseParams(self, optionList):
         self.optionList = optionList
@@ -400,16 +401,16 @@ examples:
                 json.dump(self.gigInfos, f)
 
         if self.role == "all" or self.role == "qrs":
-            with open(os.path.join(self.workdir, "readyZones.json"), "r") as f:
-                self.gigInfos = json.load(f)
             qrs_ret = self.startQrs()
             if qrs_ret != 0:
                 return qrs_ret, ("", "start qrs failed", -1)
 
-            ret = self.loadQrsTarget(terminator.left_time())
-            if ret != 0:
-                return ret, ("", "load qrs target failed", -1)
-
+            if self.qrsLoadTarget:
+                with open(os.path.join(self.workdir, "readyZones.json"), "r") as f:
+                    self.gigInfos = json.load(f)
+                ret = self.loadQrsTarget(terminator.left_time())
+                if ret != 0:
+                    return ret, ("", "load qrs target failed", -1)
 
         return 0, ("", "", 0)
 
@@ -1102,7 +1103,6 @@ examples:
             atables = os.listdir(self.indexPath)
             zoneGid = self._getMaxGenerationId(self.indexPath, self.mainTableName)
             partitions = self._getPartitions(self.indexPath, self.mainTableName, zoneGid)
-            total_partition_count = self._getTotalPartitionCount(partitions[0])
 
             fullPartition = "0_65535"
             partCnt = len(partitions)
@@ -1143,6 +1143,8 @@ examples:
                             raise Exception("table %s : len(curTablePartitions)(%d) != maxPartCnt(%d)" % (tableName, curTablePartitionCnt, maxPartCnt))
                     else:
                         tablePartition = curTablePartitions
+
+                    total_partition_count = self._getTotalPartitionCount(curTablePartitions[0])
 
                     tableGid = curTableGid
                     zoneDirName = self.genRoleName((zoneName, partId, replicaId))

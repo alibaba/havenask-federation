@@ -55,7 +55,6 @@ import org.havenask.engine.rpc.QrsClient;
 import org.havenask.engine.rpc.QrsSqlRequest;
 import org.havenask.engine.rpc.QrsSqlResponse;
 import org.havenask.engine.rpc.SearcherClient;
-import org.havenask.engine.rpc.SqlClientInfoResponse;
 import org.havenask.engine.rpc.TargetInfo;
 import org.havenask.engine.rpc.WriteRequest;
 import org.havenask.engine.rpc.WriteResponse;
@@ -180,7 +179,7 @@ public class HavenaskEngine extends InternalEngine {
 
         // 加载配置表
         try {
-            metaDataSyncer.setPendingSync();
+            metaDataSyncer.setSearcherPendingSync();
             checkTableStatus();
         } catch (IOException e) {
             logger.error(() -> new ParameterizedMessage("shard [{}] activeTable exception", engineConfig.getShardId()), e);
@@ -266,18 +265,6 @@ public class HavenaskEngine extends InternalEngine {
                     throw new IOException("havenask partition not found in searcher");
                 }
 
-                SqlClientInfoResponse sqlClientInfoResponse = qrsHttpClient.executeSqlClientInfo();
-                if (sqlClientInfoResponse.getErrorCode() != 0) {
-                    throw new IOException("havenask execute sql client info failed");
-                }
-
-                if (false == sqlClientInfoResponse.getResult()
-                    .getJSONObject("default")
-                    .getJSONObject("general")
-                    .getJSONObject("tables")
-                    .containsKey(tableName)) {
-                    throw new IOException("havenask table not found in qrs");
-                }
                 return;
             } catch (Exception e) {
                 logger.debug(
@@ -560,7 +547,8 @@ public class HavenaskEngine extends InternalEngine {
         try {
             String sql = String.format(
                 Locale.ROOT,
-                "select _routing,_seq_no,_primary_term,_version,_source from %s_summary_ where _id='%s'",
+                "select /*+ SCAN_ATTR(partitionIds='%d')*/ _routing,_seq_no,_primary_term,_version,_source from %s_summary_ where _id='%s'",
+                shardId.id(),
                 tableName,
                 get.id()
             );
@@ -826,7 +814,7 @@ public class HavenaskEngine extends InternalEngine {
     long getDocCount() {
         long docCount = 0;
         try {
-            String sql = String.format(Locale.ROOT, "select count(*) from %s", tableName);
+            String sql = String.format(Locale.ROOT, "select /*+ SCAN_ATTR(partitionIds='%d')*/ count(*) from %s", shardId.id(), tableName);
             String kvpair = "format:full_json;timeout:10000;databaseName:" + SQL_DATABASE;
             QrsSqlRequest request = new QrsSqlRequest(sql, kvpair);
             QrsSqlResponse response = qrsHttpClient.executeSql(request);
