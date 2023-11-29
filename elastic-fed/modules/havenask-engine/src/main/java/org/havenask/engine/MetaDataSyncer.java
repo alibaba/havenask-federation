@@ -95,8 +95,7 @@ public class MetaDataSyncer extends AbstractLifecycleComponent {
     private static final String HAVENASK_SEARCHER_HOME = "general_p0_r0";
     private static final String HAVENASK_QRS_HOME = "qrs";
     private static final String DEFAULT_BIZ_CONFIG = "zones/general/default_biz.json";
-    private static final String[] cm2ConfigBizNames = {
-        "general.default_sql" };
+    private static final String[] cm2ConfigBizNames = { "general.default_sql" };
 
     private final Path defaultBizsPath;
     private final Path defaultTablePath;
