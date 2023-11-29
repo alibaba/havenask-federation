@@ -24,6 +24,7 @@ import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
@@ -83,9 +84,7 @@ import static org.havenask.engine.HavenaskEnginePlugin.HAVENASK_THREAD_POOL_NAME
 
 public class MetaDataSyncer extends AbstractLifecycleComponent implements ClusterStateApplier {
     private static final Logger LOGGER = LogManager.getLogger(MetaDataSyncer.class);
-
     private static final int MAX_SYNC_TIMES = 30;
-    private static final int MAX_QRS_SYNC_TIMES = 120;
     private static final int TARGET_VERSION = 1651870394;
     private static final int DEFAULT_PART_COUNT = 1;
     private static final int DEFAULT_PART_ID = 0;
@@ -120,7 +119,9 @@ public class MetaDataSyncer extends AbstractLifecycleComponent implements Cluste
         "general.default_agg.search",
         "general.default",
         "general.para_search_4.search" };
-
+    private static final String cm2ConfigInfoPrefix = "general_p0_r0_general.default_sql_";
+    private static final String cm2ConfigSearcherGrpcPort = "havenask.searcher.grpc.port";
+    private static final String cm2ConfigSearcherTcpPort = "havenask.searcher.tcp.port";
     private final Path defaultBizsPath;
     private final Path defaultTablePath;
     private final Path defaultRuntimeDataPath;
@@ -139,14 +140,15 @@ public class MetaDataSyncer extends AbstractLifecycleComponent implements Cluste
     private int randomVersion;
     private int generalSqlRandomVersion;
     private Random random;
-
-    private AtomicBoolean qrsIsUpdating = new AtomicBoolean(false);
     // synced标识metadata当前是否已经同步
     // pending标识是否需要同步, 解决元数据并发修改和更新的同步问题, 由于同步是异步的, 所以需要pending标识是否需要同步
-    private AtomicBoolean synced = new AtomicBoolean(false);
-    private AtomicBoolean pending = new AtomicBoolean(false);
+    private AtomicBoolean searcherSynced = new AtomicBoolean(false);
+    private AtomicBoolean searcherPending = new AtomicBoolean(false);
+    private AtomicBoolean qrsSynced = new AtomicBoolean(false);
+    private AtomicBoolean qrsPending = new AtomicBoolean(false);
     private AtomicReference<TargetInfo> searcherTargetInfo = new AtomicReference<>();
     private int syncTimes = 0;
+    private int qrsSyncTimes = 0;
 
     private ConcurrentMap<String, ReentrantLock> indexLockMap = new ConcurrentHashMap<>();
 
@@ -247,12 +249,12 @@ public class MetaDataSyncer extends AbstractLifecycleComponent implements Cluste
                     // 1. pending为true
                     // 2. synced为false
                     // 3. syncTimes小于MAX_SYNC_TIMES
-                    if (pending.getAndSet(false) == true || synced.get() == false || syncTimes > MAX_SYNC_TIMES) {
+                    if (searcherPending.getAndSet(false) == true || searcherSynced.get() == false || syncTimes > MAX_SYNC_TIMES) {
                         // update searcher heartbeat target
                         LOGGER.info(
                             "update searcher heartbeat target, synced: {}, pending: {}, syncTimes: {}",
-                            synced.get(),
-                            pending.get(),
+                            searcherSynced.get(),
+                            searcherPending.get(),
                             syncTimes
                         );
 
@@ -268,7 +270,7 @@ public class MetaDataSyncer extends AbstractLifecycleComponent implements Cluste
                                 LOGGER.trace("searcher Equals success, update version");
 
                                 LOGGER.info("update searcher heartbeat target success");
-                                synced.set(true);
+                                searcherSynced.set(true);
                                 searcherTargetInfo.set(searcherResponse.getCustomInfo());
                                 syncTimes = 0;
                                 return;
@@ -283,7 +285,7 @@ public class MetaDataSyncer extends AbstractLifecycleComponent implements Cluste
                             LOGGER.error("update searcher heartbeat target failed", e);
                         }
 
-                        synced.set(false);
+                        searcherSynced.set(false);
                     } else {
                         syncTimes++;
                     }
@@ -291,12 +293,52 @@ public class MetaDataSyncer extends AbstractLifecycleComponent implements Cluste
             }
 
             if (isIngestNode) {
-                if (syncTimes > MAX_SYNC_TIMES && false == qrsIsUpdating.getAndSet(true)) {
-                    LOGGER.trace("update qrs target, guaranteed");
-                    updateQrsTargetInfo(clusterService.state());
-                    syncTimes = 0;
-                } else {
-                    syncTimes++;
+                ClusterState clusterState = clusterService.state();
+
+                synchronized (this) {
+                    // qrs 的元数据同步, 触发条件
+                    // 1. qrsPending为true
+                    // 2. qrsSynced为false
+                    // 3. qrsSyncTimes大于MAX_SYNC_TIMES
+                    if (qrsPending.getAndSet(false) == true || qrsSynced.get() == false || qrsSyncTimes > MAX_SYNC_TIMES) {
+                        // update qrs heartbeat target
+                        LOGGER.info(
+                            "update qrs heartbeat target, qrsSynced: {}, qrsPending: {}, qrsSyncTimes: {}",
+                            qrsSynced.get(),
+                            qrsPending.get(),
+                            qrsSyncTimes
+                        );
+
+                        try {
+                            UpdateHeartbeatTargetRequest qrsTargetRequest = createQrsUpdateHeartbeatTargetRequest(clusterState);
+                            HeartbeatTargetResponse qrsResponse = qrsClient.updateHeartbeatTarget(qrsTargetRequest);
+
+                            boolean qrsEquals = qrsTargetRequest.getTargetInfo().equals(qrsResponse.getSignature());
+                            if (qrsEquals) {
+                                randomVersion = random.nextInt(100000) + 1;
+                                generalSqlRandomVersion = random.nextInt(100000) + 1;
+                                LOGGER.trace("qrs Equals success, update version");
+
+                                LOGGER.info("update qrs heartbeat target success");
+                                qrsSynced.set(true);
+                                qrsSyncTimes = 0;
+                                return;
+                            } else {
+                                LOGGER.trace(
+                                    "update qrs heartbeat target failed, qrsTargetRequest: {}, qrsResponse: {}",
+                                    Strings.toString(qrsTargetRequest),
+                                    Strings.toString(qrsResponse)
+                                );
+                            }
+
+                        } catch (Throwable e) {
+                            LOGGER.error("update qrs heartbeat target failed, ", e);
+                        }
+
+                        qrsSynced.set(false);
+                    } else {
+                        qrsSyncTimes++;
+                    }
                 }
             }
         }
@@ -308,11 +350,9 @@ public class MetaDataSyncer extends AbstractLifecycleComponent implements Cluste
 
     @Override
     public void applyClusterState(ClusterChangedEvent event) {
-        // TODO: 是否需要类似searcher的30s触发一次的兜底同步逻辑
-        if (isIngestNode && shouldUpdateQrs(event.previousState(), event.state()) && false == qrsIsUpdating.getAndSet(true)) {
+        if (isIngestNode && shouldUpdateQrs(event.previousState(), event.state())) {
             // update qrs target
-            updateQrsTargetInfo(event.state());
-            syncTimes = 0;
+            setQrsPendingSync();
         }
     }
 
@@ -330,46 +370,6 @@ public class MetaDataSyncer extends AbstractLifecycleComponent implements Cluste
         return false;
     }
 
-    private void updateQrsTargetInfo(ClusterState clusterState) {
-        threadPool.executor(HavenaskEnginePlugin.HAVENASK_THREAD_POOL_NAME).execute(() -> {
-            boolean qrsEquals = false;
-            int qrsSyncTimes = 0;
-            try {
-                while (false == qrsEquals) {
-                    UpdateHeartbeatTargetRequest qrsTargetRequest = createQrsUpdateHeartbeatTargetRequest(clusterState);
-                    HeartbeatTargetResponse qrsResponse = qrsClient.updateHeartbeatTarget(qrsTargetRequest);
-
-                    qrsEquals = qrsTargetRequest.getTargetInfo().equals(qrsResponse.getSignature());
-                    if (false == qrsEquals) {
-                        LOGGER.trace(
-                            "update qrs heartbeat target failed, qrsTargetRequest: {}, qrsResponse: {}",
-                            Strings.toString(qrsTargetRequest),
-                            Strings.toString(qrsResponse)
-                        );
-                        Thread.sleep(1000);
-                        ++qrsSyncTimes;
-                        if (qrsSyncTimes > MAX_QRS_SYNC_TIMES) {
-                            LOGGER.error("update qrs heartbeat target time out, qrsSyncTimes: {}", qrsSyncTimes);
-                            qrsIsUpdating.set(false);
-                            return;
-                        }
-                    }
-                }
-            } catch (Throwable e) {
-                LOGGER.error("update qrs heartbeat target failed", e);
-            }
-
-            if (qrsEquals) {
-                randomVersion = random.nextInt(100000) + 1;
-                generalSqlRandomVersion = random.nextInt(100000) + 1;
-                LOGGER.trace("searcher Equals success, update version");
-
-                LOGGER.info("update qrs heartbeat target success");
-                qrsIsUpdating.set(false);
-            }
-        });
-    }
-
     /**
      * 获取searcher target info
      *
@@ -382,9 +382,16 @@ public class MetaDataSyncer extends AbstractLifecycleComponent implements Cluste
     /**
      * 设置sync metadata
      */
-    public synchronized void setPendingSync() {
-        pending.set(true);
+    public synchronized void setSearcherPendingSync() {
+        searcherPending.set(true);
         searcherTargetInfo.set(null);
+    }
+
+    /**
+     * 设置qrsSync metadata
+     */
+    public synchronized void setQrsPendingSync() {
+        qrsPending.set(true);
     }
 
     public UpdateHeartbeatTargetRequest createQrsUpdateHeartbeatTargetRequest(ClusterState clusterState) throws IOException {
@@ -404,22 +411,30 @@ public class MetaDataSyncer extends AbstractLifecycleComponent implements Cluste
         qrsTargetInfo.catalog_address = ip + ":" + qrsTcpPort;
 
         List<TargetInfo.ServiceInfo.Cm2Config> cm2ConfigLocalVal = new ArrayList<>();
-        for (String bizName : cm2ConfigBizNames) {
+        Iterator<DiscoveryNode> dataNodeIterator = clusterState.nodes().getDataNodes().valuesIt();
+        int partCount = clusterState.nodes().getDataNodes().size();
+        int partId = 0;
+        while (dataNodeIterator.hasNext()) {
+            DiscoveryNode dataNode = dataNodeIterator.next();
+
             TargetInfo.ServiceInfo.Cm2Config curCm2Config = new TargetInfo.ServiceInfo.Cm2Config();
-            curCm2Config.part_count = DEFAULT_PART_COUNT;
-            curCm2Config.biz_name = bizName;
-            curCm2Config.ip = ip;
-            if (GENERAL_DEFAULT_SQL == bizName) {
-                curCm2Config.version = generalSqlRandomVersion;
-            } else {
-                curCm2Config.version = BASE_VERSION + randomVersion;
-            }
-            curCm2Config.part_id = DEFAULT_PART_ID;
-            curCm2Config.tcp_port = searcherTcpPort;
+            curCm2Config.biz_name = GENERAL_DEFAULT_SQL;
+            curCm2Config.ip = dataNode.getHostName();
+            curCm2Config.grpc_port = dataNode.getAttributes().size() > 0
+                ? Integer.valueOf(dataNode.getAttributes().get(cm2ConfigSearcherGrpcPort))
+                : searcherGrpcPort;
+            curCm2Config.tcp_port = dataNode.getAttributes().size() > 0
+                ? Integer.valueOf(dataNode.getAttributes().get(cm2ConfigSearcherTcpPort))
+                : searcherTcpPort;
+            curCm2Config.version = generalSqlRandomVersion;
+            curCm2Config.part_count = partCount;
+            curCm2Config.part_id = partId;
             curCm2Config.support_heartbeat = DEFAULT_SUPPORT_HEARTBEAT;
-            curCm2Config.grpc_port = searcherGrpcPort;
             cm2ConfigLocalVal.add(curCm2Config);
+
+            partId++;
         }
+
         qrsTargetInfo.service_info.cm2_config = new HashMap<>();
         qrsTargetInfo.service_info.cm2_config.put(DEFAULT_CM2_CONFIG_LOCAL, cm2ConfigLocalVal);
 
@@ -441,37 +456,37 @@ public class MetaDataSyncer extends AbstractLifecycleComponent implements Cluste
         );
         searcherTargetInfo.biz_info = new TargetInfo.BizInfo(defaultBizsPath);
 
-        List<String> subDirNames = getSubDirNames(clusterState);
-        for (String tableName : subDirNames) {
+        List<String> IndexNames = getIndexNames(clusterState);
+        for (String tableName : IndexNames) {
             createConfigLink(HAVENASK_SEARCHER_HOME, "table", tableName, defaultTablePath, env.getDataPath());
         }
-        subDirNames.add(TABLE_NAME_IN0);
+        IndexNames.add(TABLE_NAME_IN0);
 
         // update table info
-        generateDefaultBizConfig(subDirNames);
+        generateDefaultBizConfig(IndexNames);
 
         searcherTargetInfo.table_info = new HashMap<>();
         Map<String, Tuple<Integer, Set<Integer>>> indexShards = getIndexShards(clusterState);
-        for (String subDir : subDirNames) {
+        for (String index : IndexNames) {
             String configPath = defaultTablePath.toString();
             String indexRoot = indexRootPath.toString();
 
             TargetInfo.TableInfo curTableInfo;
-            if (TABLE_NAME_IN0 == subDir) {
+            if (TABLE_NAME_IN0 == index) {
                 int tableMode = 0;
                 int tableType = 3;
 
                 int totalPartitionCount = IN0_PARTITION_COUNT;
                 Map<String, TargetInfo.TableInfo.Partition> partitions = new HashMap<>();
                 {
-                    Path versionPath = defaultRuntimeDataPath.resolve(subDir).resolve(INDEX_SUB_PATH0);
+                    Path versionPath = defaultRuntimeDataPath.resolve(index).resolve(INDEX_SUB_PATH0);
                     TargetInfo.TableInfo.Partition curPartition = new TargetInfo.TableInfo.Partition();
                     curPartition.inc_version = extractIncVersion(Utils.getIndexMaxVersion(versionPath));
                     partitions.put(DEFAULT_PARTITION_NAME0, curPartition);
                 }
 
                 {
-                    Path versionPath = defaultRuntimeDataPath.resolve(subDir).resolve(INDEX_SUB_PATH1);
+                    Path versionPath = defaultRuntimeDataPath.resolve(index).resolve(INDEX_SUB_PATH1);
                     TargetInfo.TableInfo.Partition curPartition = new TargetInfo.TableInfo.Partition();
                     curPartition.inc_version = extractIncVersion(Utils.getIndexMaxVersion(versionPath));
                     partitions.put(DEFAULT_PARTITION_NAME1, curPartition);
@@ -481,14 +496,14 @@ public class MetaDataSyncer extends AbstractLifecycleComponent implements Cluste
             } else {
                 int tableMode = 1;
                 int tableType = 2;
-                Tuple<Integer, Set<Integer>> shards = indexShards.get(subDir);
+                Tuple<Integer, Set<Integer>> shards = indexShards.get(index);
                 int totalPartitionCount = shards.v1();
                 Map<String, TargetInfo.TableInfo.Partition> partitions = new HashMap<>();
                 shards.v2().forEach(shardId -> {
                     String partitionName = RangeUtil.getRangePartition(totalPartitionCount, shardId);
                     String partitionId = RangeUtil.getRangeName(totalPartitionCount, shardId);
                     TargetInfo.TableInfo.Partition curPartition = new TargetInfo.TableInfo.Partition();
-                    Path versionPath = defaultRuntimeDataPath.resolve(subDir).resolve("generation_0").resolve(partitionName);
+                    Path versionPath = defaultRuntimeDataPath.resolve(index).resolve("generation_0").resolve(partitionName);
                     curPartition.inc_version = extractIncVersion(Utils.getIndexMaxVersion(versionPath));
                     partitions.put(partitionId, curPartition);
                 });
@@ -497,10 +512,10 @@ public class MetaDataSyncer extends AbstractLifecycleComponent implements Cluste
 
             Map<String, TargetInfo.TableInfo> innerMap = new HashMap<>() {
                 {
-                    put(getMaxGenerationId(defaultRuntimeDataPath, subDir), curTableInfo);
+                    put(getMaxGenerationId(defaultRuntimeDataPath, index), curTableInfo);
                 }
             };
-            searcherTargetInfo.table_info.put(subDir, innerMap);
+            searcherTargetInfo.table_info.put(index, innerMap);
         }
 
         return new UpdateHeartbeatTargetRequest(searcherTargetInfo);
@@ -577,8 +592,8 @@ public class MetaDataSyncer extends AbstractLifecycleComponent implements Cluste
         return String.valueOf(maxId);
     }
 
-    private static List<String> getSubDirNames(ClusterState clusterState) {
-        List<String> subDirNames = new ArrayList<>();
+    private static List<String> getIndexNames(ClusterState clusterState) {
+        List<String> IndexNames = new ArrayList<>();
         RoutingNode localRoutingNode = clusterState.getRoutingNodes().node(clusterState.nodes().getLocalNodeId());
         if (localRoutingNode == null) {
             throw new RuntimeException("localRoutingNode is null");
@@ -588,10 +603,10 @@ public class MetaDataSyncer extends AbstractLifecycleComponent implements Cluste
             IndexMetadata indexMetadata = clusterState.metadata().index(shardRouting.getIndexName());
             if (EngineSettings.isHavenaskEngine(indexMetadata.getSettings())) {
                 String tableName = Utils.getHavenaskTableName(shardRouting.shardId());
-                subDirNames.add(tableName);
+                IndexNames.add(tableName);
             }
         }
-        return subDirNames;
+        return IndexNames;
     }
 
     private static Map<String, Tuple<Integer, Set<Integer>>> getIndexShards(ClusterState clusterState) {
@@ -656,6 +671,20 @@ public class MetaDataSyncer extends AbstractLifecycleComponent implements Cluste
 
     private boolean isHavenaskShardChanged(ClusterState prevClusterState, ClusterState curClusterState) {
         // TODO : 识别shard搬迁的case
+        for (RoutingNode routingNode : prevClusterState.getRoutingNodes()) {
+            for (ShardRouting shardRouting : routingNode) {
+                IndexMetadata indexMetadata = prevClusterState.metadata().index(shardRouting.index().getName());
+                if (false == EngineSettings.isHavenaskEngine(indexMetadata.getSettings())) {
+                    continue;
+                }
+                ShardRouting curShardRouting = curClusterState.getRoutingNodes()
+                    .node(routingNode.nodeId())
+                    .getByShardId(shardRouting.shardId());
+                if (curShardRouting == null || curShardRouting.getTargetRelocatingShard() != null) {
+                    return true;
+                }
+            }
+        }
         return false;
     }
 }

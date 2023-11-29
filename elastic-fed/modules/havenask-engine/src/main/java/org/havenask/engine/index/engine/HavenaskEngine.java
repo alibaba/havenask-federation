@@ -179,7 +179,7 @@ public class HavenaskEngine extends InternalEngine {
 
         // 加载配置表
         try {
-            metaDataSyncer.setPendingSync();
+            metaDataSyncer.setSearcherPendingSync();
             checkTableStatus();
         } catch (IOException e) {
             logger.error(() -> new ParameterizedMessage("shard [{}] activeTable exception", engineConfig.getShardId()), e);

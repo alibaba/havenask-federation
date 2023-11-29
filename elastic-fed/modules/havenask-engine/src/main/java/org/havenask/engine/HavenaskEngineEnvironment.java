@@ -242,7 +242,7 @@ public class HavenaskEngineEnvironment implements CustomEnvironment {
             LOGGER.debug("get lock while deleting index, table name :[{}]", tableName);
             try {
                 if (metaDataSyncer != null) {
-                    metaDataSyncer.setPendingSync();
+                    metaDataSyncer.setSearcherPendingSync();
                     try {
                         checkIndexIsDeletedInSearcher(metaDataSyncer, tableName);
                     } catch (IOException e) {
@@ -276,7 +276,7 @@ public class HavenaskEngineEnvironment implements CustomEnvironment {
             LOGGER.debug("get lock while deleting shard, table name :[{}], partitionId:[{}]", tableName, partitionId);
             try {
                 if (metaDataSyncer != null) {
-                    metaDataSyncer.setPendingSync();
+                    metaDataSyncer.setSearcherPendingSync();
                     try {
                         checkShardIsDeletedInSearcher(metaDataSyncer, tableName, partitionId);
                     } catch (IOException e) {
