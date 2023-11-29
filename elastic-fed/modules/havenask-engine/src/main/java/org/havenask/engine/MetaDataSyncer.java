@@ -22,12 +22,14 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -64,22 +66,6 @@ import org.havenask.engine.util.RangeUtil;
 import org.havenask.engine.util.Utils;
 import org.havenask.threadpool.ThreadPool;
 
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.DirectoryStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
-import java.nio.file.StandardOpenOption;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Random;
-import java.util.Set;
-
 import static org.havenask.engine.HavenaskEnginePlugin.HAVENASK_THREAD_POOL_NAME;
 
 public class MetaDataSyncer extends AbstractLifecycleComponent implements ClusterStateApplier {
@@ -90,7 +76,6 @@ public class MetaDataSyncer extends AbstractLifecycleComponent implements Cluste
     private static final int DEFAULT_PART_ID = 0;
     private static final int DEFAULT_VERSION = 0;
     private static final int IN0_PARTITION_COUNT = 2;
-    private static final int BASE_VERSION = 2104320000;
     private static final boolean DEFAULT_SUPPORT_HEARTBEAT = true;
     private static final boolean CLEAN_DISK = false;
     private static final String TABLE_NAME_IN0 = "in0";
@@ -109,17 +94,6 @@ public class MetaDataSyncer extends AbstractLifecycleComponent implements Cluste
     private static final String HAVENASK_SEARCHER_HOME = "general_p0_r0";
     private static final String HAVENASK_QRS_HOME = "qrs";
     private static final String DEFAULT_BIZ_CONFIG = "zones/general/default_biz.json";
-    private static final String[] cm2ConfigBizNames = {
-        "general.para_search_2",
-        "general.para_search_2.search",
-        "general.default_sql",
-        "general.para_search_4",
-        "general.default.search",
-        "general.default_agg",
-        "general.default_agg.search",
-        "general.default",
-        "general.para_search_4.search" };
-    private static final String cm2ConfigInfoPrefix = "general_p0_r0_general.default_sql_";
     private static final String cm2ConfigSearcherGrpcPort = "havenask.searcher.grpc.port";
     private static final String cm2ConfigSearcherTcpPort = "havenask.searcher.tcp.port";
     private final Path defaultBizsPath;
@@ -137,7 +111,6 @@ public class MetaDataSyncer extends AbstractLifecycleComponent implements Cluste
     private final boolean enabled;
     private final boolean isDataNode;
     private final boolean isIngestNode;
-    private int randomVersion;
     private int generalSqlRandomVersion;
     private Random random;
     // synced标识metadata当前是否已经同步
@@ -180,7 +153,6 @@ public class MetaDataSyncer extends AbstractLifecycleComponent implements Cluste
         enabled = HavenaskEnginePlugin.HAVENASK_ENGINE_ENABLED_SETTING.get(settings);
 
         random = new Random();
-        randomVersion = random.nextInt(100000) + 1;
         generalSqlRandomVersion = random.nextInt(100000) + 1;
     }
 
@@ -265,10 +237,6 @@ public class MetaDataSyncer extends AbstractLifecycleComponent implements Cluste
                             boolean searcherEquals = searcherTargetRequest.getTargetInfo().equals(searcherResponse.getSignature());
 
                             if (searcherEquals) {
-                                // TODO: randomVersion的内容如何修改
-                                randomVersion = random.nextInt(100000) + 1;
-                                LOGGER.trace("searcher Equals success, update version");
-
                                 LOGGER.info("update searcher heartbeat target success");
                                 searcherSynced.set(true);
                                 searcherTargetInfo.set(searcherResponse.getCustomInfo());
@@ -315,7 +283,6 @@ public class MetaDataSyncer extends AbstractLifecycleComponent implements Cluste
 
                             boolean qrsEquals = qrsTargetRequest.getTargetInfo().equals(qrsResponse.getSignature());
                             if (qrsEquals) {
-                                randomVersion = random.nextInt(100000) + 1;
                                 generalSqlRandomVersion = random.nextInt(100000) + 1;
                                 LOGGER.trace("qrs Equals success, update version");
 
@@ -420,10 +387,10 @@ public class MetaDataSyncer extends AbstractLifecycleComponent implements Cluste
             TargetInfo.ServiceInfo.Cm2Config curCm2Config = new TargetInfo.ServiceInfo.Cm2Config();
             curCm2Config.biz_name = GENERAL_DEFAULT_SQL;
             curCm2Config.ip = dataNode.getHostName();
-            curCm2Config.grpc_port = dataNode.getAttributes().size() > 0
+            curCm2Config.grpc_port = dataNode.getAttributes() != null && dataNode.getAttributes().get(cm2ConfigSearcherGrpcPort) != null
                 ? Integer.valueOf(dataNode.getAttributes().get(cm2ConfigSearcherGrpcPort))
                 : searcherGrpcPort;
-            curCm2Config.tcp_port = dataNode.getAttributes().size() > 0
+            curCm2Config.tcp_port = dataNode.getAttributes() != null && dataNode.getAttributes().get(cm2ConfigSearcherTcpPort) != null
                 ? Integer.valueOf(dataNode.getAttributes().get(cm2ConfigSearcherTcpPort))
                 : searcherTcpPort;
             curCm2Config.version = generalSqlRandomVersion;
@@ -456,18 +423,18 @@ public class MetaDataSyncer extends AbstractLifecycleComponent implements Cluste
         );
         searcherTargetInfo.biz_info = new TargetInfo.BizInfo(defaultBizsPath);
 
-        List<String> IndexNames = getIndexNames(clusterState);
-        for (String tableName : IndexNames) {
+        List<String> indexNames = getIndexNames(clusterState);
+        for (String tableName : indexNames) {
             createConfigLink(HAVENASK_SEARCHER_HOME, "table", tableName, defaultTablePath, env.getDataPath());
         }
-        IndexNames.add(TABLE_NAME_IN0);
+        indexNames.add(TABLE_NAME_IN0);
 
         // update table info
-        generateDefaultBizConfig(IndexNames);
+        generateDefaultBizConfig(indexNames);
 
         searcherTargetInfo.table_info = new HashMap<>();
         Map<String, Tuple<Integer, Set<Integer>>> indexShards = getIndexShards(clusterState);
-        for (String index : IndexNames) {
+        for (String index : indexNames) {
             String configPath = defaultTablePath.toString();
             String indexRoot = indexRootPath.toString();
 
@@ -593,7 +560,7 @@ public class MetaDataSyncer extends AbstractLifecycleComponent implements Cluste
     }
 
     private static List<String> getIndexNames(ClusterState clusterState) {
-        List<String> IndexNames = new ArrayList<>();
+        List<String> indexNames = new ArrayList<>();
         RoutingNode localRoutingNode = clusterState.getRoutingNodes().node(clusterState.nodes().getLocalNodeId());
         if (localRoutingNode == null) {
             throw new RuntimeException("localRoutingNode is null");
@@ -603,10 +570,10 @@ public class MetaDataSyncer extends AbstractLifecycleComponent implements Cluste
             IndexMetadata indexMetadata = clusterState.metadata().index(shardRouting.getIndexName());
             if (EngineSettings.isHavenaskEngine(indexMetadata.getSettings())) {
                 String tableName = Utils.getHavenaskTableName(shardRouting.shardId());
-                IndexNames.add(tableName);
+                indexNames.add(tableName);
             }
         }
-        return IndexNames;
+        return indexNames;
     }
 
     private static Map<String, Tuple<Integer, Set<Integer>>> getIndexShards(ClusterState clusterState) {
