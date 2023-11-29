@@ -40,6 +40,7 @@
 package org.havenask.action.search;
 
 import org.havenask.action.ActionListener;
+import org.havenask.action.ActionListenerResponseHandler;
 import org.havenask.action.OriginalIndices;
 import org.havenask.action.admin.cluster.node.tasks.cancel.CancelTasksRequest;
 import org.havenask.action.admin.cluster.shards.ClusterSearchShardsGroup;
@@ -54,8 +55,10 @@ import org.havenask.client.node.NodeClient;
 import org.havenask.cluster.ClusterState;
 import org.havenask.cluster.block.ClusterBlockException;
 import org.havenask.cluster.block.ClusterBlockLevel;
+import org.havenask.cluster.metadata.IndexAbstraction;
 import org.havenask.cluster.metadata.IndexMetadata;
 import org.havenask.cluster.metadata.IndexNameExpressionResolver;
+import org.havenask.cluster.metadata.Metadata;
 import org.havenask.cluster.node.DiscoveryNode;
 import org.havenask.cluster.node.DiscoveryNodes;
 import org.havenask.cluster.routing.GroupShardsIterator;
@@ -131,6 +134,7 @@ public class TransportSearchAction extends HandledTransportAction<SearchRequest,
     private final NodeClient client;
     private final ThreadPool threadPool;
     private final ClusterService clusterService;
+    private final TransportService transportService;
     private final SearchTransportService searchTransportService;
     private final RemoteClusterService remoteClusterService;
     private final SearchPhaseController searchPhaseController;
@@ -156,6 +160,7 @@ public class TransportSearchAction extends HandledTransportAction<SearchRequest,
         this.threadPool = threadPool;
         this.circuitBreaker = circuitBreakerService.getBreaker(CircuitBreaker.REQUEST);
         this.searchPhaseController = searchPhaseController;
+        this.transportService = transportService;
         this.searchTransportService = searchTransportService;
         this.remoteClusterService = searchTransportService.getRemoteClusterService();
         SearchTransportService.registerRequestHandler(transportService, searchService);
@@ -244,9 +249,67 @@ public class TransportSearchAction extends HandledTransportAction<SearchRequest,
         }
     }
 
+    private static final String HAVENASK_SEARCH_ACTION = "indices:data/read/havenask/search";
+
+    public static boolean isSearchHavenask(Metadata metadata, SearchRequest searchRequest) {
+        if (searchRequest.indices().length != 1) {
+            // 大于一个索引
+            return false;
+        }
+
+        String index = searchRequest.indices()[0];
+        if (index.contains("*")) {
+            // 包含通配符
+            return false;
+        }
+
+        IndexAbstraction indexAbstraction = metadata.getIndicesLookup().get(index);
+        if (indexAbstraction == null) {
+            // 未找到索引
+            return false;
+        }
+
+        if (indexAbstraction instanceof IndexAbstraction.Index) {
+            IndexMetadata indexMetadata = indexAbstraction.getWriteIndex();
+            if ("havenask".equals(indexMetadata.getSettings().get("index.engine.type"))) {
+                // havenask索引
+                return true;
+            } else {
+                // 非havenask索引
+                return false;
+            }
+        } else if (indexAbstraction instanceof IndexAbstraction.Alias) {
+            List<IndexMetadata> indices = indexAbstraction.getIndices();
+            if (indices.size() > 1) {
+                // 别名关联的索引大于1
+                return false;
+            }
+
+            IndexMetadata indexMetadata = indexAbstraction.getWriteIndex();
+            if ("havenask".equals(indexMetadata.getSettings().get("index.engine.type"))) {
+                // havenask索引
+                return true;
+            } else {
+                // 非havenask索引
+                return false;
+            }
+        } else {
+            return false;
+        }
+    }
+
     @Override
     protected void doExecute(Task task, SearchRequest searchRequest, ActionListener<SearchResponse> listener) {
-        executeRequest(task, searchRequest, this::searchAsyncAction, listener);
+        if (isSearchHavenask(clusterService.state().metadata(), searchRequest)) {
+            transportService.sendRequest(
+                    clusterService.state().nodes().getLocalNode(),
+                    HAVENASK_SEARCH_ACTION,
+                    searchRequest,
+                    new ActionListenerResponseHandler<>(listener, SearchAction.INSTANCE.getResponseReader())
+            );
+        } else {
+            executeRequest(task, searchRequest, this::searchAsyncAction, listener);
+        }
     }
 
     public interface SinglePhaseSearchAction {
