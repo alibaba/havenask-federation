@@ -14,6 +14,8 @@
 
 package org.havenask.engine;
 
+import static org.havenask.engine.HavenaskEnginePlugin.HAVENASK_THREAD_POOL_NAME;
+
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.DirectoryStream;
@@ -65,8 +67,6 @@ import org.havenask.engine.rpc.UpdateHeartbeatTargetRequest;
 import org.havenask.engine.util.RangeUtil;
 import org.havenask.engine.util.Utils;
 import org.havenask.threadpool.ThreadPool;
-
-import static org.havenask.engine.HavenaskEnginePlugin.HAVENASK_THREAD_POOL_NAME;
 
 public class MetaDataSyncer extends AbstractLifecycleComponent implements ClusterStateApplier {
     private static final Logger LOGGER = LogManager.getLogger(MetaDataSyncer.class);

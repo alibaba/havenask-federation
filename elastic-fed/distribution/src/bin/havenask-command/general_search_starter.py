@@ -306,7 +306,7 @@ examples:
             self.startCmdTemplate += " ENABLE_PUBLISH_TABLE_TOPO_INFO=true"
 
         self.startCmdTemplate += " HIPPO_APP_INST_ROOT=" + self.binaryPath + " HIPPO_APP_WORKDIR=" + os.getcwd() + " TJ_RUNTIME_TEMP_DIR=" + self.binaryPath
-        self.startCmdTemplate += " PATH=$JAVA_HOME/bin:%s LD_LIBRARY_PATH=%s MALLOC_TRIM_THRESHOLD_=29360128 TCMALLOC_RELEASE_RATE=10 LD_PRELOAD=/usr/share/havenask/lib/libjemalloc.so.2 ha_sql --env roleType=%s -l %s -r %s -c %s --port arpc:%d --port http:%d --env httpPort=%d --env gigGrpcPort=%s --env serviceName=%s --env amonitorPath=%s/%s --env port=%d --env ip=%s --env userName=admin --env decodeUri=true --env haCompatible=true --env zoneName=%s --env roleName=%s_partition_%d --env partId=0 --env decisionLoopInterval=10000 --env dpThreadNum=1 --env loadThreadNum=4 --env load_biz_thread_num=4 --env kmonitorNormalSamplePeriod=1 --env naviPoolModeAsan=1 --env naviDisablePerf=1 --env WORKER_IDENTIFIER_FOR_CARBON= --env gigGrpcThreadNum=5 --env GRPC_CLIENT_CHANNEL_BACKUP_POLL_INTERVAL_MS=500 --env FAST_CLEAN_INC_VERSION=false --env navi_config_loader=%s"
+        self.startCmdTemplate += " PATH=$JAVA_HOME/bin:%s LD_LIBRARY_PATH=%s MALLOC_TRIM_THRESHOLD_=29360128 TCMALLOC_RELEASE_RATE=10 LD_PRELOAD=/usr/share/havenask/lib/libjemalloc.so.2 ha_sql --env roleType=%s -l %s -r %s -c %s --port arpc:%d --port http:%d --env httpPort=%d --env gigGrpcPort=%s --env serviceName=%s --env amonitorPath=%s/%s --env port=%d --env ip=%s --env userName=admin --env decodeUri=true --env haCompatible=true --env zoneName=%s --env roleName=%s_partition_%d --env partId=0 --env decisionLoopInterval=10000 --env dpThreadNum=1 --env loadThreadNum=4 --env load_biz_thread_num=4 --env searchNewBiz=true --env kmonitorNormalSamplePeriod=1 --env naviPoolModeAsan=1 --env naviDisablePerf=1 --env WORKER_IDENTIFIER_FOR_CARBON= --env gigGrpcThreadNum=5 --env GRPC_CLIENT_CHANNEL_BACKUP_POLL_INTERVAL_MS=500 --env FAST_CLEAN_INC_VERSION=false --env navi_config_loader=%s"
         if self.localBizService:
             self.startCmdTemplate += " --env localBizService=true"
         self.startCmdTemplate += " --env asyncInterExecutorType=simple"
@@ -317,7 +317,7 @@ examples:
         self.alogConfigPath = os.path.join(self.binaryPath, "usr/local/etc/sql/sql_alog.conf")
         self.searchCfg = os.path.join(self.binaryPath, "usr/local/etc/sql/search_server.cfg")
         self.qrsCfg = os.path.join(self.binaryPath, "usr/local/etc/sql/qrs_server.cfg")
-        self.config_loader = os.path.join(self.binaryPath, "usr/local/lib/python/site-packages/sql/sql_config_loader.py")
+        self.config_loader = os.path.join(self.binaryPath, "usr/local/lib/python/site-packages/sql/sql_config_loader_new.py")
         self.ip = socket.gethostbyname(socket.gethostname())
         self.gigInfos = {}
         cwd = os.getcwd()
