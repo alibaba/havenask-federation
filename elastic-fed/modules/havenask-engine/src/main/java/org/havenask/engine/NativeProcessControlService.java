@@ -66,34 +66,34 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
     private static final String GET_TABLE_SIZE_COMMAND = "du -sk %s | awk '{print $1}'";
 
     public static final Setting<Integer> HAVENASK_SEARCHER_HTTP_PORT_SETTING = Setting.intSetting(
-        "havenask.searcher.http.port",
+        "node.attr.havenask.searcher.http.port",
         39200,
         Property.NodeScope,
         Property.Final
     );
 
     public static final Setting<Integer> HAVENASK_SEARCHER_TCP_PORT_SETTING = Setting.intSetting(
-        "havenask.searcher.tcp.port",
+        "node.attr.havenask.searcher.tcp.port",
         39300,
         Property.NodeScope,
         Property.Final
     );
     public static final Setting<Integer> HAVENASK_SEARCHER_GRPC_PORT_SETTING = Setting.intSetting(
-        "havenask.searcher.grpc.port",
+        "node.attr.havenask.searcher.grpc.port",
         39400,
         Property.NodeScope,
         Property.Final
     );
 
     public static final Setting<Integer> HAVENASK_QRS_HTTP_PORT_SETTING = Setting.intSetting(
-        "havenask.qrs.http.port",
+        "node.attr.havenask.qrs.http.port",
         49200,
         Property.NodeScope,
         Property.Final
     );
 
     public static final Setting<Integer> HAVENASK_QRS_TCP_PORT_SETTING = Setting.intSetting(
-        "havenask.qrs.tcp.port",
+        "node.attr.havenask.qrs.tcp.port",
         49300,
         Property.NodeScope,
         Property.Final
@@ -101,7 +101,7 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
 
     // add timeout setting
     public static final Setting<TimeValue> HAVENASK_COMMAND_TIMEOUT_SETTING = Setting.timeSetting(
-        "havenask.command.timeout",
+        "node.attr.havenask.command.timeout",
         TimeValue.timeValueSeconds(60),
         Property.NodeScope,
         Property.Dynamic
