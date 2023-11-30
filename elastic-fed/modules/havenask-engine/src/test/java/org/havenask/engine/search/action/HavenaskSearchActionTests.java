@@ -81,11 +81,11 @@ public class HavenaskSearchActionTests extends HavenaskTestCase {
 
     private Metadata initMetadata() {
         IndexMetadata.Builder index1 = IndexMetadata.builder("havenask-1")
-            .settings(Settings.builder().put(IndexMetadata.SETTING_VERSION_CREATED, Version.CURRENT).put("index.engine.type", "havenask"))
+            .settings(Settings.builder().put(IndexMetadata.SETTING_VERSION_CREATED, Version.CURRENT).put("index.engine", "havenask"))
             .numberOfShards(1)
             .numberOfReplicas(0);
         IndexMetadata.Builder index2 = IndexMetadata.builder("havenask-2")
-            .settings(Settings.builder().put(IndexMetadata.SETTING_VERSION_CREATED, Version.CURRENT).put("index.engine.type", "havenask"))
+            .settings(Settings.builder().put(IndexMetadata.SETTING_VERSION_CREATED, Version.CURRENT).put("index.engine", "havenask"))
             .numberOfShards(1)
             .numberOfReplicas(0)
             .putAlias(AliasMetadata.builder("havenask-alias-1"));
