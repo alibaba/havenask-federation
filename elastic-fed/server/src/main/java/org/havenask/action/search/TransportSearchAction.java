@@ -271,7 +271,7 @@ public class TransportSearchAction extends HandledTransportAction<SearchRequest,
 
         if (indexAbstraction instanceof IndexAbstraction.Index) {
             IndexMetadata indexMetadata = indexAbstraction.getWriteIndex();
-            if ("havenask".equals(indexMetadata.getSettings().get("index.engine.type"))) {
+            if ("havenask".equals(indexMetadata.getSettings().get("index.engine"))) {
                 // havenask索引
                 return true;
             } else {
@@ -286,7 +286,7 @@ public class TransportSearchAction extends HandledTransportAction<SearchRequest,
             }
 
             IndexMetadata indexMetadata = indexAbstraction.getWriteIndex();
-            if ("havenask".equals(indexMetadata.getSettings().get("index.engine.type"))) {
+            if ("havenask".equals(indexMetadata.getSettings().get("index.engine"))) {
                 // havenask索引
                 return true;
             } else {
