@@ -33,6 +33,7 @@ import org.havenask.index.mapper.MapperService;
 import org.havenask.search.SearchHit;
 import org.havenask.search.SearchHits;
 import org.havenask.search.aggregations.InternalAggregations;
+import org.havenask.search.builder.SearchSourceBuilder;
 import org.havenask.search.fetch.subphase.FetchSourceContext;
 import org.havenask.search.internal.InternalSearchResponse;
 import org.havenask.search.profile.SearchProfileShardResults;
@@ -64,15 +65,15 @@ public class HavenaskSearchFetchProcessor {
         this.havenaskFetchSubPhases.add(new HavenaskFetchSourcePhase());
     }
 
-    public InternalSearchResponse executeFetch(SqlResponse queryPhaseSqlResponse, String tableName, FetchSourceContext fetchSourceContext)
+    public InternalSearchResponse executeFetch(SqlResponse queryPhaseSqlResponse, String tableName, SearchSourceBuilder searchSourceBuilder)
         throws IOException {
         List<String> idList = new ArrayList<>(queryPhaseSqlResponse.getRowCount());
         TopDocsAndMaxScore topDocsAndMaxScore = buildQuerySearchResult(queryPhaseSqlResponse, idList);
-        SqlResponse fetchPhaseSqlResponse = havenaskFetchWithSql(idList, tableName, fetchSourceContext, qrsClient);
-        return transferSqlResponse2FetchResult(tableName, idList, fetchPhaseSqlResponse, topDocsAndMaxScore, fetchSourceContext);
+        SqlResponse fetchPhaseSqlResponse = havenaskFetchWithSql(idList, tableName, searchSourceBuilder.fetchSource(), qrsClient);
+        return transferSqlResponse2FetchResult(tableName, idList, fetchPhaseSqlResponse, topDocsAndMaxScore, searchSourceBuilder);
     }
 
-    private TopDocsAndMaxScore buildQuerySearchResult(SqlResponse queryPhaseSqlResponse, List<String> idList) throws IOException {
+    public TopDocsAndMaxScore buildQuerySearchResult(SqlResponse queryPhaseSqlResponse, List<String> idList) throws IOException {
         ScoreDoc[] queryScoreDocs = new ScoreDoc[queryPhaseSqlResponse.getRowCount()];
         float maxScore = 0;
         int sqlDataSize = queryPhaseSqlResponse.getRowCount() > 0 ? queryPhaseSqlResponse.getSqlResult().getData()[0].length : 0;
@@ -96,7 +97,7 @@ public class HavenaskSearchFetchProcessor {
         return new TopDocsAndMaxScore(topDocs, maxScore);
     }
 
-    private SqlResponse havenaskFetchWithSql(
+    public SqlResponse havenaskFetchWithSql(
         List<String> idList,
         String tableName,
         FetchSourceContext fetchSourceContext,
@@ -131,17 +132,18 @@ public class HavenaskSearchFetchProcessor {
         return new QrsSqlRequest(sqlQuery.toString(), kvpair);
     }
 
-    private InternalSearchResponse transferSqlResponse2FetchResult(
+    public InternalSearchResponse transferSqlResponse2FetchResult(
         String tableName,
         List<String> idList,
         SqlResponse fetchPhaseSqlResponse,
         TopDocsAndMaxScore topDocsAndMaxScore,
-        FetchSourceContext fetchSourceContext
+        SearchSourceBuilder searchSourceBuilder
     ) throws IOException {
         int loadSize = idList.size();
         TotalHits totalHits = topDocsAndMaxScore.topDocs.totalHits;
         SearchHit[] hits = new SearchHit[loadSize];
-        List<HavenaskFetchSubPhaseProcessor> processors = getProcessors(tableName, fetchSourceContext);
+        FetchSourceContext fetchSourceContext = searchSourceBuilder.fetchSource();
+        List<HavenaskFetchSubPhaseProcessor> processors = getProcessors(tableName, searchSourceBuilder);
 
         // 记录fetch结果的_id和index的映射关系, query阶段查到的idList是根据_score值排序好的，但fetch结果非有序
         Map<String, Integer> fetchResIdListMap = new HashMap<>();
@@ -192,11 +194,11 @@ public class HavenaskSearchFetchProcessor {
         );
     }
 
-    List<HavenaskFetchSubPhaseProcessor> getProcessors(String tableName, FetchSourceContext fetchSourceContext) throws IOException {
+    List<HavenaskFetchSubPhaseProcessor> getProcessors(String tableName, SearchSourceBuilder searchSourceBuilder) throws IOException {
         try {
             List<HavenaskFetchSubPhaseProcessor> processors = new ArrayList<>();
             for (HavenaskFetchSubPhase fsp : havenaskFetchSubPhases) {
-                HavenaskFetchSubPhaseProcessor processor = fsp.getProcessor(tableName, fetchSourceContext);
+                HavenaskFetchSubPhaseProcessor processor = fsp.getProcessor(tableName, searchSourceBuilder);
                 if (processor != null) {
                     processors.add(processor);
                 }

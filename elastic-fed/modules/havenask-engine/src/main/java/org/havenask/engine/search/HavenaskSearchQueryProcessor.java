@@ -12,13 +12,26 @@
  *
  */
 
-package org.havenask.engine.index.engine;
+/*
+ * Copyright (c) 2021, Alibaba Group;
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *
+ */
+
+package org.havenask.engine.search;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.havenask.action.search.SearchRequest;
 import org.havenask.client.ha.SqlResponse;
-import org.havenask.cluster.ClusterState;
 import org.havenask.common.Strings;
 import org.havenask.engine.index.mapper.DenseVectorFieldMapper;
 import org.havenask.engine.index.query.ProximaQueryBuilder;
@@ -50,8 +63,8 @@ public class HavenaskSearchQueryProcessor {
         this.qrsClient = qrsClient;
     }
 
-    public SqlResponse executeQuery(ClusterState clusterState, SearchRequest request, String tableName) throws IOException {
-        String sql = transferSearchRequest2HavenaskSql(clusterState, request, tableName);
+    public SqlResponse executeQuery(SearchRequest request, String tableName, Map<String, Object> indexMapping) throws IOException {
+        String sql = transferSearchRequest2HavenaskSql(tableName, request.source(), indexMapping);
         String kvpair = "format:full_json;timeout:10000;databaseName:" + SQL_DATABASE;
         QrsSqlRequest qrsQueryPhaseSqlRequest = new QrsSqlRequest(sql, kvpair);
         QrsSqlResponse qrsQueryPhaseSqlResponse = qrsClient.executeSql(qrsQueryPhaseSqlRequest);
@@ -65,9 +78,8 @@ public class HavenaskSearchQueryProcessor {
         return queryPhaseSqlResponse;
     }
 
-    private String transferSearchRequest2HavenaskSql(ClusterState clusterState, SearchRequest request, String table) throws IOException {
-        SearchSourceBuilder dsl = request.source();
-
+    public String transferSearchRequest2HavenaskSql(String table, SearchSourceBuilder dsl, Map<String, Object> indexMapping)
+        throws IOException {
         StringBuilder sqlQuery = new StringBuilder();
         QueryBuilder queryBuilder = dsl.query();
         StringBuilder where = new StringBuilder();
@@ -86,7 +98,7 @@ public class HavenaskSearchQueryProcessor {
 
                 String fieldName = knnSearchBuilder.getField();
 
-                String similarity = getSimilarity(clusterState, table, fieldName);
+                String similarity = getSimilarity(table, fieldName, indexMapping);
                 if (similarity == null) {
                     throw new IOException(String.format(Locale.ROOT, "field: %s is not a vector type field", fieldName));
                 }
@@ -120,7 +132,7 @@ public class HavenaskSearchQueryProcessor {
                 ProximaQueryBuilder<?> proximaQueryBuilder = (ProximaQueryBuilder<?>) queryBuilder;
                 String fieldName = proximaQueryBuilder.getFieldName();
 
-                String similarity = getSimilarity(clusterState, table, fieldName);
+                String similarity = getSimilarity(table, fieldName, indexMapping);
                 if (similarity == null) {
                     throw new IOException(String.format(Locale.ROOT, "field: %s is not a vector type field", fieldName));
                 }
@@ -169,11 +181,10 @@ public class HavenaskSearchQueryProcessor {
     }
 
     @SuppressWarnings("unchecked")
-    private String getSimilarity(ClusterState clusterState, String indexName, String fieldName) {
+    private String getSimilarity(String indexName, String fieldName, Map<String, Object> indexMapping) {
         // TODO: 需要考虑如何优化,
         // 1.similarity的获取方式，
         // 2.针对嵌套的properties如何查询
-        Map<String, Object> indexMapping = clusterState.metadata().indices().get(indexName).mapping().getSourceAsMap();
         Object propertiesObj = indexMapping.get(PROPERTIES_FIELD);
         if (propertiesObj instanceof Map) {
             Map<String, Object> propertiesMapping = (Map<String, Object>) propertiesObj;

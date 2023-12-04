@@ -27,7 +27,7 @@ import org.havenask.cluster.ClusterState;
 import org.havenask.cluster.service.ClusterService;
 import org.havenask.common.inject.Inject;
 import org.havenask.engine.NativeProcessControlService;
-import org.havenask.engine.index.engine.HavenaskSearchQueryProcessor;
+import org.havenask.engine.search.HavenaskSearchQueryProcessor;
 import org.havenask.engine.rpc.QrsClient;
 import org.havenask.engine.rpc.http.QrsHttpClient;
 import org.havenask.engine.search.HavenaskSearchFetchProcessor;
@@ -36,12 +36,10 @@ import org.havenask.tasks.Task;
 import org.havenask.threadpool.ThreadPool;
 import org.havenask.transport.TransportService;
 
+import java.util.Map;
+
 public class TransportHavenaskSearchAction extends HandledTransportAction<SearchRequest, SearchResponse> {
     private static final Logger logger = LogManager.getLogger(TransportHavenaskSearchAction.class);
-    private static final int ID_POS = 0;
-    private static final int SCORE_POS = 1;
-    private static final int SOURCE_POS = 1;
-    private static final Object SOURCE_NOT_FOUND = "{\n" + "\"warn\":\"source not found\"\n" + "}";
     private ClusterService clusterService;
     private QrsClient qrsClient;
 
@@ -69,13 +67,14 @@ public class TransportHavenaskSearchAction extends HandledTransportAction<Search
             ClusterState clusterState = clusterService.state();
 
             HavenaskSearchQueryProcessor havenaskSearchQueryProcessor = new HavenaskSearchQueryProcessor(qrsClient);
-            SqlResponse queryPhaseSqlResponse = havenaskSearchQueryProcessor.executeQuery(clusterState, request, tableName);
+            Map<String, Object> indexMapping = clusterState.metadata().indices().get(tableName).mapping().getSourceAsMap();
+            SqlResponse queryPhaseSqlResponse = havenaskSearchQueryProcessor.executeQuery(request, tableName, indexMapping);
 
             HavenaskSearchFetchProcessor havenaskSearchFetchProcessor = new HavenaskSearchFetchProcessor(qrsClient);
             InternalSearchResponse internalSearchResponse = havenaskSearchFetchProcessor.executeFetch(
                 queryPhaseSqlResponse,
                 tableName,
-                request.source().fetchSource()
+                request.source()
             );
 
             listener.onResponse(

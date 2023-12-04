@@ -15,7 +15,7 @@
 package org.havenask.engine.search.fetch;
 
 import org.havenask.search.SearchHit;
-import org.havenask.search.fetch.subphase.FetchSourceContext;
+import org.havenask.search.builder.SearchSourceBuilder;
 
 import java.io.IOException;
 
@@ -34,5 +34,5 @@ public interface HavenaskFetchSubPhase {
         }
     }
 
-    HavenaskFetchSubPhaseProcessor getProcessor(String indexName, FetchSourceContext fetchSourceContext) throws IOException;
+    HavenaskFetchSubPhaseProcessor getProcessor(String indexName, SearchSourceBuilder searchSourceBuilder) throws IOException;
 }

@@ -23,6 +23,7 @@ import org.havenask.common.io.stream.BytesStreamOutput;
 import org.havenask.common.xcontent.XContentBuilder;
 import org.havenask.common.xcontent.XContentHelper;
 import org.havenask.common.xcontent.XContentType;
+import org.havenask.search.builder.SearchSourceBuilder;
 import org.havenask.search.fetch.subphase.FetchSourceContext;
 
 import java.io.IOException;
@@ -30,7 +31,8 @@ import java.util.Map;
 
 public class HavenaskFetchSourcePhase implements HavenaskFetchSubPhase {
     @Override
-    public HavenaskFetchSubPhaseProcessor getProcessor(String indexName, FetchSourceContext fetchSourceContext) throws IOException {
+    public HavenaskFetchSubPhaseProcessor getProcessor(String indexName, SearchSourceBuilder searchSourceBuilder) throws IOException {
+        FetchSourceContext fetchSourceContext = searchSourceBuilder.fetchSource();
         if (fetchSourceContext == null || fetchSourceContext.fetchSource() == false) {
             return null;
         }
