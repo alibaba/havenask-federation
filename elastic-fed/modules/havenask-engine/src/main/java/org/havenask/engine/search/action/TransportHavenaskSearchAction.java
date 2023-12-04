@@ -34,6 +34,7 @@ import org.havenask.common.inject.Inject;
 import org.havenask.common.lucene.search.TopDocsAndMaxScore;
 import org.havenask.common.text.Text;
 import org.havenask.engine.NativeProcessControlService;
+import org.havenask.engine.index.engine.HavenaskSearchQueryPhase;
 import org.havenask.engine.index.mapper.DenseVectorFieldMapper;
 import org.havenask.engine.index.query.ProximaQueryBuilder;
 import org.havenask.engine.rpc.QrsClient;
@@ -64,6 +65,7 @@ import org.havenask.transport.TransportService;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -79,6 +81,7 @@ public class TransportHavenaskSearchAction extends HandledTransportAction<Search
     private static final int SOURCE_POS = 1;
     private static final Object SOURCE_NOT_FOUND = "{\n" + "\"warn\":\"source not found\"\n" + "}";
     private static final String SIMILARITY = "similarity";
+    private static final String PROPERTIES_FIELD = "properties";
     private static final String VECTOR_SIMILARITY_TYPE_L2_NORM = "L2_NORM";
     private static final String VECTOR_SIMILARITY_TYPE_DOT_PRODUCT = "DOT_PRODUCT";
     private ClusterService clusterService;
@@ -106,7 +109,7 @@ public class TransportHavenaskSearchAction extends HandledTransportAction<Search
         try {
             // TODO: 目前的逻辑只有单havenask索引的查询会走到这里，后续如果有多索引的查询，这里需要做相应的修改
             if (request.indices().length != 1) {
-                throw new IllegalArgumentException("illegal index count! only support search single haevnask index.");
+                throw new IllegalArgumentException("illegal index count! only support search single havenask index.");
             }
             String tableName = request.indices()[0];
 
@@ -118,14 +121,7 @@ public class TransportHavenaskSearchAction extends HandledTransportAction<Search
                 tableName,
                 request.source().fetchSource()
             );
-            /**
-             *          new InternalSearchResponse(
-             *             new SearchHits(
-             *                 new SearchHit[0], new TotalHits(0L, TotalHits.Relation.EQUAL_TO), 0.0f),
-             *             InternalAggregations.EMPTY,
-             *             new Suggest(Collections.emptyList()),
-             *             new SearchProfileShardResults(Collections.emptyMap()), false, false, 1)
-             */
+
             listener.onResponse(
                 new SearchResponse(internalSearchResponse, "", 1, 1, 0, 0, ShardSearchFailure.EMPTY_ARRAY, SearchResponse.Clusters.EMPTY)
             );
@@ -161,17 +157,17 @@ public class TransportHavenaskSearchAction extends HandledTransportAction<Search
 
         selectParams.append(" _id");
 
-        if (dsl.knnSearch().size() > 0) {
+        if (!dsl.knnSearch().isEmpty()) {
             where.append(" where ");
             boolean first = true;
             for (KnnSearchBuilder knnSearchBuilder : dsl.knnSearch()) {
-                if (knnSearchBuilder.getFilterQueries().size() > 0 || knnSearchBuilder.getSimilarity() != null) {
+                if (!knnSearchBuilder.getFilterQueries().isEmpty() || knnSearchBuilder.getSimilarity() != null) {
                     throw new IOException("unsupported knn parameter: " + dsl);
                 }
 
                 String fieldName = knnSearchBuilder.getField();
 
-                String similarity = getSimilarity(table, clusterState);
+                String similarity = getSimilarity(clusterState, table, fieldName);
                 if (similarity == null) {
                     throw new IOException(String.format(Locale.ROOT, "field: %s is not a vector type field", fieldName));
                 }
@@ -189,14 +185,14 @@ public class TransportHavenaskSearchAction extends HandledTransportAction<Search
                 checkVectorMagnitude(similarity, knnSearchBuilder.getQueryVector());
                 selectParams.append(getScoreComputeStr(fieldName, similarity));
 
-                where.append("MATCHINDEX('" + fieldName + "', '");
+                where.append("MATCHINDEX('").append(fieldName).append("', '");
                 for (int i = 0; i < knnSearchBuilder.getQueryVector().length; i++) {
                     where.append(knnSearchBuilder.getQueryVector()[i]);
                     if (i < knnSearchBuilder.getQueryVector().length - 1) {
                         where.append(",");
                     }
                 }
-                where.append("&n=" + knnSearchBuilder.k() + "')");
+                where.append("&n=").append(knnSearchBuilder.k()).append("')");
             }
             selectParams.append(") as _score");
             orderBy.append(" order by _score desc");
@@ -205,7 +201,7 @@ public class TransportHavenaskSearchAction extends HandledTransportAction<Search
                 ProximaQueryBuilder<?> proximaQueryBuilder = (ProximaQueryBuilder<?>) queryBuilder;
                 String fieldName = proximaQueryBuilder.getFieldName();
 
-                String similarity = getSimilarity(table, clusterState);
+                String similarity = getSimilarity(clusterState, table, fieldName);
                 if (similarity == null) {
                     throw new IOException(String.format(Locale.ROOT, "field: %s is not a vector type field", fieldName));
                 }
@@ -213,7 +209,7 @@ public class TransportHavenaskSearchAction extends HandledTransportAction<Search
                 checkVectorMagnitude(similarity, proximaQueryBuilder.getVector());
 
                 selectParams.append(", ").append(getScoreComputeStr(fieldName, similarity)).append(" as _score");
-                where.append(" where MATCHINDEX('" + proximaQueryBuilder.getFieldName() + "', '");
+                where.append(" where MATCHINDEX('").append(proximaQueryBuilder.getFieldName()).append("', '");
                 for (int i = 0; i < proximaQueryBuilder.getVector().length; i++) {
 
                     where.append(proximaQueryBuilder.getVector()[i]);
@@ -221,14 +217,18 @@ public class TransportHavenaskSearchAction extends HandledTransportAction<Search
                         where.append(",");
                     }
                 }
-                where.append("&n=" + proximaQueryBuilder.getSize() + "')");
+                where.append("&n=").append(proximaQueryBuilder.getSize()).append("')");
                 orderBy.append(" order by _score desc");
             } else if (queryBuilder instanceof TermQueryBuilder) {
                 TermQueryBuilder termQueryBuilder = (TermQueryBuilder) queryBuilder;
-                where.append(" where " + termQueryBuilder.fieldName() + "='" + termQueryBuilder.value() + "'");
+                where.append(" where ").append(termQueryBuilder.fieldName()).append("='").append(termQueryBuilder.value()).append("'");
             } else if (queryBuilder instanceof MatchQueryBuilder) {
                 MatchQueryBuilder matchQueryBuilder = (MatchQueryBuilder) queryBuilder;
-                where.append(" where MATCHINDEX('" + matchQueryBuilder.fieldName() + "', '" + matchQueryBuilder.value() + "')");
+                where.append(" where MATCHINDEX('")
+                    .append(matchQueryBuilder.fieldName())
+                    .append("', '")
+                    .append(matchQueryBuilder.value())
+                    .append("')");
             } else {
                 throw new IOException("unsupported DSL: " + dsl);
             }
@@ -244,17 +244,32 @@ public class TransportHavenaskSearchAction extends HandledTransportAction<Search
         }
 
         if (size > 0) {
-            sqlQuery.append(" limit " + size);
+            sqlQuery.append(" limit ").append(size);
         }
         return sqlQuery.toString();
     }
 
-    private String getSimilarity(String indexName, ClusterState clusterState) {
-        return (String) clusterState.metadata().indices().get(indexName).mapping().getSourceAsMap().get(SIMILARITY);
+    @SuppressWarnings("unchecked")
+    private String getSimilarity(ClusterState clusterState, String indexName, String fieldName) {
+        // TODO: 需要考虑如何优化,
+        // 1.similarity的获取方式，
+        // 2.针对嵌套的properties如何查询
+        Map<String, Object> indexMapping = clusterState.metadata().indices().get(indexName).mapping().getSourceAsMap();
+        Object propertiesObj = indexMapping.get(PROPERTIES_FIELD);
+        if (propertiesObj instanceof Map) {
+            Map<String, Object> propertiesMapping = (Map<String, Object>) propertiesObj;
+            Object fieldObj = propertiesMapping.get(fieldName);
+            if (fieldObj instanceof Map) {
+                Map<String, Object> fieldMapping = (Map<String, Object>) fieldObj;
+                return (String) fieldMapping.get(SIMILARITY);
+            }
+        }
+
+        return null;
     }
 
     private void checkVectorMagnitude(String similarity, float[] queryVector) {
-        if (similarity == "DOT_PRODUCT" && Math.abs(computeSquaredMagnitude(queryVector) - 1.0f) > 1e-4f) {
+        if (similarity.equals(VECTOR_SIMILARITY_TYPE_DOT_PRODUCT) && Math.abs(computeSquaredMagnitude(queryVector) - 1.0f) > 1e-4f) {
             throw new IllegalArgumentException(
                 "The ["
                     + DenseVectorFieldMapper.Similarity.DOT_PRODUCT.getValue()
@@ -266,18 +281,18 @@ public class TransportHavenaskSearchAction extends HandledTransportAction<Search
 
     private float computeSquaredMagnitude(float[] queryVector) {
         float squaredMagnitude = 0;
-        for (int i = 0; i < queryVector.length; i++) {
-            squaredMagnitude += queryVector[i] * queryVector[i];
+        for (float v : queryVector) {
+            squaredMagnitude += v * v;
         }
         return squaredMagnitude;
     }
 
     private String getScoreComputeStr(String fieldName, String similarity) throws IOException {
         StringBuilder scoreComputeStr = new StringBuilder();
-        if (similarity != null && similarity == VECTOR_SIMILARITY_TYPE_L2_NORM) {
+        if (similarity != null && similarity.equals(VECTOR_SIMILARITY_TYPE_L2_NORM)) {
             // e.g. "(1/(1+vecscore('fieldName')))"
             scoreComputeStr.append("(1/(").append("1+vector_score('").append(fieldName).append("')))");
-        } else if (similarity != null && similarity == VECTOR_SIMILARITY_TYPE_DOT_PRODUCT) {
+        } else if (similarity != null && similarity.equals(VECTOR_SIMILARITY_TYPE_DOT_PRODUCT)) {
             // e.g. "((1+vecscore('fieldName'))/2)"
             scoreComputeStr.append("((1+vector_score('").append(fieldName).append("'))/2)");
         } else {
@@ -293,7 +308,7 @@ public class TransportHavenaskSearchAction extends HandledTransportAction<Search
     ) throws IOException {
         List<String> idList = new ArrayList<>(queryPhaseSqlResponse.getRowCount());
         TopDocsAndMaxScore topDocsAndMaxScore = buildQuerySearchResult(queryPhaseSqlResponse, idList);
-        SqlResponse fetchPhaseSqlResponse = havenaskFetchWithSql(idList, tableName);
+        SqlResponse fetchPhaseSqlResponse = havenaskFetchWithSql(idList, tableName, fetchSourceContext);
         return transferSqlResponse2FetchResult(tableName, idList, fetchPhaseSqlResponse, topDocsAndMaxScore, fetchSourceContext);
     }
 
@@ -302,7 +317,7 @@ public class TransportHavenaskSearchAction extends HandledTransportAction<Search
         float maxScore = 0;
         int sqlDataSize = queryPhaseSqlResponse.getRowCount() > 0 ? queryPhaseSqlResponse.getSqlResult().getData()[0].length : 0;
         if (sqlDataSize > 2) {
-            throw new IOException("unknow sqlResponse:" + queryPhaseSqlResponse.getSqlResult().getData().toString());
+            throw new IOException("unknow sqlResponse:" + Arrays.deepToString(queryPhaseSqlResponse.getSqlResult().getData()));
         }
         for (int i = 0; i < queryPhaseSqlResponse.getRowCount(); i++) {
             float defaultScore = queryPhaseSqlResponse.getRowCount() - i;
@@ -311,37 +326,45 @@ public class TransportHavenaskSearchAction extends HandledTransportAction<Search
                 : ((Double) queryPhaseSqlResponse.getSqlResult().getData()[i][SCORE_POS]).floatValue();
 
             queryScoreDocs[i] = new ScoreDoc(i, curScore);
-            maxScore = maxScore > curScore ? maxScore : curScore;
+            maxScore = Math.max(maxScore, curScore);
             idList.add(String.valueOf(queryPhaseSqlResponse.getSqlResult().getData()[i][ID_POS]));
         }
         TopDocs topDocs = new TopDocs(
             new TotalHits(queryPhaseSqlResponse.getRowCount(), TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO),
             queryScoreDocs
         );
-        TopDocsAndMaxScore topDocsAndMaxScore = new TopDocsAndMaxScore(topDocs, maxScore);
-        return topDocsAndMaxScore;
+        return new TopDocsAndMaxScore(topDocs, maxScore);
     }
 
-    private SqlResponse havenaskFetchWithSql(List<String> idList, String tableName) throws IOException {
-        StringBuilder sqlQuery = new StringBuilder();
-        sqlQuery.append("select _id, _source from " + tableName + "_summary_");
-        sqlQuery.append(" where _id in(");
-        for (int i = 0; i < idList.size(); i++) {
-            sqlQuery.append("'" + idList.get(i) + "'");
-            if (i < idList.size() - 1) {
-                sqlQuery.append(",");
-            }
-        }
-        sqlQuery.append(")");
-        sqlQuery.append(" limit " + idList.size());
-        String kvpair = "format:full_json;timeout:10000;databaseName:" + SQL_DATABASE;
-        QrsSqlRequest qrsFetchPhaseSqlRequest = new QrsSqlRequest(sqlQuery.toString(), kvpair);
+    private SqlResponse havenaskFetchWithSql(List<String> idList, String tableName, FetchSourceContext fetchSourceContext)
+        throws IOException {
+        QrsSqlRequest qrsFetchPhaseSqlRequest = getQrsFetchPhaseSqlRequest(idList, tableName, fetchSourceContext);
         QrsSqlResponse qrsFetchPhaseSqlResponse = qrsClient.executeSql(qrsFetchPhaseSqlRequest);
         SqlResponse fetchPhaseSqlResponse = SqlResponse.parse(qrsFetchPhaseSqlResponse.getResult());
         if (logger.isDebugEnabled()) {
             logger.debug("fetch ids length: {}, havenask sqlResponse took: {} ms", idList.size(), fetchPhaseSqlResponse.getTotalTime());
         }
         return fetchPhaseSqlResponse;
+    }
+
+    private static QrsSqlRequest getQrsFetchPhaseSqlRequest(List<String> idList, String tableName, FetchSourceContext fetchSourceContext) {
+        StringBuilder sqlQuery = new StringBuilder();
+        sqlQuery.append("select _id");
+        if (fetchSourceContext == null || true == fetchSourceContext.fetchSource()) {
+            sqlQuery.append(", _source");
+        }
+        sqlQuery.append(" from ").append(tableName).append("_summary_");
+        sqlQuery.append(" where _id in(");
+        for (int i = 0; i < idList.size(); i++) {
+            sqlQuery.append("'").append(idList.get(i)).append("'");
+            if (i < idList.size() - 1) {
+                sqlQuery.append(",");
+            }
+        }
+        sqlQuery.append(")");
+        sqlQuery.append(" limit ").append(idList.size());
+        String kvpair = "format:full_json;timeout:10000;databaseName:" + SQL_DATABASE;
+        return new QrsSqlRequest(sqlQuery.toString(), kvpair);
     }
 
     private InternalSearchResponse transferSqlResponse2FetchResult(
@@ -374,18 +397,20 @@ public class TransportHavenaskSearchAction extends HandledTransportAction<Search
 
             // 根据idList的顺序从fetch结果获取相对应的_source, 如果数据丢失则返回_source not found
             Integer fetchResIndex = fetchResIdListMap.get(idList.get(i));
-            Object source = fetchResIndex != null
-                ? fetchPhaseSqlResponse.getSqlResult().getData()[fetchResIndex][SOURCE_POS]
-                : SOURCE_NOT_FOUND;
+            Object source = null;
+            if (fetchSourceContext == null || true == fetchSourceContext.fetchSource()) {
+                source = fetchResIndex != null
+                    ? fetchPhaseSqlResponse.getSqlResult().getData()[fetchResIndex][SOURCE_POS]
+                    : SOURCE_NOT_FOUND;
+            }
             HitContent hit = new HitContent(searchHit, source);
             hit.getHit().score(topDocsAndMaxScore.topDocs.scoreDocs[i].score);
-            if (processors != null && processors.size() > 0) {
+            if (fetchSourceContext != null && false == fetchSourceContext.fetchSource()) {
+                hits[i] = hit.getHit();
+            } else if (processors != null && !processors.isEmpty()) {
                 for (HavenaskFetchSubPhaseProcessor processor : processors) {
                     processor.process(hit);
                 }
-                hits[i] = hit.getHit();
-            } else if (fetchSourceContext != null && false == fetchSourceContext.fetchSource()) {
-                // TODO： "_source"为false 的情况目前在这里处理，后续可以考虑优化为sql语法直接不获取_source内容
                 hits[i] = hit.getHit();
             } else {
                 hits[i] = hit.getHit();
