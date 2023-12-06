@@ -365,6 +365,13 @@ public final class SearchHit implements Writeable, ToXContentObject, Iterable<Do
     }
 
     /**
+     * Set index of the hit
+     */
+    public void setIndex(String index) {
+        this.index = index;
+    }
+
+    /**
      * The index of the hit.
      */
     public String getIndex() {

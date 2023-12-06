@@ -49,7 +49,8 @@ public class HavenaskSearchQueryProcessor {
         this.qrsClient = qrsClient;
     }
 
-    public SqlResponse executeQuery(SearchRequest request, String tableName, Map<String, Object> indexMapping) throws IOException {
+    public HavenaskSearchQueryPhaseResponse executeQuery(SearchRequest request, String tableName, Map<String, Object> indexMapping)
+        throws IOException {
         String sql = transferSearchRequest2HavenaskSql(tableName, request.source(), indexMapping);
         String kvpair = "format:full_json;timeout:10000;databaseName:" + SQL_DATABASE;
         QrsSqlRequest qrsQueryPhaseSqlRequest = new QrsSqlRequest(sql, kvpair);
@@ -61,7 +62,7 @@ public class HavenaskSearchQueryProcessor {
         if (logger.isDebugEnabled()) {
             logger.debug("sql: {}, sqlResponse took: {} ms", sql, queryPhaseSqlResponse.getTotalTime());
         }
-        return queryPhaseSqlResponse;
+        return new HavenaskSearchQueryPhaseResponse(qrsQueryPhaseSqlResponse, queryPhaseSqlResponse);
     }
 
     public String transferSearchRequest2HavenaskSql(String table, SearchSourceBuilder dsl, Map<String, Object> indexMapping)

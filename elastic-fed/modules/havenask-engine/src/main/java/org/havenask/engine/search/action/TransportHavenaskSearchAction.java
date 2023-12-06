@@ -22,11 +22,11 @@ import org.havenask.action.search.SearchResponse;
 import org.havenask.action.search.ShardSearchFailure;
 import org.havenask.action.support.ActionFilters;
 import org.havenask.action.support.HandledTransportAction;
-import org.havenask.client.ha.SqlResponse;
 import org.havenask.cluster.ClusterState;
 import org.havenask.cluster.service.ClusterService;
 import org.havenask.common.inject.Inject;
 import org.havenask.engine.NativeProcessControlService;
+import org.havenask.engine.search.HavenaskSearchQueryPhaseResponse;
 import org.havenask.engine.search.HavenaskSearchQueryProcessor;
 import org.havenask.engine.rpc.QrsClient;
 import org.havenask.engine.rpc.http.QrsHttpClient;
@@ -64,25 +64,59 @@ public class TransportHavenaskSearchAction extends HandledTransportAction<Search
             }
             String tableName = request.indices()[0];
 
+            long startTime = System.nanoTime();
+
             ClusterState clusterState = clusterService.state();
 
             HavenaskSearchQueryProcessor havenaskSearchQueryProcessor = new HavenaskSearchQueryProcessor(qrsClient);
             Map<String, Object> indexMapping = clusterState.metadata().indices().get(tableName).mapping().getSourceAsMap();
-            SqlResponse queryPhaseSqlResponse = havenaskSearchQueryProcessor.executeQuery(request, tableName, indexMapping);
+            HavenaskSearchQueryPhaseResponse havenaskSearchQueryPhaseResponse = havenaskSearchQueryProcessor.executeQuery(
+                request,
+                tableName,
+                indexMapping
+            );
 
             HavenaskSearchFetchProcessor havenaskSearchFetchProcessor = new HavenaskSearchFetchProcessor(qrsClient);
             InternalSearchResponse internalSearchResponse = havenaskSearchFetchProcessor.executeFetch(
-                queryPhaseSqlResponse,
+                havenaskSearchQueryPhaseResponse.getQueryPhaseSqlResponse(),
                 tableName,
                 request.source()
             );
 
-            listener.onResponse(
-                new SearchResponse(internalSearchResponse, "", 1, 1, 0, 0, ShardSearchFailure.EMPTY_ARRAY, SearchResponse.Clusters.EMPTY)
+            SearchResponse searchResponse = buildSearchResponse(
+                tableName,
+                internalSearchResponse,
+                havenaskSearchQueryPhaseResponse,
+                startTime
             );
+            listener.onResponse(searchResponse);
         } catch (Exception e) {
             logger.error("Failed to execute havenask search, ", e);
             listener.onFailure(e);
         }
+    }
+
+    private SearchResponse buildSearchResponse(
+        String indexName,
+        InternalSearchResponse internalSearchResponse,
+        HavenaskSearchQueryPhaseResponse havenaskSearchQueryPhaseResponse,
+        long startTime
+    ) {
+        ClusterState clusterState = clusterService.state();
+        int totalShards = clusterState.routingTable().index(indexName).getShards().size();
+        double coveredPercent = havenaskSearchQueryPhaseResponse.getCoveredPercent();
+        int successfulShards = (int) Math.round(totalShards * coveredPercent);
+
+        long endTime = System.nanoTime();
+        return new SearchResponse(
+            internalSearchResponse,
+            null,
+            totalShards,
+            successfulShards,
+            0,
+            (endTime - startTime) / 1000000,
+            ShardSearchFailure.EMPTY_ARRAY,
+            SearchResponse.Clusters.EMPTY
+        );
     }
 }

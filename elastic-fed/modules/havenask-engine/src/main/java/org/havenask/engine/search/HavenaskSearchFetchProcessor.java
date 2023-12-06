@@ -36,8 +36,6 @@ import org.havenask.search.aggregations.InternalAggregations;
 import org.havenask.search.builder.SearchSourceBuilder;
 import org.havenask.search.fetch.subphase.FetchSourceContext;
 import org.havenask.search.internal.InternalSearchResponse;
-import org.havenask.search.profile.SearchProfileShardResults;
-import org.havenask.search.suggest.Suggest;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -81,7 +79,7 @@ public class HavenaskSearchFetchProcessor {
             throw new IOException("unknow sqlResponse:" + Arrays.deepToString(queryPhaseSqlResponse.getSqlResult().getData()));
         }
         for (int i = 0; i < queryPhaseSqlResponse.getRowCount(); i++) {
-            float defaultScore = queryPhaseSqlResponse.getRowCount() - i;
+            float defaultScore = 1;
             float curScore = sqlDataSize == 1
                 ? defaultScore
                 : ((Double) queryPhaseSqlResponse.getSqlResult().getData()[i][SCORE_POS]).floatValue();
@@ -107,7 +105,7 @@ public class HavenaskSearchFetchProcessor {
         QrsSqlResponse qrsFetchPhaseSqlResponse = qrsClient.executeSql(qrsFetchPhaseSqlRequest);
         SqlResponse fetchPhaseSqlResponse = SqlResponse.parse(qrsFetchPhaseSqlResponse.getResult());
         if (logger.isDebugEnabled()) {
-            logger.debug("fetch ids length: {}, havenask sqlResponse took: {} ms", idList.size(), fetchPhaseSqlResponse.getTotalTime());
+            logger.debug("fetch idList length: {}, havenask sqlResponse took: {} ms", idList.size(), fetchPhaseSqlResponse.getTotalTime());
         }
         return fetchPhaseSqlResponse;
     }
@@ -160,6 +158,7 @@ public class HavenaskSearchFetchProcessor {
                 Collections.emptyMap(),
                 Collections.emptyMap()
             );
+            searchHit.setIndex(tableName);
 
             // 根据idList的顺序从fetch结果获取相对应的_source, 如果数据丢失则返回_source not found
             Integer fetchResIndex = fetchResIdListMap.get(idList.get(i));
@@ -186,10 +185,10 @@ public class HavenaskSearchFetchProcessor {
         return new InternalSearchResponse(
             new SearchHits(hits, totalHits, topDocsAndMaxScore.maxScore),
             InternalAggregations.EMPTY,
-            new Suggest(Collections.emptyList()),
-            new SearchProfileShardResults(Collections.emptyMap()),
+            null,
+            null,
             false,
-            false,
+            null,
             1
         );
     }

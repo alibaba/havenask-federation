@@ -25,8 +25,8 @@ import org.havenask.engine.search.HavenaskSearchFetchProcessor;
 import org.havenask.search.SearchHit;
 import org.havenask.search.builder.SearchSourceBuilder;
 import org.havenask.search.fetch.subphase.FetchSourceContext;
+import org.havenask.search.internal.InternalSearchResponse;
 import org.havenask.test.HavenaskTestCase;
-import org.havenask.action.search.SearchResponseSections;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -117,6 +117,7 @@ public class HavenaskSearchFetchProcessorTests extends HavenaskTestCase {
         int loadSize = 3;
         String[] resStr = new String[] {
             "{\n"
+                + "  \"_index\" : \"table\",\n"
                 + "  \"_type\" : \"_doc\",\n"
                 + "  \"_id\" : \"4\",\n"
                 + "  \"_score\" : 4.0,\n"
@@ -128,6 +129,7 @@ public class HavenaskSearchFetchProcessorTests extends HavenaskTestCase {
                 + "  }\n"
                 + "}",
             "{\n"
+                + "  \"_index\" : \"table\",\n"
                 + "  \"_type\" : \"_doc\",\n"
                 + "  \"_id\" : \"3\",\n"
                 + "  \"_score\" : 3.0,\n"
@@ -136,6 +138,7 @@ public class HavenaskSearchFetchProcessorTests extends HavenaskTestCase {
                 + "  }\n"
                 + "}",
             "{\n"
+                + "  \"_index\" : \"table\",\n"
                 + "  \"_type\" : \"_doc\",\n"
                 + "  \"_id\" : \"2\",\n"
                 + "  \"_score\" : 2.0,\n"
@@ -147,6 +150,7 @@ public class HavenaskSearchFetchProcessorTests extends HavenaskTestCase {
                 + "  }\n"
                 + "}",
             "{\n"
+                + "  \"_index\" : \"table\",\n"
                 + "  \"_type\" : \"_doc\",\n"
                 + "  \"_id\" : \"1\",\n"
                 + "  \"_score\" : 1.0,\n"
@@ -184,7 +188,7 @@ public class HavenaskSearchFetchProcessorTests extends HavenaskTestCase {
         }
 
         HavenaskSearchFetchProcessor havenaskSearchFetchProcessor = new HavenaskSearchFetchProcessor(qrsClient);
-        SearchResponseSections internalSearchResponse = havenaskSearchFetchProcessor.transferSqlResponse2FetchResult(
+        InternalSearchResponse internalSearchResponse = havenaskSearchFetchProcessor.transferSqlResponse2FetchResult(
             indexName,
             idList,
             sqlResponse,
