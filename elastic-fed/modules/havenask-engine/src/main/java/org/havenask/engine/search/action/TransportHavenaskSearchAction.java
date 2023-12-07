@@ -17,16 +17,17 @@ package org.havenask.engine.search.action;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.havenask.action.ActionListener;
+import org.havenask.action.ingest.IngestActionForwarder;
 import org.havenask.action.search.SearchRequest;
 import org.havenask.action.search.SearchResponse;
 import org.havenask.action.search.ShardSearchFailure;
 import org.havenask.action.support.ActionFilters;
 import org.havenask.action.support.HandledTransportAction;
+import org.havenask.client.ha.SqlResponse;
 import org.havenask.cluster.ClusterState;
 import org.havenask.cluster.service.ClusterService;
 import org.havenask.common.inject.Inject;
 import org.havenask.engine.NativeProcessControlService;
-import org.havenask.engine.search.HavenaskSearchQueryPhaseResponse;
 import org.havenask.engine.search.HavenaskSearchQueryProcessor;
 import org.havenask.engine.rpc.QrsClient;
 import org.havenask.engine.rpc.http.QrsHttpClient;
@@ -41,7 +42,10 @@ import java.util.Map;
 public class TransportHavenaskSearchAction extends HandledTransportAction<SearchRequest, SearchResponse> {
     private static final Logger logger = LogManager.getLogger(TransportHavenaskSearchAction.class);
     private ClusterService clusterService;
+    private final IngestActionForwarder ingestForwarder;
     private QrsClient qrsClient;
+    private HavenaskSearchQueryProcessor havenaskSearchQueryProcessor;
+    private HavenaskSearchFetchProcessor havenaskSearchFetchProcessor;
 
     @Inject
     public TransportHavenaskSearchAction(
@@ -52,11 +56,19 @@ public class TransportHavenaskSearchAction extends HandledTransportAction<Search
     ) {
         super(HavenaskSearchAction.NAME, transportService, actionFilters, SearchRequest::new, ThreadPool.Names.SEARCH);
         this.clusterService = clusterService;
+        this.ingestForwarder = new IngestActionForwarder(transportService);
         this.qrsClient = new QrsHttpClient(nativeProcessControlService.getQrsHttpPort());
+        havenaskSearchQueryProcessor = new HavenaskSearchQueryProcessor(qrsClient);
+        havenaskSearchFetchProcessor = new HavenaskSearchFetchProcessor(qrsClient);
     }
 
     @Override
     protected void doExecute(Task task, SearchRequest request, ActionListener<SearchResponse> listener) {
+        if (false == clusterService.localNode().isIngestNode()) {
+            ingestForwarder.forwardIngestRequest(HavenaskSqlAction.INSTANCE, request, listener);
+            return;
+        }
+
         try {
             // TODO: 目前的逻辑只有单havenask索引的查询会走到这里，后续如果有多索引的查询，这里需要做相应的修改
             if (request.indices().length != 1) {
@@ -68,17 +80,13 @@ public class TransportHavenaskSearchAction extends HandledTransportAction<Search
 
             ClusterState clusterState = clusterService.state();
 
-            HavenaskSearchQueryProcessor havenaskSearchQueryProcessor = new HavenaskSearchQueryProcessor(qrsClient);
-            Map<String, Object> indexMapping = clusterState.metadata().indices().get(tableName).mapping().getSourceAsMap();
-            HavenaskSearchQueryPhaseResponse havenaskSearchQueryPhaseResponse = havenaskSearchQueryProcessor.executeQuery(
-                request,
-                tableName,
-                indexMapping
-            );
+            Map<String, Object> indexMapping = clusterState.metadata().index(tableName).mapping() != null
+                ? clusterState.metadata().index(tableName).mapping().getSourceAsMap()
+                : null;
+            SqlResponse havenaskSearchQueryPhaseSqlResponse = havenaskSearchQueryProcessor.executeQuery(request, tableName, indexMapping);
 
-            HavenaskSearchFetchProcessor havenaskSearchFetchProcessor = new HavenaskSearchFetchProcessor(qrsClient);
             InternalSearchResponse internalSearchResponse = havenaskSearchFetchProcessor.executeFetch(
-                havenaskSearchQueryPhaseResponse.getQueryPhaseSqlResponse(),
+                havenaskSearchQueryPhaseSqlResponse,
                 tableName,
                 request.source()
             );
@@ -86,7 +94,7 @@ public class TransportHavenaskSearchAction extends HandledTransportAction<Search
             SearchResponse searchResponse = buildSearchResponse(
                 tableName,
                 internalSearchResponse,
-                havenaskSearchQueryPhaseResponse,
+                havenaskSearchQueryPhaseSqlResponse,
                 startTime
             );
             listener.onResponse(searchResponse);
@@ -99,12 +107,12 @@ public class TransportHavenaskSearchAction extends HandledTransportAction<Search
     private SearchResponse buildSearchResponse(
         String indexName,
         InternalSearchResponse internalSearchResponse,
-        HavenaskSearchQueryPhaseResponse havenaskSearchQueryPhaseResponse,
+        SqlResponse havenaskSearchQueryPhaseSqlResponse,
         long startTime
     ) {
         ClusterState clusterState = clusterService.state();
-        int totalShards = clusterState.routingTable().index(indexName).getShards().size();
-        double coveredPercent = havenaskSearchQueryPhaseResponse.getCoveredPercent();
+        int totalShards = clusterState.metadata().index(indexName).getNumberOfShards();
+        double coveredPercent = havenaskSearchQueryPhaseSqlResponse.getCoveredPercent();
         int successfulShards = (int) Math.round(totalShards * coveredPercent);
 
         long endTime = System.nanoTime();

@@ -49,8 +49,7 @@ public class HavenaskSearchQueryProcessor {
         this.qrsClient = qrsClient;
     }
 
-    public HavenaskSearchQueryPhaseResponse executeQuery(SearchRequest request, String tableName, Map<String, Object> indexMapping)
-        throws IOException {
+    public SqlResponse executeQuery(SearchRequest request, String tableName, Map<String, Object> indexMapping) throws IOException {
         String sql = transferSearchRequest2HavenaskSql(tableName, request.source(), indexMapping);
         String kvpair = "format:full_json;timeout:10000;databaseName:" + SQL_DATABASE;
         QrsSqlRequest qrsQueryPhaseSqlRequest = new QrsSqlRequest(sql, kvpair);
@@ -62,11 +61,14 @@ public class HavenaskSearchQueryProcessor {
         if (logger.isDebugEnabled()) {
             logger.debug("sql: {}, sqlResponse took: {} ms", sql, queryPhaseSqlResponse.getTotalTime());
         }
-        return new HavenaskSearchQueryPhaseResponse(qrsQueryPhaseSqlResponse, queryPhaseSqlResponse);
+        return queryPhaseSqlResponse;
     }
 
     public String transferSearchRequest2HavenaskSql(String table, SearchSourceBuilder dsl, Map<String, Object> indexMapping)
         throws IOException {
+        if (dsl == null) {
+            throw new IllegalArgumentException("request source can not be null!");
+        }
         StringBuilder sqlQuery = new StringBuilder();
         QueryBuilder queryBuilder = dsl.query();
         StringBuilder where = new StringBuilder();
@@ -85,7 +87,12 @@ public class HavenaskSearchQueryProcessor {
 
                 String fieldName = knnSearchBuilder.getField();
 
-                String similarity = getSimilarity(table, fieldName, indexMapping);
+                if (indexMapping == null) {
+                    throw new IllegalArgumentException(
+                        String.format(Locale.ROOT, "index mapping is null, field: %s is not a vector type field", fieldName)
+                    );
+                }
+                String similarity = getSimilarity(fieldName, indexMapping);
                 if (similarity == null) {
                     throw new IOException(String.format(Locale.ROOT, "field: %s is not a vector type field", fieldName));
                 }
@@ -119,7 +126,12 @@ public class HavenaskSearchQueryProcessor {
                 ProximaQueryBuilder<?> proximaQueryBuilder = (ProximaQueryBuilder<?>) queryBuilder;
                 String fieldName = proximaQueryBuilder.getFieldName();
 
-                String similarity = getSimilarity(table, fieldName, indexMapping);
+                if (indexMapping == null) {
+                    throw new IllegalArgumentException(
+                        String.format(Locale.ROOT, "index mapping is null, field: %s is not a vector type field", fieldName)
+                    );
+                }
+                String similarity = getSimilarity(fieldName, indexMapping);
                 if (similarity == null) {
                     throw new IOException(String.format(Locale.ROOT, "field: %s is not a vector type field", fieldName));
                 }
@@ -168,7 +180,7 @@ public class HavenaskSearchQueryProcessor {
     }
 
     @SuppressWarnings("unchecked")
-    private String getSimilarity(String indexName, String fieldName, Map<String, Object> indexMapping) {
+    private String getSimilarity(String fieldName, Map<String, Object> indexMapping) {
         // TODO: 需要考虑如何优化,
         // 1.similarity的获取方式，
         // 2.针对嵌套的properties如何查询

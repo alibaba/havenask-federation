@@ -65,9 +65,16 @@ public class HavenaskSearchFetchProcessor {
 
     public InternalSearchResponse executeFetch(SqlResponse queryPhaseSqlResponse, String tableName, SearchSourceBuilder searchSourceBuilder)
         throws IOException {
+        if (searchSourceBuilder == null) {
+            throw new IllegalArgumentException("request source can not be null!");
+        }
         List<String> idList = new ArrayList<>(queryPhaseSqlResponse.getRowCount());
         TopDocsAndMaxScore topDocsAndMaxScore = buildQuerySearchResult(queryPhaseSqlResponse, idList);
-        SqlResponse fetchPhaseSqlResponse = havenaskFetchWithSql(idList, tableName, searchSourceBuilder.fetchSource(), qrsClient);
+        SqlResponse fetchPhaseSqlResponse = searchSourceBuilder.fetchSource() == null
+            || true == searchSourceBuilder.fetchSource().fetchSource()
+                ? havenaskFetchWithSql(idList, tableName, searchSourceBuilder.fetchSource(), qrsClient)
+                : null;
+
         return transferSqlResponse2FetchResult(tableName, idList, fetchPhaseSqlResponse, topDocsAndMaxScore, searchSourceBuilder);
     }
 
@@ -112,12 +119,7 @@ public class HavenaskSearchFetchProcessor {
 
     private static QrsSqlRequest getQrsFetchPhaseSqlRequest(List<String> idList, String tableName, FetchSourceContext fetchSourceContext) {
         StringBuilder sqlQuery = new StringBuilder();
-        sqlQuery.append("select _id");
-        if (fetchSourceContext == null || true == fetchSourceContext.fetchSource()) {
-            sqlQuery.append(", _source");
-        }
-        sqlQuery.append(" from ").append(tableName).append("_summary_");
-        sqlQuery.append(" where _id in(");
+        sqlQuery.append("select _id, _source from ").append(tableName).append("_summary_ where _id in(");
         for (int i = 0; i < idList.size(); i++) {
             sqlQuery.append("'").append(idList.get(i)).append("'");
             if (i < idList.size() - 1) {
@@ -145,8 +147,10 @@ public class HavenaskSearchFetchProcessor {
 
         // 记录fetch结果的_id和index的映射关系, query阶段查到的idList是根据_score值排序好的，但fetch结果非有序
         Map<String, Integer> fetchResIdListMap = new HashMap<>();
-        for (int i = 0; i < fetchPhaseSqlResponse.getRowCount(); i++) {
-            fetchResIdListMap.put((String) fetchPhaseSqlResponse.getSqlResult().getData()[i][ID_POS], i);
+        if (fetchPhaseSqlResponse != null) {
+            for (int i = 0; i < fetchPhaseSqlResponse.getRowCount(); i++) {
+                fetchResIdListMap.put((String) fetchPhaseSqlResponse.getSqlResult().getData()[i][ID_POS], i);
+            }
         }
 
         for (int i = 0; i < loadSize; i++) {
@@ -161,9 +165,9 @@ public class HavenaskSearchFetchProcessor {
             searchHit.setIndex(tableName);
 
             // 根据idList的顺序从fetch结果获取相对应的_source, 如果数据丢失则返回_source not found
-            Integer fetchResIndex = fetchResIdListMap.get(idList.get(i));
             Object source = null;
             if (fetchSourceContext == null || true == fetchSourceContext.fetchSource()) {
+                Integer fetchResIndex = fetchResIdListMap.get(idList.get(i));
                 source = fetchResIndex != null
                     ? fetchPhaseSqlResponse.getSqlResult().getData()[fetchResIndex][SOURCE_POS]
                     : SOURCE_NOT_FOUND;
