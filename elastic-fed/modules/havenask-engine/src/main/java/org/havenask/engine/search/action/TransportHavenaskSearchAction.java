@@ -65,7 +65,7 @@ public class TransportHavenaskSearchAction extends HandledTransportAction<Search
     @Override
     protected void doExecute(Task task, SearchRequest request, ActionListener<SearchResponse> listener) {
         if (false == clusterService.localNode().isIngestNode()) {
-            ingestForwarder.forwardIngestRequest(HavenaskSqlAction.INSTANCE, request, listener);
+            ingestForwarder.forwardIngestRequest(HavenaskSearchAction.INSTANCE, request, listener);
             return;
         }
 
