@@ -71,7 +71,13 @@ public class SqlResponse {
         }
     }
 
-    public SqlResponse(double totalTime, boolean hasSoftFailure, double coveredPercent, int rowCount, SqlResult sqlResult, ErrorInfo errorInfo) {
+    public SqlResponse(
+            double totalTime,
+            boolean hasSoftFailure,
+            double coveredPercent,
+            int rowCount,
+            SqlResult sqlResult, 
+            ErrorInfo errorInfo) {
         this.totalTime = totalTime;
         this.hasSoftFailure = hasSoftFailure;
         this.coveredPercent = coveredPercent;
