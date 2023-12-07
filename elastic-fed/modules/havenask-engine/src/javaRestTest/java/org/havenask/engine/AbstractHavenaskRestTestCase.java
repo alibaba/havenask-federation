@@ -44,6 +44,8 @@ import org.junit.AfterClass;
 import org.junit.Before;
 
 public abstract class AbstractHavenaskRestTestCase extends HavenaskRestTestCase {
+    public static final String NUMBER_OF_SHARDS = "number_of_shards";
+    public static final String NUMBER_OF_REPLICAS = "number_of_replicas";
     private static RestHighLevelClient restHighLevelClient;
 
     @Before

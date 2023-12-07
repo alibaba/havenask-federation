@@ -15,6 +15,8 @@
 package org.havenask.engine;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.logging.log4j.LogManager;
@@ -47,10 +49,11 @@ import org.junit.AfterClass;
 public class SearchIT extends AbstractHavenaskRestTestCase {
     // static logger
     private static final Logger logger = LogManager.getLogger(SearchIT.class);
-    private static final String[] SearchITIndices = { "single_shard_test", "multi_shard_test", "multi_vector_test" };
-    private static final int TEST_SINGLE_SHARD_KNN_INDEX_POS = 0;
-    private static final int TEST_MULTI_SHARD_KNN_INDEX_POS = 1;
-    private static final int TEST_MULTI_KNN_QUERY_INDEX_POS = 2;
+    private static final String[] SearchITIndices = { "search_test", "single_shard_test", "multi_shard_test", "multi_vector_test" };
+    private static final int TEST_SEARCH_INDEX_POS = 0;
+    private static final int TEST_SINGLE_SHARD_KNN_INDEX_POS = 1;
+    private static final int TEST_MULTI_SHARD_KNN_INDEX_POS = 2;
+    private static final int TEST_MULTI_KNN_QUERY_INDEX_POS = 3;
 
     @AfterClass
     public static void cleanIndices() {
@@ -64,6 +67,60 @@ public class SearchIT extends AbstractHavenaskRestTestCase {
         } catch (IOException e) {
             logger.error("clean index failed", e);
         }
+    }
+
+    public void testSearch() throws Exception {
+        String index = SearchITIndices[TEST_SEARCH_INDEX_POS];
+        int dataNum = 3;
+        double delta = 0.00001;
+        // create index
+        Settings settings = Settings.builder()
+            .put(EngineSettings.ENGINE_TYPE_SETTING.getKey(), EngineSettings.ENGINE_HAVENASK)
+            .put(NUMBER_OF_SHARDS, 2)
+            .put(NUMBER_OF_REPLICAS, 0)
+            .build();
+
+        java.util.Map<String, ?> map = Map.of(
+            "properties",
+            Map.of("seq", Map.of("type", "integer"), "content", Map.of("type", "keyword"), "time", Map.of("type", "date"))
+        );
+        assertTrue(createTestIndex(index, settings, map));
+
+        waitIndexGreen(index);
+
+        // PUT docs
+        String[] idList = { "1", "2", "3" };
+        java.util.List<java.util.Map<String, ?>> sourceList = new ArrayList<>();
+        sourceList.add(Map.of("seq", 1, "content", "欢迎使用1", "time", "20230718"));
+        sourceList.add(Map.of("seq", 2, "content", "欢迎使用2", "time", "20230717"));
+        sourceList.add(Map.of("seq", 3, "content", "欢迎使用3", "time", "20230716"));
+        for (int i = 0; i < idList.length; i++) {
+            putDoc(index, idList[i], sourceList.get(i));
+        }
+
+        // get data with _search API
+        SearchRequest searchRequest = new SearchRequest(index);
+
+        assertBusy(() -> {
+            SearchResponse searchResponse = highLevelClient().search(searchRequest, RequestOptions.DEFAULT);
+            assertEquals(dataNum, searchResponse.getHits().getTotalHits().value);
+        }, 10, TimeUnit.SECONDS);
+        SearchResponse searchResponse = highLevelClient().search(searchRequest, RequestOptions.DEFAULT);
+        assertEquals(dataNum, searchResponse.getHits().getTotalHits().value);
+
+        Set<Integer> expectedSeq = Set.of(1, 2, 3);
+        Set<String> expectedContent = Set.of("欢迎使用1", "欢迎使用2", "欢迎使用3");
+        Set<String> expectedTime = Set.of("20230718", "20230717", "20230716");
+        for (int i = 0; i < dataNum; i++) {
+            assertEquals(index, searchResponse.getHits().getHits()[i].getIndex());
+            assertEquals(1.0, searchResponse.getHits().getHits()[i].getScore(), delta);
+            assertTrue(expectedSeq.contains(searchResponse.getHits().getHits()[i].getSourceAsMap().get("seq")));
+            assertTrue(expectedContent.contains(searchResponse.getHits().getHits()[i].getSourceAsMap().get("content")));
+            assertTrue(expectedTime.contains(searchResponse.getHits().getHits()[i].getSourceAsMap().get("time")));
+        }
+
+        // delete index and HEAD index
+        deleteAndHeadIndex(index);
     }
 
     public void testSingleShardKnn() throws Exception {
