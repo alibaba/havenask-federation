@@ -17,6 +17,7 @@ package org.havenask.engine.index.config.generator;
 import static java.util.Collections.singletonList;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
@@ -165,7 +166,7 @@ public class RuntimeSegmentGeneratorTests extends MapperServiceTestCase {
 
         Files.write(
             dataPath.resolve("version.1"),
-            RuntimeSegmentGenerator.VERSION_FILE_CONTENT.getBytes(),
+            RuntimeSegmentGenerator.VERSION_FILE_CONTENT.getBytes(StandardCharsets.UTF_8),
             StandardOpenOption.CREATE,
             StandardOpenOption.TRUNCATE_EXISTING
         );
