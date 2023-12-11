@@ -39,7 +39,6 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import com.carrotsearch.hppc.cursors.ObjectCursor;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.havenask.cluster.ClusterChangedEvent;
@@ -69,6 +68,8 @@ import org.havenask.engine.util.RangeUtil;
 import org.havenask.engine.util.Utils;
 import org.havenask.index.Index;
 import org.havenask.threadpool.ThreadPool;
+
+import com.carrotsearch.hppc.cursors.ObjectCursor;
 
 public class MetaDataSyncer extends AbstractLifecycleComponent implements ClusterStateApplier {
     private static final Logger LOGGER = LogManager.getLogger(MetaDataSyncer.class);
