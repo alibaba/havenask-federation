@@ -26,6 +26,7 @@ import org.havenask.common.xcontent.XContentType;
 public class SqlResponse {
     private final double totalTime;
     private final boolean hasSoftFailure;
+    private final double coveredPercent;
     private final int rowCount;
     private final SqlResult sqlResult;
     private final ErrorInfo errorInfo;
@@ -70,9 +71,16 @@ public class SqlResponse {
         }
     }
 
-    public SqlResponse(double totalTime, boolean hasSoftFailure, int rowCount, SqlResult sqlResult, ErrorInfo errorInfo) {
+    public SqlResponse(
+            double totalTime,
+            boolean hasSoftFailure,
+            double coveredPercent,
+            int rowCount,
+            SqlResult sqlResult, 
+            ErrorInfo errorInfo) {
         this.totalTime = totalTime;
         this.hasSoftFailure = hasSoftFailure;
+        this.coveredPercent = coveredPercent;
         this.rowCount = rowCount;
         this.sqlResult = sqlResult;
         this.errorInfo = errorInfo;
@@ -84,6 +92,10 @@ public class SqlResponse {
 
     public boolean isHasSoftFailure() {
         return hasSoftFailure;
+    }
+
+    public double getCoveredPercent() {
+        return coveredPercent;
     }
 
     public int getRowCount() {
@@ -102,6 +114,7 @@ public class SqlResponse {
         XContentParser.Token token;
         double totalTime = 0;
         boolean hasSoftFailure = false;
+        double coveredPercent = 0;
         int rowCount = 0;
         SqlResult sqlResult = null;
         ErrorInfo errorInfo = null;
@@ -115,6 +128,9 @@ public class SqlResponse {
                         break;
                     case "has_soft_failure":
                         hasSoftFailure = parser.booleanValue();
+                        break;
+                    case "covered_percent":
+                        coveredPercent = parser.doubleValue();
                         break;
                     case "row_count":
                         rowCount = parser.intValue();
@@ -200,7 +216,7 @@ public class SqlResponse {
                 }
             }
         }
-        return new SqlResponse(totalTime, hasSoftFailure, rowCount, sqlResult, errorInfo);
+        return new SqlResponse(totalTime, hasSoftFailure, coveredPercent, rowCount, sqlResult, errorInfo);
     }
 
     public static SqlResponse parse(String strResponse) throws IOException {

@@ -69,6 +69,14 @@ public class BizConfig {
 
     public static class MergeConfig {
         public String merge_strategy = "combined";
+        public MergeStrategyConfig merge_strategy_params = new MergeStrategyConfig();
+    }
+
+    public static class MergeStrategyConfig {
+        public String input_limits = "max-segment-size=5120";
+        public String strategy_conditions = "priority-feature=valid-doc-count#asc;conflict-segment-count=10;conflict-delete-percent=30";
+        public String output_limits = "max-merged-segment-size=13312;max-total-merged-size=15360;"
+            + "max-small-segment-count=10;merge-size-upperbound=256;merge-size-lowerbound=64";
     }
 
     public static class BuildConfig {
