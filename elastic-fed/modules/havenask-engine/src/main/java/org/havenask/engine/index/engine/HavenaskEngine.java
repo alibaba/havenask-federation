@@ -14,6 +14,8 @@
 
 package org.havenask.engine.index.engine;
 
+import static org.havenask.engine.search.rest.RestHavenaskSqlAction.SQL_DATABASE;
+
 import java.io.Closeable;
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -554,8 +556,9 @@ public class HavenaskEngine extends InternalEngine {
                 tableName,
                 get.id()
             );
+            String kvpair = "format:full_json;timeout:10000;databaseName:" + SQL_DATABASE;
 
-            HavenaskSqlResponse response = client.execute(HavenaskSqlAction.INSTANCE, new HavenaskSqlRequest(sql, null)).actionGet();
+            HavenaskSqlResponse response = client.execute(HavenaskSqlAction.INSTANCE, new HavenaskSqlRequest(sql, kvpair)).actionGet();
             JSONObject jsonObject = JsonPrettyFormatter.fromString(response.getResult());
             JSONObject sqlResult = jsonObject.getJSONObject("sql_result");
             JSONArray datas = sqlResult.getJSONArray("data");
@@ -816,7 +819,8 @@ public class HavenaskEngine extends InternalEngine {
         long docCount = 0;
         try {
             String sql = String.format(Locale.ROOT, "select /*+ SCAN_ATTR(partitionIds='%d')*/ count(*) from %s", shardId.id(), tableName);
-            HavenaskSqlResponse response = client.execute(HavenaskSqlAction.INSTANCE, new HavenaskSqlRequest(sql, null)).actionGet();
+            String kvpair = "format:full_json;timeout:10000;databaseName:" + SQL_DATABASE;
+            HavenaskSqlResponse response = client.execute(HavenaskSqlAction.INSTANCE, new HavenaskSqlRequest(sql, kvpair)).actionGet();
             JSONObject jsonObject = JsonPrettyFormatter.fromString(response.getResult());
             JSONObject sqlResult = jsonObject.getJSONObject("sql_result");
             JSONArray datas = sqlResult.getJSONArray("data");
