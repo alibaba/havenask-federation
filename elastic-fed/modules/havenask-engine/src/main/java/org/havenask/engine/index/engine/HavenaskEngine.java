@@ -14,8 +14,28 @@
 
 package org.havenask.engine.index.engine;
 
-import com.alibaba.fastjson.JSONArray;
-import com.alibaba.fastjson.JSONObject;
+import static org.havenask.engine.search.rest.RestHavenaskSqlAction.SQL_DATABASE;
+
+import java.io.Closeable;
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.charset.StandardCharsets;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.function.BiFunction;
+import java.util.function.Function;
+import java.util.function.LongConsumer;
+import java.util.function.LongSupplier;
+
+import javax.management.MBeanTrustPermission;
+
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.DescribeTopicsResult;
 import org.apache.kafka.clients.admin.KafkaAdminClient;
@@ -37,6 +57,7 @@ import org.apache.lucene.store.AlreadyClosedException;
 import org.apache.lucene.util.BytesRef;
 import org.havenask.HavenaskException;
 import org.havenask.action.bulk.BackoffPolicy;
+import org.havenask.client.Client;
 import org.havenask.common.Nullable;
 import org.havenask.common.bytes.BytesArray;
 import org.havenask.common.bytes.BytesReference;
@@ -51,13 +72,13 @@ import org.havenask.engine.MetaDataSyncer;
 import org.havenask.engine.NativeProcessControlService;
 import org.havenask.engine.index.mapper.VectorField;
 import org.havenask.engine.rpc.HavenaskClient;
-import org.havenask.engine.rpc.QrsClient;
-import org.havenask.engine.rpc.QrsSqlRequest;
-import org.havenask.engine.rpc.QrsSqlResponse;
 import org.havenask.engine.rpc.SearcherClient;
 import org.havenask.engine.rpc.TargetInfo;
 import org.havenask.engine.rpc.WriteRequest;
 import org.havenask.engine.rpc.WriteResponse;
+import org.havenask.engine.search.action.HavenaskSqlAction;
+import org.havenask.engine.search.action.HavenaskSqlRequest;
+import org.havenask.engine.search.action.HavenaskSqlResponse;
 import org.havenask.engine.util.JsonPrettyFormatter;
 import org.havenask.engine.util.RangeUtil;
 import org.havenask.engine.util.Utils;
@@ -79,33 +100,16 @@ import org.havenask.index.translog.TranslogConfig;
 import org.havenask.index.translog.TranslogDeletionPolicy;
 import org.havenask.search.DefaultSearchContext;
 import org.havenask.search.internal.ContextIndexSearcher;
+
+import com.alibaba.fastjson.JSONArray;
+import com.alibaba.fastjson.JSONObject;
+
 import suez.service.proto.ErrorCode;
-
-import javax.management.MBeanTrustPermission;
-import java.io.Closeable;
-import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.nio.charset.StandardCharsets;
-import java.security.AccessController;
-import java.security.PrivilegedAction;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.function.BiFunction;
-import java.util.function.Function;
-import java.util.function.LongConsumer;
-import java.util.function.LongSupplier;
-
-import static org.havenask.engine.search.rest.RestHavenaskSqlAction.SQL_DATABASE;
 
 public class HavenaskEngine extends InternalEngine {
 
     private final HavenaskClient searcherHttpClient;
-    private final QrsClient qrsHttpClient;
+    private final Client client;
     private final SearcherClient searcherClient;
     private final HavenaskEngineEnvironment env;
     private final NativeProcessControlService nativeProcessControlService;
@@ -123,7 +127,7 @@ public class HavenaskEngine extends InternalEngine {
     public HavenaskEngine(
         EngineConfig engineConfig,
         HavenaskClient searcherHttpClient,
-        QrsClient qrsHttpClient,
+        Client client,
         SearcherClient searcherClient,
         HavenaskEngineEnvironment env,
         NativeProcessControlService nativeProcessControlService,
@@ -132,7 +136,7 @@ public class HavenaskEngine extends InternalEngine {
         super(engineConfig);
 
         this.searcherHttpClient = searcherHttpClient;
-        this.qrsHttpClient = qrsHttpClient;
+        this.client = client;
         this.searcherClient = searcherClient;
         this.env = env;
         this.nativeProcessControlService = nativeProcessControlService;
@@ -553,8 +557,8 @@ public class HavenaskEngine extends InternalEngine {
                 get.id()
             );
             String kvpair = "format:full_json;timeout:10000;databaseName:" + SQL_DATABASE;
-            QrsSqlRequest request = new QrsSqlRequest(sql, kvpair);
-            QrsSqlResponse response = qrsHttpClient.executeSql(request);
+
+            HavenaskSqlResponse response = client.execute(HavenaskSqlAction.INSTANCE, new HavenaskSqlRequest(sql, kvpair)).actionGet();
             JSONObject jsonObject = JsonPrettyFormatter.fromString(response.getResult());
             JSONObject sqlResult = jsonObject.getJSONObject("sql_result");
             JSONArray datas = sqlResult.getJSONArray("data");
@@ -816,8 +820,7 @@ public class HavenaskEngine extends InternalEngine {
         try {
             String sql = String.format(Locale.ROOT, "select /*+ SCAN_ATTR(partitionIds='%d')*/ count(*) from %s", shardId.id(), tableName);
             String kvpair = "format:full_json;timeout:10000;databaseName:" + SQL_DATABASE;
-            QrsSqlRequest request = new QrsSqlRequest(sql, kvpair);
-            QrsSqlResponse response = qrsHttpClient.executeSql(request);
+            HavenaskSqlResponse response = client.execute(HavenaskSqlAction.INSTANCE, new HavenaskSqlRequest(sql, kvpair)).actionGet();
             JSONObject jsonObject = JsonPrettyFormatter.fromString(response.getResult());
             JSONObject sqlResult = jsonObject.getJSONObject("sql_result");
             JSONArray datas = sqlResult.getJSONArray("data");
@@ -839,7 +842,7 @@ public class HavenaskEngine extends InternalEngine {
             ReferenceManager<HavenaskDirectoryReader> referenceManager = getReferenceManager(scope);
             HavenaskDirectoryReader acquire = referenceManager.acquire();
             return new HavenaskSearcher(
-                qrsHttpClient,
+                client,
                 shardId,
                 source,
                 acquire,
@@ -867,7 +870,7 @@ public class HavenaskEngine extends InternalEngine {
                 @Override
                 public Searcher acquireSearcherInternal(String source) {
                     return new HavenaskSearcher(
-                        qrsHttpClient,
+                        client,
                         shardId,
                         "search",
                         acquire,
@@ -899,11 +902,11 @@ public class HavenaskEngine extends InternalEngine {
     }
 
     public static class HavenaskSearcher extends Engine.Searcher {
-        private final QrsClient qrsHttpClient;
+        private final Client client;
         private final ShardId shardId;
 
         public HavenaskSearcher(
-            QrsClient qrsHttpClient,
+            Client client,
             ShardId shardId,
             String source,
             IndexReader reader,
@@ -913,7 +916,7 @@ public class HavenaskEngine extends InternalEngine {
             Closeable onClose
         ) {
             super(source, reader, similarity, queryCache, queryCachingPolicy, onClose);
-            this.qrsHttpClient = qrsHttpClient;
+            this.client = client;
             this.shardId = shardId;
         }
 
@@ -921,7 +924,7 @@ public class HavenaskEngine extends InternalEngine {
         public ContextIndexSearcher createContextIndexSearcher(DefaultSearchContext searchContext, boolean lowLevelCancellation)
             throws IOException {
             return new HavenaskIndexSearcher(
-                qrsHttpClient,
+                client,
                 shardId,
                 searchContext,
                 getIndexReader(),

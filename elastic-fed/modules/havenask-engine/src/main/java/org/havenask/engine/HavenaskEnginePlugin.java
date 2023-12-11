@@ -123,6 +123,7 @@ public class HavenaskEnginePlugin extends Plugin
     private final SetOnce<NativeProcessControlService> nativeProcessControlServiceSetOnce = new SetOnce<>();
     private final SetOnce<HavenaskClient> searcherClientSetOnce = new SetOnce<>();
     private final SetOnce<QrsClient> qrsClientSetOnce = new SetOnce<>();
+    private final SetOnce<Client> clientSetOnce = new SetOnce<>();
     private final SetOnce<SearcherClient> searcherArpcClientSetOnce = new SetOnce<>();
     private final SetOnce<MetaDataSyncer> metaDataSyncerSetOnce = new SetOnce<>();
     private final Settings settings;
@@ -177,7 +178,7 @@ public class HavenaskEnginePlugin extends Plugin
                 engineConfig -> new HavenaskEngine(
                     engineConfig,
                     searcherClientSetOnce.get(),
-                    qrsClientSetOnce.get(),
+                    clientSetOnce.get(),
                     searcherArpcClientSetOnce.get(),
                     havenaskEngineEnvironmentSetOnce.get(),
                     nativeProcessControlServiceSetOnce.get(),
@@ -226,6 +227,7 @@ public class HavenaskEnginePlugin extends Plugin
             qrsClientSetOnce.get()
         );
         metaDataSyncerSetOnce.set(metaDataSyncer);
+        clientSetOnce.set(client);
 
         return Arrays.asList(
             nativeProcessControlServiceSetOnce.get(),
