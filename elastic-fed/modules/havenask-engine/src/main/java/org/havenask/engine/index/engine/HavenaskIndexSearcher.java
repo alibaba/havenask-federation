@@ -78,7 +78,7 @@ public class HavenaskIndexSearcher extends ContextIndexSearcher {
     public void search(Query query, Collector collector) throws IOException {
         String sql = QueryTransformer.toSql(tableName, searchContext.request().source(), searchContext.indexShard().mapperService());
         String kvpair = "format:full_json;timeout:10000;databaseName:" + SQL_DATABASE;
-        HavenaskSqlResponse response = client.execute(HavenaskSqlAction.INSTANCE, new HavenaskSqlRequest(sql, null)).actionGet();
+        HavenaskSqlResponse response = client.execute(HavenaskSqlAction.INSTANCE, new HavenaskSqlRequest(sql, kvpair)).actionGet();
         if (false == Strings.isNullOrEmpty(response.getResult())) {
             SqlResponse sqlResponse = SqlResponse.parse(response.getResult());
             if (logger.isDebugEnabled()) {
