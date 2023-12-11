@@ -135,6 +135,7 @@ public class HavenaskEngineEnvironmentTests extends HavenaskTestCase {
     }
 
     public void testDeleteShardDirectoryUnderLock() throws IOException {
+        String tableWithShardId = tableName + "_" + String.valueOf(shardId.getId());
         Path indexFile = workDir.resolve("data")
             .resolve(HavenaskEngineEnvironment.DEFAULT_DATA_PATH)
             .resolve(HavenaskEngineEnvironment.HAVENASK_RUNTIMEDATA_PATH)
@@ -155,8 +156,8 @@ public class HavenaskEngineEnvironmentTests extends HavenaskTestCase {
         targetInfo.table_info = new HashMap<>();
         when(metaDataSyncer.getSearcherTargetInfo()).thenReturn(targetInfo);
 
-        when(metaDataSyncer.getIndexLockAndCreateIfNotExist(tableName)).thenReturn(indexLock);
-        when(metaDataSyncer.getIndexLock(tableName)).thenReturn(indexLock);
+        when(metaDataSyncer.getIndexLockAndCreateIfNotExist(tableWithShardId)).thenReturn(indexLock);
+        when(metaDataSyncer.getIndexLock(tableWithShardId)).thenReturn(indexLock);
 
         IndexSettings indexSettings = new IndexSettings(build, Settings.EMPTY);
 

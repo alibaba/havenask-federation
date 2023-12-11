@@ -81,15 +81,20 @@ public class HavenaskIndexEventListener implements IndexEventListener {
     @Override
     public void afterIndexShardCreated(IndexShard indexShard) {
         String tableName = indexShard.shardId().getIndexName();
-        ReentrantLock indexLock = metaDataSyncer.getIndexLock(tableName);
+        String tableWithShardId = tableName + "_" + indexShard.shardId().getId();
+        ReentrantLock indexLock = metaDataSyncer.getIndexLock(tableWithShardId);
         try {
             if (indexLock != null) {
                 if (indexLock.tryLock(60, TimeUnit.SECONDS)) {
-                    LOGGER.debug("get lock while creating shard, index name: [{}], shardId :[{}]", tableName, indexShard.shardId().getId());
+                    LOGGER.debug(
+                        "get lock while creating shard, index: [{}], shardId :[{}]",
+                        tableWithShardId,
+                        indexShard.shardId().getId()
+                    );
                 } else {
                     LOGGER.debug(
-                        "failed to get lock while creating shard, out of time, index name: [{}], shardId :[{}]",
-                        tableName,
+                        "failed to get lock while creating shard, out of time, index: [{}], shardId :[{}]",
+                        tableWithShardId,
                         indexShard.shardId().getId()
                     );
                 }

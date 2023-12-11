@@ -225,11 +225,10 @@ public class HavenaskEngineEnvironment implements CustomEnvironment {
         if (metaDataSyncer == null) {
             throw new RuntimeException("metaDataSyncer is null while deleting shard");
         }
-
         String tableName = indexSettings.getIndex().getName();
         String partitionId = RangeUtil.getRangeName(indexSettings.getNumberOfShards(), lock.getShardId().id());
         final ThreadPool threadPool = metaDataSyncer.getThreadPool();
-        asyncRemoveShardRuntimeDir(threadPool, tableName, partitionId, shardDir);
+        asyncRemoveShardRuntimeDir(threadPool, lock.getShardId(), partitionId, shardDir);
     }
 
     /**
@@ -269,11 +268,13 @@ public class HavenaskEngineEnvironment implements CustomEnvironment {
     /**
      * 异步删除减少shard时runtimedata内的数据信息
      */
-    public void asyncRemoveShardRuntimeDir(final ThreadPool threadPool, String tableName, String partitionId, Path shardDir) {
+    public void asyncRemoveShardRuntimeDir(final ThreadPool threadPool, ShardId shardId, String partitionId, Path shardDir) {
         threadPool.executor(HavenaskEnginePlugin.HAVENASK_THREAD_POOL_NAME).execute(() -> {
-            ReentrantLock indexLock = metaDataSyncer.getIndexLockAndCreateIfNotExist(tableName);
+            String tableName = shardId.getIndexName();
+            String tableWithShardId = tableName + "_" + String.valueOf(shardId.getId());
+            ReentrantLock indexLock = metaDataSyncer.getIndexLockAndCreateIfNotExist(tableWithShardId);
             indexLock.lock();
-            LOGGER.debug("get lock while deleting shard, table name :[{}], partitionId:[{}]", tableName, partitionId);
+            LOGGER.debug("get lock while deleting shard, index :[{}], partitionId:[{}]", tableWithShardId, partitionId);
             try {
                 if (metaDataSyncer != null) {
                     metaDataSyncer.setSearcherPendingSync();
@@ -281,9 +282,8 @@ public class HavenaskEngineEnvironment implements CustomEnvironment {
                         checkShardIsDeletedInSearcher(metaDataSyncer, tableName, partitionId);
                     } catch (IOException e) {
                         LOGGER.error(
-                            "checkShardIsDeletedInSearcher failed while deleting shard, "
-                                + "table name: [{}], partitionId:[{}], error: [{}]",
-                            tableName,
+                            "checkShardIsDeletedInSearcher failed while deleting shard, " + "index: [{}], partitionId:[{}], error: [{}]",
+                            tableWithShardId,
                             partitionId,
                             e
                         );
@@ -297,7 +297,7 @@ public class HavenaskEngineEnvironment implements CustomEnvironment {
             } finally {
                 metaDataSyncer.deleteIndexLock(tableName);
                 indexLock.unlock();
-                LOGGER.debug("release lock after deleting index, table name :[{}], partitionId[{}]", tableName, partitionId);
+                LOGGER.debug("release lock after deleting shard, table name :[{}], partitionId[{}]", tableName, partitionId);
             }
         });
     }
