@@ -43,6 +43,7 @@ public class HavenaskSearchQueryProcessor {
     private static final String PROPERTIES_FIELD = "properties";
     private static final String VECTOR_SIMILARITY_TYPE_L2_NORM = "L2_NORM";
     private static final String VECTOR_SIMILARITY_TYPE_DOT_PRODUCT = "DOT_PRODUCT";
+    private static final int DEFAULT_SEARCH_SIZE = 10;
     QrsClient qrsClient;
 
     public HavenaskSearchQueryProcessor(QrsClient qrsClient) {
@@ -175,6 +176,8 @@ public class HavenaskSearchQueryProcessor {
 
         if (size > 0) {
             sqlQuery.append(" limit ").append(size);
+        } else {
+            sqlQuery.append(" limit ").append(DEFAULT_SEARCH_SIZE);
         }
         return sqlQuery.toString();
     }
