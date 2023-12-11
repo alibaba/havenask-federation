@@ -14,6 +14,8 @@
 
 package org.havenask.engine.index.engine;
 
+import static org.havenask.engine.search.rest.RestHavenaskSqlAction.SQL_DATABASE;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -50,7 +52,6 @@ public class HavenaskIndexSearcher extends ContextIndexSearcher {
     public static final String IDS_CONTEXT = "havenask_ids";
     private static final int ID_POS = 0;
     private static final int SCORE_POS = 1;
-    private static final String SQL_DATABASE = ;
     private final Client client;
     private final ShardId shardId;
     private final String tableName;
@@ -77,7 +78,7 @@ public class HavenaskIndexSearcher extends ContextIndexSearcher {
     public void search(Query query, Collector collector) throws IOException {
         String sql = QueryTransformer.toSql(tableName, searchContext.request().source(), searchContext.indexShard().mapperService());
         String kvpair = "format:full_json;timeout:10000;databaseName:" + SQL_DATABASE;
-        HavenaskSqlResponse response = client.execute(HavenaskSqlAction.INSTANCE, new HavenaskSqlRequest(sql, kvpair)).actionGet();
+        HavenaskSqlResponse response = client.execute(HavenaskSqlAction.INSTANCE, new HavenaskSqlRequest(sql, null)).actionGet();
         if (false == Strings.isNullOrEmpty(response.getResult())) {
             SqlResponse sqlResponse = SqlResponse.parse(response.getResult());
             if (logger.isDebugEnabled()) {
