@@ -64,8 +64,10 @@ import org.havenask.common.bytes.BytesReference;
 import org.havenask.common.collect.Tuple;
 import org.havenask.common.lucene.index.HavenaskDirectoryReader;
 import org.havenask.common.lucene.uid.VersionsAndSeqNoResolver.DocIdAndVersion;
+import org.havenask.common.metrics.CounterMetric;
 import org.havenask.common.settings.Settings;
 import org.havenask.common.unit.TimeValue;
+import org.havenask.common.util.SingleObjectCache;
 import org.havenask.common.xcontent.XContentHelper;
 import org.havenask.engine.HavenaskEngineEnvironment;
 import org.havenask.engine.MetaDataSyncer;
@@ -123,6 +125,9 @@ public class HavenaskEngine extends InternalEngine {
     private volatile HavenaskCommitInfo lastCommitInfo = null;
     private CheckpointCalc checkpointCalc = null;
     private final String partitionName;
+    private final SingleObjectCache<DocsStats> docsStatsCache;
+    private final CounterMetric numDocDeletes = new CounterMetric();
+    private final CounterMetric numDocIndexes = new CounterMetric();
 
     public HavenaskEngine(
         EngineConfig engineConfig,
@@ -192,6 +197,41 @@ public class HavenaskEngine extends InternalEngine {
         }
 
         nativeProcessControlService.addHavenaskEngine(this);
+        final TimeValue refreshInterval = engineConfig.getIndexSettings().getRefreshInterval();
+        docsStatsCache = new SingleObjectCache<>(refreshInterval, new DocsStats()) {
+            private long lastRefreshTime = 0;
+            private long indexes = 0;
+            private long deletes = 0;
+
+            @Override
+            protected DocsStats refresh() {
+                indexes = numDocIndexes.count();
+                deletes = numDocDeletes.count();
+                lastRefreshTime = lastCommitInfo.getCommitTimestamp();
+                return getDocStats();
+            }
+
+            @Override
+            protected boolean needsRefresh() {
+                if (super.needsRefresh() == false) {
+                    return false;
+                }
+
+                if (indexes != numDocIndexes.count()) {
+                    return true;
+                }
+
+                if (deletes != numDocDeletes.count()) {
+                    return true;
+                }
+
+                if (lastRefreshTime != lastCommitInfo.getCommitTimestamp()) {
+                    return true;
+                }
+
+                return false;
+            }
+        };
     }
 
     static KafkaProducer<String, String> initKafkaProducer(Settings settings) {
@@ -452,6 +492,8 @@ public class HavenaskEngine extends InternalEngine {
                         (System.nanoTime() - start) / 1000
                     );
                 }
+
+                numDocIndexes.inc();
                 return new IndexResult(index.version(), index.primaryTerm(), index.seqNo(), true);
             } catch (IOException e) {
                 logger.warn("havenask index exception", e);
@@ -491,6 +533,8 @@ public class HavenaskEngine extends InternalEngine {
                             + writeResponse.getErrorMessage()
                     );
                 }
+
+                numDocDeletes.inc();
                 return new DeleteResult(delete.version(), delete.primaryTerm(), delete.seqNo(), true);
             } catch (IOException e) {
                 logger.warn("havenask delete exception", e);
@@ -807,6 +851,10 @@ public class HavenaskEngine extends InternalEngine {
 
     @Override
     public DocsStats docStats() {
+        return docsStatsCache.getOrRefresh();
+    }
+
+    private DocsStats getDocStats() {
         // get doc count from havenask
         long docCount = getDocCount();
 
