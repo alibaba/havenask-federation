@@ -14,8 +14,28 @@
 
 package org.havenask.engine.index.engine;
 
-import com.alibaba.fastjson.JSONArray;
-import com.alibaba.fastjson.JSONObject;
+import static org.havenask.engine.search.rest.RestHavenaskSqlAction.SQL_DATABASE;
+
+import java.io.Closeable;
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.charset.StandardCharsets;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.function.BiFunction;
+import java.util.function.Function;
+import java.util.function.LongConsumer;
+import java.util.function.LongSupplier;
+
+import javax.management.MBeanTrustPermission;
+
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.DescribeTopicsResult;
 import org.apache.kafka.clients.admin.KafkaAdminClient;
@@ -43,8 +63,10 @@ import org.havenask.common.bytes.BytesReference;
 import org.havenask.common.collect.Tuple;
 import org.havenask.common.lucene.index.HavenaskDirectoryReader;
 import org.havenask.common.lucene.uid.VersionsAndSeqNoResolver.DocIdAndVersion;
+import org.havenask.common.metrics.CounterMetric;
 import org.havenask.common.settings.Settings;
 import org.havenask.common.unit.TimeValue;
+import org.havenask.common.util.SingleObjectCache;
 import org.havenask.common.xcontent.XContentHelper;
 import org.havenask.engine.HavenaskEngineEnvironment;
 import org.havenask.engine.MetaDataSyncer;
@@ -79,28 +101,11 @@ import org.havenask.index.translog.TranslogConfig;
 import org.havenask.index.translog.TranslogDeletionPolicy;
 import org.havenask.search.DefaultSearchContext;
 import org.havenask.search.internal.ContextIndexSearcher;
+
+import com.alibaba.fastjson.JSONArray;
+import com.alibaba.fastjson.JSONObject;
+
 import suez.service.proto.ErrorCode;
-
-import javax.management.MBeanTrustPermission;
-import java.io.Closeable;
-import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.nio.charset.StandardCharsets;
-import java.security.AccessController;
-import java.security.PrivilegedAction;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.function.BiFunction;
-import java.util.function.Function;
-import java.util.function.LongConsumer;
-import java.util.function.LongSupplier;
-
-import static org.havenask.engine.search.rest.RestHavenaskSqlAction.SQL_DATABASE;
 
 public class HavenaskEngine extends InternalEngine {
 
@@ -119,6 +124,9 @@ public class HavenaskEngine extends InternalEngine {
     private volatile HavenaskCommitInfo lastCommitInfo = null;
     private CheckpointCalc checkpointCalc = null;
     private final String partitionName;
+    private final SingleObjectCache<DocsStats> docsStatsCache;
+    private final CounterMetric numDocDeletes = new CounterMetric();
+    private final CounterMetric numDocIndexes = new CounterMetric();
 
     public HavenaskEngine(
         EngineConfig engineConfig,
@@ -188,6 +196,41 @@ public class HavenaskEngine extends InternalEngine {
         }
 
         nativeProcessControlService.addHavenaskEngine(this);
+        final TimeValue refreshInterval = engineConfig.getIndexSettings().getRefreshInterval();
+        docsStatsCache = new SingleObjectCache<>(refreshInterval, new DocsStats()) {
+            private long lastRefreshTime = 0;
+            private long indexes = 0;
+            private long deletes = 0;
+
+            @Override
+            protected DocsStats refresh() {
+                return getDocStats();
+            }
+
+            @Override
+            protected boolean needsRefresh() {
+                if (super.needsRefresh() == false) {
+                    return false;
+                }
+
+                if (indexes != numDocIndexes.count()) {
+                    indexes = numDocIndexes.count();
+                    return true;
+                }
+
+                if (deletes != numDocDeletes.count()) {
+                    deletes = numDocDeletes.count();
+                    return true;
+                }
+
+                if (lastRefreshTime != lastCommitInfo.getCommitTimestamp()) {
+                    lastRefreshTime = lastCommitInfo.getCommitTimestamp();
+                    return true;
+                }
+
+                return true;
+            }
+        };
     }
 
     static KafkaProducer<String, String> initKafkaProducer(Settings settings) {
@@ -448,6 +491,8 @@ public class HavenaskEngine extends InternalEngine {
                         (System.nanoTime() - start) / 1000
                     );
                 }
+
+                numDocIndexes.inc();
                 return new IndexResult(index.version(), index.primaryTerm(), index.seqNo(), true);
             } catch (IOException e) {
                 logger.warn("havenask index exception", e);
@@ -487,6 +532,8 @@ public class HavenaskEngine extends InternalEngine {
                             + writeResponse.getErrorMessage()
                     );
                 }
+
+                numDocDeletes.inc();
                 return new DeleteResult(delete.version(), delete.primaryTerm(), delete.seqNo(), true);
             } catch (IOException e) {
                 logger.warn("havenask delete exception", e);
@@ -803,6 +850,10 @@ public class HavenaskEngine extends InternalEngine {
 
     @Override
     public DocsStats docStats() {
+        return docsStatsCache.getOrRefresh();
+    }
+
+    private DocsStats getDocStats() {
         // get doc count from havenask
         long docCount = getDocCount();
 
