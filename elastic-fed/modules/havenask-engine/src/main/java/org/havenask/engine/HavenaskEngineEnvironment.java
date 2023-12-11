@@ -291,13 +291,13 @@ public class HavenaskEngineEnvironment implements CustomEnvironment {
                 }
                 IOUtils.rm(shardDir);
 
-                LOGGER.info("remove shard dir successful, table name :[{}], partitionId:[{}]", tableName, partitionId);
+                LOGGER.info("remove shard dir successful, table name :[{}], partitionId:[{}]", tableWithShardId, partitionId);
             } catch (Exception e) {
-                LOGGER.warn("remove shard dir failed, table name: [{}]，partitionId:[{}], error: [{}]", tableName, partitionId, e);
+                LOGGER.warn("remove shard dir failed, table name: [{}]，partitionId:[{}], error: [{}]", tableWithShardId, partitionId, e);
             } finally {
-                metaDataSyncer.deleteIndexLock(tableName);
+                metaDataSyncer.deleteIndexLock(tableWithShardId);
                 indexLock.unlock();
-                LOGGER.debug("release lock after deleting shard, table name :[{}], partitionId[{}]", tableName, partitionId);
+                LOGGER.debug("release lock after deleting shard, table name :[{}], partitionId[{}]", tableWithShardId, partitionId);
             }
         });
     }
