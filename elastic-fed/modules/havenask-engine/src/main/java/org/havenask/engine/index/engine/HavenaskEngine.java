@@ -204,6 +204,9 @@ public class HavenaskEngine extends InternalEngine {
 
             @Override
             protected DocsStats refresh() {
+                indexes = numDocIndexes.count();
+                deletes = numDocDeletes.count();
+                lastRefreshTime = lastCommitInfo.getCommitTimestamp();
                 return getDocStats();
             }
 
@@ -214,17 +217,14 @@ public class HavenaskEngine extends InternalEngine {
                 }
 
                 if (indexes != numDocIndexes.count()) {
-                    indexes = numDocIndexes.count();
                     return true;
                 }
 
                 if (deletes != numDocDeletes.count()) {
-                    deletes = numDocDeletes.count();
                     return true;
                 }
 
                 if (lastRefreshTime != lastCommitInfo.getCommitTimestamp()) {
-                    lastRefreshTime = lastCommitInfo.getCommitTimestamp();
                     return true;
                 }
 
