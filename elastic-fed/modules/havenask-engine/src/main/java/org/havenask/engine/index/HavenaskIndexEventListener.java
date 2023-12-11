@@ -88,16 +88,16 @@ public class HavenaskIndexEventListener implements IndexEventListener {
             if (indexLock != null) {
                 if (indexLock.tryLock(60, TimeUnit.SECONDS)) {
                     LOGGER.debug(
-                            "get indexLock while creating shard, index: [{}], shardId :[{}]",
-                            tableWithShardId,
-                            indexShard.shardId().getId()
+                        "get indexLock while creating shard, index: [{}], shardId :[{}]",
+                        tableWithShardId,
+                        indexShard.shardId().getId()
                     );
                     indexLock.unlock();
                 } else {
                     LOGGER.debug(
-                            "failed to get indexLock while creating shard, out of time, index: [{}], shardId :[{}]",
-                            tableWithShardId,
-                            indexShard.shardId().getId()
+                        "failed to get indexLock while creating shard, out of time, index: [{}], shardId :[{}]",
+                        tableWithShardId,
+                        indexShard.shardId().getId()
                     );
                 }
                 indexLock = null;
@@ -132,15 +132,12 @@ public class HavenaskIndexEventListener implements IndexEventListener {
                 try {
                     indexLock.unlock();
                     LOGGER.debug(
-                            "release indexLock after creating shard, table name :[{}], shardId :[{}]",
-                            tableName,
-                            indexShard.shardId().getId()
+                        "release indexLock after creating shard, table name :[{}], shardId :[{}]",
+                        tableName,
+                        indexShard.shardId().getId()
                     );
                 } catch (IllegalMonitorStateException e) {
-                    LOGGER.error("release indexLock error after creating shard, table name :[{}], shardId :[{}]",
-                            tableName,
-                            indexShard.shardId().getId(),
-                            e);
+                    LOGGER.error("release indexLock error after creating shard", e);
                 }
             }
             if (indexShardLock != null) {
@@ -152,10 +149,7 @@ public class HavenaskIndexEventListener implements IndexEventListener {
                         indexShard.shardId().getId()
                     );
                 } catch (IllegalMonitorStateException e) {
-                    LOGGER.error("release indexShardLock error after creating shard, table name :[{}], shardId :[{}]",
-                            tableName,
-                            indexShard.shardId().getId(),
-                            e);
+                    LOGGER.error("release indexShardLock error after creating shard", e);
                 }
             }
         }
