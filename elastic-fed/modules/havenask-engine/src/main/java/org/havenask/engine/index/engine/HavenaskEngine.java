@@ -228,7 +228,7 @@ public class HavenaskEngine extends InternalEngine {
                     return true;
                 }
 
-                return true;
+                return false;
             }
         };
     }
