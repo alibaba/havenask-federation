@@ -80,6 +80,9 @@ public class HavenaskSearchFetchProcessor {
 
     public TopDocsAndMaxScore buildQuerySearchResult(SqlResponse queryPhaseSqlResponse, List<String> idList, int from) throws IOException {
         ScoreDoc[] queryScoreDocs = new ScoreDoc[queryPhaseSqlResponse.getRowCount()];
+        // TODO: 当前通过sql没有较好的方法来获取totalHits的准确值，后续可能考虑优化
+        int offset = Math.max(from, 0);
+        int totalHitsValue = queryPhaseSqlResponse.getRowCount() > 0 ? queryPhaseSqlResponse.getRowCount() + offset : 0;
         float maxScore = 0;
         int sqlDataSize = queryPhaseSqlResponse.getRowCount() > 0 ? queryPhaseSqlResponse.getSqlResult().getData()[0].length : 0;
         if (sqlDataSize > 2) {
@@ -95,10 +98,7 @@ public class HavenaskSearchFetchProcessor {
             maxScore = Math.max(maxScore, curScore);
             idList.add(String.valueOf(queryPhaseSqlResponse.getSqlResult().getData()[i][ID_POS]));
         }
-        TopDocs topDocs = new TopDocs(
-            new TotalHits(queryPhaseSqlResponse.getRowCount() + from, TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO),
-            queryScoreDocs
-        );
+        TopDocs topDocs = new TopDocs(new TotalHits(totalHitsValue, TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO), queryScoreDocs);
         return new TopDocsAndMaxScore(topDocs, maxScore);
     }
 
