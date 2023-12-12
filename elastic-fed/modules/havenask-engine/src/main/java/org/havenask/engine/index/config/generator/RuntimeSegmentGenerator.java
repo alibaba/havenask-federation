@@ -14,13 +14,6 @@
 
 package org.havenask.engine.index.config.generator;
 
-import org.havenask.common.Nullable;
-import org.havenask.common.settings.Settings;
-import org.havenask.engine.index.config.Schema;
-import org.havenask.engine.util.RangeUtil;
-import org.havenask.index.mapper.MapperService;
-import org.havenask.index.shard.ShardId;
-
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -28,7 +21,19 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.Locale;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.havenask.common.Nullable;
+import org.havenask.common.settings.Settings;
+import org.havenask.engine.index.config.Schema;
+import org.havenask.engine.util.RangeUtil;
+import org.havenask.engine.util.Utils;
+import org.havenask.index.mapper.MapperService;
+import org.havenask.index.shard.ShardId;
+
 public class RuntimeSegmentGenerator {
+    private static final Logger LOGGER = LogManager.getLogger(RuntimeSegmentGenerator.class);
+
     public static final String VERSION_FILE_NAME = "version.0";
     public static final String VERSION_FILE_CONTENT = "{\n"
         + "\"description\":\n"
@@ -198,9 +203,13 @@ public class RuntimeSegmentGenerator {
             Files.createDirectories(dataPath);
         }
 
-        if (Files.exists(dataPath.resolve(VERSION_FILE_NAME))) {
+        String versionFile = Utils.getIndexMaxVersion(dataPath);
+
+        if (versionFile != null && false == versionFile.isEmpty()) {
             return;
         }
+
+        LOGGER.info("generate runtime segment for index [{}], partition [{}]", indexName, partitionName);
 
         Files.write(
             dataPath.resolve(VERSION_FILE_NAME),

@@ -14,20 +14,22 @@
 
 package org.havenask.engine.index.config.generator;
 
+import static java.util.Collections.singletonList;
+
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
+import java.util.Collection;
+import java.util.Locale;
+
 import org.havenask.common.settings.Settings;
 import org.havenask.engine.HavenaskEnginePlugin;
 import org.havenask.index.mapper.MapperService;
 import org.havenask.index.mapper.MapperServiceTestCase;
 import org.havenask.index.shard.ShardId;
 import org.havenask.plugins.Plugin;
-
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.Collection;
-import java.util.Locale;
-
-import static java.util.Collections.singletonList;
 
 public class RuntimeSegmentGeneratorTests extends MapperServiceTestCase {
     @Override
@@ -144,6 +146,39 @@ public class RuntimeSegmentGeneratorTests extends MapperServiceTestCase {
             ),
             entryTableContent
         );
+    }
+
+    public void testExists() throws IOException {
+        String indexName = randomAlphaOfLength(5);
+        MapperService mapperService = createMapperService(fieldMapping(b -> b.field("type", "keyword")));
+        Path runtimePath = createTempDir();
+        ShardId shardId = new ShardId(indexName, "_na_", 0);
+        RuntimeSegmentGenerator runtimeSegmentGenerator = new RuntimeSegmentGenerator(
+            shardId,
+            1,
+            Settings.EMPTY,
+            mapperService,
+            runtimePath
+        );
+
+        Path dataPath = runtimePath.resolve(indexName).resolve("generation_0").resolve("partition_0_65535");
+        Files.createDirectories(dataPath);
+
+        Files.write(
+            dataPath.resolve("version.1"),
+            RuntimeSegmentGenerator.VERSION_FILE_CONTENT.getBytes(StandardCharsets.UTF_8),
+            StandardOpenOption.CREATE,
+            StandardOpenOption.TRUNCATE_EXISTING
+        );
+
+        runtimeSegmentGenerator.generate();
+
+        assertFalse(Files.exists(dataPath.resolve(RuntimeSegmentGenerator.VERSION_FILE_NAME)));
+        assertFalse(Files.exists(dataPath.resolve(RuntimeSegmentGenerator.INDEX_FORMAT_VERSION_FILE_NAME)));
+        assertFalse(Files.exists(dataPath.resolve(RuntimeSegmentGenerator.INDEX_PARTITION_META_FILE_NAME)));
+        assertFalse(Files.exists(dataPath.resolve(RuntimeSegmentGenerator.SCHEMA_FILE_NAME)));
+        assertFalse(Files.exists(dataPath.resolve(RuntimeSegmentGenerator.DEPLOY_META_FILE_NAME)));
+        assertFalse(Files.exists(dataPath.resolve(RuntimeSegmentGenerator.ENTRY_TABLE_FILE_NAME)));
     }
 
 }

@@ -43,6 +43,7 @@ public class HavenaskSearchQueryProcessor {
     private static final String PROPERTIES_FIELD = "properties";
     private static final String VECTOR_SIMILARITY_TYPE_L2_NORM = "L2_NORM";
     private static final String VECTOR_SIMILARITY_TYPE_DOT_PRODUCT = "DOT_PRODUCT";
+    private static final int DEFAULT_SEARCH_SIZE = 10;
     QrsClient qrsClient;
 
     public HavenaskSearchQueryProcessor(QrsClient qrsClient) {
@@ -74,6 +75,9 @@ public class HavenaskSearchQueryProcessor {
         StringBuilder where = new StringBuilder();
         StringBuilder selectParams = new StringBuilder();
         StringBuilder orderBy = new StringBuilder();
+
+        int size = dsl.size() >= 0 ? dsl.size() : DEFAULT_SEARCH_SIZE;
+        int from = dsl.from() >= 0 ? dsl.from() : 0;
 
         selectParams.append(" _id");
 
@@ -165,17 +169,9 @@ public class HavenaskSearchQueryProcessor {
         }
         sqlQuery.append("select").append(selectParams).append(" from ").append(table);
         sqlQuery.append(where).append(orderBy);
-        int size = 0;
-        if (dsl.size() >= 0) {
-            size += dsl.size();
-            if (dsl.from() >= 0) {
-                size += dsl.from();
-            }
-        }
 
-        if (size > 0) {
-            sqlQuery.append(" limit ").append(size);
-        }
+        sqlQuery.append(" limit ").append(size).append(" offset ").append(from);
+
         return sqlQuery.toString();
     }
 

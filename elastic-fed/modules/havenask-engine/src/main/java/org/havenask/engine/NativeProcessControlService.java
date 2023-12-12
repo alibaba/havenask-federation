@@ -431,11 +431,11 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
                     long sizeValue = Long.parseLong(result.trim()) * 1024;
                     return sizeValue;
                 } else {
-                    return -1;
+                    return 0;
                 }
             } catch (Exception e) {
                 LOGGER.info(() -> new ParameterizedMessage("get table size error, table path [{}]", tablePath), e);
-                return -1;
+                return 0;
             }
         }
         return 0;
