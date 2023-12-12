@@ -80,7 +80,7 @@ public class HavenaskSearchFetchProcessor {
 
     public TopDocsAndMaxScore buildQuerySearchResult(SqlResponse queryPhaseSqlResponse, List<String> idList, int from) throws IOException {
         ScoreDoc[] queryScoreDocs = new ScoreDoc[queryPhaseSqlResponse.getRowCount()];
-        // TODO: 当前通过sql没有办法获取totalHits的准确值，后续可能考虑优化
+        // TODO: 当前通过sql没有较好的方法来获取totalHits的准确值，后续可能考虑优化
         int offset = Math.max(from, 0);
         int totalHitsValue = queryPhaseSqlResponse.getRowCount() > 0 ? queryPhaseSqlResponse.getRowCount() + offset : 0;
         float maxScore = 0;
