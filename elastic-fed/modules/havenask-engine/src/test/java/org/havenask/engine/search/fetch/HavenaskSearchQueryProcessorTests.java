@@ -55,7 +55,7 @@ public class HavenaskSearchQueryProcessorTests extends HavenaskTestCase {
 
         HavenaskSearchQueryProcessor havenaskSearchQueryProcessor = new HavenaskSearchQueryProcessor(qrsClient);
         String sql = havenaskSearchQueryProcessor.transferSearchRequest2HavenaskSql("table", builder, null);
-        assertEquals(sql, "select _id from table limit 10");
+        assertEquals("select _id from table limit 10 offset 0", sql);
     }
 
     public void testProximaQuery() throws IOException {
@@ -66,7 +66,7 @@ public class HavenaskSearchQueryProcessorTests extends HavenaskTestCase {
         String sql = havenaskSearchQueryProcessor.transferSearchRequest2HavenaskSql("table", builder, indexMapping);
         assertEquals(
             "select _id, (1/(1+vector_score('field'))) as _score from table where "
-                + "MATCHINDEX('field', '1.0,2.0&n=20') order by _score desc limit 10",
+                + "MATCHINDEX('field', '1.0,2.0&n=20') order by _score desc limit 10 offset 0",
             sql
         );
     }
@@ -88,7 +88,7 @@ public class HavenaskSearchQueryProcessorTests extends HavenaskTestCase {
         builder.query(QueryBuilders.matchQuery("field", "value"));
         HavenaskSearchQueryProcessor havenaskSearchQueryProcessor = new HavenaskSearchQueryProcessor(qrsClient);
         String sql = havenaskSearchQueryProcessor.transferSearchRequest2HavenaskSql("table", builder, null);
-        assertEquals(sql, "select _id from table where MATCHINDEX('field', 'value') limit 10");
+        assertEquals("select _id from table where MATCHINDEX('field', 'value') limit 10 offset 0", sql);
     }
 
     public void testLimit() throws IOException {
@@ -98,7 +98,7 @@ public class HavenaskSearchQueryProcessorTests extends HavenaskTestCase {
         builder.size(10);
         HavenaskSearchQueryProcessor havenaskSearchQueryProcessor = new HavenaskSearchQueryProcessor(qrsClient);
         String sql = havenaskSearchQueryProcessor.transferSearchRequest2HavenaskSql("table", builder, null);
-        assertEquals("select _id from table limit 20", sql);
+        assertEquals("select _id from table limit 10 offset 10", sql);
     }
 
     public void testNoFrom() throws IOException {
@@ -107,7 +107,7 @@ public class HavenaskSearchQueryProcessorTests extends HavenaskTestCase {
         builder.size(10);
         HavenaskSearchQueryProcessor havenaskSearchQueryProcessor = new HavenaskSearchQueryProcessor(qrsClient);
         String sql = havenaskSearchQueryProcessor.transferSearchRequest2HavenaskSql("table", builder, null);
-        assertEquals(sql, "select _id from table limit 10");
+        assertEquals(sql, "select _id from table limit 10 offset 0");
     }
 
     public void testNoSize() throws IOException {
@@ -116,7 +116,7 @@ public class HavenaskSearchQueryProcessorTests extends HavenaskTestCase {
         builder.from(10);
         HavenaskSearchQueryProcessor havenaskSearchQueryProcessor = new HavenaskSearchQueryProcessor(qrsClient);
         String sql = havenaskSearchQueryProcessor.transferSearchRequest2HavenaskSql("table", builder, null);
-        assertEquals(sql, "select _id from table limit 10");
+        assertEquals(sql, "select _id from table limit 10 offset 10");
     }
 
     // test knn dsl
@@ -128,7 +128,7 @@ public class HavenaskSearchQueryProcessorTests extends HavenaskTestCase {
         String l2NormSql = havenaskSearchQueryProcessor.transferSearchRequest2HavenaskSql("table", l2NormBuilder, indexMapping);
         assertEquals(
             "select _id, ((1/(1+vector_score('field1')))) as _score from table "
-                + "where MATCHINDEX('field1', '1.0,2.0&n=20') order by _score desc limit 10",
+                + "where MATCHINDEX('field1', '1.0,2.0&n=20') order by _score desc limit 10 offset 0",
             l2NormSql
         );
 
@@ -138,7 +138,7 @@ public class HavenaskSearchQueryProcessorTests extends HavenaskTestCase {
         String dotProductSql = havenaskSearchQueryProcessor.transferSearchRequest2HavenaskSql("table", dotProductBuilder, indexMapping);
         assertEquals(
             "select _id, (((1+vector_score('field2'))/2)) as _score from table "
-                + "where MATCHINDEX('field2', '0.6,0.8&n=20') order by _score desc limit 10",
+                + "where MATCHINDEX('field2', '0.6,0.8&n=20') order by _score desc limit 10 offset 0",
             dotProductSql
         );
     }
@@ -157,7 +157,8 @@ public class HavenaskSearchQueryProcessorTests extends HavenaskTestCase {
         String sql = havenaskSearchQueryProcessor.transferSearchRequest2HavenaskSql("table", builder, indexMapping);
         assertEquals(
             "select _id, ((1/(1+vector_score('field1'))) + ((1+vector_score('field2'))/2)) as _score from table "
-                + "where MATCHINDEX('field1', '1.0,2.0&n=20') or MATCHINDEX('field2', '0.6,0.8&n=10') order by _score desc limit 10",
+                + "where MATCHINDEX('field1', '1.0,2.0&n=20') or MATCHINDEX('field2', '0.6,0.8&n=10') "
+                + "order by _score desc limit 10 offset 0",
             sql
         );
     }

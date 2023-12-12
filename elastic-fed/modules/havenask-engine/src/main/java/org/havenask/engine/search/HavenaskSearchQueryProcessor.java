@@ -76,6 +76,9 @@ public class HavenaskSearchQueryProcessor {
         StringBuilder selectParams = new StringBuilder();
         StringBuilder orderBy = new StringBuilder();
 
+        int size = dsl.size() >= 0 ? dsl.size() : DEFAULT_SEARCH_SIZE;
+        int from = dsl.from() >= 0 ? dsl.from() : 0;
+
         selectParams.append(" _id");
 
         if (!dsl.knnSearch().isEmpty()) {
@@ -166,19 +169,9 @@ public class HavenaskSearchQueryProcessor {
         }
         sqlQuery.append("select").append(selectParams).append(" from ").append(table);
         sqlQuery.append(where).append(orderBy);
-        int size = 0;
-        if (dsl.size() >= 0) {
-            size += dsl.size();
-            if (dsl.from() >= 0) {
-                size += dsl.from();
-            }
-        }
 
-        if (size > 0) {
-            sqlQuery.append(" limit ").append(size);
-        } else {
-            sqlQuery.append(" limit ").append(DEFAULT_SEARCH_SIZE);
-        }
+        sqlQuery.append(" limit ").append(size).append(" offset ").append(from);
+
         return sqlQuery.toString();
     }
 
