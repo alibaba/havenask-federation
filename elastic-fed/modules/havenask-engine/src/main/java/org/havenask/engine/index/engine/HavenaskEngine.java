@@ -545,7 +545,7 @@ public class HavenaskEngine extends InternalEngine {
     }
 
     static final TimeValue DEFAULT_TIMEOUT = TimeValue.timeValueMillis(50);
-    static final int MAX_RETRY = 6;
+    static final int MAX_RETRY = 10;
     private static final Logger LOGGER = LogManager.getLogger(HavenaskEngine.class);
 
     static WriteResponse retryWrite(ShardId shardId, SearcherClient searcherClient, WriteRequest writeRequest) {
@@ -569,7 +569,7 @@ public class HavenaskEngine extends InternalEngine {
                 }
             }
             long cost = System.currentTimeMillis() - start;
-            LOGGER.info("[{}] havenask write retry, retry count: {}, cost: {}ms", shardId, retryCount, cost);
+            LOGGER.info("[{}] havenask write retry, retry count: {}, cost: {} ms", shardId, retryCount, cost);
         }
 
         return writeResponse;

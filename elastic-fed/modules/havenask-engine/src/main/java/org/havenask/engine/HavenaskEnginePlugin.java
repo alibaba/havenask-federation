@@ -250,6 +250,7 @@ public class HavenaskEnginePlugin extends Plugin
             EngineSettings.HAVENASK_REALTIME_BOOTSTRAP_SERVERS,
             EngineSettings.HAVENASK_REALTIME_KAFKA_START_TIMESTAMP,
             EngineSettings.HAVENASK_FLUSH_MAX_DOC_COUNT,
+            EngineSettings.HAVENASK_WRITE_QUEUE_SIZE,
             NativeProcessControlService.HAVENASK_COMMAND_TIMEOUT_SETTING,
             NativeProcessControlService.HAVENASK_SEARCHER_HTTP_PORT_SETTING,
             NativeProcessControlService.HAVENASK_SEARCHER_TCP_PORT_SETTING,

@@ -124,6 +124,21 @@ public class EngineSettings {
         Property.Final
     );
 
+    // index.havenask.write.queue.size
+    public static final Setting<Integer> HAVENASK_WRITE_QUEUE_SIZE = new Setting<>(
+        "index.havenask.write.queue.size",
+        "5000",
+        Integer::parseInt,
+        new Setting.Validator<>() {
+            @Override
+            public void validate(Integer value) {
+                if (value <= 0) throw new IllegalArgumentException("index.havenask.write.queue.size must be a positive integer");
+            }
+        },
+        Setting.Property.IndexScope,
+        Property.Final
+    );
+
     public static boolean isHavenaskEngine(Settings indexSettings) {
         return ENGINE_HAVENASK.equals(ENGINE_TYPE_SETTING.get(indexSettings));
     }
