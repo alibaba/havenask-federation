@@ -69,7 +69,7 @@ public class HavenaskSearchFetchProcessor {
             throw new IllegalArgumentException("request source can not be null!");
         }
         List<String> idList = new ArrayList<>(queryPhaseSqlResponse.getRowCount());
-        TopDocsAndMaxScore topDocsAndMaxScore = buildQuerySearchResult(queryPhaseSqlResponse, idList);
+        TopDocsAndMaxScore topDocsAndMaxScore = buildQuerySearchResult(queryPhaseSqlResponse, idList, searchSourceBuilder.from());
         SqlResponse fetchPhaseSqlResponse = searchSourceBuilder.fetchSource() == null
             || true == searchSourceBuilder.fetchSource().fetchSource()
                 ? havenaskFetchWithSql(idList, tableName, searchSourceBuilder.fetchSource(), qrsClient)
@@ -78,7 +78,7 @@ public class HavenaskSearchFetchProcessor {
         return transferSqlResponse2FetchResult(tableName, idList, fetchPhaseSqlResponse, topDocsAndMaxScore, searchSourceBuilder);
     }
 
-    public TopDocsAndMaxScore buildQuerySearchResult(SqlResponse queryPhaseSqlResponse, List<String> idList) throws IOException {
+    public TopDocsAndMaxScore buildQuerySearchResult(SqlResponse queryPhaseSqlResponse, List<String> idList, int from) throws IOException {
         ScoreDoc[] queryScoreDocs = new ScoreDoc[queryPhaseSqlResponse.getRowCount()];
         float maxScore = 0;
         int sqlDataSize = queryPhaseSqlResponse.getRowCount() > 0 ? queryPhaseSqlResponse.getSqlResult().getData()[0].length : 0;
@@ -96,7 +96,7 @@ public class HavenaskSearchFetchProcessor {
             idList.add(String.valueOf(queryPhaseSqlResponse.getSqlResult().getData()[i][ID_POS]));
         }
         TopDocs topDocs = new TopDocs(
-            new TotalHits(queryPhaseSqlResponse.getRowCount(), TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO),
+            new TotalHits(queryPhaseSqlResponse.getRowCount() + from, TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO),
             queryScoreDocs
         );
         return new TopDocsAndMaxScore(topDocs, maxScore);
