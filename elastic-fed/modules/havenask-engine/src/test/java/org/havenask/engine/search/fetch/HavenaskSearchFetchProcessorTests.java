@@ -57,7 +57,7 @@ public class HavenaskSearchFetchProcessorTests extends HavenaskTestCase {
 
         List<String> idList = new ArrayList<>(queryPhaseSqlResponse.getRowCount());
         HavenaskSearchFetchProcessor havenaskSearchFetchProcessor = new HavenaskSearchFetchProcessor(qrsClient);
-        TopDocsAndMaxScore topDocsAndMaxScore = havenaskSearchFetchProcessor.buildQuerySearchResult(queryPhaseSqlResponse, idList);
+        TopDocsAndMaxScore topDocsAndMaxScore = havenaskSearchFetchProcessor.buildQuerySearchResult(queryPhaseSqlResponse, idList, 0);
         assertEquals(4L, topDocsAndMaxScore.topDocs.totalHits.value);
         assertEquals(9.6800F, topDocsAndMaxScore.maxScore, delta);
         for (int i = 0; i < rowNum; i++) {
