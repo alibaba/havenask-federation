@@ -35,7 +35,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.concurrent.locks.ReentrantLock;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -67,6 +66,7 @@ import org.havenask.engine.rpc.UpdateHeartbeatTargetRequest;
 import org.havenask.engine.util.RangeUtil;
 import org.havenask.engine.util.Utils;
 import org.havenask.index.Index;
+import org.havenask.index.shard.ShardId;
 import org.havenask.threadpool.ThreadPool;
 
 import com.carrotsearch.hppc.cursors.ObjectCursor;
@@ -125,8 +125,8 @@ public class MetaDataSyncer extends AbstractLifecycleComponent implements Cluste
     private AtomicReference<TargetInfo> searcherTargetInfo = new AtomicReference<>();
     private int syncTimes = 0;
     private int qrsSyncTimes = 0;
-
-    private ConcurrentMap<String, ReentrantLock> indexLockMap = new ConcurrentHashMap<>();
+    private ConcurrentMap<String, Object> indexLockMap = new ConcurrentHashMap<>();
+    private ConcurrentMap<String, Object> shardLockMap = new ConcurrentHashMap<>();
 
     public MetaDataSyncer(
         ClusterService clusterService,
@@ -163,19 +163,31 @@ public class MetaDataSyncer extends AbstractLifecycleComponent implements Cluste
         return this.threadPool;
     }
 
-    public ReentrantLock getIndexLockAndCreateIfNotExist(String tableName) {
-        if (indexLockMap.containsKey(tableName) == false) {
-            indexLockMap.put(tableName, new ReentrantLock());
-        }
-        return indexLockMap.get(tableName);
+    public Object getIndexLockAndCreateIfNotExist(String tableName) {
+        return indexLockMap.putIfAbsent(tableName, new Object());
     }
 
-    public ReentrantLock getIndexLock(String tableName) {
+    public Object getIndexLock(String tableName) {
         return indexLockMap.get(tableName);
     }
 
     public void deleteIndexLock(String tableName) {
         indexLockMap.remove(tableName);
+    }
+
+    public Object getShardLockAndCreateIfNotExist(ShardId shardId) {
+        String tableWithShardId = shardId.getIndexName() + "_" + shardId.getId();
+        return shardLockMap.putIfAbsent(tableWithShardId, new Object());
+    }
+
+    public Object getShardLock(ShardId shardId) {
+        String tableWithShardId = shardId.getIndexName() + "_" + shardId.getId();
+        return shardLockMap.get(tableWithShardId);
+    }
+
+    public void deleteShardLock(ShardId shardId) {
+        String tableWithShardId = shardId.getIndexName() + "_" + shardId.getId();
+        shardLockMap.remove(tableWithShardId);
     }
 
     @Override
