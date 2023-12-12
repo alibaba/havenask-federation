@@ -14,6 +14,27 @@
 
 package org.havenask.engine;
 
+import static org.havenask.engine.index.config.generator.BizConfigGenerator.BIZ_DIR;
+import static org.havenask.engine.index.config.generator.BizConfigGenerator.CLUSTER_DIR;
+import static org.havenask.engine.index.config.generator.BizConfigGenerator.DATA_TABLES_DIR;
+import static org.havenask.engine.index.config.generator.BizConfigGenerator.DEFAULT_BIZ_CONFIG;
+import static org.havenask.engine.index.config.generator.BizConfigGenerator.DEFAULT_DIR;
+import static org.havenask.engine.index.config.generator.BizConfigGenerator.PLUGINS_DIR;
+import static org.havenask.engine.index.config.generator.BizConfigGenerator.SCHEMAS_DIR;
+import static org.havenask.engine.index.config.generator.RuntimeSegmentGenerator.DEPLOY_META_FILE_CONTENT_TEMPLATE;
+import static org.havenask.engine.index.config.generator.RuntimeSegmentGenerator.DEPLOY_META_FILE_NAME;
+import static org.havenask.engine.index.config.generator.RuntimeSegmentGenerator.ENTRY_TABLE_FILE_CONTENT;
+import static org.havenask.engine.index.config.generator.RuntimeSegmentGenerator.ENTRY_TABLE_FILE_NAME;
+import static org.havenask.engine.index.config.generator.RuntimeSegmentGenerator.INDEX_FORMAT_VERSION_FILE_CONTENT;
+import static org.havenask.engine.index.config.generator.RuntimeSegmentGenerator.INDEX_FORMAT_VERSION_FILE_NAME;
+import static org.havenask.engine.index.config.generator.RuntimeSegmentGenerator.INDEX_PARTITION_META_FILE_CONTENT;
+import static org.havenask.engine.index.config.generator.RuntimeSegmentGenerator.INDEX_PARTITION_META_FILE_NAME;
+import static org.havenask.engine.index.config.generator.RuntimeSegmentGenerator.SCHEMA_FILE_NAME;
+import static org.havenask.engine.index.config.generator.RuntimeSegmentGenerator.VERSION_FILE_CONTENT;
+import static org.havenask.engine.index.config.generator.RuntimeSegmentGenerator.VERSION_FILE_NAME;
+import static org.havenask.engine.index.config.generator.TableConfigGenerator.TABLE_DIR;
+import static org.havenask.env.Environment.PATH_HOME_SETTING;
+
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -45,27 +66,6 @@ import org.havenask.index.IndexSettings;
 import org.havenask.index.shard.ShardId;
 import org.havenask.plugins.NodeEnvironmentPlugin.CustomEnvironment;
 import org.havenask.threadpool.ThreadPool;
-
-import static org.havenask.engine.index.config.generator.BizConfigGenerator.BIZ_DIR;
-import static org.havenask.engine.index.config.generator.BizConfigGenerator.CLUSTER_DIR;
-import static org.havenask.engine.index.config.generator.BizConfigGenerator.DATA_TABLES_DIR;
-import static org.havenask.engine.index.config.generator.BizConfigGenerator.DEFAULT_BIZ_CONFIG;
-import static org.havenask.engine.index.config.generator.BizConfigGenerator.DEFAULT_DIR;
-import static org.havenask.engine.index.config.generator.BizConfigGenerator.PLUGINS_DIR;
-import static org.havenask.engine.index.config.generator.BizConfigGenerator.SCHEMAS_DIR;
-import static org.havenask.engine.index.config.generator.RuntimeSegmentGenerator.DEPLOY_META_FILE_CONTENT_TEMPLATE;
-import static org.havenask.engine.index.config.generator.RuntimeSegmentGenerator.DEPLOY_META_FILE_NAME;
-import static org.havenask.engine.index.config.generator.RuntimeSegmentGenerator.ENTRY_TABLE_FILE_CONTENT;
-import static org.havenask.engine.index.config.generator.RuntimeSegmentGenerator.ENTRY_TABLE_FILE_NAME;
-import static org.havenask.engine.index.config.generator.RuntimeSegmentGenerator.INDEX_FORMAT_VERSION_FILE_CONTENT;
-import static org.havenask.engine.index.config.generator.RuntimeSegmentGenerator.INDEX_FORMAT_VERSION_FILE_NAME;
-import static org.havenask.engine.index.config.generator.RuntimeSegmentGenerator.INDEX_PARTITION_META_FILE_CONTENT;
-import static org.havenask.engine.index.config.generator.RuntimeSegmentGenerator.INDEX_PARTITION_META_FILE_NAME;
-import static org.havenask.engine.index.config.generator.RuntimeSegmentGenerator.SCHEMA_FILE_NAME;
-import static org.havenask.engine.index.config.generator.RuntimeSegmentGenerator.VERSION_FILE_CONTENT;
-import static org.havenask.engine.index.config.generator.RuntimeSegmentGenerator.VERSION_FILE_NAME;
-import static org.havenask.engine.index.config.generator.TableConfigGenerator.TABLE_DIR;
-import static org.havenask.env.Environment.PATH_HOME_SETTING;
 
 public class HavenaskEngineEnvironment implements CustomEnvironment {
     private static final Logger LOGGER = LogManager.getLogger(HavenaskEngineEnvironment.class);
@@ -320,7 +320,8 @@ public class HavenaskEngineEnvironment implements CustomEnvironment {
             try {
                 Thread.sleep(sleepInterval);
             } catch (InterruptedException ex) {
-                // pass
+                LOGGER.debug("check havenask table status interrupted while deleting index");
+                throw new IOException("check havenask table status interrupted while deleting index");
             }
         }
 
@@ -372,7 +373,8 @@ public class HavenaskEngineEnvironment implements CustomEnvironment {
             try {
                 Thread.sleep(sleepInterval);
             } catch (InterruptedException ex) {
-                // pass
+                LOGGER.debug("check havenask table status interrupted while deleting index");
+                throw new IOException("check havenask table status interrupted while deleting index");
             }
         }
 
