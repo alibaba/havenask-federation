@@ -81,16 +81,14 @@ public class HavenaskIndexEventListener implements IndexEventListener {
         int sleepTime = 1000;
 
         String tableName = indexShard.shardId().getIndexName();
-        Object indexLock = metaDataSyncer.getIndexLock(tableName);
-        Object ShardLock = metaDataSyncer.getShardLock(indexShard.shardId());
         try {
             while (loopCount > 0) {
-                if (indexLock == null && ShardLock == null) {
+                boolean indexLockExist = metaDataSyncer.getIndexLock(tableName);
+                boolean ShardLockExist = metaDataSyncer.getShardLock(indexShard.shardId());
+                if (indexLockExist == false && ShardLockExist == false) {
                     break;
                 }
                 Thread.sleep(sleepTime);
-                indexLock = metaDataSyncer.getIndexLock(tableName);
-                ShardLock = metaDataSyncer.getShardLock(indexShard.shardId());
                 loopCount--;
             }
             if (loopCount == 0) {

@@ -211,10 +211,8 @@ public class HavenaskEngineEnvironment implements CustomEnvironment {
         if (metaDataSyncer == null) {
             throw new RuntimeException("metaDataSyncer is null while deleting index");
         }
-        Object indexLock = metaDataSyncer.getIndexLockAndCreateIfNotExist(tableName);
-        if (indexLock != null) {
-            // TODO
-        }
+        metaDataSyncer.addIndexLock(tableName);
+        LOGGER.debug("get lock while deleting index, table name :[{}]", tableName);
         // TODO: ThreadPool的获取是否可以优化
         final ThreadPool threadPool = metaDataSyncer.getThreadPool();
         asyncRemoveIndexDir(threadPool, tableName, indexDir);
@@ -228,10 +226,8 @@ public class HavenaskEngineEnvironment implements CustomEnvironment {
         if (metaDataSyncer == null) {
             throw new RuntimeException("metaDataSyncer is null while deleting shard");
         }
-        Object shardLock = metaDataSyncer.getShardLockAndCreateIfNotExist(lock.getShardId());
-        if (shardLock != null) {
-            // TODO
-        }
+        metaDataSyncer.addShardLock(lock.getShardId());
+        LOGGER.debug("get lock while deleting shard, table name :[{}]", lock.getShardId().getIndexName());
         String partitionId = RangeUtil.getRangeName(indexSettings.getNumberOfShards(), lock.getShardId().id());
         final ThreadPool threadPool = metaDataSyncer.getThreadPool();
         asyncRemoveShardRuntimeDir(threadPool, lock.getShardId(), partitionId, shardDir);
