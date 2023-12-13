@@ -41,7 +41,7 @@ public class HavenaskIndexEventListener implements IndexEventListener {
     }
 
     @Override
-    public void afterIndexCreated(IndexService indexService) {
+    public void afterIndexMappingUpdate(IndexService indexService) {
         String tableName = indexService.index().getName();
         ReentrantLock indexLock = metaDataSyncer.getIndexLock(tableName);
         try {
