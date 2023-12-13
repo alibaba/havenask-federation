@@ -121,8 +121,9 @@ public class HavenaskEngineEnvironmentTests extends HavenaskTestCase {
         targetInfo.table_info = new HashMap<>();
         when(metaDataSyncer.getSearcherTargetInfo()).thenReturn(targetInfo);
 
-        when(metaDataSyncer.getIndexLockAndCreateIfNotExist(tableName)).thenReturn(indexLock);
-        when(metaDataSyncer.getIndexLock(tableName)).thenReturn(indexLock);
+        when(metaDataSyncer.addIndexLock(tableName)).thenReturn(true);
+        when(metaDataSyncer.getIndexLock(tableName)).thenReturn(true);
+        when(metaDataSyncer.deleteIndexLock(tableName)).thenReturn(true);
 
         havenaskEngineEnvironment.setMetaDataSyncer(metaDataSyncer);
 
@@ -155,8 +156,9 @@ public class HavenaskEngineEnvironmentTests extends HavenaskTestCase {
         targetInfo.table_info = new HashMap<>();
         when(metaDataSyncer.getSearcherTargetInfo()).thenReturn(targetInfo);
 
-        when(metaDataSyncer.getIndexLockAndCreateIfNotExist(tableName)).thenReturn(indexLock);
-        when(metaDataSyncer.getIndexLock(tableName)).thenReturn(indexLock);
+        when(metaDataSyncer.addShardLock(shardId)).thenReturn(true);
+        when(metaDataSyncer.deleteShardLock(shardId)).thenReturn(true);
+        when(metaDataSyncer.getShardLock(shardId)).thenReturn(false);
 
         IndexSettings indexSettings = new IndexSettings(build, Settings.EMPTY);
 

@@ -326,7 +326,7 @@ public class HavenaskEngine extends InternalEngine {
                 try {
                     Thread.sleep(sleepInterval);
                 } catch (InterruptedException ex) {
-                    // pass
+                    throw new IOException("shard [" + engineConfig.getShardId() + "] check havenask table status interrupted", ex);
                 }
             }
         }
@@ -567,7 +567,13 @@ public class HavenaskEngine extends InternalEngine {
                 try {
                     Thread.sleep(timeValue.millis());
                 } catch (InterruptedException e) {
-                    // pass
+                    LOGGER.info(
+                        "[{}] havenask write retry interrupted, retry count: {}, cost: {} ms",
+                        shardId,
+                        retryCount,
+                        System.currentTimeMillis() - start
+                    );
+                    return writeResponse;
                 }
                 writeResponse = searcherClient.write(writeRequest);
                 retryCount++;
@@ -575,8 +581,7 @@ public class HavenaskEngine extends InternalEngine {
                     break;
                 }
             }
-            long cost = System.currentTimeMillis() - start;
-            LOGGER.info("[{}] havenask write retry, retry count: {}, cost: {} ms", shardId, retryCount, cost);
+            LOGGER.info("[{}] havenask write retry, retry count: {}, cost: {} ms", shardId, retryCount, System.currentTimeMillis() - start);
         }
 
         return writeResponse;

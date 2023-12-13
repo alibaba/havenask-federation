@@ -31,16 +31,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.concurrent.locks.ReentrantLock;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.apache.mina.util.ConcurrentHashSet;
 import org.havenask.cluster.ClusterChangedEvent;
 import org.havenask.cluster.ClusterState;
 import org.havenask.cluster.ClusterStateApplier;
@@ -67,6 +65,7 @@ import org.havenask.engine.rpc.UpdateHeartbeatTargetRequest;
 import org.havenask.engine.util.RangeUtil;
 import org.havenask.engine.util.Utils;
 import org.havenask.index.Index;
+import org.havenask.index.shard.ShardId;
 import org.havenask.threadpool.ThreadPool;
 
 import com.carrotsearch.hppc.cursors.ObjectCursor;
@@ -125,8 +124,8 @@ public class MetaDataSyncer extends AbstractLifecycleComponent implements Cluste
     private AtomicReference<TargetInfo> searcherTargetInfo = new AtomicReference<>();
     private int syncTimes = 0;
     private int qrsSyncTimes = 0;
-
-    private ConcurrentMap<String, ReentrantLock> indexLockMap = new ConcurrentHashMap<>();
+    private ConcurrentHashSet<String> indexLockSet = new ConcurrentHashSet<>();
+    private ConcurrentHashSet<String> shardLockSet = new ConcurrentHashSet<>();
 
     public MetaDataSyncer(
         ClusterService clusterService,
@@ -163,19 +162,31 @@ public class MetaDataSyncer extends AbstractLifecycleComponent implements Cluste
         return this.threadPool;
     }
 
-    public ReentrantLock getIndexLockAndCreateIfNotExist(String tableName) {
-        if (indexLockMap.containsKey(tableName) == false) {
-            indexLockMap.put(tableName, new ReentrantLock());
-        }
-        return indexLockMap.get(tableName);
+    public boolean addIndexLock(String tableName) {
+        return indexLockSet.add(tableName);
     }
 
-    public ReentrantLock getIndexLock(String tableName) {
-        return indexLockMap.get(tableName);
+    public boolean getIndexLock(String tableName) {
+        return indexLockSet.contains(tableName);
     }
 
-    public void deleteIndexLock(String tableName) {
-        indexLockMap.remove(tableName);
+    public boolean deleteIndexLock(String tableName) {
+        return indexLockSet.remove(tableName);
+    }
+
+    public boolean addShardLock(ShardId shardId) {
+        String tableWithShardId = shardId.getIndexName() + "_" + shardId.getId();
+        return shardLockSet.add(tableWithShardId);
+    }
+
+    public boolean getShardLock(ShardId shardId) {
+        String tableWithShardId = shardId.getIndexName() + "_" + shardId.getId();
+        return shardLockSet.contains(tableWithShardId);
+    }
+
+    public boolean deleteShardLock(ShardId shardId) {
+        String tableWithShardId = shardId.getIndexName() + "_" + shardId.getId();
+        return shardLockSet.remove(tableWithShardId);
     }
 
     @Override

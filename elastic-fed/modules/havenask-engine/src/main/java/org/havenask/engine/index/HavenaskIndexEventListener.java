@@ -14,9 +14,6 @@
 
 package org.havenask.engine.index;
 
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.locks.ReentrantLock;
-
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.havenask.HavenaskException;
@@ -41,17 +38,9 @@ public class HavenaskIndexEventListener implements IndexEventListener {
     }
 
     @Override
-    public void afterIndexCreated(IndexService indexService) {
+    public void afterIndexMappingUpdate(IndexService indexService) {
         String tableName = indexService.index().getName();
-        ReentrantLock indexLock = metaDataSyncer.getIndexLock(tableName);
         try {
-            if (indexLock != null) {
-                if (indexLock.tryLock(60, TimeUnit.SECONDS)) {
-                    LOGGER.debug("get lock while creating index, table name :[{}]", tableName);
-                } else {
-                    LOGGER.debug("failed to get lock while creating index, out of time, table name :[{}]", tableName);
-                }
-            }
             BizConfigGenerator.generateBiz(
                 tableName,
                 indexService.getIndexSettings().getSettings(),
@@ -66,34 +55,14 @@ public class HavenaskIndexEventListener implements IndexEventListener {
             );
         } catch (Exception e) {
             throw new HavenaskException("generate havenask config error : ", e);
-        } finally {
-            if (indexLock != null) {
-                try {
-                    indexLock.unlock();
-                    LOGGER.debug("release lock after creating index, table name :[{}]", tableName);
-                } catch (IllegalMonitorStateException e) {
-                    LOGGER.error("release lock error after creating index", e);
-                }
-            }
         }
     }
 
     @Override
     public void afterIndexShardCreated(IndexShard indexShard) {
-        String tableName = indexShard.shardId().getIndexName();
-        ReentrantLock indexLock = metaDataSyncer.getIndexLock(tableName);
+        checkIndexIsDeleted(indexShard);
+
         try {
-            if (indexLock != null) {
-                if (indexLock.tryLock(60, TimeUnit.SECONDS)) {
-                    LOGGER.debug("get lock while creating shard, index name: [{}], shardId :[{}]", tableName, indexShard.shardId().getId());
-                } else {
-                    LOGGER.debug(
-                        "failed to get lock while creating shard, out of time, index name: [{}], shardId :[{}]",
-                        tableName,
-                        indexShard.shardId().getId()
-                    );
-                }
-            }
             // 初始化segment信息
             RuntimeSegmentGenerator.generateRuntimeSegment(
                 indexShard.shardId(),
@@ -104,19 +73,29 @@ public class HavenaskIndexEventListener implements IndexEventListener {
             );
         } catch (Exception e) {
             throw new HavenaskException("generate havenask config error", e);
-        } finally {
-            if (indexLock != null) {
-                try {
-                    indexLock.unlock();
-                    LOGGER.debug(
-                        "release lock after creating shard, table name :[{}], shardId :[{}]",
-                        tableName,
-                        indexShard.shardId().getId()
-                    );
-                } catch (IllegalMonitorStateException e) {
-                    LOGGER.error("release lock error after creating shard", e);
+        }
+    }
+
+    private void checkIndexIsDeleted(IndexShard indexShard) {
+        int loopCount = 60;
+        int sleepTime = 1000;
+
+        String tableName = indexShard.shardId().getIndexName();
+        try {
+            while (loopCount > 0) {
+                boolean indexLockExist = metaDataSyncer.getIndexLock(tableName);
+                boolean ShardLockExist = metaDataSyncer.getShardLock(indexShard.shardId());
+                if (indexLockExist == false && ShardLockExist == false) {
+                    break;
                 }
+                Thread.sleep(sleepTime);
+                loopCount--;
             }
+            if (loopCount == 0) {
+                LOGGER.error("checkIndexIsDeleted out of time while create shard");
+            }
+        } catch (InterruptedException e) {
+            LOGGER.error("checkIndexIsDeleted error while create shard", e);
         }
     }
 }

@@ -14,6 +14,27 @@
 
 package org.havenask.engine;
 
+import static org.havenask.engine.index.config.generator.BizConfigGenerator.BIZ_DIR;
+import static org.havenask.engine.index.config.generator.BizConfigGenerator.CLUSTER_DIR;
+import static org.havenask.engine.index.config.generator.BizConfigGenerator.DATA_TABLES_DIR;
+import static org.havenask.engine.index.config.generator.BizConfigGenerator.DEFAULT_BIZ_CONFIG;
+import static org.havenask.engine.index.config.generator.BizConfigGenerator.DEFAULT_DIR;
+import static org.havenask.engine.index.config.generator.BizConfigGenerator.PLUGINS_DIR;
+import static org.havenask.engine.index.config.generator.BizConfigGenerator.SCHEMAS_DIR;
+import static org.havenask.engine.index.config.generator.RuntimeSegmentGenerator.DEPLOY_META_FILE_CONTENT_TEMPLATE;
+import static org.havenask.engine.index.config.generator.RuntimeSegmentGenerator.DEPLOY_META_FILE_NAME;
+import static org.havenask.engine.index.config.generator.RuntimeSegmentGenerator.ENTRY_TABLE_FILE_CONTENT;
+import static org.havenask.engine.index.config.generator.RuntimeSegmentGenerator.ENTRY_TABLE_FILE_NAME;
+import static org.havenask.engine.index.config.generator.RuntimeSegmentGenerator.INDEX_FORMAT_VERSION_FILE_CONTENT;
+import static org.havenask.engine.index.config.generator.RuntimeSegmentGenerator.INDEX_FORMAT_VERSION_FILE_NAME;
+import static org.havenask.engine.index.config.generator.RuntimeSegmentGenerator.INDEX_PARTITION_META_FILE_CONTENT;
+import static org.havenask.engine.index.config.generator.RuntimeSegmentGenerator.INDEX_PARTITION_META_FILE_NAME;
+import static org.havenask.engine.index.config.generator.RuntimeSegmentGenerator.SCHEMA_FILE_NAME;
+import static org.havenask.engine.index.config.generator.RuntimeSegmentGenerator.VERSION_FILE_CONTENT;
+import static org.havenask.engine.index.config.generator.RuntimeSegmentGenerator.VERSION_FILE_NAME;
+import static org.havenask.engine.index.config.generator.TableConfigGenerator.TABLE_DIR;
+import static org.havenask.env.Environment.PATH_HOME_SETTING;
+
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -21,7 +42,6 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.Locale;
 import java.util.Map;
-import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Function;
 
 import org.apache.logging.log4j.LogManager;
@@ -45,27 +65,6 @@ import org.havenask.index.IndexSettings;
 import org.havenask.index.shard.ShardId;
 import org.havenask.plugins.NodeEnvironmentPlugin.CustomEnvironment;
 import org.havenask.threadpool.ThreadPool;
-
-import static org.havenask.engine.index.config.generator.BizConfigGenerator.BIZ_DIR;
-import static org.havenask.engine.index.config.generator.BizConfigGenerator.CLUSTER_DIR;
-import static org.havenask.engine.index.config.generator.BizConfigGenerator.DATA_TABLES_DIR;
-import static org.havenask.engine.index.config.generator.BizConfigGenerator.DEFAULT_BIZ_CONFIG;
-import static org.havenask.engine.index.config.generator.BizConfigGenerator.DEFAULT_DIR;
-import static org.havenask.engine.index.config.generator.BizConfigGenerator.PLUGINS_DIR;
-import static org.havenask.engine.index.config.generator.BizConfigGenerator.SCHEMAS_DIR;
-import static org.havenask.engine.index.config.generator.RuntimeSegmentGenerator.DEPLOY_META_FILE_CONTENT_TEMPLATE;
-import static org.havenask.engine.index.config.generator.RuntimeSegmentGenerator.DEPLOY_META_FILE_NAME;
-import static org.havenask.engine.index.config.generator.RuntimeSegmentGenerator.ENTRY_TABLE_FILE_CONTENT;
-import static org.havenask.engine.index.config.generator.RuntimeSegmentGenerator.ENTRY_TABLE_FILE_NAME;
-import static org.havenask.engine.index.config.generator.RuntimeSegmentGenerator.INDEX_FORMAT_VERSION_FILE_CONTENT;
-import static org.havenask.engine.index.config.generator.RuntimeSegmentGenerator.INDEX_FORMAT_VERSION_FILE_NAME;
-import static org.havenask.engine.index.config.generator.RuntimeSegmentGenerator.INDEX_PARTITION_META_FILE_CONTENT;
-import static org.havenask.engine.index.config.generator.RuntimeSegmentGenerator.INDEX_PARTITION_META_FILE_NAME;
-import static org.havenask.engine.index.config.generator.RuntimeSegmentGenerator.SCHEMA_FILE_NAME;
-import static org.havenask.engine.index.config.generator.RuntimeSegmentGenerator.VERSION_FILE_CONTENT;
-import static org.havenask.engine.index.config.generator.RuntimeSegmentGenerator.VERSION_FILE_NAME;
-import static org.havenask.engine.index.config.generator.TableConfigGenerator.TABLE_DIR;
-import static org.havenask.env.Environment.PATH_HOME_SETTING;
 
 public class HavenaskEngineEnvironment implements CustomEnvironment {
     private static final Logger LOGGER = LogManager.getLogger(HavenaskEngineEnvironment.class);
@@ -212,6 +211,8 @@ public class HavenaskEngineEnvironment implements CustomEnvironment {
         if (metaDataSyncer == null) {
             throw new RuntimeException("metaDataSyncer is null while deleting index");
         }
+        metaDataSyncer.addIndexLock(tableName);
+        LOGGER.debug("get lock while deleting index, table name :[{}]", tableName);
         // TODO: ThreadPool的获取是否可以优化
         final ThreadPool threadPool = metaDataSyncer.getThreadPool();
         asyncRemoveIndexDir(threadPool, tableName, indexDir);
@@ -225,11 +226,11 @@ public class HavenaskEngineEnvironment implements CustomEnvironment {
         if (metaDataSyncer == null) {
             throw new RuntimeException("metaDataSyncer is null while deleting shard");
         }
-
-        String tableName = indexSettings.getIndex().getName();
+        metaDataSyncer.addShardLock(lock.getShardId());
+        LOGGER.debug("get lock while deleting shard, table name :[{}]", lock.getShardId().getIndexName());
         String partitionId = RangeUtil.getRangeName(indexSettings.getNumberOfShards(), lock.getShardId().id());
         final ThreadPool threadPool = metaDataSyncer.getThreadPool();
-        asyncRemoveShardRuntimeDir(threadPool, tableName, partitionId, shardDir);
+        asyncRemoveShardRuntimeDir(threadPool, lock.getShardId(), partitionId, shardDir);
     }
 
     /**
@@ -237,8 +238,6 @@ public class HavenaskEngineEnvironment implements CustomEnvironment {
      */
     public void asyncRemoveIndexDir(final ThreadPool threadPool, String tableName, Path indexDir) {
         threadPool.executor(HavenaskEnginePlugin.HAVENASK_THREAD_POOL_NAME).execute(() -> {
-            ReentrantLock indexLock = metaDataSyncer.getIndexLockAndCreateIfNotExist(tableName);
-            indexLock.lock();
             LOGGER.debug("get lock while deleting index, table name :[{}]", tableName);
             try {
                 if (metaDataSyncer != null) {
@@ -260,7 +259,6 @@ public class HavenaskEngineEnvironment implements CustomEnvironment {
                 LOGGER.warn("remove index dir failed, table name: [{}]， error: [{}]", tableName, e);
             } finally {
                 metaDataSyncer.deleteIndexLock(tableName);
-                indexLock.unlock();
                 LOGGER.debug("release lock after deleting index, table name :[{}]", tableName);
             }
         });
@@ -269,11 +267,9 @@ public class HavenaskEngineEnvironment implements CustomEnvironment {
     /**
      * 异步删除减少shard时runtimedata内的数据信息
      */
-    public void asyncRemoveShardRuntimeDir(final ThreadPool threadPool, String tableName, String partitionId, Path shardDir) {
+    public void asyncRemoveShardRuntimeDir(final ThreadPool threadPool, ShardId shardId, String partitionId, Path shardDir) {
         threadPool.executor(HavenaskEnginePlugin.HAVENASK_THREAD_POOL_NAME).execute(() -> {
-            ReentrantLock indexLock = metaDataSyncer.getIndexLockAndCreateIfNotExist(tableName);
-            indexLock.lock();
-            LOGGER.debug("get lock while deleting shard, table name :[{}], partitionId:[{}]", tableName, partitionId);
+            String tableName = shardId.getIndexName();
             try {
                 if (metaDataSyncer != null) {
                     metaDataSyncer.setSearcherPendingSync();
@@ -281,8 +277,7 @@ public class HavenaskEngineEnvironment implements CustomEnvironment {
                         checkShardIsDeletedInSearcher(metaDataSyncer, tableName, partitionId);
                     } catch (IOException e) {
                         LOGGER.error(
-                            "checkShardIsDeletedInSearcher failed while deleting shard, "
-                                + "table name: [{}], partitionId:[{}], error: [{}]",
+                            "checkShardIsDeletedInSearcher failed while deleting shard, " + "index: [{}], partitionId:[{}], error: [{}]",
                             tableName,
                             partitionId,
                             e
@@ -295,9 +290,8 @@ public class HavenaskEngineEnvironment implements CustomEnvironment {
             } catch (Exception e) {
                 LOGGER.warn("remove shard dir failed, table name: [{}]，partitionId:[{}], error: [{}]", tableName, partitionId, e);
             } finally {
-                metaDataSyncer.deleteIndexLock(tableName);
-                indexLock.unlock();
-                LOGGER.debug("release lock after deleting index, table name :[{}], partitionId[{}]", tableName, partitionId);
+                metaDataSyncer.deleteShardLock(shardId);
+                LOGGER.debug("release lock after deleting shard, table name :[{}], partitionId[{}]", tableName, partitionId);
             }
         });
     }
@@ -320,7 +314,8 @@ public class HavenaskEngineEnvironment implements CustomEnvironment {
             try {
                 Thread.sleep(sleepInterval);
             } catch (InterruptedException ex) {
-                // pass
+                LOGGER.debug("check havenask table status interrupted while deleting index");
+                throw new IOException("check havenask table status interrupted while deleting index");
             }
         }
 
@@ -372,7 +367,8 @@ public class HavenaskEngineEnvironment implements CustomEnvironment {
             try {
                 Thread.sleep(sleepInterval);
             } catch (InterruptedException ex) {
-                // pass
+                LOGGER.debug("check havenask table status interrupted while deleting index");
+                throw new IOException("check havenask table status interrupted while deleting index");
             }
         }
 
