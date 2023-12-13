@@ -74,6 +74,8 @@ import org.havenask.engine.MetaDataSyncer;
 import org.havenask.engine.NativeProcessControlService;
 import org.havenask.engine.index.mapper.VectorField;
 import org.havenask.engine.rpc.HavenaskClient;
+import org.havenask.engine.rpc.QueryTableRequest;
+import org.havenask.engine.rpc.QueryTableResponse;
 import org.havenask.engine.rpc.SearcherClient;
 import org.havenask.engine.rpc.TargetInfo;
 import org.havenask.engine.rpc.WriteRequest;
@@ -106,7 +108,10 @@ import org.havenask.search.internal.ContextIndexSearcher;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 
+import suez.service.proto.DocValue;
 import suez.service.proto.ErrorCode;
+import suez.service.proto.SingleAttrValue;
+import suez.service.proto.SummaryValue;
 
 public class HavenaskEngine extends InternalEngine {
 
@@ -125,6 +130,7 @@ public class HavenaskEngine extends InternalEngine {
     private volatile HavenaskCommitInfo lastCommitInfo = null;
     private CheckpointCalc checkpointCalc = null;
     private final String partitionName;
+    private final RangeUtil.PartitionRange partitionRange;
     private final SingleObjectCache<DocsStats> docsStatsCache;
     private final CounterMetric numDocDeletes = new CounterMetric();
     private final CounterMetric numDocIndexes = new CounterMetric();
@@ -149,6 +155,7 @@ public class HavenaskEngine extends InternalEngine {
         this.shardId = engineConfig.getShardId();
         this.tableName = Utils.getHavenaskTableName(shardId);
         this.partitionName = RangeUtil.getRangePartition(engineConfig.getIndexSettings().getNumberOfShards(), shardId.id());
+        this.partitionRange = RangeUtil.getRange(engineConfig.getIndexSettings().getNumberOfShards(), shardId.id());
         this.realTimeEnable = EngineSettings.HAVENASK_REALTIME_ENABLE.get(engineConfig.getIndexSettings().getSettings());
         this.kafkaTopic = realTimeEnable
             ? EngineSettings.HAVENASK_REALTIME_TOPIC_NAME.get(engineConfig.getIndexSettings().getSettings())
@@ -587,39 +594,54 @@ public class HavenaskEngine extends InternalEngine {
         }
     }
 
-    /**
-     * not support
-     */
     @Override
     public GetResult get(Get get, BiFunction<String, SearcherScope, Searcher> searcherFactory) throws EngineException {
         try {
-            String sql = String.format(
-                Locale.ROOT,
-                "select /*+ SCAN_ATTR(partitionIds='%d')*/ _routing,_seq_no,_primary_term,_version,_source from %s_summary_ where _id='%s'",
-                shardId.id(),
-                tableName,
-                get.id()
-            );
-            String kvpair = "format:full_json;timeout:10000;databaseName:" + SQL_DATABASE;
+            QueryTableRequest queryTableRequest = new QueryTableRequest(tableName, partitionRange, get.id());
+            QueryTableResponse queryTableResponse = searcherClient.queryTable(queryTableRequest);
+            if (queryTableResponse.getErrorCode() != null) {
+                throw new IOException(
+                    "havenask get exception, error code: "
+                        + queryTableResponse.getErrorCode()
+                        + ", error message:"
+                        + queryTableResponse.getErrorMessage()
+                );
+            }
 
-            HavenaskSqlResponse response = client.execute(HavenaskSqlAction.INSTANCE, new HavenaskSqlRequest(sql, kvpair)).actionGet();
-            JSONObject jsonObject = JsonPrettyFormatter.fromString(response.getResult());
-            JSONObject sqlResult = jsonObject.getJSONObject("sql_result");
-            JSONArray datas = sqlResult.getJSONArray("data");
-            if (datas.size() == 0) {
+            if (queryTableResponse.getDocValues().size() == 0) {
                 return GetResult.NOT_EXISTS;
             }
 
-            assert datas.size() == 1;
-            JSONArray row = datas.getJSONArray(0);
-            assert row.size() == 5;
-            String routing = row.getString(0);
-            routing = routing == null || routing.isEmpty() ? null : routing;
-            long seqNo = row.getLongValue(1);
-            long primaryTerm = row.getLongValue(2);
-            long version = row.getLongValue(3);
-            String source = row.getString(4);
-
+            assert queryTableResponse.getDocValues().size() == 1;
+            DocValue docValue = queryTableResponse.getDocValues().get(0);
+            String routing = null;
+            long seqNo = 0;
+            long primaryTerm = 0;
+            long version = 0;
+            String source = null;
+            for (SingleAttrValue attrValue : docValue.getAttrValueList()) {
+                switch (attrValue.getAttrName()) {
+                    case "_seq_no":
+                        seqNo = attrValue.getIntValue();
+                        break;
+                    case "_primary_term":
+                        primaryTerm = attrValue.getIntValue();
+                        break;
+                    case "_version":
+                        version = attrValue.getIntValue();
+                        break;
+                }
+            }
+            for (SummaryValue summaryValue : docValue.getSummaryValuesList()) {
+                switch (summaryValue.getFieldName()) {
+                    case "_source":
+                        source = summaryValue.getValue();
+                        break;
+                    case "_routing":
+                        routing = summaryValue.getValue();
+                        break;
+                }
+            }
             Translog.Index operation = new Translog.Index(
                 get.type(),
                 get.id(),
