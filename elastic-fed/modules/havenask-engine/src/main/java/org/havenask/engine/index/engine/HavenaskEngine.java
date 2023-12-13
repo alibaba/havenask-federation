@@ -33,6 +33,7 @@ import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.LongConsumer;
 import java.util.function.LongSupplier;
+import java.util.function.Supplier;
 
 import javax.management.MBeanTrustPermission;
 
@@ -73,6 +74,7 @@ import org.havenask.engine.HavenaskEngineEnvironment;
 import org.havenask.engine.MetaDataSyncer;
 import org.havenask.engine.NativeProcessControlService;
 import org.havenask.engine.index.mapper.VectorField;
+import org.havenask.engine.rpc.ArpcResponse;
 import org.havenask.engine.rpc.HavenaskClient;
 import org.havenask.engine.rpc.QueryTableRequest;
 import org.havenask.engine.rpc.QueryTableResponse;
@@ -556,8 +558,12 @@ public class HavenaskEngine extends InternalEngine {
     private static final Logger LOGGER = LogManager.getLogger(HavenaskEngine.class);
 
     static WriteResponse retryWrite(ShardId shardId, SearcherClient searcherClient, WriteRequest writeRequest) {
-        WriteResponse writeResponse = searcherClient.write(writeRequest);
-        if (isWriteRetry(writeResponse)) {
+        return retryRpc(shardId, () -> searcherClient.write(writeRequest));
+    }
+
+    static <Response extends ArpcResponse> Response retryRpc(ShardId shardId, Supplier<Response> supplier) {
+        Response response = supplier.get();
+        if (isWriteRetry(response)) {
             long start = System.currentTimeMillis();
             // retry if write queue is full or write response is null
             Iterator<TimeValue> backoff = BackoffPolicy.exponentialBackoff(DEFAULT_TIMEOUT, MAX_RETRY).iterator();
@@ -573,26 +579,25 @@ public class HavenaskEngine extends InternalEngine {
                         retryCount,
                         System.currentTimeMillis() - start
                     );
-                    return writeResponse;
+                    return response;
                 }
-                writeResponse = searcherClient.write(writeRequest);
+                response = supplier.get();
                 retryCount++;
-                if (false == isWriteRetry(writeResponse)) {
+                if (false == isWriteRetry(response)) {
                     break;
                 }
             }
             LOGGER.info("[{}] havenask write retry, retry count: {}, cost: {} ms", shardId, retryCount, System.currentTimeMillis() - start);
         }
 
-        return writeResponse;
+        return response;
     }
 
-    private static boolean isWriteRetry(WriteResponse writeResponse) {
-        if ((writeResponse.getErrorCode() == ErrorCode.TBS_ERROR_UNKOWN
-            && writeResponse.getErrorMessage().contains("write response is null"))
-            || (writeResponse.getErrorCode() == ErrorCode.TBS_ERROR_OTHERS
-                && (writeResponse.getErrorMessage().contains("doc queue is full")
-                    || writeResponse.getErrorMessage().contains("no valid table/range")))) {
+    private static boolean isWriteRetry(ArpcResponse arpcResponse) {
+        if ((arpcResponse.getErrorCode() == ErrorCode.TBS_ERROR_UNKOWN && arpcResponse.getErrorMessage().contains("write response is null"))
+            || (arpcResponse.getErrorCode() == ErrorCode.TBS_ERROR_OTHERS
+                && (arpcResponse.getErrorMessage().contains("doc queue is full")
+                    || arpcResponse.getErrorMessage().contains("no valid table/range")))) {
             return true;
         } else {
             return false;
@@ -603,8 +608,12 @@ public class HavenaskEngine extends InternalEngine {
     public GetResult get(Get get, BiFunction<String, SearcherScope, Searcher> searcherFactory) throws EngineException {
         try {
             QueryTableRequest queryTableRequest = new QueryTableRequest(tableName, partitionRange, get.id());
-            QueryTableResponse queryTableResponse = searcherClient.queryTable(queryTableRequest);
+            QueryTableResponse queryTableResponse = retryRpc(shardId, () -> searcherClient.queryTable(queryTableRequest));
+
             if (queryTableResponse.getErrorCode() != null) {
+                if (queryTableResponse.getErrorCode().equals(ErrorCode.TBS_ERROR_NO_RECORD)) {
+                    return GetResult.NOT_EXISTS;
+                }
                 throw new IOException(
                     "havenask get exception, error code: "
                         + queryTableResponse.getErrorCode()
@@ -644,6 +653,7 @@ public class HavenaskEngine extends InternalEngine {
                         break;
                     case "_routing":
                         routing = summaryValue.getValue();
+                        routing = routing == null || routing.isEmpty() ? null : routing;
                         break;
                 }
             }

@@ -87,7 +87,7 @@ public class SearcherArpcClient implements SearcherClient, Closeable {
 
             if (tableQueryResponse == null) {
                 resetChannel();
-                return new QueryTableResponse(ErrorCode.TBS_ERROR_UNKOWN, "write response is null, channel reset");
+                return new QueryTableResponse(ErrorCode.TBS_ERROR_UNKOWN, "queryTable response is null, channel reset");
             }
 
             if (tableQueryResponse.getErrorInfo() == null || tableQueryResponse.getErrorInfo().getErrorCode() == ErrorCode.TBS_ERROR_NONE) {

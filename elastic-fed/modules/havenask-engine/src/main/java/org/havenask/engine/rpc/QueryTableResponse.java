@@ -19,32 +19,20 @@ import suez.service.proto.ErrorCode;
 
 import java.util.List;
 
-public class QueryTableResponse {
+public class QueryTableResponse extends ArpcResponse {
     List<DocValue> docValues;
-    private final ErrorCode errorCode;
-    private final String errorMessage;
 
     public QueryTableResponse(List<DocValue> docValues) {
+        super(null, "");
         this.docValues = docValues;
-        this.errorCode = null;
-        this.errorMessage = "";
     }
 
     public QueryTableResponse(ErrorCode errorCode, String errorMessage) {
+        super(errorCode, errorMessage);
         this.docValues = null;
-        this.errorCode = errorCode;
-        this.errorMessage = errorMessage;
     }
 
     public List<DocValue> getDocValues() {
         return docValues;
-    }
-
-    public ErrorCode getErrorCode() {
-        return errorCode;
-    }
-
-    public String getErrorMessage() {
-        return errorMessage;
     }
 }
