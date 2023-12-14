@@ -165,6 +165,7 @@ examples:
         self.parser.add_option('', '--enablePublishTableTopoInfo', action='store_true', dest='enablePublishTableTopoInfo', default=False)
         self.parser.add_option('', '--force_tablet_load', action='store_true', dest='forceTabletLoad', default=False)
         self.parser.add_option('', '--qrsLoadTarget', action='store_true', dest='qrsLoadTarget', default=False)
+        self.parser.add_option('', '--searcherLoadTarget', action='store_true', dest='searcherLoadTarget', default=False)
 
     def parseParams(self, optionList):
         self.optionList = optionList
@@ -247,6 +248,8 @@ examples:
         else:
             self.offlineConfigPath = os.path.join(self.offlineConfigPath, str(tableVersions[-1]))
 
+        self.qrsLoadTarget = options.qrsLoadTarget
+        self.searcherLoadTarget = options.searcherLoadTarget
         self.httpBindPort = options.httpBindPort
         self.arpcBindPort = options.arpcBindPort
         self.grpcBindPort = options.grpcBindPort
@@ -387,7 +390,7 @@ examples:
                 if len(zoneNames) > 1:
                     return -1, ("", "local access mode only support one zone, now zone names " + str(zoneNames), -1)
 
-            if not self.enableLocalAccess:
+            if not self.enableLocalAccess and self.searcherLoadTarget:
                 ret = self.loadSearcherTarget(searcherTargetInfos, terminator.left_time())
                 if ret != 0:
                     return ret, ("", "load searcher target failed", -1)
