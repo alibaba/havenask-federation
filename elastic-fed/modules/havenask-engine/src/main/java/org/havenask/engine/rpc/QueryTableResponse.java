@@ -14,22 +14,25 @@
 
 package org.havenask.engine.rpc;
 
+import suez.service.proto.DocValue;
 import suez.service.proto.ErrorCode;
 
-public class WriteResponse extends ArpcResponse {
-    private final long checkpoint;
+import java.util.List;
 
-    public WriteResponse(long checkpoint) {
+public class QueryTableResponse extends ArpcResponse {
+    List<DocValue> docValues;
+
+    public QueryTableResponse(List<DocValue> docValues) {
         super(null, "");
-        this.checkpoint = checkpoint;
+        this.docValues = docValues;
     }
 
-    public WriteResponse(ErrorCode errorCode, String errorMessage) {
+    public QueryTableResponse(ErrorCode errorCode, String errorMessage) {
         super(errorCode, errorMessage);
-        this.checkpoint = -1L;
+        this.docValues = null;
     }
 
-    public long getCheckpoint() {
-        return checkpoint;
+    public List<DocValue> getDocValues() {
+        return docValues;
     }
 }

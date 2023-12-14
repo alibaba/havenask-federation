@@ -14,27 +14,33 @@
 
 package org.havenask.engine.rpc.arpc;
 
+import java.io.Closeable;
+import java.io.IOException;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.havenask.engine.rpc.HeartbeatTargetResponse;
+import org.havenask.engine.rpc.QueryTableRequest;
+import org.havenask.engine.rpc.QueryTableResponse;
+import org.havenask.engine.rpc.SearcherClient;
+import org.havenask.engine.rpc.UpdateHeartbeatTargetRequest;
+import org.havenask.engine.rpc.WriteRequest;
+import org.havenask.engine.rpc.WriteResponse;
+
 import com.alibaba.search.common.arpc.ANetRPCChannel;
 import com.alibaba.search.common.arpc.ANetRPCChannelManager;
 import com.alibaba.search.common.arpc.ANetRPCController;
 import com.alibaba.search.common.arpc.exceptions.ArpcException;
 import com.google.protobuf.ServiceException;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-import org.havenask.engine.rpc.HeartbeatTargetResponse;
-import org.havenask.engine.rpc.SearcherClient;
-import org.havenask.engine.rpc.UpdateHeartbeatTargetRequest;
-import org.havenask.engine.rpc.WriteRequest;
-import org.havenask.engine.rpc.WriteResponse;
+
 import suez.service.proto.ErrorCode;
 import suez.service.proto.ErrorInfo;
+import suez.service.proto.TableQueryRequest;
+import suez.service.proto.TableQueryResponse;
 import suez.service.proto.TableService;
 import suez.service.proto.Write;
-
-import java.io.Closeable;
-import java.io.IOException;
-import java.security.AccessController;
-import java.security.PrivilegedAction;
 
 public class SearcherArpcClient implements SearcherClient, Closeable {
     private static final Logger logger = LogManager.getLogger(SearcherArpcClient.class);
@@ -58,6 +64,49 @@ public class SearcherArpcClient implements SearcherClient, Closeable {
     @Override
     public HeartbeatTargetResponse updateHeartbeatTarget(UpdateHeartbeatTargetRequest request) throws IOException {
         throw new UnsupportedOperationException("Not implemented yet");
+    }
+
+    @Override
+    public QueryTableResponse queryTable(QueryTableRequest request) {
+        long start = System.nanoTime();
+        TableQueryRequest tableQueryRequest = TableQueryRequest.newBuilder()
+            .setTable(request.getTableName())
+            .addPartition(request.getPartitionRange().first)
+            .addPartition(request.getPartitionRange().second)
+            .setPk(request.getPkey())
+            .build();
+        try {
+            if (blockingStub == null) {
+                init();
+            }
+            TableQueryResponse tableQueryResponse = blockingStub.queryTable(controller, tableQueryRequest);
+            if (logger.isTraceEnabled()) {
+                long end = System.nanoTime();
+                logger.trace("queryTable {}, _id: {}, cost: {} us", request.getTableName(), request.getPkey(), (end - start) / 1000);
+            }
+
+            if (tableQueryResponse == null) {
+                resetChannel();
+                return new QueryTableResponse(ErrorCode.TBS_ERROR_UNKOWN, "queryTable response is null, channel reset");
+            }
+
+            if (tableQueryResponse.getErrorInfo() == null || tableQueryResponse.getErrorInfo().getErrorCode() == ErrorCode.TBS_ERROR_NONE) {
+                return new QueryTableResponse(tableQueryResponse.getRes().getDocValueSetList());
+            } else {
+                return new QueryTableResponse(
+                    tableQueryResponse.getErrorInfo().getErrorCode(),
+                    tableQueryResponse.getErrorInfo().getErrorMsg()
+                );
+            }
+        } catch (ServiceException e) {
+            logger.warn("queryTable service error", e);
+            resetChannel();
+            return new QueryTableResponse(ErrorCode.TBS_ERROR_UNKOWN, "service error:" + e.getMessage());
+        } catch (Exception e) {
+            logger.warn("queryTable upexpect error", e);
+            resetChannel();
+            return new QueryTableResponse(ErrorCode.TBS_ERROR_UNKOWN, "upexpect error:" + e.getMessage());
+        }
     }
 
     @Override

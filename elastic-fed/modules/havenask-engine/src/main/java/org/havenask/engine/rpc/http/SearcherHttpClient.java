@@ -14,6 +14,8 @@
 
 package org.havenask.engine.rpc.http;
 
+import org.havenask.engine.rpc.QueryTableRequest;
+import org.havenask.engine.rpc.QueryTableResponse;
 import org.havenask.engine.rpc.SearcherClient;
 import org.havenask.engine.rpc.WriteRequest;
 import org.havenask.engine.rpc.WriteResponse;
@@ -21,6 +23,11 @@ import org.havenask.engine.rpc.WriteResponse;
 public class SearcherHttpClient extends HavenaskHttpClient implements SearcherClient {
     public SearcherHttpClient(int port) {
         super(port);
+    }
+
+    @Override
+    public QueryTableResponse queryTable(QueryTableRequest request) {
+        throw new UnsupportedOperationException("Not implemented yet");
     }
 
     @Override

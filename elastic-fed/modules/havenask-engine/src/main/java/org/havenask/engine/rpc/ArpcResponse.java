@@ -16,20 +16,20 @@ package org.havenask.engine.rpc;
 
 import suez.service.proto.ErrorCode;
 
-public class WriteResponse extends ArpcResponse {
-    private final long checkpoint;
+public abstract class ArpcResponse {
+    private final ErrorCode errorCode;
+    private final String errorMessage;
 
-    public WriteResponse(long checkpoint) {
-        super(null, "");
-        this.checkpoint = checkpoint;
+    public ArpcResponse(ErrorCode errorCode, String errorMessage) {
+        this.errorCode = errorCode;
+        this.errorMessage = errorMessage;
     }
 
-    public WriteResponse(ErrorCode errorCode, String errorMessage) {
-        super(errorCode, errorMessage);
-        this.checkpoint = -1L;
+    public ErrorCode getErrorCode() {
+        return errorCode;
     }
 
-    public long getCheckpoint() {
-        return checkpoint;
+    public String getErrorMessage() {
+        return errorMessage;
     }
 }
