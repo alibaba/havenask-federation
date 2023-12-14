@@ -32,7 +32,7 @@ import org.havenask.engine.search.action.HavenaskSqlClientInfoAction.Response;
 public class HavenaskSqlClientInfoAction extends ActionType<Response> {
 
     public static final HavenaskSqlClientInfoAction INSTANCE = new HavenaskSqlClientInfoAction();
-    public static final String NAME = "indices:monitor/havenask/sql/clientinfo";
+    public static final String NAME = "cluster:monitor/havenask/sql/clientinfo";
 
     private HavenaskSqlClientInfoAction() {
         super(NAME, Response::new);

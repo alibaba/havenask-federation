@@ -19,7 +19,7 @@ import org.havenask.action.ActionType;
 public class HavenaskStopAction extends ActionType<HavenaskStopResponse> {
 
     public static final HavenaskStopAction INSTANCE = new HavenaskStopAction();
-    public static final String NAME = "indices:admin/havenask/stop/searcher";
+    public static final String NAME = "cluster:admin/havenask/stop/searcher";
 
     private HavenaskStopAction() {
         super(NAME, HavenaskStopResponse::new);
