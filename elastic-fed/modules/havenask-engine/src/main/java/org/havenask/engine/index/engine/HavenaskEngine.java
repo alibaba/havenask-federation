@@ -594,10 +594,15 @@ public class HavenaskEngine extends InternalEngine {
     }
 
     private static boolean isWriteRetry(ArpcResponse arpcResponse) {
-        if ((arpcResponse.getErrorCode() == ErrorCode.TBS_ERROR_UNKOWN && arpcResponse.getErrorMessage().contains("write response is null"))
+        if ((arpcResponse.getErrorCode() == ErrorCode.TBS_ERROR_UNKOWN && arpcResponse.getErrorMessage().contains("response is null"))
             || (arpcResponse.getErrorCode() == ErrorCode.TBS_ERROR_OTHERS
                 && (arpcResponse.getErrorMessage().contains("doc queue is full")
                     || arpcResponse.getErrorMessage().contains("no valid table/range")))) {
+            LOGGER.debug(
+                "havenask write retry, error code: {}, error message: {}",
+                arpcResponse.getErrorCode(),
+                arpcResponse.getErrorMessage()
+            );
             return true;
         } else {
             return false;
