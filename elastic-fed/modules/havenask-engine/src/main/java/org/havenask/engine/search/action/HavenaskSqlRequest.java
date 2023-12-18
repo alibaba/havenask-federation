@@ -14,17 +14,18 @@
 
 package org.havenask.engine.search.action;
 
+import static org.havenask.action.ValidateActions.addValidationError;
+
 import java.io.IOException;
 import java.util.Objects;
 
 import org.havenask.action.ActionRequest;
 import org.havenask.action.ActionRequestValidationException;
+import org.havenask.action.CompositeIndicesRequest;
 import org.havenask.common.io.stream.StreamInput;
 import org.havenask.common.io.stream.StreamOutput;
 
-import static org.havenask.action.ValidateActions.addValidationError;
-
-public class HavenaskSqlRequest extends ActionRequest {
+public class HavenaskSqlRequest extends ActionRequest implements CompositeIndicesRequest {
 
     private final String sql;
     private final String kvpair;

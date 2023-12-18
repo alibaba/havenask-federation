@@ -14,22 +14,29 @@
 
 package org.havenask.engine.rpc;
 
-import suez.service.proto.ErrorCode;
+import org.havenask.engine.util.RangeUtil;
 
-public class WriteResponse extends ArpcResponse {
-    private final long checkpoint;
+public class QueryTableRequest {
+    private final String tableName;
+    private final RangeUtil.PartitionRange partitionRange;
+    private final String pkey;
 
-    public WriteResponse(long checkpoint) {
-        super(null, "");
-        this.checkpoint = checkpoint;
+    public QueryTableRequest(String tableName, RangeUtil.PartitionRange partitionRange, String pkey) {
+        this.tableName = tableName;
+        this.partitionRange = partitionRange;
+        this.pkey = pkey;
     }
 
-    public WriteResponse(ErrorCode errorCode, String errorMessage) {
-        super(errorCode, errorMessage);
-        this.checkpoint = -1L;
+    public String getTableName() {
+        return tableName;
     }
 
-    public long getCheckpoint() {
-        return checkpoint;
+    public RangeUtil.PartitionRange getPartitionRange() {
+        return partitionRange;
     }
+
+    public String getPkey() {
+        return pkey;
+    }
+
 }

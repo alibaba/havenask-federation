@@ -15,5 +15,8 @@
 package org.havenask.engine.rpc;
 
 public interface SearcherClient extends HavenaskClient {
+
+    QueryTableResponse queryTable(QueryTableRequest request);
+
     WriteResponse write(WriteRequest request);
 }
