@@ -19,6 +19,8 @@ import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.havenask.common.Strings;
 import org.havenask.common.xcontent.LoggingDeprecationHandler;
 import org.havenask.common.xcontent.NamedXContentRegistry;
@@ -34,6 +36,7 @@ import java.security.PrivilegedAction;
 import static org.havenask.common.xcontent.XContentType.JSON;
 
 public class HavenaskHttpClient implements HavenaskClient {
+    private static final Logger LOGGER = LogManager.getLogger(HavenaskHttpClient.class);
     private static final String HEART_BEAT_URL = "/HeartbeatService/heartbeat";
 
     protected OkHttpClient client = AccessController.doPrivileged((PrivilegedAction<OkHttpClient>) () -> new OkHttpClient());
@@ -65,6 +68,7 @@ public class HavenaskHttpClient implements HavenaskClient {
     @Override
     public HeartbeatTargetResponse updateHeartbeatTarget(UpdateHeartbeatTargetRequest request) throws IOException {
         RequestBody body = RequestBody.create(MediaType.parse("application/json"), Strings.toString(request));
+        Long start = System.nanoTime();
         Request httpRequest = new Request.Builder().url(url + HEART_BEAT_URL).post(body).build();
 
         Response response = AccessController.doPrivileged((PrivilegedAction<Response>) () -> {
@@ -74,6 +78,8 @@ public class HavenaskHttpClient implements HavenaskClient {
                 throw new RuntimeException(e);
             }
         });
+        Long end = System.nanoTime();
+        LOGGER.trace("updateHeartbeatTarget cost [{}] ms", (end - start) / 1000000);
         try (
             XContentParser parser = JSON.xContent()
                 .createParser(NamedXContentRegistry.EMPTY, LoggingDeprecationHandler.INSTANCE, response.body().byteStream())
