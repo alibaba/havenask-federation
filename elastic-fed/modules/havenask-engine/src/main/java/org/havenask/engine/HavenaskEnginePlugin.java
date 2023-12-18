@@ -14,6 +14,22 @@
 
 package org.havenask.engine;
 
+import static org.havenask.engine.NativeProcessControlService.HAVENASK_QRS_HTTP_PORT_SETTING;
+import static org.havenask.engine.index.engine.EngineSettings.ENGINE_HAVENASK;
+import static org.havenask.index.store.FsDirectoryFactory.INDEX_LOCK_FACTOR_SETTING;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.function.Supplier;
+
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.lucene.store.Directory;
@@ -44,8 +60,6 @@ import org.havenask.engine.index.query.KnnQueryBuilder;
 import org.havenask.engine.index.store.HavenaskStore;
 import org.havenask.engine.rpc.HavenaskClient;
 import org.havenask.engine.rpc.QrsClient;
-import org.havenask.engine.rpc.SearcherClient;
-import org.havenask.engine.rpc.arpc.SearcherArpcClient;
 import org.havenask.engine.rpc.http.QrsHttpClient;
 import org.havenask.engine.rpc.http.SearcherHttpClient;
 import org.havenask.engine.search.HavenaskFetchPhase;
@@ -93,22 +107,6 @@ import org.havenask.threadpool.ScalingExecutorBuilder;
 import org.havenask.threadpool.ThreadPool;
 import org.havenask.watcher.ResourceWatcherService;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.function.Supplier;
-
-import static org.havenask.engine.NativeProcessControlService.HAVENASK_QRS_HTTP_PORT_SETTING;
-import static org.havenask.engine.index.engine.EngineSettings.ENGINE_HAVENASK;
-import static org.havenask.index.store.FsDirectoryFactory.INDEX_LOCK_FACTOR_SETTING;
-
 public class HavenaskEnginePlugin extends Plugin
     implements
         EnginePlugin,
@@ -121,10 +119,8 @@ public class HavenaskEnginePlugin extends Plugin
     private static Logger logger = LogManager.getLogger(HavenaskEnginePlugin.class);
     private final SetOnce<HavenaskEngineEnvironment> havenaskEngineEnvironmentSetOnce = new SetOnce<>();
     private final SetOnce<NativeProcessControlService> nativeProcessControlServiceSetOnce = new SetOnce<>();
-    private final SetOnce<HavenaskClient> searcherClientSetOnce = new SetOnce<>();
     private final SetOnce<QrsClient> qrsClientSetOnce = new SetOnce<>();
     private final SetOnce<Client> clientSetOnce = new SetOnce<>();
-    private final SetOnce<SearcherClient> searcherArpcClientSetOnce = new SetOnce<>();
     private final SetOnce<MetaDataSyncer> metaDataSyncerSetOnce = new SetOnce<>();
     private final Settings settings;
 
@@ -177,9 +173,8 @@ public class HavenaskEnginePlugin extends Plugin
             return Optional.of(
                 engineConfig -> new HavenaskEngine(
                     engineConfig,
-                    searcherClientSetOnce.get(),
                     clientSetOnce.get(),
-                    searcherArpcClientSetOnce.get(),
+                    nativeProcessControlServiceSetOnce.get().getSearcherTcpPort(),
                     havenaskEngineEnvironmentSetOnce.get(),
                     nativeProcessControlServiceSetOnce.get(),
                     metaDataSyncerSetOnce.get()
@@ -214,9 +209,6 @@ public class HavenaskEnginePlugin extends Plugin
         );
         nativeProcessControlServiceSetOnce.set(nativeProcessControlService);
         HavenaskClient havenaskClient = new SearcherHttpClient(nativeProcessControlService.getSearcherHttpPort());
-        SearcherClient searcherClient = new SearcherArpcClient(nativeProcessControlService.getSearcherTcpPort());
-        searcherClientSetOnce.set(havenaskClient);
-        searcherArpcClientSetOnce.set(searcherClient);
 
         MetaDataSyncer metaDataSyncer = new MetaDataSyncer(
             clusterService,
@@ -229,12 +221,7 @@ public class HavenaskEnginePlugin extends Plugin
         metaDataSyncerSetOnce.set(metaDataSyncer);
         clientSetOnce.set(client);
 
-        return Arrays.asList(
-            nativeProcessControlServiceSetOnce.get(),
-            havenaskEngineEnvironmentSetOnce.get(),
-            searcherClientSetOnce.get(),
-            metaDataSyncerSetOnce.get()
-        );
+        return Arrays.asList(nativeProcessControlServiceSetOnce.get(), havenaskEngineEnvironmentSetOnce.get(), metaDataSyncerSetOnce.get());
     }
 
     @Override
