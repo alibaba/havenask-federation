@@ -220,6 +220,9 @@ public class HavenaskEngineEnvironment implements CustomEnvironment {
 
     @Override
     public void deleteShardDirectoryUnderLock(ShardLock lock, IndexSettings indexSettings) {
+        if (EngineSettings.isHavenaskEngine(indexSettings.getSettings()) == false) {
+            return;
+        }
         String partitionName = RangeUtil.getRangePartition(indexSettings.getNumberOfShards(), lock.getShardId().id());
         Path shardDir = runtimedataPath.resolve(indexSettings.getIndex().getName()).resolve("generation_0").resolve(partitionName);
 
