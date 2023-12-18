@@ -129,7 +129,11 @@ public class Utils {
         try {
             String content = Files.readString(jsonPath);
             JSONObject jsonObject = JsonPrettyFormatter.fromString(content);
-            return jsonObject.getString("locator");
+            String locator = jsonObject.getString("locator");
+            if (locator.length() < 80) {
+                logger.debug("locator has no timestamp, jsonPath: [{}],locator: [{}]", jsonPath.toString(), locator);
+            }
+            return locator;
         } catch (Exception e) {
             logger.error("get index locator failed in file [{}]", jsonPath);
             return null;
@@ -143,7 +147,6 @@ public class Utils {
         if (Objects.equals(locator, null)) return null;
 
         if (locator.length() < 80) {
-            logger.debug("locator has no timestamp");
             return null;
         }
 
