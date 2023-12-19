@@ -76,13 +76,13 @@ import org.havenask.engine.MetaDataSyncer;
 import org.havenask.engine.NativeProcessControlService;
 import org.havenask.engine.index.mapper.VectorField;
 import org.havenask.engine.rpc.ArpcResponse;
-import org.havenask.engine.rpc.HavenaskClient;
 import org.havenask.engine.rpc.QueryTableRequest;
 import org.havenask.engine.rpc.QueryTableResponse;
 import org.havenask.engine.rpc.SearcherClient;
 import org.havenask.engine.rpc.TargetInfo;
 import org.havenask.engine.rpc.WriteRequest;
 import org.havenask.engine.rpc.WriteResponse;
+import org.havenask.engine.rpc.arpc.SearcherArpcClient;
 import org.havenask.engine.search.action.HavenaskSqlAction;
 import org.havenask.engine.search.action.HavenaskSqlRequest;
 import org.havenask.engine.search.action.HavenaskSqlResponse;
@@ -120,9 +120,8 @@ public class HavenaskEngine extends InternalEngine {
 
     public static final String STACK_ORIGIN = "stack";
 
-    private final HavenaskClient searcherHttpClient;
     private final Client client;
-    private final SearcherClient searcherClient;
+    private final SearcherArpcClient searcherClient;
     private final HavenaskEngineEnvironment env;
     private final NativeProcessControlService nativeProcessControlService;
     private final MetaDataSyncer metaDataSyncer;
@@ -142,18 +141,16 @@ public class HavenaskEngine extends InternalEngine {
 
     public HavenaskEngine(
         EngineConfig engineConfig,
-        HavenaskClient searcherHttpClient,
         Client client,
-        SearcherClient searcherClient,
+        int searcherPort,
         HavenaskEngineEnvironment env,
         NativeProcessControlService nativeProcessControlService,
         MetaDataSyncer metaDataSyncer
     ) {
         super(engineConfig);
 
-        this.searcherHttpClient = searcherHttpClient;
         this.client = new OriginSettingClient(client, STACK_ORIGIN);
-        this.searcherClient = searcherClient;
+        this.searcherClient = new SearcherArpcClient(searcherPort);
         this.env = env;
         this.nativeProcessControlService = nativeProcessControlService;
         this.metaDataSyncer = metaDataSyncer;
@@ -267,6 +264,7 @@ public class HavenaskEngine extends InternalEngine {
             producer.close();
         }
 
+        searcherClient.close();
         nativeProcessControlService.removeHavenaskEngine(this);
     }
 
