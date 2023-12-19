@@ -59,6 +59,7 @@ import org.apache.lucene.util.BytesRef;
 import org.havenask.HavenaskException;
 import org.havenask.action.bulk.BackoffPolicy;
 import org.havenask.client.Client;
+import org.havenask.client.OriginSettingClient;
 import org.havenask.common.Nullable;
 import org.havenask.common.bytes.BytesArray;
 import org.havenask.common.bytes.BytesReference;
@@ -117,6 +118,8 @@ import suez.service.proto.SummaryValue;
 
 public class HavenaskEngine extends InternalEngine {
 
+    public static final String STACK_ORIGIN = "stack";
+
     private final Client client;
     private final SearcherArpcClient searcherClient;
     private final HavenaskEngineEnvironment env;
@@ -146,7 +149,7 @@ public class HavenaskEngine extends InternalEngine {
     ) {
         super(engineConfig);
 
-        this.client = client;
+        this.client = new OriginSettingClient(client, STACK_ORIGIN);
         this.searcherClient = new SearcherArpcClient(searcherPort);
         this.env = env;
         this.nativeProcessControlService = nativeProcessControlService;
