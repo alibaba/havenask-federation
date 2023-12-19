@@ -235,7 +235,7 @@ public class MetaDataSyncer extends AbstractLifecycleComponent implements Cluste
                     // 1. pending为true
                     // 2. synced为false
                     // 3. syncTimes小于MAX_SYNC_TIMES
-                    if (searcherPending.getAndSet(false) == true || searcherSynced.get() == false || syncTimes > MAX_SYNC_TIMES) {
+                    if (searcherPending.getAndSet(false) == true || searcherSynced.get() == false || syncTimes >= MAX_SYNC_TIMES) {
                         // update searcher heartbeat target
                         LOGGER.info(
                             "update searcher heartbeat target, synced: {}, pending: {}, syncTimes: {}",
@@ -282,7 +282,7 @@ public class MetaDataSyncer extends AbstractLifecycleComponent implements Cluste
                     // 1. qrsPending为true
                     // 2. qrsSynced为false
                     // 3. qrsSyncTimes大于MAX_SYNC_TIMES
-                    if (qrsPending.getAndSet(false) == true || qrsSynced.get() == false || qrsSyncTimes > MAX_SYNC_TIMES) {
+                    if (qrsPending.getAndSet(false) == true || qrsSynced.get() == false || qrsSyncTimes >= MAX_SYNC_TIMES) {
                         // update qrs heartbeat target
                         LOGGER.info(
                             "update qrs heartbeat target, qrsSynced: {}, qrsPending: {}, qrsSyncTimes: {}",
@@ -297,7 +297,7 @@ public class MetaDataSyncer extends AbstractLifecycleComponent implements Cluste
 
                             boolean qrsEquals = qrsTargetRequest.getTargetInfo().equals(qrsResponse.getSignature());
                             if (qrsEquals) {
-                                generalSqlRandomVersion = random.nextInt(100000) + 1;
+                                generalSqlRandomVersion += random.nextInt(30000) + 1;
                                 LOGGER.trace("qrs Equals success, update version");
 
                                 LOGGER.info("update qrs heartbeat target success");
