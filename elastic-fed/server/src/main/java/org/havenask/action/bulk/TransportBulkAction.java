@@ -540,7 +540,10 @@ public class TransportBulkAction extends HandledTransportAction<BulkRequest, Bul
                             break;
                         default: throw new AssertionError("request type not supported: [" + docWriteRequest.opType() + "]");
                     }
-                    List<BulkItemRequest> shardRequests = requestsByShard.computeIfAbsent(new ShardId(concreteIndex, shardId), shard -> new ArrayList<>());
+                    List<BulkItemRequest> shardRequests = requestsByShard.computeIfAbsent(
+                        new ShardId(concreteIndex, shardId),
+                        shard -> new ArrayList<>()
+                    );
                     shardRequests.add(new BulkItemRequest(i, docWriteRequest));
                 } catch (HavenaskParseException | IllegalArgumentException | RoutingMissingException e) {
                     BulkItemResponse.Failure failure = new BulkItemResponse.Failure(concreteIndex.getName(), docWriteRequest.type(),

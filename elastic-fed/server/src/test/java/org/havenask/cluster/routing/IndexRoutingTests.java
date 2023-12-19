@@ -48,29 +48,29 @@ public class IndexRoutingTests extends HavenaskTestCase {
             assertEquals(shardSplits[0], (shardSplits[0] / shardSplits[1]) * shardSplits[1]);
             assertEquals(shardSplits[1], (shardSplits[1] / shardSplits[2]) * shardSplits[2]);
             IndexMetadata metadata = IndexMetadata.builder("test")
-                    .settings(settings(Version.CURRENT))
-                    .numberOfShards(shardSplits[0])
-                    .numberOfReplicas(1)
-                    .build();
+                .settings(settings(Version.CURRENT))
+                .numberOfShards(shardSplits[0])
+                .numberOfReplicas(1)
+                .build();
             String term = randomAlphaOfLength(10);
             final int shard = shardIdFromSimple(IndexRouting.fromIndexMetadata(metadata), term, null);
             IndexMetadata shrunk = IndexMetadata.builder("test")
-                    .settings(settings(Version.CURRENT))
-                    .numberOfShards(shardSplits[1])
-                    .numberOfReplicas(1)
-                    .setRoutingNumShards(shardSplits[0])
-                    .build();
+                .settings(settings(Version.CURRENT))
+                .numberOfShards(shardSplits[1])
+                .numberOfReplicas(1)
+                .setRoutingNumShards(shardSplits[0])
+                .build();
             int shrunkShard = shardIdFromSimple(IndexRouting.fromIndexMetadata(shrunk), term, null);
 
             Set<ShardId> shardIds = IndexMetadata.selectShrinkShards(shrunkShard, metadata, shrunk.getNumberOfShards());
             assertEquals(1, shardIds.stream().filter((sid) -> sid.id() == shard).count());
 
             shrunk = IndexMetadata.builder("test")
-                    .settings(settings(Version.CURRENT))
-                    .numberOfShards(shardSplits[2])
-                    .numberOfReplicas(1)
-                    .setRoutingNumShards(shardSplits[0])
-                    .build();
+                .settings(settings(Version.CURRENT))
+                .numberOfShards(shardSplits[2])
+                .numberOfReplicas(1)
+                .setRoutingNumShards(shardSplits[0])
+                .build();
             shrunkShard = shardIdFromSimple(IndexRouting.fromIndexMetadata(shrunk), term, null);
             shardIds = IndexMetadata.selectShrinkShards(shrunkShard, metadata, shrunk.getNumberOfShards());
             assertEquals(Arrays.toString(shardSplits), 1, shardIds.stream().filter((sid) -> sid.id() == shard).count());
@@ -84,19 +84,19 @@ public class IndexRoutingTests extends HavenaskTestCase {
             assertEquals(shardSplits[0], (shardSplits[0] * shardSplits[1]) / shardSplits[1]);
             assertEquals(shardSplits[1], (shardSplits[1] * shardSplits[2]) / shardSplits[2]);
             IndexMetadata metadata = IndexMetadata.builder("test")
-                    .settings(settings(Version.CURRENT))
-                    .numberOfShards(shardSplits[0])
-                    .numberOfReplicas(1)
-                    .setRoutingNumShards(shardSplits[2])
-                    .build();
+                .settings(settings(Version.CURRENT))
+                .numberOfShards(shardSplits[0])
+                .numberOfReplicas(1)
+                .setRoutingNumShards(shardSplits[2])
+                .build();
             String term = randomAlphaOfLength(10);
             final int shard = shardIdFromSimple(IndexRouting.fromIndexMetadata(metadata), term, null);
             IndexMetadata split = IndexMetadata.builder("test")
-                    .settings(settings(Version.CURRENT))
-                    .numberOfShards(shardSplits[1])
-                    .numberOfReplicas(1)
-                    .setRoutingNumShards(shardSplits[2])
-                    .build();
+                .settings(settings(Version.CURRENT))
+                .numberOfShards(shardSplits[1])
+                .numberOfReplicas(1)
+                .setRoutingNumShards(shardSplits[2])
+                .build();
             int shrunkShard = shardIdFromSimple(IndexRouting.fromIndexMetadata(split), term, null);
 
             ShardId shardId = IndexMetadata.selectSplitShard(shrunkShard, metadata, split.getNumberOfShards());
@@ -104,11 +104,11 @@ public class IndexRoutingTests extends HavenaskTestCase {
             assertEquals(shard, shardId.getId());
 
             split = IndexMetadata.builder("test")
-                    .settings(settings(Version.CURRENT))
-                    .numberOfShards(shardSplits[2])
-                    .numberOfReplicas(1)
-                    .setRoutingNumShards(shardSplits[2])
-                    .build();
+                .settings(settings(Version.CURRENT))
+                .numberOfShards(shardSplits[2])
+                .numberOfReplicas(1)
+                .setRoutingNumShards(shardSplits[2])
+                .build();
             shrunkShard = shardIdFromSimple(IndexRouting.fromIndexMetadata(split), term, null);
             shardId = IndexMetadata.selectSplitShard(shrunkShard, metadata, split.getNumberOfShards());
             assertNotNull(shardId);
@@ -119,7 +119,7 @@ public class IndexRoutingTests extends HavenaskTestCase {
     public void testCollectSearchShardsInStandardIndex() {
         for (int shards = 1; shards < 5; shards++) {
             IndexRouting indexRouting = IndexRouting.fromIndexMetadata(
-                    IndexMetadata.builder("test").settings(settings(Version.CURRENT)).numberOfShards(shards).numberOfReplicas(1).build()
+                IndexMetadata.builder("test").settings(settings(Version.CURRENT)).numberOfShards(shards).numberOfReplicas(1).build()
             );
 
             for (int i = 0; i < 20; i++) {
@@ -137,12 +137,12 @@ public class IndexRoutingTests extends HavenaskTestCase {
         for (int shards = 1; shards < 5; shards++) {
             for (int partitionSize = 1; partitionSize == 1 || partitionSize < shards; partitionSize++) {
                 IndexRouting indexRouting = IndexRouting.fromIndexMetadata(
-                        IndexMetadata.builder("test")
-                                .settings(settings(Version.CURRENT))
-                                .numberOfShards(shards)
-                                .routingPartitionSize(partitionSize)
-                                .numberOfReplicas(1)
-                                .build()
+                    IndexMetadata.builder("test")
+                        .settings(settings(Version.CURRENT))
+                        .numberOfShards(shards)
+                        .routingPartitionSize(partitionSize)
+                        .numberOfReplicas(1)
+                        .build()
                 );
 
                 for (int i = 0; i < 20; i++) {
@@ -203,13 +203,13 @@ public class IndexRoutingTests extends HavenaskTestCase {
         routingIdToShard.put("d", routingD);
 
         IndexRouting indexRouting = IndexRouting.fromIndexMetadata(
-                IndexMetadata.builder("test")
-                        .settings(settings(Version.CURRENT))
-                        .setRoutingNumShards(8)
-                        .numberOfShards(4)
-                        .routingPartitionSize(3)
-                        .numberOfReplicas(1)
-                        .build()
+            IndexMetadata.builder("test")
+                .settings(settings(Version.CURRENT))
+                .setRoutingNumShards(8)
+                .numberOfShards(4)
+                .routingPartitionSize(3)
+                .numberOfReplicas(1)
+                .build()
         );
 
         for (Map.Entry<String, Map<String, Integer>> routingIdEntry : routingIdToShard.entrySet()) {
@@ -256,12 +256,12 @@ public class IndexRoutingTests extends HavenaskTestCase {
         routingIdToShard.put("d", routingD);
 
         IndexRouting indexRouting = IndexRouting.fromIndexMetadata(
-                IndexMetadata.builder("test")
-                        .settings(settings(Version.CURRENT))
-                        .numberOfShards(6)
-                        .routingPartitionSize(2)
-                        .numberOfReplicas(1)
-                        .build()
+            IndexMetadata.builder("test")
+                .settings(settings(Version.CURRENT))
+                .numberOfShards(6)
+                .routingPartitionSize(2)
+                .numberOfReplicas(1)
+                .build()
         );
 
         for (Map.Entry<String, Map<String, Integer>> routingIdEntry : routingIdToShard.entrySet()) {
@@ -381,7 +381,7 @@ public class IndexRoutingTests extends HavenaskTestCase {
         termToShard.put("nGzpgwsSBc", 4);
         termToShard.put("AITyyoyLLs", 4);
         IndexRouting indexRouting = IndexRouting.fromIndexMetadata(
-                IndexMetadata.builder("test").settings(settings(Version.CURRENT)).numberOfShards(8).numberOfReplicas(1).build()
+            IndexMetadata.builder("test").settings(settings(Version.CURRENT)).numberOfShards(8).numberOfReplicas(1).build()
         );
         for (Map.Entry<String, Integer> entry : termToShard.entrySet()) {
             String key = entry.getKey();
@@ -431,33 +431,40 @@ public class IndexRoutingTests extends HavenaskTestCase {
     public void testRoutingPathSpecifiedRouting() throws IOException {
         IndexRouting routing = indexRoutingForPath(between(1, 5), "foo");
         Exception e = expectThrows(
-                IllegalArgumentException.class,
-                () -> routing.indexShard(null, randomAlphaOfLength(5), XContentType.JSON, source(org.havenask.common.collect.Map.of("foo", randomAlphaOfLength(5))))
+            IllegalArgumentException.class,
+            () -> routing.indexShard(
+                null,
+                randomAlphaOfLength(5),
+                XContentType.JSON,
+                source(org.havenask.common.collect.Map.of("foo", randomAlphaOfLength(5)))
+            )
         );
-        assertThat(
-                e.getMessage(),
-                containsString("routing value is not the same with source routing field")
-        );
+        assertThat(e.getMessage(), containsString("routing value is not the same with source routing field"));
     }
 
     public void testRoutingPathEmptySource() throws IOException {
         String routingPath = randomAlphaOfLength(5) + ", " + randomAlphaOfLength(5);
         IndexRouting routing = indexRoutingForPath(between(1, 5), routingPath);
         Exception e = expectThrows(
-                IllegalArgumentException.class,
-                () -> routing.indexShard(randomAlphaOfLength(5), null, XContentType.JSON, source(org.havenask.common.collect.Map.of()))
+            IllegalArgumentException.class,
+            () -> routing.indexShard(randomAlphaOfLength(5), null, XContentType.JSON, source(org.havenask.common.collect.Map.of()))
         );
         assertThat(
-                e.getMessage(),
-                equalTo("Error extracting routing: source didn't contain any routing dimension fields [" + routingPath + "]")
+            e.getMessage(),
+            equalTo("Error extracting routing: source didn't contain any routing dimension fields [" + routingPath + "]")
         );
     }
 
     public void testRoutingPathMismatchSource() throws IOException {
         IndexRouting routing = indexRoutingForPath(between(1, 5), "foo, foo2");
         Exception e = expectThrows(
-                IllegalArgumentException.class,
-                () -> routing.indexShard(randomAlphaOfLength(5), null, XContentType.JSON, source(org.havenask.common.collect.Map.of("bar", "dog")))
+            IllegalArgumentException.class,
+            () -> routing.indexShard(
+                randomAlphaOfLength(5),
+                null,
+                XContentType.JSON,
+                source(org.havenask.common.collect.Map.of("bar", "dog"))
+            )
         );
         assertThat(e.getMessage(), equalTo("Error extracting routing: source didn't contain any routing dimension fields [foo, foo2]"));
     }
@@ -465,42 +472,36 @@ public class IndexRoutingTests extends HavenaskTestCase {
     public void testRoutingPathUpdate() throws IOException {
         IndexRouting routing = indexRoutingForPath(between(1, 5), "foo");
         Exception e = expectThrows(
-                IllegalArgumentException.class,
-                () -> routing.updateShard(randomAlphaOfLength(5), randomBoolean() ? null : randomAlphaOfLength(5))
+            IllegalArgumentException.class,
+            () -> routing.updateShard(randomAlphaOfLength(5), randomBoolean() ? null : randomAlphaOfLength(5))
         );
         assertThat(e.getMessage(), equalTo("update is not supported because the destination index [test] is in time series mode"));
     }
 
     public void testRoutingPathDelete() throws IOException {
         IndexRouting routing = indexRoutingForPath(between(1, 5), "foo");
-        Exception e = expectThrows(
-                IllegalArgumentException.class,
-                () -> routing.deleteShard(randomAlphaOfLength(5), null)
-        );
+        Exception e = expectThrows(IllegalArgumentException.class, () -> routing.deleteShard(randomAlphaOfLength(5), null));
         assertThat(e.getMessage(), equalTo("A routing value is required"));
     }
 
     public void testRoutingPathGet() throws IOException {
         IndexRouting routing = indexRoutingForPath(between(1, 5), "foo");
-        Exception e = expectThrows(
-                IllegalArgumentException.class,
-                () -> routing.getShard(randomAlphaOfLength(5), null)
-        );
+        Exception e = expectThrows(IllegalArgumentException.class, () -> routing.getShard(randomAlphaOfLength(5), null));
         assertThat(e.getMessage(), equalTo("A routing value is required"));
     }
 
     public void testRoutingPathCollectSearchWithRouting() {
         IndexRouting routing = indexRoutingForPath(between(1, 5), "foo");
-        routing.collectSearchShards(randomAlphaOfLength(5), (value)->{});
+        routing.collectSearchShards(randomAlphaOfLength(5), (value) -> {});
     }
 
     public void testRoutingPathOneTopLevel() throws IOException {
         int shards = between(2, 1000);
         IndexRouting routing = indexRoutingForPath(shards, "foo,foo2");
         assertIndexShard(
-                routing,
-                org.havenask.common.collect.Map.of("foo", "cat", "bar", "dog"),
-                Math.floorMod(hash(org.havenask.common.collect.List.of("foo", "cat")), shards)
+            routing,
+            org.havenask.common.collect.Map.of("foo", "cat", "bar", "dog"),
+            Math.floorMod(hash(org.havenask.common.collect.List.of("foo", "cat")), shards)
         );
     }
 
@@ -508,10 +509,11 @@ public class IndexRoutingTests extends HavenaskTestCase {
         int shards = between(2, 1000);
         IndexRouting routing = indexRoutingForPath(shards, "f*");
         assertIndexShard(
-                routing,
-                org.havenask.common.collect.Map.of("foo", "cat", "bar", "dog", "foa", "a", "fob", "b"),
-                Math.floorMod(hash(org.havenask.common.collect.List.of("foa", "a", "fob", "b", "foo", "cat")), shards) // Note that the fields are
-                // sorted
+            routing,
+            org.havenask.common.collect.Map.of("foo", "cat", "bar", "dog", "foa", "a", "fob", "b"),
+            Math.floorMod(hash(org.havenask.common.collect.List.of("foa", "a", "fob", "b", "foo", "cat")), shards) // Note that the fields
+                                                                                                                   // are
+            // sorted
         );
     }
 
@@ -519,9 +521,9 @@ public class IndexRoutingTests extends HavenaskTestCase {
         int shards = between(2, 1000);
         IndexRouting routing = indexRoutingForPath(shards, "foo.*");
         assertIndexShard(
-                routing,
-                org.havenask.common.collect.Map.of("foo", org.havenask.common.collect.Map.of("bar", "cat"), "baz", "dog"),
-                Math.floorMod(hash(org.havenask.common.collect.List.of("foo.bar", "cat")), shards)
+            routing,
+            org.havenask.common.collect.Map.of("foo", org.havenask.common.collect.Map.of("bar", "cat"), "baz", "dog"),
+            Math.floorMod(hash(org.havenask.common.collect.List.of("foo.bar", "cat")), shards)
         );
     }
 
@@ -529,14 +531,14 @@ public class IndexRoutingTests extends HavenaskTestCase {
         int shards = between(2, 1000);
         IndexRouting routing = indexRoutingForPath(shards, "foo.*,bar.*,baz.*");
         assertIndexShard(
-                routing,
-                org.havenask.common.collect.Map.of(
-                        "foo",
-                        org.havenask.common.collect.Map.of("a", "cat"),
-                        "bar",
-                        org.havenask.common.collect.Map.of("thing", "yay", "this", "too")
-                ),
-                Math.floorMod(hash(org.havenask.common.collect.List.of("bar.thing", "yay", "bar.this", "too", "foo.a", "cat")), shards)
+            routing,
+            org.havenask.common.collect.Map.of(
+                "foo",
+                org.havenask.common.collect.Map.of("a", "cat"),
+                "bar",
+                org.havenask.common.collect.Map.of("thing", "yay", "this", "too")
+            ),
+            Math.floorMod(hash(org.havenask.common.collect.List.of("bar.thing", "yay", "bar.this", "too", "foo.a", "cat")), shards)
         );
     }
 
@@ -557,11 +559,11 @@ public class IndexRoutingTests extends HavenaskTestCase {
 
     private IndexRouting indexRoutingForPath(Version createdVersion, int shards, String path) {
         return IndexRouting.fromIndexMetadata(
-                IndexMetadata.builder("test")
-                        .settings(settings(createdVersion).put(IndexMetadata.INDEX_ROUTING_PATH.getKey(), path))
-                        .numberOfShards(shards)
-                        .numberOfReplicas(1)
-                        .build()
+            IndexMetadata.builder("test")
+                .settings(settings(createdVersion).put(IndexMetadata.INDEX_ROUTING_PATH.getKey(), path))
+                .numberOfShards(shards)
+                .numberOfReplicas(1)
+                .build()
         );
     }
 
