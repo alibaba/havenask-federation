@@ -307,4 +307,12 @@ public class OperationRouting {
         IndexMetadata indexMetadata = indexMetadata(clusterState, index);
         return new ShardId(indexMetadata.getIndex(), IndexRouting.fromIndexMetadata(indexMetadata).getShard(id, routing));
     }
+
+    public static int defaultCalculateScaledShardId(IndexMetadata indexMetadata, String effectiveRouting, int partitionOffset) {
+        final int hash = Murmur3HashFunction.hash(effectiveRouting) + partitionOffset;
+
+        // we don't use IMD#getNumberOfShards since the index might have been shrunk such that we need to use the size
+        // of original index to hash documents
+        return Math.floorMod(hash, indexMetadata.getRoutingNumShards()) / indexMetadata.getRoutingFactor();
+    }
 }
