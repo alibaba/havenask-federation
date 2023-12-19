@@ -38,14 +38,69 @@
 
 package org.havenask.test;
 
-import com.carrotsearch.hppc.ObjectLongMap;
-import com.carrotsearch.hppc.cursors.IntObjectCursor;
-import com.carrotsearch.hppc.cursors.ObjectObjectCursor;
-import com.carrotsearch.randomizedtesting.RandomizedTest;
-import com.carrotsearch.randomizedtesting.SeedUtils;
-import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
-import com.carrotsearch.randomizedtesting.generators.RandomPicks;
-import com.carrotsearch.randomizedtesting.generators.RandomStrings;
+import static org.apache.lucene.util.LuceneTestCase.TEST_NIGHTLY;
+import static org.apache.lucene.util.LuceneTestCase.rarely;
+import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.greaterThan;
+import static org.hamcrest.Matchers.greaterThanOrEqualTo;
+import static org.hamcrest.Matchers.not;
+import static org.hamcrest.Matchers.nullValue;
+import static org.havenask.cluster.coordination.ClusterBootstrapService.INITIAL_MASTER_NODES_SETTING;
+import static org.havenask.common.unit.TimeValue.timeValueMillis;
+import static org.havenask.common.unit.TimeValue.timeValueSeconds;
+import static org.havenask.discovery.DiscoveryModule.DISCOVERY_TYPE_SETTING;
+import static org.havenask.discovery.DiscoveryModule.ZEN2_DISCOVERY_TYPE;
+import static org.havenask.discovery.DiscoveryModule.ZEN_DISCOVERY_TYPE;
+import static org.havenask.discovery.DiscoverySettings.INITIAL_STATE_TIMEOUT_SETTING;
+import static org.havenask.discovery.FileBasedSeedHostsProvider.UNICAST_HOSTS_FILE;
+import static org.havenask.discovery.zen.ElectMasterService.DISCOVERY_ZEN_MINIMUM_MASTER_NODES_SETTING;
+import static org.havenask.test.HavenaskTestCase.assertBusy;
+import static org.havenask.test.HavenaskTestCase.getTestTransportType;
+import static org.havenask.test.HavenaskTestCase.randomFrom;
+import static org.havenask.test.NodeRoles.dataOnlyNode;
+import static org.havenask.test.NodeRoles.masterOnlyNode;
+import static org.havenask.test.NodeRoles.noRoles;
+import static org.havenask.test.NodeRoles.onlyRole;
+import static org.havenask.test.NodeRoles.removeRoles;
+import static org.havenask.test.hamcrest.HavenaskAssertions.assertAcked;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertThat;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
+import java.io.Closeable;
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.net.InetSocketAddress;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.NavigableMap;
+import java.util.Objects;
+import java.util.Random;
+import java.util.Set;
+import java.util.TreeMap;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Function;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
+
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.lucene.store.AlreadyClosedException;
@@ -69,6 +124,7 @@ import org.havenask.cluster.metadata.IndexMetadata;
 import org.havenask.cluster.node.DiscoveryNode;
 import org.havenask.cluster.node.DiscoveryNodeRole;
 import org.havenask.cluster.node.DiscoveryNodes;
+import org.havenask.cluster.routing.IndexRouting;
 import org.havenask.cluster.routing.IndexRoutingTable;
 import org.havenask.cluster.routing.IndexShardRoutingTable;
 import org.havenask.cluster.routing.OperationRouting;
@@ -94,8 +150,8 @@ import org.havenask.common.unit.ByteSizeUnit;
 import org.havenask.common.unit.ByteSizeValue;
 import org.havenask.common.unit.TimeValue;
 import org.havenask.common.util.PageCacheRecycler;
-import org.havenask.common.util.concurrent.HavenaskExecutors;
 import org.havenask.common.util.concurrent.FutureUtils;
+import org.havenask.common.util.concurrent.HavenaskExecutors;
 import org.havenask.common.util.concurrent.ThreadContext;
 import org.havenask.common.util.set.Sets;
 import org.havenask.core.internal.io.IOUtils;
@@ -139,68 +195,14 @@ import org.havenask.transport.MockTransportClient;
 import org.havenask.transport.TransportService;
 import org.havenask.transport.TransportSettings;
 
-import java.io.Closeable;
-import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.net.InetSocketAddress;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.NavigableMap;
-import java.util.Objects;
-import java.util.Random;
-import java.util.Set;
-import java.util.TreeMap;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Function;
-import java.util.function.Predicate;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
-import java.util.stream.Stream;
-
-import static org.apache.lucene.util.LuceneTestCase.TEST_NIGHTLY;
-import static org.apache.lucene.util.LuceneTestCase.rarely;
-import static org.havenask.cluster.coordination.ClusterBootstrapService.INITIAL_MASTER_NODES_SETTING;
-import static org.havenask.common.unit.TimeValue.timeValueMillis;
-import static org.havenask.common.unit.TimeValue.timeValueSeconds;
-import static org.havenask.discovery.DiscoveryModule.DISCOVERY_TYPE_SETTING;
-import static org.havenask.discovery.DiscoveryModule.ZEN2_DISCOVERY_TYPE;
-import static org.havenask.discovery.DiscoveryModule.ZEN_DISCOVERY_TYPE;
-import static org.havenask.discovery.DiscoverySettings.INITIAL_STATE_TIMEOUT_SETTING;
-import static org.havenask.discovery.FileBasedSeedHostsProvider.UNICAST_HOSTS_FILE;
-import static org.havenask.discovery.zen.ElectMasterService.DISCOVERY_ZEN_MINIMUM_MASTER_NODES_SETTING;
-import static org.havenask.test.HavenaskTestCase.assertBusy;
-import static org.havenask.test.HavenaskTestCase.getTestTransportType;
-import static org.havenask.test.HavenaskTestCase.randomFrom;
-import static org.havenask.test.NodeRoles.dataOnlyNode;
-import static org.havenask.test.NodeRoles.masterOnlyNode;
-import static org.havenask.test.NodeRoles.noRoles;
-import static org.havenask.test.NodeRoles.onlyRole;
-import static org.havenask.test.NodeRoles.removeRoles;
-import static org.havenask.test.hamcrest.HavenaskAssertions.assertAcked;
-import static org.hamcrest.Matchers.equalTo;
-import static org.hamcrest.Matchers.greaterThan;
-import static org.hamcrest.Matchers.greaterThanOrEqualTo;
-import static org.hamcrest.Matchers.not;
-import static org.hamcrest.Matchers.nullValue;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertThat;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import com.carrotsearch.hppc.ObjectLongMap;
+import com.carrotsearch.hppc.cursors.IntObjectCursor;
+import com.carrotsearch.hppc.cursors.ObjectObjectCursor;
+import com.carrotsearch.randomizedtesting.RandomizedTest;
+import com.carrotsearch.randomizedtesting.SeedUtils;
+import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
+import com.carrotsearch.randomizedtesting.generators.RandomPicks;
+import com.carrotsearch.randomizedtesting.generators.RandomStrings;
 
 /**
  * InternalTestCluster manages a set of JVM private nodes and allows convenient access to them.
@@ -2411,11 +2413,13 @@ public final class InternalTestCluster extends TestCluster {
             if (indexService != null) {
                 assertThat(indexService.getIndexSettings().getSettings().getAsInt(IndexMetadata.SETTING_NUMBER_OF_SHARDS, -1),
                         greaterThan(shard));
+                ClusterState clusterState = clusterService.state();
                 OperationRouting operationRouting = clusterService.operationRouting();
+                IndexRouting indexRouting = IndexRouting.fromIndexMetadata(clusterState.metadata().getIndexSafe(index));
                 while (true) {
                     String routing = RandomStrings.randomAsciiOfLength(random, 10);
                     final int targetShard = operationRouting
-                            .indexShards(clusterService.state(), index.getName(), null, routing)
+                            .indexShards(clusterState, index.getName(), indexRouting, null, routing)
                             .shardId().getId();
                     if (shard == targetShard) {
                         return routing;

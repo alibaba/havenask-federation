@@ -39,6 +39,14 @@
 
 package org.havenask.action.update;
 
+import static org.havenask.ExceptionsHelper.unwrapCause;
+import static org.havenask.action.bulk.TransportSingleItemBulkWriteAction.toSingleItemBulkRequest;
+import static org.havenask.action.bulk.TransportSingleItemBulkWriteAction.wrapBulkResponse;
+
+import java.io.IOException;
+import java.util.Collections;
+import java.util.Map;
+
 import org.havenask.ResourceAlreadyExistsException;
 import org.havenask.action.ActionListener;
 import org.havenask.action.ActionRunnable;
@@ -56,8 +64,10 @@ import org.havenask.action.support.TransportActions;
 import org.havenask.action.support.single.instance.TransportInstanceSingleOperationAction;
 import org.havenask.client.node.NodeClient;
 import org.havenask.cluster.ClusterState;
+import org.havenask.cluster.metadata.IndexMetadata;
 import org.havenask.cluster.metadata.IndexNameExpressionResolver;
 import org.havenask.cluster.metadata.Metadata;
+import org.havenask.cluster.routing.IndexRouting;
 import org.havenask.cluster.routing.PlainShardIterator;
 import org.havenask.cluster.routing.ShardIterator;
 import org.havenask.cluster.routing.ShardRouting;
@@ -79,14 +89,6 @@ import org.havenask.tasks.Task;
 import org.havenask.threadpool.ThreadPool;
 import org.havenask.threadpool.ThreadPool.Names;
 import org.havenask.transport.TransportService;
-
-import java.io.IOException;
-import java.util.Collections;
-import java.util.Map;
-
-import static org.havenask.ExceptionsHelper.unwrapCause;
-import static org.havenask.action.bulk.TransportSingleItemBulkWriteAction.toSingleItemBulkRequest;
-import static org.havenask.action.bulk.TransportSingleItemBulkWriteAction.wrapBulkResponse;
 
 public class TransportUpdateAction extends TransportInstanceSingleOperationAction<UpdateRequest, UpdateResponse> {
 
@@ -188,8 +190,13 @@ public class TransportUpdateAction extends TransportInstanceSingleOperationActio
         if (request.getShardId() != null) {
             return clusterState.routingTable().index(request.concreteIndex()).shard(request.getShardId().getId()).primaryShardIt();
         }
+        IndexMetadata indexMetadata = clusterState.metadata().index(request.concreteIndex());
+        if (indexMetadata == null) {
+            throw new IndexNotFoundException(request.concreteIndex());
+        }
+        IndexRouting indexRouting = IndexRouting.fromIndexMetadata(indexMetadata);
         ShardIterator shardIterator = clusterService.operationRouting()
-                .indexShards(clusterState, request.concreteIndex(), request.id(), request.routing());
+                .indexShards(clusterState, request.concreteIndex(), indexRouting, request.id(), request.routing());
         ShardRouting shard;
         while ((shard = shardIterator.nextOrNull()) != null) {
             if (shard.primary()) {

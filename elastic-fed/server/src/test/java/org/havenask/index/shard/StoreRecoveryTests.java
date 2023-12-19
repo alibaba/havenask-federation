@@ -38,6 +38,17 @@
 
 package org.havenask.index.shard;
 
+import static org.hamcrest.CoreMatchers.equalTo;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.attribute.BasicFileAttributes;
+import java.security.AccessControlException;
+import java.util.Arrays;
+import java.util.Map;
+import java.util.function.Predicate;
+
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.SortedNumericDocValuesField;
@@ -61,7 +72,7 @@ import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.BytesRef;
 import org.havenask.Version;
 import org.havenask.cluster.metadata.IndexMetadata;
-import org.havenask.cluster.routing.OperationRouting;
+import org.havenask.cluster.routing.IndexRouting;
 import org.havenask.common.settings.Settings;
 import org.havenask.core.internal.io.IOUtils;
 import org.havenask.index.engine.Engine;
@@ -70,17 +81,6 @@ import org.havenask.index.mapper.Uid;
 import org.havenask.index.seqno.SequenceNumbers;
 import org.havenask.indices.recovery.RecoveryState;
 import org.havenask.test.HavenaskTestCase;
-
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.attribute.BasicFileAttributes;
-import java.security.AccessControlException;
-import java.util.Arrays;
-import java.util.Map;
-import java.util.function.Predicate;
-
-import static org.hamcrest.CoreMatchers.equalTo;
 
 public class StoreRecoveryTests extends HavenaskTestCase {
 
@@ -226,11 +226,15 @@ public class StoreRecoveryTests extends HavenaskTestCase {
             BytesRef ref;
             while((ref = iterator.next()) != null) {
                 String value = ref.utf8ToString();
-                assertEquals("value has wrong shards: " + value, targetShardId, OperationRouting.generateShardId(metadata, value, null));
+                assertEquals(
+                        "value has wrong shards: " + value,
+                        targetShardId,
+                        IndexRouting.fromIndexMetadata(metadata).shardId(value, null)
+                );
             }
             for (int i = 0; i < numDocs; i++) {
                 ref = new BytesRef(Integer.toString(i));
-                int shardId = OperationRouting.generateShardId(metadata, ref.utf8ToString(), null);
+                int shardId = IndexRouting.fromIndexMetadata(metadata).shardId(ref.utf8ToString(), null);
                 if (shardId == targetShardId) {
                     assertTrue(ref.utf8ToString() + " is missing", terms.iterator().seekExact(ref));
                 } else {

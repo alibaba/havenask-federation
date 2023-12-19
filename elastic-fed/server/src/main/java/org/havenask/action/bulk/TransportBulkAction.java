@@ -39,13 +39,34 @@
 
 package org.havenask.action.bulk;
 
+import static java.util.Collections.emptyMap;
+import static org.havenask.cluster.metadata.IndexNameExpressionResolver.EXCLUDED_DATA_STREAMS_KEY;
+import static org.havenask.index.seqno.SequenceNumbers.UNASSIGNED_PRIMARY_TERM;
+import static org.havenask.index.seqno.SequenceNumbers.UNASSIGNED_SEQ_NO;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.SortedMap;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicIntegerArray;
+import java.util.function.LongSupplier;
+import java.util.stream.Collectors;
+
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.lucene.util.SparseFixedBitSet;
 import org.havenask.Assertions;
-import org.havenask.LegacyESVersion;
-import org.havenask.HavenaskParseException;
 import org.havenask.ExceptionsHelper;
+import org.havenask.HavenaskParseException;
+import org.havenask.LegacyESVersion;
 import org.havenask.ResourceAlreadyExistsException;
 import org.havenask.Version;
 import org.havenask.action.ActionListener;
@@ -75,6 +96,7 @@ import org.havenask.cluster.metadata.IndexMetadata;
 import org.havenask.cluster.metadata.IndexNameExpressionResolver;
 import org.havenask.cluster.metadata.MappingMetadata;
 import org.havenask.cluster.metadata.Metadata;
+import org.havenask.cluster.routing.IndexRouting;
 import org.havenask.cluster.service.ClusterService;
 import org.havenask.common.inject.Inject;
 import org.havenask.common.lease.Releasable;
@@ -94,27 +116,6 @@ import org.havenask.tasks.Task;
 import org.havenask.threadpool.ThreadPool;
 import org.havenask.threadpool.ThreadPool.Names;
 import org.havenask.transport.TransportService;
-
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
-import java.util.SortedMap;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicIntegerArray;
-import java.util.function.LongSupplier;
-import java.util.stream.Collectors;
-
-import static java.util.Collections.emptyMap;
-import static org.havenask.cluster.metadata.IndexNameExpressionResolver.EXCLUDED_DATA_STREAMS_KEY;
-import static org.havenask.index.seqno.SequenceNumbers.UNASSIGNED_PRIMARY_TERM;
-import static org.havenask.index.seqno.SequenceNumbers.UNASSIGNED_SEQ_NO;
 
 /**
  * Groups bulk request items by shard, optionally creating non-existent indices and
@@ -538,14 +539,20 @@ public class TransportBulkAction extends HandledTransportAction<BulkRequest, Bul
 
             // first, go over all the requests and create a ShardId -> Operations mapping
             Map<ShardId, List<BulkItemRequest>> requestsByShard = new HashMap<>();
+            Map<Index, IndexRouting> indexRoutings = new HashMap<>();
             for (int i = 0; i < bulkRequest.requests.size(); i++) {
                 DocWriteRequest<?> request = bulkRequest.requests.get(i);
                 if (request == null) {
                     continue;
                 }
-                String concreteIndex = concreteIndices.getConcreteIndex(request.index()).getName();
-                ShardId shardId = clusterService.operationRouting().indexShards(clusterState, concreteIndex, request.id(),
-                    request.routing()).shardId();
+                Index concreteIndex = concreteIndices.getConcreteIndex(request.index());
+                IndexRouting indexRouting = indexRoutings.computeIfAbsent(
+                        concreteIndex,
+                        idx -> IndexRouting.fromIndexMetadata(clusterState.metadata().getIndexSafe(idx))
+                );
+                ShardId shardId = clusterService.operationRouting()
+                        .indexShards(clusterState, concreteIndex.getName(), indexRouting, request.id(), request.routing())
+                        .shardId();
                 List<BulkItemRequest> shardRequests = requestsByShard.computeIfAbsent(shardId, shard -> new ArrayList<>());
                 shardRequests.add(new BulkItemRequest(i, request));
             }
