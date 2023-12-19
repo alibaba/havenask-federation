@@ -39,10 +39,29 @@
 
 package org.havenask.cluster.metadata;
 
-import com.carrotsearch.hppc.LongArrayList;
-import com.carrotsearch.hppc.cursors.IntObjectCursor;
-import com.carrotsearch.hppc.cursors.ObjectCursor;
-import com.carrotsearch.hppc.cursors.ObjectObjectCursor;
+import static org.havenask.cluster.metadata.Metadata.CONTEXT_MODE_PARAM;
+import static org.havenask.cluster.node.DiscoveryNodeFilters.IP_VALIDATOR;
+import static org.havenask.cluster.node.DiscoveryNodeFilters.OpType.AND;
+import static org.havenask.cluster.node.DiscoveryNodeFilters.OpType.OR;
+import static org.havenask.common.settings.Settings.readSettingsFromStream;
+import static org.havenask.common.settings.Settings.writeSettingsToStream;
+
+import java.io.IOException;
+import java.time.Instant;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.EnumSet;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
+import java.util.function.Function;
+
 import org.havenask.Assertions;
 import org.havenask.LegacyESVersion;
 import org.havenask.Version;
@@ -54,6 +73,7 @@ import org.havenask.cluster.DiffableUtils;
 import org.havenask.cluster.block.ClusterBlock;
 import org.havenask.cluster.block.ClusterBlockLevel;
 import org.havenask.cluster.node.DiscoveryNodeFilters;
+import org.havenask.cluster.routing.IndexRouting;
 import org.havenask.cluster.routing.allocation.IndexMetadataUpdater;
 import org.havenask.common.Nullable;
 import org.havenask.common.collect.ImmutableOpenIntMap;
@@ -79,28 +99,10 @@ import org.havenask.index.seqno.SequenceNumbers;
 import org.havenask.index.shard.ShardId;
 import org.havenask.rest.RestStatus;
 
-import java.io.IOException;
-import java.time.Instant;
-import java.time.ZoneOffset;
-import java.time.ZonedDateTime;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.EnumSet;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Set;
-import java.util.function.Function;
-
-import static org.havenask.cluster.metadata.Metadata.CONTEXT_MODE_PARAM;
-import static org.havenask.cluster.node.DiscoveryNodeFilters.IP_VALIDATOR;
-import static org.havenask.cluster.node.DiscoveryNodeFilters.OpType.AND;
-import static org.havenask.cluster.node.DiscoveryNodeFilters.OpType.OR;
-import static org.havenask.common.settings.Settings.readSettingsFromStream;
-import static org.havenask.common.settings.Settings.writeSettingsToStream;
+import com.carrotsearch.hppc.LongArrayList;
+import com.carrotsearch.hppc.cursors.IntObjectCursor;
+import com.carrotsearch.hppc.cursors.ObjectCursor;
+import com.carrotsearch.hppc.cursors.ObjectObjectCursor;
 
 public class IndexMetadata implements Diffable<IndexMetadata>, ToXContentFragment {
 
@@ -359,6 +361,14 @@ public class IndexMetadata implements Diffable<IndexMetadata>, ToXContentFragmen
     public static final Setting<Integer> INDEX_FORMAT_SETTING =
             Setting.intSetting(INDEX_FORMAT, 0, Setting.Property.IndexScope, Setting.Property.Final);
 
+    public static final Setting<List<String>> INDEX_ROUTING_PATH = Setting.listSetting(
+            "index.routing_path",
+            org.havenask.common.collect.List.of(),
+            Function.identity(),
+            Setting.Property.IndexScope,
+            Setting.Property.Final
+    );
+
     public static final String KEY_IN_SYNC_ALLOCATIONS = "in_sync_allocations";
     static final String KEY_VERSION = "version";
     static final String KEY_MAPPING_VERSION = "mapping_version";
@@ -380,6 +390,7 @@ public class IndexMetadata implements Diffable<IndexMetadata>, ToXContentFragmen
     private final int routingNumShards;
     private final int routingFactor;
     private final int routingPartitionSize;
+    private final List<String> routingPaths;
 
     private final int numberOfShards;
     private final int numberOfReplicas;
@@ -444,6 +455,7 @@ public class IndexMetadata implements Diffable<IndexMetadata>, ToXContentFragmen
             final Version indexUpgradedVersion,
             final int routingNumShards,
             final int routingPartitionSize,
+            final List<String> routingPaths,
             final ActiveShardCount waitForActiveShards,
             final ImmutableOpenMap<String, RolloverInfo> rolloverInfos,
             final boolean isSystem) {
@@ -476,6 +488,7 @@ public class IndexMetadata implements Diffable<IndexMetadata>, ToXContentFragmen
         this.routingNumShards = routingNumShards;
         this.routingFactor = routingNumShards / numberOfShards;
         this.routingPartitionSize = routingPartitionSize;
+        this.routingPaths = routingPaths;
         this.waitForActiveShards = waitForActiveShards;
         this.rolloverInfos = rolloverInfos;
         this.isSystem = isSystem;
@@ -567,6 +580,10 @@ public class IndexMetadata implements Diffable<IndexMetadata>, ToXContentFragmen
 
     public boolean isRoutingPartitionedIndex() {
         return routingPartitionSize != 1;
+    }
+
+    public List<String> getRoutingPaths() {
+        return routingPaths;
     }
 
     public int getTotalNumberOfShards() {
@@ -1372,6 +1389,8 @@ public class IndexMetadata implements Diffable<IndexMetadata>, ToXContentFragmen
                                                    "number of shard copies [" + (numberOfReplicas + 1) + "]");
             }
 
+            final List<String> routingPaths = INDEX_ROUTING_PATH.get(settings);
+
             final String uuid = settings.get(SETTING_INDEX_UUID, INDEX_UUID_NA_VALUE);
 
             return new IndexMetadata(
@@ -1397,6 +1416,7 @@ public class IndexMetadata implements Diffable<IndexMetadata>, ToXContentFragmen
                     indexUpgradedVersion,
                     getRoutingNumShards(),
                     routingPartitionSize,
+                    routingPaths,
                     waitForActiveShards,
                     rolloverInfos.build(),
                     isSystem);
@@ -1696,7 +1716,7 @@ public class IndexMetadata implements Diffable<IndexMetadata>, ToXContentFragmen
 
     /**
      * Returns the number of shards that should be used for routing. This basically defines the hash space we use in
-     * {@link org.havenask.cluster.routing.OperationRouting#generateShardId(IndexMetadata, String, String)} to route documents
+     * {@link IndexRouting#indexShard} to route documents
      * to shards based on their ID or their specific routing value. The default value is {@link #getNumberOfShards()}. This value only
      * changes if and index is shrunk.
      */
@@ -1809,7 +1829,7 @@ public class IndexMetadata implements Diffable<IndexMetadata>, ToXContentFragmen
     /**
      * Returns the routing factor for and shrunk index with the given number of target shards.
      * This factor is used in the hash function in
-     * {@link org.havenask.cluster.routing.OperationRouting#generateShardId(IndexMetadata, String, String)} to guarantee consistent
+     * {@link IndexRouting#indexShard} to guarantee consistent
      * hashing / routing of documents even if the number of shards changed (ie. a shrunk index).
      *
      * @param sourceNumberOfShards the total number of shards in the source index

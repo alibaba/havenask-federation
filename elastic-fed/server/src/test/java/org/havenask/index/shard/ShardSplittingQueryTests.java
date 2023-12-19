@@ -38,6 +38,11 @@
 
 package org.havenask.index.shard;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.SortedNumericDocValuesField;
 import org.apache.lucene.document.StringField;
@@ -56,7 +61,7 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.BytesRef;
 import org.havenask.Version;
 import org.havenask.cluster.metadata.IndexMetadata;
-import org.havenask.cluster.routing.OperationRouting;
+import org.havenask.cluster.routing.IndexRouting;
 import org.havenask.common.settings.Settings;
 import org.havenask.index.mapper.IdFieldMapper;
 import org.havenask.index.mapper.RoutingFieldMapper;
@@ -64,11 +69,6 @@ import org.havenask.index.mapper.SeqNoFieldMapper;
 import org.havenask.index.mapper.TypeFieldMapper;
 import org.havenask.index.mapper.Uid;
 import org.havenask.test.HavenaskTestCase;
-
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
 
 public class ShardSplittingQueryTests extends HavenaskTestCase {
 
@@ -86,7 +86,7 @@ public class ShardSplittingQueryTests extends HavenaskTestCase {
         int targetShardId = randomIntBetween(0, numShards-1);
         boolean hasNested = randomBoolean();
         for (int j = 0; j < numDocs; j++) {
-            int shardId = OperationRouting.generateShardId(metadata, Integer.toString(j), null);
+            int shardId = IndexRouting.fromIndexMetadata(metadata).getShard(Integer.toString(j), null);
             if (hasNested) {
                 List<Iterable<IndexableField>> docs = new ArrayList<>();
                 int numNested = randomIntBetween(0, 10);
@@ -134,7 +134,7 @@ public class ShardSplittingQueryTests extends HavenaskTestCase {
         int targetShardId = randomIntBetween(0, numShards-1);
         for (int j = 0; j < numDocs; j++) {
             String routing = randomRealisticUnicodeOfCodepointLengthBetween(1, 5);
-            final int shardId = OperationRouting.generateShardId(metadata, null, routing);
+            final int shardId = IndexRouting.fromIndexMetadata(metadata).getShard(null, routing);
             if (hasNested) {
                 List<Iterable<IndexableField>> docs = new ArrayList<>();
                 int numNested = randomIntBetween(0, 10);
@@ -185,7 +185,7 @@ public class ShardSplittingQueryTests extends HavenaskTestCase {
             final int shardId;
             if (randomBoolean()) {
                 String routing = randomRealisticUnicodeOfCodepointLengthBetween(1, 5);
-                shardId = OperationRouting.generateShardId(metadata, null, routing);
+                shardId = IndexRouting.fromIndexMetadata(metadata).getShard(null, routing);
                 rootDoc = Arrays.asList(
                     new StringField(IdFieldMapper.NAME, Uid.encodeId(Integer.toString(j)), Field.Store.YES),
                     new StringField(RoutingFieldMapper.NAME, routing, Field.Store.YES),
@@ -193,7 +193,7 @@ public class ShardSplittingQueryTests extends HavenaskTestCase {
                     sequenceIDFields.primaryTerm
                 );
             } else {
-                shardId = OperationRouting.generateShardId(metadata, Integer.toString(j), null);
+                shardId = IndexRouting.fromIndexMetadata(metadata).getShard(Integer.toString(j), null);
                 rootDoc = Arrays.asList(
                     new StringField(IdFieldMapper.NAME, Uid.encodeId(Integer.toString(j)), Field.Store.YES),
                     new SortedNumericDocValuesField("shard_id", shardId),
@@ -240,7 +240,7 @@ public class ShardSplittingQueryTests extends HavenaskTestCase {
         int targetShardId = randomIntBetween(0, numShards-1);
         for (int j = 0; j < numDocs; j++) {
             String routing = randomRealisticUnicodeOfCodepointLengthBetween(1, 5);
-            final int shardId = OperationRouting.generateShardId(metadata, Integer.toString(j), routing);
+            final int shardId = IndexRouting.fromIndexMetadata(metadata).getShard(Integer.toString(j), routing);
 
             if (hasNested) {
                 List<Iterable<IndexableField>> docs = new ArrayList<>();

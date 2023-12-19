@@ -52,6 +52,10 @@ public class FilterPathBasedFilter extends TokenFilter {
      * or value matches one of the filter paths.
      */
     private static final TokenFilter MATCHING = new TokenFilter() {
+        @Override
+        public String toString() {
+            return "MATCHING";
+        }
     };
 
     /**
@@ -59,55 +63,54 @@ public class FilterPathBasedFilter extends TokenFilter {
      * property names/values matches one of the filter paths.
      */
     private static final TokenFilter NO_MATCHING = new TokenFilter() {
+        @Override
+        public String toString() {
+            return "NO_MATCHING";
+        }
     };
 
     private final FilterPath[] filters;
 
     private final boolean inclusive;
 
-    public FilterPathBasedFilter(FilterPath[] filters, boolean inclusive) {
+    private final boolean matchFieldNamesWithDots;
+
+    public FilterPathBasedFilter(FilterPath[] filters, boolean inclusive, boolean matchFieldNamesWithDots) {
         if (filters == null || filters.length == 0) {
             throw new IllegalArgumentException("filters cannot be null or empty");
         }
         this.inclusive = inclusive;
         this.filters = filters;
+        this.matchFieldNamesWithDots = matchFieldNamesWithDots;
     }
 
     public FilterPathBasedFilter(Set<String> filters, boolean inclusive) {
-        this(FilterPath.compile(filters), inclusive);
+        this(FilterPath.compile(filters), inclusive, false);
     }
 
     /**
      * Evaluates if a property name matches one of the given filter paths.
      */
-    private TokenFilter evaluate(String name, FilterPath[] filters) {
-        if (filters != null) {
-            List<FilterPath> nextFilters = null;
-
-            for (FilterPath filter : filters) {
-                FilterPath next = filter.matchProperty(name);
-                if (next != null) {
-                    if (next.matches()) {
-                        return MATCHING;
-                    } else {
-                        if (nextFilters == null) {
-                            nextFilters = new ArrayList<>();
-                        }
-                        if (filter.isDoubleWildcard()) {
-                            nextFilters.add(filter);
-                        }
-                        nextFilters.add(next);
-                    }
+    private TokenFilter evaluate(String name, FilterPath[] filterPaths) {
+        if (filterPaths != null) {
+            List<FilterPath> nextFilters = new ArrayList<>();
+            for (FilterPath filter : filterPaths) {
+                boolean matches = filter.matches(name, nextFilters, matchFieldNamesWithDots);
+                if (matches) {
+                    return MATCHING;
                 }
             }
 
-            if ((nextFilters != null) && (nextFilters.isEmpty() == false)) {
-                return new FilterPathBasedFilter(nextFilters.toArray(new FilterPath[nextFilters.size()]), inclusive);
+            if (nextFilters.isEmpty() == false) {
+                return new FilterPathBasedFilter(
+                        nextFilters.toArray(new FilterPath[nextFilters.size()]),
+                        inclusive,
+                        matchFieldNamesWithDots
+                );
             }
         }
         return NO_MATCHING;
     }
-
 
     @Override
     public TokenFilter includeProperty(String name) {
@@ -123,6 +126,7 @@ public class FilterPathBasedFilter extends TokenFilter {
 
     @Override
     protected boolean _includeScalar() {
-        return !inclusive;
+        return inclusive == false;
     }
 }
+

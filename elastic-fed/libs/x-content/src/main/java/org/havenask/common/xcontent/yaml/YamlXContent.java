@@ -39,9 +39,12 @@
 
 package org.havenask.common.xcontent.yaml;
 
-import com.fasterxml.jackson.core.JsonEncoding;
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.io.Reader;
+import java.util.Set;
+
 import org.havenask.common.xcontent.DeprecationHandler;
 import org.havenask.common.xcontent.NamedXContentRegistry;
 import org.havenask.common.xcontent.XContent;
@@ -49,12 +52,11 @@ import org.havenask.common.xcontent.XContentBuilder;
 import org.havenask.common.xcontent.XContentGenerator;
 import org.havenask.common.xcontent.XContentParser;
 import org.havenask.common.xcontent.XContentType;
+import org.havenask.common.xcontent.support.filtering.FilterPath;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.io.Reader;
-import java.util.Set;
+import com.fasterxml.jackson.core.JsonEncoding;
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 
 /**
  * A YAML based content implementation using Jackson.
@@ -102,6 +104,23 @@ public class YamlXContent implements XContent {
     public XContentParser createParser(NamedXContentRegistry xContentRegistry,
             DeprecationHandler deprecationHandler, InputStream is) throws IOException {
         return new YamlXContentParser(xContentRegistry, deprecationHandler, yamlFactory.createParser(is));
+    }
+
+    @Override
+    public XContentParser createParser(
+            NamedXContentRegistry xContentRegistry,
+            DeprecationHandler deprecationHandler,
+            InputStream is,
+            FilterPath[] includes,
+            FilterPath[] excludes
+    ) throws IOException {
+        return new YamlXContentParser(
+                xContentRegistry,
+                deprecationHandler,
+                yamlFactory.createParser(is),
+                includes,
+                excludes
+        );
     }
 
     @Override

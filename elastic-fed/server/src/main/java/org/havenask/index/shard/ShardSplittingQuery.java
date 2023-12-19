@@ -38,6 +38,11 @@
 
 package org.havenask.index.shard;
 
+import java.io.IOException;
+import java.util.function.Function;
+import java.util.function.IntConsumer;
+import java.util.function.Predicate;
+
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexReaderContext;
 import org.apache.lucene.index.LeafReader;
@@ -64,16 +69,11 @@ import org.apache.lucene.util.FixedBitSet;
 import org.havenask.LegacyESVersion;
 import org.havenask.Version;
 import org.havenask.cluster.metadata.IndexMetadata;
-import org.havenask.cluster.routing.OperationRouting;
+import org.havenask.cluster.routing.IndexRouting;
 import org.havenask.common.lucene.search.Queries;
 import org.havenask.index.mapper.IdFieldMapper;
 import org.havenask.index.mapper.RoutingFieldMapper;
 import org.havenask.index.mapper.Uid;
-
-import java.io.IOException;
-import java.util.function.Function;
-import java.util.function.IntConsumer;
-import java.util.function.Predicate;
 
 /**
  * A query that selects all docs that do NOT belong in the current shards this query is executed on.
@@ -82,6 +82,7 @@ import java.util.function.Predicate;
  */
 final class ShardSplittingQuery extends Query {
     private final IndexMetadata indexMetadata;
+    private final IndexRouting indexRouting;
     private final int shardId;
     private final BitSetProducer nestedParentBitSetProducer;
 
@@ -91,6 +92,7 @@ final class ShardSplittingQuery extends Query {
                 + LegacyESVersion.V_6_0_0_rc2 + " or higher");
         }
         this.indexMetadata = indexMetadata;
+        this.indexRouting = IndexRouting.fromIndexMetadata(indexMetadata);
         this.shardId = shardId;
         this.nestedParentBitSetProducer =  hasNested ? newParentDocBitSetProducer(indexMetadata.getCreationVersion()) : null;
     }
@@ -108,8 +110,7 @@ final class ShardSplittingQuery extends Query {
                 FixedBitSet bitSet = new FixedBitSet(leafReader.maxDoc());
                 Terms terms = leafReader.terms(RoutingFieldMapper.NAME);
                 Predicate<BytesRef> includeInShard = ref -> {
-                    int targetShardId = OperationRouting.generateShardId(indexMetadata,
-                        Uid.decodeId(ref.bytes, ref.offset, ref.length), null);
+                    int targetShardId = indexRouting.getShard(Uid.decodeId(ref.bytes, ref.offset, ref.length), null);
                     return shardId == targetShardId;
                 };
                 if (terms == null) {
@@ -152,7 +153,7 @@ final class ShardSplittingQuery extends Query {
                         };
                         // in the _routing case we first go and find all docs that have a routing value and mark the ones we have to delete
                         findSplitDocs(RoutingFieldMapper.NAME, ref -> {
-                            int targetShardId = OperationRouting.generateShardId(indexMetadata, null, ref.utf8ToString());
+                            int targetShardId = indexRouting.getShard(null, ref.utf8ToString());
                             return shardId == targetShardId;
                         }, leafReader, maybeWrapConsumer.apply(bitSet::set));
 
@@ -296,7 +297,7 @@ final class ShardSplittingQuery extends Query {
             leftToVisit = 2;
             leafReader.document(doc, this);
             assert id != null : "docID must not be null - we might have hit a nested document";
-            int targetShardId = OperationRouting.generateShardId(indexMetadata, id, routing);
+            int targetShardId = indexRouting.getShard(id, routing);
             return targetShardId != shardId;
         }
     }

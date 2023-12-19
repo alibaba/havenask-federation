@@ -39,11 +39,12 @@
 
 package org.havenask.common.xcontent.smile;
 
-import com.fasterxml.jackson.core.JsonEncoding;
-import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.dataformat.smile.SmileFactory;
-import com.fasterxml.jackson.dataformat.smile.SmileGenerator;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.io.Reader;
+import java.util.Set;
+
 import org.havenask.common.xcontent.DeprecationHandler;
 import org.havenask.common.xcontent.NamedXContentRegistry;
 import org.havenask.common.xcontent.XContent;
@@ -51,12 +52,13 @@ import org.havenask.common.xcontent.XContentBuilder;
 import org.havenask.common.xcontent.XContentGenerator;
 import org.havenask.common.xcontent.XContentParser;
 import org.havenask.common.xcontent.XContentType;
+import org.havenask.common.xcontent.support.filtering.FilterPath;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.io.Reader;
-import java.util.Set;
+import com.fasterxml.jackson.core.JsonEncoding;
+import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.dataformat.smile.SmileFactory;
+import com.fasterxml.jackson.dataformat.smile.SmileGenerator;
 
 /**
  * A Smile based content implementation using Jackson.
@@ -109,6 +111,23 @@ public class SmileXContent implements XContent {
     public XContentParser createParser(NamedXContentRegistry xContentRegistry,
             DeprecationHandler deprecationHandler, InputStream is) throws IOException {
         return new SmileXContentParser(xContentRegistry, deprecationHandler, smileFactory.createParser(is));
+    }
+
+    @Override
+    public XContentParser createParser(
+            NamedXContentRegistry xContentRegistry,
+            DeprecationHandler deprecationHandler,
+            InputStream is,
+            FilterPath[] include,
+            FilterPath[] exclude
+    ) throws IOException {
+        return new SmileXContentParser(
+                xContentRegistry,
+                deprecationHandler,
+                smileFactory.createParser(is),
+                include,
+                exclude
+        );
     }
 
     @Override

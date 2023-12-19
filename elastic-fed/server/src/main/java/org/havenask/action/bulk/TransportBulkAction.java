@@ -39,13 +39,34 @@
 
 package org.havenask.action.bulk;
 
+import static java.util.Collections.emptyMap;
+import static org.havenask.cluster.metadata.IndexNameExpressionResolver.EXCLUDED_DATA_STREAMS_KEY;
+import static org.havenask.index.seqno.SequenceNumbers.UNASSIGNED_PRIMARY_TERM;
+import static org.havenask.index.seqno.SequenceNumbers.UNASSIGNED_SEQ_NO;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.SortedMap;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicIntegerArray;
+import java.util.function.LongSupplier;
+import java.util.stream.Collectors;
+
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.lucene.util.SparseFixedBitSet;
 import org.havenask.Assertions;
-import org.havenask.LegacyESVersion;
-import org.havenask.HavenaskParseException;
 import org.havenask.ExceptionsHelper;
+import org.havenask.HavenaskParseException;
+import org.havenask.LegacyESVersion;
 import org.havenask.ResourceAlreadyExistsException;
 import org.havenask.Version;
 import org.havenask.action.ActionListener;
@@ -75,6 +96,7 @@ import org.havenask.cluster.metadata.IndexMetadata;
 import org.havenask.cluster.metadata.IndexNameExpressionResolver;
 import org.havenask.cluster.metadata.MappingMetadata;
 import org.havenask.cluster.metadata.Metadata;
+import org.havenask.cluster.routing.IndexRouting;
 import org.havenask.cluster.service.ClusterService;
 import org.havenask.common.inject.Inject;
 import org.havenask.common.lease.Releasable;
@@ -94,27 +116,6 @@ import org.havenask.tasks.Task;
 import org.havenask.threadpool.ThreadPool;
 import org.havenask.threadpool.ThreadPool.Names;
 import org.havenask.transport.TransportService;
-
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
-import java.util.SortedMap;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicIntegerArray;
-import java.util.function.LongSupplier;
-import java.util.stream.Collectors;
-
-import static java.util.Collections.emptyMap;
-import static org.havenask.cluster.metadata.IndexNameExpressionResolver.EXCLUDED_DATA_STREAMS_KEY;
-import static org.havenask.index.seqno.SequenceNumbers.UNASSIGNED_PRIMARY_TERM;
-import static org.havenask.index.seqno.SequenceNumbers.UNASSIGNED_SEQ_NO;
 
 /**
  * Groups bulk request items by shard, optionally creating non-existent indices and
@@ -475,6 +476,8 @@ public class TransportBulkAction extends HandledTransportAction<BulkRequest, Bul
             }
             final ConcreteIndices concreteIndices = new ConcreteIndices(clusterState, indexNameExpressionResolver);
             Metadata metadata = clusterState.metadata();
+            // Group the requests by ShardId -> Operations mapping
+            Map<ShardId, List<BulkItemRequest>> requestsByShard = new HashMap<>();
             for (int i = 0; i < bulkRequest.requests.size(); i++) {
                 DocWriteRequest<?> docWriteRequest = bulkRequest.requests.get(i);
                 //the request can only be null because we set it to null in the previous step, so it gets ignored
@@ -501,6 +504,9 @@ public class TransportBulkAction extends HandledTransportAction<BulkRequest, Bul
                         throw new IllegalArgumentException("only write ops with an op_type of create are allowed in data streams");
                     }
 
+                    IndexRouting indexRouting = concreteIndices.routing(concreteIndex);
+
+                    int shardId;
                     switch (docWriteRequest.opType()) {
                         case CREATE:
                         case INDEX:
@@ -512,10 +518,17 @@ public class TransportBulkAction extends HandledTransportAction<BulkRequest, Bul
                             Version indexCreated = indexMetadata.getCreationVersion();
                             indexRequest.resolveRouting(metadata);
                             indexRequest.process(indexCreated, mappingMd, concreteIndex.getName());
+                            shardId = indexRouting.indexShard(
+                                    docWriteRequest.id(),
+                                    docWriteRequest.routing(),
+                                    indexRequest.getContentType(),
+                                    indexRequest.source()
+                            );
                             break;
                         case UPDATE:
                             TransportUpdateAction.resolveAndValidateRouting(metadata, concreteIndex.getName(),
                                 (UpdateRequest) docWriteRequest);
+                            shardId = indexRouting.updateShard(docWriteRequest.id(), docWriteRequest.routing());
                             break;
                         case DELETE:
                             docWriteRequest.routing(metadata.resolveWriteIndexRouting(docWriteRequest.routing(), docWriteRequest.index()));
@@ -523,9 +536,15 @@ public class TransportBulkAction extends HandledTransportAction<BulkRequest, Bul
                             if (docWriteRequest.routing() == null && metadata.routingRequired(concreteIndex.getName())) {
                                 throw new RoutingMissingException(concreteIndex.getName(), docWriteRequest.type(), docWriteRequest.id());
                             }
+                            shardId = indexRouting.deleteShard(docWriteRequest.id(), docWriteRequest.routing());
                             break;
                         default: throw new AssertionError("request type not supported: [" + docWriteRequest.opType() + "]");
                     }
+                    List<BulkItemRequest> shardRequests = requestsByShard.computeIfAbsent(
+                        new ShardId(concreteIndex, shardId),
+                        shard -> new ArrayList<>()
+                    );
+                    shardRequests.add(new BulkItemRequest(i, docWriteRequest));
                 } catch (HavenaskParseException | IllegalArgumentException | RoutingMissingException e) {
                     BulkItemResponse.Failure failure = new BulkItemResponse.Failure(concreteIndex.getName(), docWriteRequest.type(),
                         docWriteRequest.id(), e);
@@ -534,20 +553,6 @@ public class TransportBulkAction extends HandledTransportAction<BulkRequest, Bul
                     // make sure the request gets never processed again
                     bulkRequest.requests.set(i, null);
                 }
-            }
-
-            // first, go over all the requests and create a ShardId -> Operations mapping
-            Map<ShardId, List<BulkItemRequest>> requestsByShard = new HashMap<>();
-            for (int i = 0; i < bulkRequest.requests.size(); i++) {
-                DocWriteRequest<?> request = bulkRequest.requests.get(i);
-                if (request == null) {
-                    continue;
-                }
-                String concreteIndex = concreteIndices.getConcreteIndex(request.index()).getName();
-                ShardId shardId = clusterService.operationRouting().indexShards(clusterState, concreteIndex, request.id(),
-                    request.routing()).shardId();
-                List<BulkItemRequest> shardRequests = requestsByShard.computeIfAbsent(shardId, shard -> new ArrayList<>());
-                shardRequests.add(new BulkItemRequest(i, request));
             }
 
             if (requestsByShard.isEmpty()) {
@@ -704,6 +709,7 @@ public class TransportBulkAction extends HandledTransportAction<BulkRequest, Bul
         private final ClusterState state;
         private final IndexNameExpressionResolver indexNameExpressionResolver;
         private final Map<String, Index> indices = new HashMap<>();
+        private final Map<Index, IndexRouting> routings = new HashMap<>();
 
         ConcreteIndices(ClusterState state, IndexNameExpressionResolver indexNameExpressionResolver) {
             this.state = state;
@@ -731,6 +737,10 @@ public class TransportBulkAction extends HandledTransportAction<BulkRequest, Bul
                 indices.put(request.index(), concreteIndex);
             }
             return concreteIndex;
+        }
+
+        IndexRouting routing(Index index) {
+            return routings.computeIfAbsent(index, idx -> IndexRouting.fromIndexMetadata(state.metadata().getIndexSafe(idx)));
         }
     }
 
