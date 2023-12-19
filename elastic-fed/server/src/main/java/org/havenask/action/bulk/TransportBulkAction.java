@@ -476,6 +476,8 @@ public class TransportBulkAction extends HandledTransportAction<BulkRequest, Bul
             }
             final ConcreteIndices concreteIndices = new ConcreteIndices(clusterState, indexNameExpressionResolver);
             Metadata metadata = clusterState.metadata();
+            // Group the requests by ShardId -> Operations mapping
+            Map<ShardId, List<BulkItemRequest>> requestsByShard = new HashMap<>();
             for (int i = 0; i < bulkRequest.requests.size(); i++) {
                 DocWriteRequest<?> docWriteRequest = bulkRequest.requests.get(i);
                 //the request can only be null because we set it to null in the previous step, so it gets ignored
@@ -502,6 +504,9 @@ public class TransportBulkAction extends HandledTransportAction<BulkRequest, Bul
                         throw new IllegalArgumentException("only write ops with an op_type of create are allowed in data streams");
                     }
 
+                    IndexRouting indexRouting = concreteIndices.routing(concreteIndex);
+
+                    int shardId;
                     switch (docWriteRequest.opType()) {
                         case CREATE:
                         case INDEX:
@@ -513,10 +518,17 @@ public class TransportBulkAction extends HandledTransportAction<BulkRequest, Bul
                             Version indexCreated = indexMetadata.getCreationVersion();
                             indexRequest.resolveRouting(metadata);
                             indexRequest.process(indexCreated, mappingMd, concreteIndex.getName());
+                            shardId = indexRouting.indexShard(
+                                    docWriteRequest.id(),
+                                    docWriteRequest.routing(),
+                                    indexRequest.getContentType(),
+                                    indexRequest.source()
+                            );
                             break;
                         case UPDATE:
                             TransportUpdateAction.resolveAndValidateRouting(metadata, concreteIndex.getName(),
                                 (UpdateRequest) docWriteRequest);
+                            shardId = indexRouting.updateShard(docWriteRequest.id(), docWriteRequest.routing());
                             break;
                         case DELETE:
                             docWriteRequest.routing(metadata.resolveWriteIndexRouting(docWriteRequest.routing(), docWriteRequest.index()));
@@ -524,9 +536,12 @@ public class TransportBulkAction extends HandledTransportAction<BulkRequest, Bul
                             if (docWriteRequest.routing() == null && metadata.routingRequired(concreteIndex.getName())) {
                                 throw new RoutingMissingException(concreteIndex.getName(), docWriteRequest.type(), docWriteRequest.id());
                             }
+                            shardId = indexRouting.deleteShard(docWriteRequest.id(), docWriteRequest.routing());
                             break;
                         default: throw new AssertionError("request type not supported: [" + docWriteRequest.opType() + "]");
                     }
+                    List<BulkItemRequest> shardRequests = requestsByShard.computeIfAbsent(new ShardId(concreteIndex, shardId), shard -> new ArrayList<>());
+                    shardRequests.add(new BulkItemRequest(i, docWriteRequest));
                 } catch (HavenaskParseException | IllegalArgumentException | RoutingMissingException e) {
                     BulkItemResponse.Failure failure = new BulkItemResponse.Failure(concreteIndex.getName(), docWriteRequest.type(),
                         docWriteRequest.id(), e);
@@ -535,26 +550,6 @@ public class TransportBulkAction extends HandledTransportAction<BulkRequest, Bul
                     // make sure the request gets never processed again
                     bulkRequest.requests.set(i, null);
                 }
-            }
-
-            // first, go over all the requests and create a ShardId -> Operations mapping
-            Map<ShardId, List<BulkItemRequest>> requestsByShard = new HashMap<>();
-            Map<Index, IndexRouting> indexRoutings = new HashMap<>();
-            for (int i = 0; i < bulkRequest.requests.size(); i++) {
-                DocWriteRequest<?> request = bulkRequest.requests.get(i);
-                if (request == null) {
-                    continue;
-                }
-                Index concreteIndex = concreteIndices.getConcreteIndex(request.index());
-                IndexRouting indexRouting = indexRoutings.computeIfAbsent(
-                        concreteIndex,
-                        idx -> IndexRouting.fromIndexMetadata(clusterState.metadata().getIndexSafe(idx))
-                );
-                ShardId shardId = clusterService.operationRouting()
-                        .indexShards(clusterState, concreteIndex.getName(), indexRouting, request.id(), request.routing())
-                        .shardId();
-                List<BulkItemRequest> shardRequests = requestsByShard.computeIfAbsent(shardId, shard -> new ArrayList<>());
-                shardRequests.add(new BulkItemRequest(i, request));
             }
 
             if (requestsByShard.isEmpty()) {
@@ -711,6 +706,7 @@ public class TransportBulkAction extends HandledTransportAction<BulkRequest, Bul
         private final ClusterState state;
         private final IndexNameExpressionResolver indexNameExpressionResolver;
         private final Map<String, Index> indices = new HashMap<>();
+        private final Map<Index, IndexRouting> routings = new HashMap<>();
 
         ConcreteIndices(ClusterState state, IndexNameExpressionResolver indexNameExpressionResolver) {
             this.state = state;
@@ -738,6 +734,10 @@ public class TransportBulkAction extends HandledTransportAction<BulkRequest, Bul
                 indices.put(request.index(), concreteIndex);
             }
             return concreteIndex;
+        }
+
+        IndexRouting routing(Index index) {
+            return routings.computeIfAbsent(index, idx -> IndexRouting.fromIndexMetadata(state.metadata().getIndexSafe(idx)));
         }
     }
 

@@ -39,17 +39,29 @@
 
 package org.havenask.common.xcontent.cbor;
 
-import com.fasterxml.jackson.core.JsonParser;
 import org.havenask.common.xcontent.DeprecationHandler;
 import org.havenask.common.xcontent.NamedXContentRegistry;
 import org.havenask.common.xcontent.XContentType;
 import org.havenask.common.xcontent.json.JsonXContentParser;
+import org.havenask.common.xcontent.support.filtering.FilterPath;
+
+import com.fasterxml.jackson.core.JsonParser;
 
 public class CborXContentParser extends JsonXContentParser {
 
     public CborXContentParser(NamedXContentRegistry xContentRegistry,
             DeprecationHandler deprecationHandler, JsonParser parser) {
         super(xContentRegistry, deprecationHandler, parser);
+    }
+
+    public CborXContentParser(
+            NamedXContentRegistry xContentRegistry,
+            DeprecationHandler deprecationHandler,
+            JsonParser parser,
+            FilterPath[] includes,
+            FilterPath[] excludes
+    ) {
+        super(xContentRegistry, deprecationHandler, parser, includes, excludes);
     }
 
     @Override

@@ -39,10 +39,12 @@
 
 package org.havenask.common.xcontent.cbor;
 
-import com.fasterxml.jackson.core.JsonEncoding;
-import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.dataformat.cbor.CBORFactory;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.io.Reader;
+import java.util.Set;
+
 import org.havenask.common.xcontent.DeprecationHandler;
 import org.havenask.common.xcontent.NamedXContentRegistry;
 import org.havenask.common.xcontent.XContent;
@@ -51,12 +53,12 @@ import org.havenask.common.xcontent.XContentGenerator;
 import org.havenask.common.xcontent.XContentParseException;
 import org.havenask.common.xcontent.XContentParser;
 import org.havenask.common.xcontent.XContentType;
+import org.havenask.common.xcontent.support.filtering.FilterPath;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.io.Reader;
-import java.util.Set;
+import com.fasterxml.jackson.core.JsonEncoding;
+import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.dataformat.cbor.CBORFactory;
 
 /**
  * A CBOR based content implementation using Jackson.
@@ -107,6 +109,23 @@ public class CborXContent implements XContent {
     public XContentParser createParser(NamedXContentRegistry xContentRegistry,
             DeprecationHandler deprecationHandler, InputStream is) throws IOException {
         return new CborXContentParser(xContentRegistry, deprecationHandler, cborFactory.createParser(is));
+    }
+
+    @Override
+    public XContentParser createParser(
+            NamedXContentRegistry xContentRegistry,
+            DeprecationHandler deprecationHandler,
+            InputStream is,
+            FilterPath[] includes,
+            FilterPath[] excludes
+    ) throws IOException {
+        return new CborXContentParser(
+                xContentRegistry,
+                deprecationHandler,
+                cborFactory.createParser(is),
+                includes,
+                excludes
+        );
     }
 
     @Override

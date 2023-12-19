@@ -123,21 +123,12 @@ public class OperationRouting {
         }
     }
 
-    public ShardIterator indexShards(
-            ClusterState clusterState,
-            String index,
-            IndexRouting indexRouting,
-            String id,
-            @Nullable String routing
-    ) {
-        return shards(clusterState, index, indexRouting, id, routing).shardsIt();
-    }
-
     public ShardIterator getShards(ClusterState clusterState, String index, String id, @Nullable String routing,
                                    @Nullable String preference) {
         IndexRouting indexRouting = IndexRouting.fromIndexMetadata(indexMetadata(clusterState, index));
+        IndexShardRoutingTable shards = clusterState.getRoutingTable().shardRoutingTable(index, indexRouting.getShard(id, routing));
         return preferenceActiveShardIterator(
-                shards(clusterState, index, indexRouting, id, routing),
+                shards,
                 clusterState.nodes().getLocalNodeId(),
                 clusterState.nodes(),
                 preference,
@@ -312,12 +303,8 @@ public class OperationRouting {
         return indexMetadata;
     }
 
-    private IndexShardRoutingTable shards(ClusterState clusterState, String index, IndexRouting indexRouting, String id, String routing) {
-        return clusterState.getRoutingTable().shardRoutingTable(index, indexRouting.shardId(id, routing));
-    }
-
     public ShardId shardId(ClusterState clusterState, String index, String id, @Nullable String routing) {
         IndexMetadata indexMetadata = indexMetadata(clusterState, index);
-        return new ShardId(indexMetadata.getIndex(), IndexRouting.fromIndexMetadata(indexMetadata).shardId(id, routing));
+        return new ShardId(indexMetadata.getIndex(), IndexRouting.fromIndexMetadata(indexMetadata).getShard(id, routing));
     }
 }

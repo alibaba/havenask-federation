@@ -46,6 +46,8 @@ import java.io.Reader;
 import java.util.Collections;
 import java.util.Set;
 
+import org.havenask.common.xcontent.support.filtering.FilterPath;
+
 /**
  * A generic abstraction on top of handling content, inspired by JSON and pull parsing.
  */
@@ -86,6 +88,17 @@ public interface XContent {
      */
     XContentParser createParser(NamedXContentRegistry xContentRegistry,
             DeprecationHandler deprecationHandler, InputStream is) throws IOException;
+
+    /**
+     * Creates a parser over the provided input stream.
+     */
+    XContentParser createParser(
+            NamedXContentRegistry xContentRegistry,
+            DeprecationHandler deprecationHandler,
+            InputStream is,
+            FilterPath[] includes,
+            FilterPath[] excludes
+    ) throws IOException;
 
     /**
      * Creates a parser over the provided bytes.
