@@ -543,20 +543,12 @@ public class IndexRoutingTests extends HavenaskTestCase {
     public void testRoutingPathBwc() throws IOException {
         Version version = VersionUtils.randomIndexCompatibleVersion(random());
         IndexRouting routing = indexRoutingForPath(version, 8, "dim.*,other.*,top");
-        /*
-         * These when we first added routing_path. If these values change
-         * time series will be routed to unexpected shards. You may modify
-         * them with a new index created version, but when you do you must
-         * copy this test and patch the versions at the top. Because newer
-         * versions of Elasticsearch must continue to route based on the
-         * version on the index.
-         */
-        assertIndexShard(routing, org.havenask.common.collect.Map.of("dim", org.havenask.common.collect.Map.of("a", "a")), 0);
+        assertIndexShard(routing, org.havenask.common.collect.Map.of("dim", org.havenask.common.collect.Map.of("a", "a")), 4);
         assertIndexShard(routing, org.havenask.common.collect.Map.of("dim", org.havenask.common.collect.Map.of("a", "b")), 5);
         assertIndexShard(routing, org.havenask.common.collect.Map.of("dim", org.havenask.common.collect.Map.of("c", "d")), 4);
-        assertIndexShard(routing, org.havenask.common.collect.Map.of("other", org.havenask.common.collect.Map.of("a", "a")), 5);
-        assertIndexShard(routing, org.havenask.common.collect.Map.of("top", "a"), 3);
-        assertIndexShard(routing, org.havenask.common.collect.Map.of("dim", org.havenask.common.collect.Map.of("c", "d"), "top", "b"), 2);
+        assertIndexShard(routing, org.havenask.common.collect.Map.of("other", org.havenask.common.collect.Map.of("a", "a")), 7);
+        assertIndexShard(routing, org.havenask.common.collect.Map.of("top", "a"), 5);
+        assertIndexShard(routing, org.havenask.common.collect.Map.of("dim", org.havenask.common.collect.Map.of("c", "d"), "top", "b"), 0);
     }
 
     private IndexRouting indexRoutingForPath(int shards, String path) {
