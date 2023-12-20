@@ -139,6 +139,15 @@ public class EngineSettings {
         Property.Final
     );
 
+    // index.havenask.hash.field
+    public static final Setting<String> HAVENASK_HASH_FIELD = new Setting<>(
+        "index.havenask.hash.field",
+        "",
+        (s) -> s,
+        Setting.Property.IndexScope,
+        Property.Final
+    );
+
     public static boolean isHavenaskEngine(Settings indexSettings) {
         return ENGINE_HAVENASK.equals(ENGINE_TYPE_SETTING.get(indexSettings));
     }

@@ -432,7 +432,7 @@ public class HavenaskEngine extends InternalEngine {
         return new ProducerRecord<>(topicName, (int) partition, id, message.toString());
     }
 
-    static WriteRequest buildWriteRequest(String table, String id, Operation.TYPE type, Map<String, String> haDoc) {
+    static WriteRequest buildWriteRequest(String table, int hashId, Operation.TYPE type, Map<String, String> haDoc) {
         StringBuilder message = new StringBuilder();
         switch (type) {
             case INDEX:
@@ -449,8 +449,7 @@ public class HavenaskEngine extends InternalEngine {
             message.append(entry.getKey()).append("=").append(entry.getValue()).append("\u001F\n");
         }
         message.append("\u001E\n");
-        long hashId = HashAlgorithm.getHashId(id);
-        return new WriteRequest(table, (int) hashId, message.toString());
+        return new WriteRequest(table, hashId, message.toString());
     }
 
     @Override
@@ -481,7 +480,7 @@ public class HavenaskEngine extends InternalEngine {
             return new IndexResult(index.version(), index.primaryTerm(), index.seqNo(), true);
         } else {
             try {
-                WriteRequest writeRequest = buildWriteRequest(tableName, index.id(), index.operationType(), haDoc);
+                WriteRequest writeRequest = buildWriteRequest(tableName, partitionRange.first, index.operationType(), haDoc);
                 WriteResponse writeResponse = retryWrite(shardId, searcherClient, writeRequest);
                 if (writeResponse.getErrorCode() != null) {
                     throw new IOException(
@@ -533,7 +532,7 @@ public class HavenaskEngine extends InternalEngine {
             return new DeleteResult(delete.version(), delete.primaryTerm(), delete.seqNo(), true);
         } else {
             try {
-                WriteRequest writeRequest = buildWriteRequest(tableName, delete.id(), delete.operationType(), haDoc);
+                WriteRequest writeRequest = buildWriteRequest(tableName, partitionRange.first, delete.operationType(), haDoc);
                 WriteResponse writeResponse = retryWrite(shardId, searcherClient, writeRequest);
                 if (writeResponse.getErrorCode() != null) {
                     throw new IOException(

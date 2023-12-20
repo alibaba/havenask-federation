@@ -341,7 +341,12 @@ public abstract class IndexRouting {
             if (routing == null) {
                 throw new IllegalArgumentException("A routing value is required");
             }
-            return hashToShardId(effectiveRoutingToHash(routing));
+
+            if (OperationRouting.customShardIdGenerator != null) {
+                return OperationRouting.customShardIdGenerator.apply(metadata, routing, 0);
+            } else {
+                return hashToShardId(effectiveRoutingToHash(routing));
+            }
         }
 
         private void checkRoutingRequired(String id, @Nullable String routing) {
