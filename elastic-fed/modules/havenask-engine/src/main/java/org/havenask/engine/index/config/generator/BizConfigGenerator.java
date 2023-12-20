@@ -96,6 +96,9 @@ public class BizConfigGenerator {
         bizConfig.cluster_config.table_name = indexName;
         bizConfig.wal_config.sink.queue_name = indexName;
         bizConfig.wal_config.sink.queue_size = String.valueOf(EngineSettings.HAVENASK_WRITE_QUEUE_SIZE.get(indexSettings));
+        if (EngineSettings.HAVENASK_HASH_FIELD.exists(indexSettings)) {
+            bizConfig.cluster_config.hash_mode.hash_field = EngineSettings.HAVENASK_HASH_FIELD.get(indexSettings);
+        }
         Path clusterConfigPath = configPath.resolve(version).resolve(CLUSTER_DIR).resolve(indexName + CLUSTER_FILE_SUFFIX);
         Files.write(
             clusterConfigPath,

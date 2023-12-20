@@ -14,12 +14,15 @@
 
 package org.havenask.engine;
 
+import org.havenask.cluster.metadata.IndexMetadata;
 import org.havenask.common.settings.Settings;
 import org.havenask.common.unit.TimeValue;
 import org.havenask.engine.index.engine.EngineSettings;
 import org.havenask.index.IndexModule;
 import org.havenask.index.IndexSettings;
 import org.havenask.index.shard.IndexSettingProvider;
+
+import java.util.List;
 
 import static org.havenask.engine.HavenaskEnginePlugin.HAVENASK_SET_DEFAULT_ENGINE_SETTING;
 import static org.havenask.index.IndexSettings.INDEX_REFRESH_INTERVAL_SETTING;
@@ -45,6 +48,29 @@ public class HavenaskIndexSettingProvider implements IndexSettingProvider {
                 throw new IllegalArgumentException("havenask engine not support soft delete");
             }
             builder.put(IndexSettings.INDEX_SOFT_DELETES_SETTING.getKey(), false);
+
+            // routing
+            int requestPartitionSize = templateAndRequestSettings.getAsInt(IndexMetadata.SETTING_ROUTING_PARTITION_SIZE, 1);
+            if (requestPartitionSize > 1) {
+                throw new IllegalArgumentException("havenask engine not support routing.partition.size > 1");
+            }
+
+            String hashField = templateAndRequestSettings.get(EngineSettings.HAVENASK_HASH_FIELD.getKey(), "");
+            List<String> routingPaths = templateAndRequestSettings.getAsList(
+                IndexMetadata.INDEX_ROUTING_PATH.getKey(),
+                org.havenask.common.collect.List.of()
+            );
+            if (false == hashField.isEmpty()) {
+                if (routingPaths.size() > 1 || (routingPaths.size() == 1 && false == hashField.equals(routingPaths.get(0)))) {
+                    throw new IllegalArgumentException("havenask engine not support custom routing.path");
+                }
+            } else {
+                if (routingPaths.size() > 0) {
+                    throw new IllegalArgumentException("havenask engine not support custom routing.path");
+                }
+            }
+
+            builder.put(IndexMetadata.INDEX_ROUTING_PATH.getKey(), hashField);
 
             // havenask索引的index.store.type设置为store
             String indexStoreType = templateAndRequestSettings.get(

@@ -14,16 +14,19 @@
 
 package org.havenask.engine;
 
+import static org.havenask.cluster.metadata.IndexMetadata.SETTING_NUMBER_OF_REPLICAS;
+import static org.havenask.engine.HavenaskEnginePlugin.HAVENASK_ENGINE_ENABLED_SETTING;
+import static org.havenask.engine.HavenaskEnginePlugin.HAVENASK_SET_DEFAULT_ENGINE_SETTING;
+
+import java.util.List;
+
+import org.havenask.cluster.metadata.IndexMetadata;
 import org.havenask.common.settings.Settings;
 import org.havenask.common.unit.TimeValue;
 import org.havenask.engine.index.engine.EngineSettings;
 import org.havenask.index.IndexModule;
 import org.havenask.index.IndexSettings;
 import org.havenask.test.HavenaskTestCase;
-
-import static org.havenask.cluster.metadata.IndexMetadata.SETTING_NUMBER_OF_REPLICAS;
-import static org.havenask.engine.HavenaskEnginePlugin.HAVENASK_ENGINE_ENABLED_SETTING;
-import static org.havenask.engine.HavenaskEnginePlugin.HAVENASK_SET_DEFAULT_ENGINE_SETTING;
 
 public class HavenaskIndexSettingProviderTests extends HavenaskTestCase {
 
@@ -162,5 +165,82 @@ public class HavenaskIndexSettingProviderTests extends HavenaskTestCase {
         assertEquals(TimeValue.timeValueSeconds(5), refresh);
         String indexStoreType = settings.get(IndexModule.INDEX_STORE_TYPE_SETTING.getKey(), EngineSettings.ENGINE_HAVENASK);
         assertEquals(indexStoreType, EngineSettings.ENGINE_HAVENASK);
+    }
+
+    // test invalid index.routing_partition_size
+    public void testGetAdditionalIndexSettingsWithRoutingPartitionSize() {
+        try {
+            HavenaskIndexSettingProvider provider = new HavenaskIndexSettingProvider(Settings.EMPTY);
+            provider.getAdditionalIndexSettings(
+                "test",
+                false,
+                Settings.builder().put("index.engine", "havenask").put("index.routing_partition_size", 2).build()
+            );
+            fail("havenask engine not support routing.partition.size > 1");
+        } catch (IllegalArgumentException e) {
+            assertEquals("havenask engine not support routing.partition.size > 1", e.getMessage());
+        }
+    }
+
+    // test invalid index.routing_path
+    public void testGetAdditionalIndexSettingsWithRoutingPath() {
+        try {
+            HavenaskIndexSettingProvider provider = new HavenaskIndexSettingProvider(Settings.EMPTY);
+            provider.getAdditionalIndexSettings(
+                "test",
+                false,
+                Settings.builder().put("index.engine", "havenask").put("index.routing_path", "test").build()
+            );
+            fail("havenask engine not support custom routing.path");
+        } catch (IllegalArgumentException e) {
+            assertEquals("havenask engine not support custom routing.path", e.getMessage());
+        }
+    }
+
+    // test index.havenask.hash.field
+    public void testGetAdditionalIndexSettingsWithHashField() {
+        HavenaskIndexSettingProvider provider = new HavenaskIndexSettingProvider(Settings.EMPTY);
+        Settings settings = provider.getAdditionalIndexSettings(
+            "test",
+            false,
+            Settings.builder().put("index.engine", "havenask").put("index.havenask.hash.field", "test").build()
+        );
+        List<String> routings = settings.getAsList(IndexMetadata.INDEX_ROUTING_PATH.getKey());
+        assertEquals(1, routings.size());
+        assertEquals("test", routings.get(0));
+    }
+
+    public void testGetAdditionalIndexSettingsWithHashFieldAndRoutingPath() {
+        HavenaskIndexSettingProvider provider = new HavenaskIndexSettingProvider(Settings.EMPTY);
+        Settings settings = provider.getAdditionalIndexSettings(
+            "test",
+            false,
+            Settings.builder()
+                .put("index.engine", "havenask")
+                .put("index.havenask.hash.field", "test")
+                .put("index.routing_path", "test")
+                .build()
+        );
+        List<String> routings = settings.getAsList(IndexMetadata.INDEX_ROUTING_PATH.getKey());
+        assertEquals(1, routings.size());
+        assertEquals("test", routings.get(0));
+    }
+
+    public void testGetAdditionalIndexSettingsWithHashFieldAndValidRoutingPath() {
+        try {
+            HavenaskIndexSettingProvider provider = new HavenaskIndexSettingProvider(Settings.EMPTY);
+            provider.getAdditionalIndexSettings(
+                "test",
+                false,
+                Settings.builder()
+                    .put("index.engine", "havenask")
+                    .put("index.havenask.hash.field", "test")
+                    .put("index.routing_path", "test2")
+                    .build()
+            );
+            fail("havenask engine not support custom routing.path");
+        } catch (IllegalArgumentException e) {
+            assertEquals("havenask engine not support custom routing.path", e.getMessage());
+        }
     }
 }
