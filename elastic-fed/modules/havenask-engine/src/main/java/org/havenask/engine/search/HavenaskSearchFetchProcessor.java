@@ -108,7 +108,7 @@ public class HavenaskSearchFetchProcessor {
         FetchSourceContext fetchSourceContext,
         QrsClient qrsClient
     ) throws IOException {
-        QrsSqlRequest qrsFetchPhaseSqlRequest = getQrsFetchPhaseSqlRequest(idList, tableName, fetchSourceContext);
+        QrsSqlRequest qrsFetchPhaseSqlRequest = getQrsFetchPhaseSqlRequest(idList, tableName);
         QrsSqlResponse qrsFetchPhaseSqlResponse = qrsClient.executeSql(qrsFetchPhaseSqlRequest);
         SqlResponse fetchPhaseSqlResponse = SqlResponse.parse(qrsFetchPhaseSqlResponse.getResult());
         if (logger.isDebugEnabled()) {
@@ -117,9 +117,9 @@ public class HavenaskSearchFetchProcessor {
         return fetchPhaseSqlResponse;
     }
 
-    private static QrsSqlRequest getQrsFetchPhaseSqlRequest(List<String> idList, String tableName, FetchSourceContext fetchSourceContext) {
+    public static QrsSqlRequest getQrsFetchPhaseSqlRequest(List<String> idList, String tableName) {
         StringBuilder sqlQuery = new StringBuilder();
-        sqlQuery.append("select _id, _source from ").append(tableName).append("_summary_ where _id in(");
+        sqlQuery.append("select _id, _source from ").append('`').append(tableName).append("_summary_` where _id in(");
         for (int i = 0; i < idList.size(); i++) {
             sqlQuery.append("'").append(idList.get(i)).append("'");
             if (i < idList.size() - 1) {
