@@ -14,28 +14,26 @@
 
 package org.havenask.engine.index.config;
 
-import com.alibaba.fastjson.JSONArray;
-import com.alibaba.fastjson.JSONObject;
-import com.alibaba.fastjson.annotation.JSONField;
-import org.havenask.common.Strings;
-import org.havenask.engine.util.JsonPrettyFormatter;
-
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+
+import org.havenask.engine.util.JsonPrettyFormatter;
+
+import com.alibaba.fastjson.annotation.JSONField;
 
 public class Schema {
     public Summarys summarys = new Summarys();
     public List<String> attributes = new LinkedList<>();
     public List<FieldInfo> fields = new LinkedList<>();
     public List<Index> indexs = new LinkedList<>();
+    public Map<String, String> settings = Map.of("enable_all_text_field_meta", "true");
     public String table_name;
     public String table_type = "normal";
 
     private transient List<String> dupFields = new LinkedList<>();
 
-    public transient String rawSchema;
     // origin field process parameters
     // copyTo field will copy the origin field and write the copied ones(such as multiFields, etc.)
     public transient Map<String/*origin*/, List<String>> copyToFields = new HashMap<>();
@@ -160,11 +158,8 @@ public class Schema {
     }
 
     public static class Summarys {
+        public boolean compress = true;
         public List<String> summary_fields = new LinkedList<>();
-    }
-
-    public boolean hasRawSchema() {
-        return !Strings.isNullOrEmpty(rawSchema);
     }
 
     public List<String> getDupFields() {
@@ -173,69 +168,6 @@ public class Schema {
 
     @Override
     public String toString() {
-        if (!hasRawSchema()) {
-            return JsonPrettyFormatter.toJsonString(this);
-        }
-        JSONObject rawSchemaObj = JsonPrettyFormatter.fromString(rawSchema);
-        // replace table type
-        String tableType = rawSchemaObj.getString("table_type");
-        if ((!Strings.isNullOrEmpty(tableType)) && (!tableType.equals("normal"))) {
-            return rawSchema;
-        }
-        // add summary
-        if (summarys != null) {
-            if (!rawSchemaObj.containsKey("summarys")) {
-                rawSchemaObj.put("summarys", this.summarys);
-            } else {
-                JSONObject summarysObj = rawSchemaObj.getJSONObject("summarys");
-                if (!summarysObj.containsKey("summary_fields")) {
-                    summarysObj.put("summary_fields", summarys.summary_fields);
-                } else {
-                    JSONArray summaryFieldsArr = summarysObj.getJSONArray("summary_fields");
-                    summaryFieldsArr.addAll(summarys.summary_fields);
-                    summarysObj.put("summary_fields", summaryFieldsArr);
-                }
-                rawSchemaObj.put("summarys", summarysObj);
-            }
-        }
-        // add attributes
-        if (attributes != null && attributes.size() > 0) {
-            if (!rawSchemaObj.containsKey("attributes")) {
-                rawSchemaObj.put("attributes", attributes);
-            } else {
-                JSONArray attributesArr = rawSchemaObj.getJSONArray("attributes");
-                attributesArr.addAll(attributes);
-                rawSchemaObj.put("attributes", attributesArr);
-            }
-        }
-        // add fields
-        if (fields != null && fields.size() > 0) {
-            if (!rawSchemaObj.containsKey("fields")) {
-                rawSchemaObj.put("fields", fields);
-            } else {
-                JSONArray fieldsArr = rawSchemaObj.getJSONArray("fields");
-                fieldsArr.addAll(fields);
-                rawSchemaObj.put("fields", fieldsArr);
-            }
-        }
-        // add indexs
-        if (indexs != null && indexs.size() > 0) {
-            if (!rawSchemaObj.containsKey("indexs")) {
-                rawSchemaObj.put("indexs", indexs);
-            } else {
-                JSONArray indexsArr = rawSchemaObj.getJSONArray("indexs");
-                indexsArr.addAll(indexs);
-                rawSchemaObj.put("indexs", indexsArr);
-            }
-        }
-        // replace table name
-        if (!Strings.isNullOrEmpty(table_name)) {
-            rawSchemaObj.put("table_name", table_name);
-        }
-        // replace table type
-        if (!Strings.isNullOrEmpty(table_type)) {
-            rawSchemaObj.put("table_type", table_type);
-        }
-        return JsonPrettyFormatter.toJsonString(rawSchemaObj);
+        return JsonPrettyFormatter.toJsonString(this);
     }
 }
