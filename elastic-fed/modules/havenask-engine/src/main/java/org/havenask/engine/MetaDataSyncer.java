@@ -489,9 +489,6 @@ public class MetaDataSyncer extends AbstractLifecycleComponent implements Cluste
     }
 
     private void addSearcherInfoIntoQrsCm2Config(ClusterState clusterState, List<TargetInfo.ServiceInfo.Cm2Config> cm2ConfigLocalVal) {
-        int searcherTcpPort = nativeProcessControlService.getSearcherTcpPort();
-        int searcherGrpcPort = nativeProcessControlService.getSearcherGrpcPort();
-
         Iterator<DiscoveryNode> dataNodeIterator = clusterState.nodes().getDataNodes().valuesIt();
         int partCount = clusterState.nodes().getDataNodes().size();
         int partId = 0;
@@ -503,10 +500,10 @@ public class MetaDataSyncer extends AbstractLifecycleComponent implements Cluste
             curCm2Config.ip = dataNode.getHostName();
             curCm2Config.grpc_port = dataNode.getAttributes() != null && dataNode.getAttributes().get(cm2ConfigSearcherGrpcPort) != null
                 ? Integer.valueOf(dataNode.getAttributes().get(cm2ConfigSearcherGrpcPort))
-                : searcherGrpcPort;
+                : NativeProcessControlService.DEFAULT_HAVENASK_SEARCHER_GRPC_PORT;
             curCm2Config.tcp_port = dataNode.getAttributes() != null && dataNode.getAttributes().get(cm2ConfigSearcherTcpPort) != null
                 ? Integer.valueOf(dataNode.getAttributes().get(cm2ConfigSearcherTcpPort))
-                : searcherTcpPort;
+                : NativeProcessControlService.DEFAULT_HAVENASK_SEARCHER_TCP_PORT;
             curCm2Config.version = generalSqlRandomVersion;
             curCm2Config.part_count = partCount;
             curCm2Config.part_id = partId;
@@ -518,43 +515,39 @@ public class MetaDataSyncer extends AbstractLifecycleComponent implements Cluste
     }
 
     private void addShardInfoIntoQrsCm2Config(ClusterState clusterState, List<TargetInfo.ServiceInfo.Cm2Config> cm2ConfigLocalVal) {
-        int searcherTcpPort = nativeProcessControlService.getSearcherTcpPort();
-        int searcherGrpcPort = nativeProcessControlService.getSearcherGrpcPort();
+        clusterState.routingTable().indicesRouting().valuesIt().forEachRemaining(indexRoutingTable -> {
+            String indexName = indexRoutingTable.getIndex().getName();
+            if (isHavenaskIndex(clusterState, indexName)) {
+                int numberOfShards = indexRoutingTable.getShards().size();
 
-        List<String> allHavenaskIndexNames = getAllHavenaskIndexNames(clusterState);
-        for (String indexName : allHavenaskIndexNames) {
-            IndexMetadata indexMetadata = clusterState.metadata().index(indexName);
-            int numberOfShards = indexMetadata.getNumberOfShards();
-            for (int shardId = 0; shardId < numberOfShards; shardId++) {
-                ShardId indexShardId = new ShardId(indexMetadata.getIndex(), shardId);
-                List<ShardRouting> shardRoutingList = clusterState.getRoutingNodes().assignedShards(indexShardId);
-                if (shardRoutingList != null) {
-                    for (ShardRouting shardRouting : shardRoutingList) {
-                        if (shardRouting.primary()) {
+                indexRoutingTable.getShards().valuesIt().forEachRemaining(indexShardRoutingTable -> {
+                    List<ShardRouting> shardRoutings = indexShardRoutingTable.getShards();
+                    if (shardRoutings != null) {
+                        for (ShardRouting shardRouting : shardRoutings) {
                             TargetInfo.ServiceInfo.Cm2Config curCm2Config = new TargetInfo.ServiceInfo.Cm2Config();
                             curCm2Config.biz_name = "general." + indexName + ".write";
                             curCm2Config.part_count = numberOfShards;
-                            curCm2Config.part_id = shardId;
+                            curCm2Config.part_id = shardRouting.shardId().getId();
                             curCm2Config.support_heartbeat = true;
                             curCm2Config.version = generalSqlRandomVersion;
 
-                            DiscoveryNode discoveryNode = clusterState.getRoutingNodes().node(shardRouting.currentNodeId()).node();
+                            DiscoveryNode discoveryNode = clusterState.nodes().get(shardRouting.currentNodeId());
                             curCm2Config.ip = discoveryNode.getAddress().getAddress();
                             curCm2Config.grpc_port = discoveryNode.getAttributes() != null
                                 && discoveryNode.getAttributes().get(cm2ConfigSearcherGrpcPort) != null
                                     ? Integer.valueOf(discoveryNode.getAttributes().get(cm2ConfigSearcherGrpcPort))
-                                    : searcherGrpcPort;
+                                    : NativeProcessControlService.DEFAULT_HAVENASK_SEARCHER_GRPC_PORT;
                             curCm2Config.tcp_port = discoveryNode.getAttributes() != null
                                 && discoveryNode.getAttributes().get(cm2ConfigSearcherTcpPort) != null
                                     ? Integer.valueOf(discoveryNode.getAttributes().get(cm2ConfigSearcherTcpPort))
-                                    : searcherTcpPort;
+                                    : NativeProcessControlService.DEFAULT_HAVENASK_SEARCHER_TCP_PORT;
 
                             cm2ConfigLocalVal.add(curCm2Config);
                         }
                     }
-                }
+                });
             }
-        }
+        });
     }
 
     private static int extractIncVersion(String versionStr) {
@@ -636,24 +629,9 @@ public class MetaDataSyncer extends AbstractLifecycleComponent implements Cluste
         }
 
         for (ShardRouting shardRouting : localRoutingNode) {
-            IndexMetadata indexMetadata = clusterState.metadata().index(shardRouting.getIndexName());
-            if (EngineSettings.isHavenaskEngine(indexMetadata.getSettings())) {
+            if (isHavenaskIndex(clusterState, shardRouting.getIndexName())) {
                 String tableName = Utils.getHavenaskTableName(shardRouting.shardId());
                 indexNames.add(tableName);
-            }
-        }
-        return indexNames;
-    }
-
-    private List<String> getAllHavenaskIndexNames(ClusterState clusterState) {
-        List<String> indexNames = new ArrayList<>();
-        Iterator<String> indexNameIterator = clusterState.metadata().indices().keysIt();
-        while (indexNameIterator.hasNext()) {
-            String indexName = indexNameIterator.next();
-
-            IndexMetadata indexMetadata = clusterState.metadata().index(indexName);
-            if (EngineSettings.isHavenaskEngine(indexMetadata.getSettings())) {
-                indexNames.add(indexName);
             }
         }
         return indexNames;
@@ -698,15 +676,13 @@ public class MetaDataSyncer extends AbstractLifecycleComponent implements Cluste
         List<Index> indicesDeleted = event.indicesDeleted();
         List<String> indicesCreated = event.indicesCreated();
         for (Index index : indicesDeleted) {
-            IndexMetadata indexMetadata = event.previousState().getMetadata().index(index);
-            if (EngineSettings.isHavenaskEngine(indexMetadata.getSettings())) {
+            if (isHavenaskIndex(event.state(), index.getName())) {
                 return true;
             }
         }
 
         for (String index : indicesCreated) {
-            IndexMetadata indexMetadata = event.state().metadata().index(index);
-            if (EngineSettings.isHavenaskEngine(indexMetadata.getSettings())) {
+            if (isHavenaskIndex(event.state(), index)) {
                 return true;
             }
         }
@@ -716,18 +692,21 @@ public class MetaDataSyncer extends AbstractLifecycleComponent implements Cluste
     private boolean isHavenaskShardChanged(ClusterState prevClusterState, ClusterState curClusterState) {
         for (ObjectCursor<String> indexNameCursor : prevClusterState.routingTable().indicesRouting().keys()) {
             String indexName = indexNameCursor.value;
-            IndexMetadata indexMetadata = prevClusterState.metadata().index(indexName);
-            if (false == EngineSettings.isHavenaskEngine(indexMetadata.getSettings())) {
-                continue;
-            }
-            IndexRoutingTable prevIndexRoutingTable = prevClusterState.routingTable().indicesRouting().get(indexName);
-            IndexRoutingTable curIndexRoutingTable = curClusterState.routingTable().indicesRouting().get(indexName);
+            if (isHavenaskIndex(prevClusterState, indexName)) {
+                IndexRoutingTable prevIndexRoutingTable = prevClusterState.routingTable().indicesRouting().get(indexName);
+                IndexRoutingTable curIndexRoutingTable = curClusterState.routingTable().indicesRouting().get(indexName);
 
-            // TODO: shard级别的判断变更逻辑，目前使用IndexRoutingTable的equals方法，比较index以及shards是否相等，考虑后续优化
-            if (false == prevIndexRoutingTable.equals(curIndexRoutingTable)) {
-                return true;
+                // TODO: shard级别的判断变更逻辑，目前使用IndexRoutingTable的equals方法，比较index以及shards是否相等，考虑后续优化
+                if (false == prevIndexRoutingTable.equals(curIndexRoutingTable)) {
+                    return true;
+                }
             }
         }
         return false;
+    }
+
+    private static boolean isHavenaskIndex(ClusterState clusterState, String indexName) {
+        IndexMetadata indexMetadata = clusterState.metadata().index(indexName);
+        return EngineSettings.isHavenaskEngine(indexMetadata.getSettings());
     }
 }
