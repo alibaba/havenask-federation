@@ -20,6 +20,7 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.Arrays;
@@ -760,9 +761,8 @@ public class HavenaskEngine extends InternalEngine {
         long checkpoint = getPersistedLocalCheckpoint();
         checkpointCalc.addCheckpoint(time, checkpoint);
 
-        Tuple<Long, Long> tuple = Utils.getVersionAndIndexCheckpoint(
-            env.getRuntimedataPath().resolve(tableName).resolve("generation_0").resolve(partitionName)
-        );
+        Path shardPath = env.getRuntimedataPath().resolve(tableName).resolve("generation_0").resolve(partitionName);
+        Tuple<Long, Long> tuple = Utils.getVersionAndIndexCheckpoint(shardPath);
         if (tuple == null) {
             logger.debug(
                 "havenask engine maybeRefresh failed, checkpoint not found, source: {}, time: {}, checkpoint: {}, "
@@ -805,6 +805,9 @@ public class HavenaskEngine extends InternalEngine {
                 lastCommitInfo.getCommitCheckpoint()
             );
             refreshCommitInfo(havenaskTimePoint, segmentVersion, currentCheckpoint);
+
+            // 清理version.public文件
+            Utils.cleanVersionPublishFiles(shardPath);
             return true;
         }
         return false;
