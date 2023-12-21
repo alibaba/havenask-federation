@@ -32,4 +32,9 @@ public class WriteResponse extends ArpcResponse {
     public long getCheckpoint() {
         return checkpoint;
     }
+
+    @Override
+    public String toString() {
+        return "WriteResponse{" + "checkpoint=" + checkpoint + ", errorCode=" + errorCode + ", errorMessage='" + errorMessage + '\'' + '}';
+    }
 }

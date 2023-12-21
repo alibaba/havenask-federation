@@ -587,7 +587,13 @@ public class HavenaskEngine extends InternalEngine {
                     break;
                 }
             }
-            LOGGER.info("[{}] havenask write retry, retry count: {}, cost: {} ms", shardId, retryCount, System.currentTimeMillis() - start);
+            LOGGER.info(
+                "[{}] havenask write retry, retry count: {}, cost: {} ms, final result: {}",
+                shardId,
+                retryCount,
+                System.currentTimeMillis() - start,
+                response
+            );
         }
 
         return response;
