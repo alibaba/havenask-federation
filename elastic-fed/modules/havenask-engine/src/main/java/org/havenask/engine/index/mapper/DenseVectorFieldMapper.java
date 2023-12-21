@@ -243,7 +243,7 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
                 ? MajorOrder.fromString(XContentMapValues.nodeStringValue(majorOrderNode))
                 : null;
             Object ignoreInvalidDocNode = indexOptionsMap.remove("ignore_invalid_doc");
-            Boolean ignoreInvalidDoc = ignoreInvalidDocNode != null ? XContentMapValues.nodeBooleanValue(ignoreInvalidDocNode) : null;
+            Boolean ignoreInvalidDoc = ignoreInvalidDocNode != null ? XContentMapValues.nodeBooleanValue(ignoreInvalidDocNode) : true;
             Object enableRecallReportNode = indexOptionsMap.remove("enable_recall_report");
             Boolean enableRecallReport = enableRecallReportNode != null ? XContentMapValues.nodeBooleanValue(enableRecallReportNode) : null;
             Object isEmbeddingSavedNode = indexOptionsMap.remove("is_embedding_saved");
