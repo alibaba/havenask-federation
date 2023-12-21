@@ -28,7 +28,7 @@ public class Schema {
     public List<String> attributes = new LinkedList<>();
     public List<FieldInfo> fields = new LinkedList<>();
     public List<Index> indexs = new LinkedList<>();
-    public Map<String, String> settings = Map.of("enable_all_text_field_meta", "true");
+    public Map<String, Object> settings = Map.of("enable_all_text_field_meta", true);
     public String table_name;
     public String table_type = "normal";
 

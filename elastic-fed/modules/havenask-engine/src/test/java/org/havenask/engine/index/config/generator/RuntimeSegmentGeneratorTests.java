@@ -119,7 +119,7 @@ public class RuntimeSegmentGeneratorTests extends MapperServiceTestCase {
                 + "\t\t\"index_type\":\"STRING\"\n"
                 + "\t}],\n"
                 + "\t\"settings\":{\n"
-                + "\t\t\"enable_all_text_field_meta\":\"true\"\n"
+                + "\t\t\"enable_all_text_field_meta\":true\n"
                 + "\t},\n"
                 + "\t\"summarys\":{\n"
                 + "\t\t\"compress\":true,\n"
