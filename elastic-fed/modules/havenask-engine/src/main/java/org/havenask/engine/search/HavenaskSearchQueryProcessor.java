@@ -167,7 +167,7 @@ public class HavenaskSearchQueryProcessor {
                 throw new IOException("unsupported DSL: " + dsl);
             }
         }
-        sqlQuery.append("select").append(selectParams).append(" from ").append(table);
+        sqlQuery.append("select").append(selectParams).append(" from ").append('`').append(table).append('`');
         sqlQuery.append(where).append(orderBy);
 
         sqlQuery.append(" limit ").append(size).append(" offset ").append(from);

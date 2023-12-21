@@ -20,6 +20,7 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.Arrays;
@@ -211,19 +212,34 @@ public class HavenaskEngine extends InternalEngine {
             private long lastRefreshTime = 0;
             private long indexes = 0;
             private long deletes = 0;
+            private long lastDocCount = 0;
+            private long newDocCount = -1;
 
             @Override
             protected DocsStats refresh() {
                 indexes = numDocIndexes.count();
                 deletes = numDocDeletes.count();
                 lastRefreshTime = lastCommitInfo.getCommitTimestamp();
-                return getDocStats();
+
+                // get doc count from havenask
+                this.newDocCount = getDocCount();
+                if (newDocCount >= 0) {
+                    lastDocCount = newDocCount;
+                }
+
+                // get total size from du command
+                long totalSize = nativeProcessControlService.getTableSize(env.getRuntimedataPath().resolve(tableName).toAbsolutePath());
+                return new DocsStats(lastDocCount, 0, totalSize);
             }
 
             @Override
             protected boolean needsRefresh() {
                 if (super.needsRefresh() == false) {
                     return false;
+                }
+
+                if (newDocCount < 0) {
+                    return true;
                 }
 
                 if (indexes != numDocIndexes.count()) {
@@ -237,6 +253,16 @@ public class HavenaskEngine extends InternalEngine {
                 if (lastRefreshTime != lastCommitInfo.getCommitTimestamp()) {
                     return true;
                 }
+
+                logger.trace(
+                    "havenask engine docs stats cache not need refresh, shardId: {}, docCount: {}, indexes: {},"
+                        + " deletes: {}, lastRefreshTime={}",
+                    shardId,
+                    newDocCount,
+                    indexes,
+                    deletes,
+                    lastRefreshTime
+                );
 
                 return false;
             }
@@ -587,7 +613,13 @@ public class HavenaskEngine extends InternalEngine {
                     break;
                 }
             }
-            LOGGER.info("[{}] havenask write retry, retry count: {}, cost: {} ms", shardId, retryCount, System.currentTimeMillis() - start);
+            LOGGER.info(
+                "[{}] havenask write retry, retry count: {}, cost: {} ms, final result: {}",
+                shardId,
+                retryCount,
+                System.currentTimeMillis() - start,
+                response
+            );
         }
 
         return response;
@@ -729,9 +761,8 @@ public class HavenaskEngine extends InternalEngine {
         long checkpoint = getPersistedLocalCheckpoint();
         checkpointCalc.addCheckpoint(time, checkpoint);
 
-        Tuple<Long, Long> tuple = Utils.getVersionAndIndexCheckpoint(
-            env.getRuntimedataPath().resolve(tableName).resolve("generation_0").resolve(partitionName)
-        );
+        Path shardPath = env.getRuntimedataPath().resolve(tableName).resolve("generation_0").resolve(partitionName);
+        Tuple<Long, Long> tuple = Utils.getVersionAndIndexCheckpoint(shardPath);
         if (tuple == null) {
             logger.debug(
                 "havenask engine maybeRefresh failed, checkpoint not found, source: {}, time: {}, checkpoint: {}, "
@@ -774,6 +805,9 @@ public class HavenaskEngine extends InternalEngine {
                 lastCommitInfo.getCommitCheckpoint()
             );
             refreshCommitInfo(havenaskTimePoint, segmentVersion, currentCheckpoint);
+
+            // 清理version.public文件
+            Utils.cleanVersionPublishFiles(shardPath);
             return true;
         }
         return false;
@@ -896,19 +930,15 @@ public class HavenaskEngine extends InternalEngine {
         return docsStatsCache.getOrRefresh();
     }
 
-    private DocsStats getDocStats() {
-        // get doc count from havenask
-        long docCount = getDocCount();
-
-        // get total size from du command
-        long totalSize = nativeProcessControlService.getTableSize(env.getRuntimedataPath().resolve(tableName).toAbsolutePath());
-        return new DocsStats(docCount, 0, totalSize);
-    }
-
     long getDocCount() {
-        long docCount = 0;
+        long docCount = -1;
         try {
-            String sql = String.format(Locale.ROOT, "select /*+ SCAN_ATTR(partitionIds='%d')*/ count(*) from %s", shardId.id(), tableName);
+            String sql = String.format(
+                Locale.ROOT,
+                "select /*+ SCAN_ATTR(partitionIds='%d')*/ count(*) from `%s`",
+                shardId.id(),
+                tableName
+            );
             String kvpair = "format:full_json;timeout:10000;databaseName:" + SQL_DATABASE;
             HavenaskSqlResponse response = client.execute(HavenaskSqlAction.INSTANCE, new HavenaskSqlRequest(sql, kvpair)).actionGet();
             JSONObject jsonObject = JsonPrettyFormatter.fromString(response.getResult());

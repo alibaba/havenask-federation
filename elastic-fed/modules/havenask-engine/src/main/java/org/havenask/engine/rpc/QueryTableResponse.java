@@ -35,4 +35,9 @@ public class QueryTableResponse extends ArpcResponse {
     public List<DocValue> getDocValues() {
         return docValues;
     }
+
+    @Override
+    public String toString() {
+        return "QueryTableResponse{" + "errorCode=" + errorCode + ", errorMessage='" + errorMessage + '\'' + '}';
+    }
 }

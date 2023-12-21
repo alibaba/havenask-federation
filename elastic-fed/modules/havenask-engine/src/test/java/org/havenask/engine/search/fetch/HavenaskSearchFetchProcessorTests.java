@@ -20,6 +20,7 @@ import org.apache.lucene.search.TotalHits;
 import org.havenask.client.ha.SqlResponse;
 import org.havenask.common.lucene.search.TopDocsAndMaxScore;
 import org.havenask.engine.rpc.QrsClient;
+import org.havenask.engine.rpc.QrsSqlRequest;
 import org.havenask.engine.search.fetch.HavenaskFetchSubPhase.HitContent;
 import org.havenask.engine.search.HavenaskSearchFetchProcessor;
 import org.havenask.search.SearchHit;
@@ -37,6 +38,13 @@ import static org.mockito.Mockito.when;
 
 public class HavenaskSearchFetchProcessorTests extends HavenaskTestCase {
     private QrsClient qrsClient = mock(QrsClient.class);
+
+    public void testGetQrsFetchPhaseSqlRequest() throws IOException {
+        List<String> idList = List.of("1", "2", "3");
+        String tableName = "table";
+        QrsSqlRequest sqlRequest = HavenaskSearchFetchProcessor.getQrsFetchPhaseSqlRequest(idList, tableName);
+        assertEquals(sqlRequest.getSql(), "select _id, _source from `table_summary_` where _id in('1','2','3') limit 3");
+    }
 
     public void testBuildQuerySearchResult() throws IOException {
         String sqlResponseStr = "{\"total_time\":8.126,\"has_soft_failure\":false,\"covered_percent\":1.0,"

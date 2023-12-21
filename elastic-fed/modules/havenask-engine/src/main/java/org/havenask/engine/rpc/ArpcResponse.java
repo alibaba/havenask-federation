@@ -17,8 +17,8 @@ package org.havenask.engine.rpc;
 import suez.service.proto.ErrorCode;
 
 public abstract class ArpcResponse {
-    private final ErrorCode errorCode;
-    private final String errorMessage;
+    protected final ErrorCode errorCode;
+    protected final String errorMessage;
 
     public ArpcResponse(ErrorCode errorCode, String errorMessage) {
         this.errorCode = errorCode;
