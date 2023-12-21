@@ -254,7 +254,8 @@ public class HavenaskEngine extends InternalEngine {
                 }
 
                 logger.trace(
-                    "havenask engine docs stats cache not need refresh, shardId: {}, docCount: {}, indexes: {}, deletes: {}, lastRefreshTime={}",
+                    "havenask engine docs stats cache not need refresh, shardId: {}, docCount: {}, indexes: {},"
+                        + " deletes: {}, lastRefreshTime={}",
                     shardId,
                     newDocCount,
                     indexes,
