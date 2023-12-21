@@ -211,19 +211,34 @@ public class HavenaskEngine extends InternalEngine {
             private long lastRefreshTime = 0;
             private long indexes = 0;
             private long deletes = 0;
+            private long lastDocCount = -1;
+            private long newDocCount = -1;
 
             @Override
             protected DocsStats refresh() {
                 indexes = numDocIndexes.count();
                 deletes = numDocDeletes.count();
                 lastRefreshTime = lastCommitInfo.getCommitTimestamp();
-                return getDocStats();
+
+                // get doc count from havenask
+                this.newDocCount = getDocCount();
+                if (newDocCount >= 0) {
+                    lastDocCount = newDocCount;
+                }
+
+                // get total size from du command
+                long totalSize = nativeProcessControlService.getTableSize(env.getRuntimedataPath().resolve(tableName).toAbsolutePath());
+                return new DocsStats(lastDocCount, 0, totalSize);
             }
 
             @Override
             protected boolean needsRefresh() {
                 if (super.needsRefresh() == false) {
                     return false;
+                }
+
+                if (newDocCount < 0) {
+                    return true;
                 }
 
                 if (indexes != numDocIndexes.count()) {
@@ -237,6 +252,15 @@ public class HavenaskEngine extends InternalEngine {
                 if (lastRefreshTime != lastCommitInfo.getCommitTimestamp()) {
                     return true;
                 }
+
+                logger.trace(
+                    "havenask engine docs stats cache not need refresh, shardId: {}, docCount: {}, indexes: {}, deletes: {}, lastRefreshTime={}",
+                    shardId,
+                    newDocCount,
+                    indexes,
+                    deletes,
+                    lastRefreshTime
+                );
 
                 return false;
             }
@@ -897,17 +921,8 @@ public class HavenaskEngine extends InternalEngine {
         return docsStatsCache.getOrRefresh();
     }
 
-    private DocsStats getDocStats() {
-        // get doc count from havenask
-        long docCount = getDocCount();
-
-        // get total size from du command
-        long totalSize = nativeProcessControlService.getTableSize(env.getRuntimedataPath().resolve(tableName).toAbsolutePath());
-        return new DocsStats(docCount, 0, totalSize);
-    }
-
     long getDocCount() {
-        long docCount = 0;
+        long docCount = -1;
         try {
             String sql = String.format(Locale.ROOT, "select /*+ SCAN_ATTR(partitionIds='%d')*/ count(*) from %s", shardId.id(), tableName);
             String kvpair = "format:full_json;timeout:10000;databaseName:" + SQL_DATABASE;
