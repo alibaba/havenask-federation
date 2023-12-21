@@ -47,6 +47,7 @@ import org.havenask.cluster.node.DiscoveryNode;
 import org.havenask.cluster.routing.IndexRoutingTable;
 import org.havenask.cluster.routing.RoutingNode;
 import org.havenask.cluster.routing.ShardRouting;
+import org.havenask.cluster.routing.ShardRoutingState;
 import org.havenask.cluster.service.ClusterService;
 import org.havenask.common.Strings;
 import org.havenask.common.collect.Tuple;
@@ -521,28 +522,30 @@ public class MetaDataSyncer extends AbstractLifecycleComponent implements Cluste
                 int numberOfShards = indexRoutingTable.getShards().size();
 
                 indexRoutingTable.getShards().valuesIt().forEachRemaining(indexShardRoutingTable -> {
-                    List<ShardRouting> shardRoutings = indexShardRoutingTable.getShards();
+                    List<ShardRouting> shardRoutings = indexShardRoutingTable.assignedShards();
                     if (shardRoutings != null) {
                         for (ShardRouting shardRouting : shardRoutings) {
-                            TargetInfo.ServiceInfo.Cm2Config curCm2Config = new TargetInfo.ServiceInfo.Cm2Config();
-                            curCm2Config.biz_name = "general." + indexName + ".write";
-                            curCm2Config.part_count = numberOfShards;
-                            curCm2Config.part_id = shardRouting.shardId().getId();
-                            curCm2Config.support_heartbeat = true;
-                            curCm2Config.version = generalSqlRandomVersion;
+                            if (shardRouting.state() == ShardRoutingState.STARTED) {
+                                TargetInfo.ServiceInfo.Cm2Config curCm2Config = new TargetInfo.ServiceInfo.Cm2Config();
+                                curCm2Config.biz_name = "general." + indexName + ".write";
+                                curCm2Config.part_count = numberOfShards;
+                                curCm2Config.part_id = shardRouting.shardId().getId();
+                                curCm2Config.support_heartbeat = true;
+                                curCm2Config.version = generalSqlRandomVersion;
 
-                            DiscoveryNode discoveryNode = clusterState.nodes().get(shardRouting.currentNodeId());
-                            curCm2Config.ip = discoveryNode.getAddress().getAddress();
-                            curCm2Config.grpc_port = discoveryNode.getAttributes() != null
-                                && discoveryNode.getAttributes().get(cm2ConfigSearcherGrpcPort) != null
-                                    ? Integer.valueOf(discoveryNode.getAttributes().get(cm2ConfigSearcherGrpcPort))
-                                    : NativeProcessControlService.DEFAULT_HAVENASK_SEARCHER_GRPC_PORT;
-                            curCm2Config.tcp_port = discoveryNode.getAttributes() != null
-                                && discoveryNode.getAttributes().get(cm2ConfigSearcherTcpPort) != null
-                                    ? Integer.valueOf(discoveryNode.getAttributes().get(cm2ConfigSearcherTcpPort))
-                                    : NativeProcessControlService.DEFAULT_HAVENASK_SEARCHER_TCP_PORT;
+                                DiscoveryNode discoveryNode = clusterState.nodes().get(shardRouting.currentNodeId());
+                                curCm2Config.ip = discoveryNode.getAddress().getAddress();
+                                curCm2Config.grpc_port = discoveryNode.getAttributes() != null
+                                    && discoveryNode.getAttributes().get(cm2ConfigSearcherGrpcPort) != null
+                                        ? Integer.valueOf(discoveryNode.getAttributes().get(cm2ConfigSearcherGrpcPort))
+                                        : NativeProcessControlService.DEFAULT_HAVENASK_SEARCHER_GRPC_PORT;
+                                curCm2Config.tcp_port = discoveryNode.getAttributes() != null
+                                    && discoveryNode.getAttributes().get(cm2ConfigSearcherTcpPort) != null
+                                        ? Integer.valueOf(discoveryNode.getAttributes().get(cm2ConfigSearcherTcpPort))
+                                        : NativeProcessControlService.DEFAULT_HAVENASK_SEARCHER_TCP_PORT;
 
-                            cm2ConfigLocalVal.add(curCm2Config);
+                                cm2ConfigLocalVal.add(curCm2Config);
+                            }
                         }
                     }
                 });
