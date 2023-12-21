@@ -212,7 +212,7 @@ public class HavenaskEngine extends InternalEngine {
             private long lastRefreshTime = 0;
             private long indexes = 0;
             private long deletes = 0;
-            private long lastDocCount = -1;
+            private long lastDocCount = 0;
             private long newDocCount = -1;
 
             @Override
@@ -933,7 +933,12 @@ public class HavenaskEngine extends InternalEngine {
     long getDocCount() {
         long docCount = -1;
         try {
-            String sql = String.format(Locale.ROOT, "select /*+ SCAN_ATTR(partitionIds='%d')*/ count(*) from %s", shardId.id(), tableName);
+            String sql = String.format(
+                Locale.ROOT,
+                "select /*+ SCAN_ATTR(partitionIds='%d')*/ count(*) from `%s`",
+                shardId.id(),
+                tableName
+            );
             String kvpair = "format:full_json;timeout:10000;databaseName:" + SQL_DATABASE;
             HavenaskSqlResponse response = client.execute(HavenaskSqlAction.INSTANCE, new HavenaskSqlRequest(sql, kvpair)).actionGet();
             JSONObject jsonObject = JsonPrettyFormatter.fromString(response.getResult());
