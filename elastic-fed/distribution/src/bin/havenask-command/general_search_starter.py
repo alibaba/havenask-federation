@@ -322,7 +322,7 @@ examples:
         self.alogConfigPath = os.path.join(self.binaryPath, "usr/local/etc/sql/sql_alog.conf")
         self.searchCfg = os.path.join(self.binaryPath, "usr/local/etc/sql/search_server.cfg")
         self.qrsCfg = os.path.join(self.binaryPath, "usr/local/etc/sql/qrs_server.cfg")
-        self.config_loader = os.path.join(self.binaryPath, "usr/local/lib/python/site-packages/sql/sql_config_loader_new.py")
+        self.config_loader = os.path.join(self.binaryPath, "usr/local/lib/python/site-packages/sql/sql_config_loader.py")
         self.ip = socket.gethostbyname(socket.gethostname())
         self.gigInfos = {}
         cwd = os.getcwd()
