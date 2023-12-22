@@ -261,7 +261,7 @@ public class MetaDataSyncerTests extends HavenaskTestCase {
         int[] grpcPorts = { 39401, 39400, 39401, 39400 };
         int[] tcpPorts = { 39301, 39300, 39301, 39300 };
         int[] partCounts = { 2, 2, 1, 1 };
-        int[] partIds = { 0, 1, 0, 0 };
+        int[] partIds = { 1, 0, 0, 0 };
         for (int i = 0; i < bizNames.length; i++) {
             TargetInfo.ServiceInfo.Cm2Config curCm2Config = new TargetInfo.ServiceInfo.Cm2Config();
             curCm2Config.biz_name = bizNames[i];
