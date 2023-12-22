@@ -543,7 +543,6 @@ public class SchemaGeneratorTests extends MapperServiceTestCase {
     }
 
     // test index vector with all parameters
-    @AwaitsFix(bugUrl = "https://github.com/alibaba/havenask-federation/issues/213")
     public void testIndexVectorWithAllParameters() throws IOException {
         MapperService mapperService = createMapperService(mapping(b -> {
             {
@@ -551,18 +550,17 @@ public class SchemaGeneratorTests extends MapperServiceTestCase {
                 {
                     b.field("type", DenseVectorFieldMapper.CONTENT_TYPE);
                     b.field("dims", 128);
+                    b.field("similarity", "L2_NORM");
                     b.startObject("index_options");
                     {
                         b.field("type", "linear");
                         b.field("embedding_delimiter", ",");
-                        b.field("distance_type", "InnerProduct");
                         b.field("major_order", "row");
-                        b.field("enable_rt_build", "true");
                         b.field("ignore_invalid_doc", "true");
                         b.field("enable_recall_report", "true");
                         b.field("is_embedding_saved", "true");
                         b.field("min_scan_doc_cnt", "20000");
-                        b.field("linear_build_threshold", "5000");
+                        b.field("linear_build_threshold", "500");
                         b.startObject("build_index_params");
                         {
                             b.field("proxima.linear.builder.column_major_order", "false");
@@ -577,37 +575,31 @@ public class SchemaGeneratorTests extends MapperServiceTestCase {
                 {
                     b.field("type", DenseVectorFieldMapper.CONTENT_TYPE);
                     b.field("dims", 128);
+                    b.field("similarity", "DOT_PRODUCT");
                     b.startObject("index_options");
                     {
                         b.field("type", "qc");
                         b.field("embedding_delimiter", ",");
-                        b.field("distance_type", "InnerProduct");
                         b.field("major_order", "row");
-                        b.field("enable_rt_build", "true");
                         b.field("ignore_invalid_doc", "true");
                         b.field("enable_recall_report", "true");
                         b.field("is_embedding_saved", "true");
                         b.field("min_scan_doc_cnt", "20000");
-                        b.field("linear_build_threshold", "5000");
+                        b.field("linear_build_threshold", "500");
                         b.startObject("build_index_params");
                         {
                             b.field("proxima.qc.builder.train_sample_count", "0");
                             b.field("proxima.qc.builder.thread_count", "0");
-                            b.field("proxima.qc.builder.centroid_count", "100*100");
+                            b.field("proxima.qc.builder.centroid_count", "1000");
                             b.field("proxima.qc.builder.cluster_auto_tuning", "false");
-                            b.field("proxima.qc.builder.optimizer_class", "HcBuilder");
-                            b.field("proxima.qc.builder.optimizer_params", "-");
-                            b.field("proxima.qc.builder.quantizer_class", "DoubleBitConverter");
                             b.field("proxima.qc.builder.quantize_by_centroid", "false");
                             b.field("proxima.qc.builder.store_original_features", "false");
-                            b.field("proxima.qc.builder.train_sample_count2", "0");
-                            b.field("proxima.qc.builder.train_sample_ratio", "1");
+                            b.field("proxima.qc.builder.train_sample_ratio", "1.0");
                         }
                         b.endObject();
                         b.startObject("search_index_params");
                         {
                             b.field("proxima.qc.searcher.scan_ratio", "0.01");
-                            b.field("proxima.qc.searcher.optimizer_params", "-");
                             b.field("proxima.qc.searcher.brute_force_threshold", "1000");
                         }
                         b.endObject();
@@ -620,18 +612,17 @@ public class SchemaGeneratorTests extends MapperServiceTestCase {
                 {
                     b.field("type", DenseVectorFieldMapper.CONTENT_TYPE);
                     b.field("dims", 128);
+                    b.field("similarity", "L2_NORM");
                     b.startObject("index_options");
                     {
-                        b.field("type", "hnsw");
+                        b.field("type", "HNSW");
                         b.field("embedding_delimiter", ",");
-                        b.field("distance_type", "InnerProduct");
                         b.field("major_order", "row");
-                        b.field("enable_rt_build", "true");
                         b.field("ignore_invalid_doc", "true");
                         b.field("enable_recall_report", "true");
                         b.field("is_embedding_saved", "true");
                         b.field("min_scan_doc_cnt", "20000");
-                        b.field("linear_build_threshold", "5000");
+                        b.field("linear_build_threshold", "500");
 
                         b.startObject("build_index_params");
                         {
@@ -678,7 +669,7 @@ public class SchemaGeneratorTests extends MapperServiceTestCase {
                 + "\t\t\"field_type\":\"INT64\"\n"
                 + "\t},{\n"
                 + "\t\t\"binary_field\":false,\n"
-                + "\t\t\"field_name\":\"hc_field\",\n"
+                + "\t\t\"field_name\":\"qc_field\",\n"
                 + "\t\t\"field_type\":\"STRING\"\n"
                 + "\t},{\n"
                 + "\t\t\"binary_field\":false,\n"
@@ -694,10 +685,6 @@ public class SchemaGeneratorTests extends MapperServiceTestCase {
                 + "\t\t\"field_type\":\"INT64\"\n"
                 + "\t},{\n"
                 + "\t\t\"binary_field\":false,\n"
-                + "\t\t\"field_name\":\"DUP_id\",\n"
-                + "\t\t\"field_type\":\"RAW\"\n"
-                + "\t},{\n"
-                + "\t\t\"binary_field\":false,\n"
                 + "\t\t\"field_name\":\"DUP_linear_field\",\n"
                 + "\t\t\"field_type\":\"RAW\"\n"
                 + "\t},{\n"
@@ -706,7 +693,7 @@ public class SchemaGeneratorTests extends MapperServiceTestCase {
                 + "\t\t\"field_type\":\"RAW\"\n"
                 + "\t},{\n"
                 + "\t\t\"binary_field\":false,\n"
-                + "\t\t\"field_name\":\"DUP_hc_field\",\n"
+                + "\t\t\"field_name\":\"DUP_qc_field\",\n"
                 + "\t\t\"field_type\":\"RAW\"\n"
                 + "\t},{\n"
                 + "\t\t\"binary_field\":false,\n"
@@ -714,59 +701,15 @@ public class SchemaGeneratorTests extends MapperServiceTestCase {
                 + "\t\t\"field_type\":\"INT64\"\n"
                 + "\t}],\n"
                 + "\t\"indexs\":[{\n"
+                + "\t\t\"has_primary_key_attribute\":true,\n"
+                + "\t\t\"index_fields\":\"_id\",\n"
+                + "\t\t\"index_name\":\"_id\",\n"
+                + "\t\t\"index_type\":\"PRIMARYKEY64\",\n"
+                + "\t\t\"is_primary_key_sorted\":false\n"
+                + "\t},{\n"
                 + "\t\t\"index_fields\":\"_routing\",\n"
                 + "\t\t\"index_name\":\"_routing\",\n"
                 + "\t\t\"index_type\":\"STRING\"\n"
-                + "\t},{\n"
-                + "\t\t\"index_fields\":[\n"
-                + "\t\t\t{\n"
-                + "\t\t\t\t\"boost\":1,\n"
-                + "\t\t\t\t\"field_name\":\"DUP_id\"\n"
-                + "\t\t\t},\n"
-                + "\t\t\t{\n"
-                + "\t\t\t\t\"boost\":1,\n"
-                + "\t\t\t\t\"field_name\":\"DUP_linear_field\"\n"
-                + "\t\t\t}\n"
-                + "\t\t],\n"
-                + "\t\t\"index_name\":\"linear_field\",\n"
-                + "\t\t\"index_type\":\"CUSTOMIZED\",\n"
-                + "\t\t\"indexer\":\"aitheta_indexer\",\n"
-                + "\t\t\"parameters\":{\n"
-                + "\t\t\t\"dimension\":\"128\",\n"
-                + "\t\t\t\"build_metric_type\":\"l2\",\n"
-                + "\t\t\t\"search_metric_type\":\"l2\",\n"
-                + "\t\t\t\"index_type\":\"linear\"\n"
-                + "\t\t}\n"
-                + "\t},{\n"
-                + "\t\t\"index_fields\":[\n"
-                + "\t\t\t{\n"
-                + "\t\t\t\t\"boost\":1,\n"
-                + "\t\t\t\t\"field_name\":\"DUP_id\"\n"
-                + "\t\t\t},\n"
-                + "\t\t\t{\n"
-                + "\t\t\t\t\"boost\":1,\n"
-                + "\t\t\t\t\"field_name\":\"DUP_hnsw_field\"\n"
-                + "\t\t\t}\n"
-                + "\t\t],\n"
-                + "\t\t\"index_name\":\"hnsw_field\",\n"
-                + "\t\t\"index_type\":\"CUSTOMIZED\",\n"
-                + "\t\t\"indexer\":\"aitheta_indexer\",\n"
-                + "\t\t\"parameters\":{\n"
-                + "\t\t\t\"dimension\":\"128\",\n"
-                + "\t\t\t\"build_metric_type\":\"l2\",\n"
-                + "\t\t\t\"search_metric_type\":\"l2\",\n"
-                + "\t\t\t\"index_type\":\"graph\",\n"
-                + "\t\t\t\"proxima.graph.common.graph_type\":\"hnsw\",\n"
-                + "\t\t\t\"proxima.graph.common.max_doc_cnt\":\"50000000\",\n"
-                + "\t\t\t\"proxima.graph.common.max_scan_num\":\"25000\",\n"
-                + "\t\t\t\"proxima.general.builder.memory_quota\":\"0\",\n"
-                + "\t\t\t\"proxima.hnsw.builder.efconstruction\":\"400\",\n"
-                + "\t\t\t\"proxima.hnsw.builder.max_level\":\"6\",\n"
-                + "\t\t\t\"proxima.hnsw.builder.scaling_factor\":\"50\",\n"
-                + "\t\t\t\"proxima.hnsw.builder.upper_neighbor_cnt\":\"50\",\n"
-                + "\t\t\t\"proxima.hnsw.searcher.ef\":\"200\",\n"
-                + "\t\t\t\"proxima.hnsw.searcher.max_scan_cnt\":\"15000\"\n"
-                + "\t\t}\n"
                 + "\t},{\n"
                 + "\t\t\"index_fields\":\"_seq_no\",\n"
                 + "\t\t\"index_name\":\"_seq_no\",\n"
@@ -775,40 +718,103 @@ public class SchemaGeneratorTests extends MapperServiceTestCase {
                 + "\t\t\"index_fields\":[\n"
                 + "\t\t\t{\n"
                 + "\t\t\t\t\"boost\":1,\n"
-                + "\t\t\t\t\"field_name\":\"DUP_id\"\n"
+                + "\t\t\t\t\"field_name\":\"_id\"\n"
                 + "\t\t\t},\n"
                 + "\t\t\t{\n"
                 + "\t\t\t\t\"boost\":1,\n"
-                + "\t\t\t\t\"field_name\":\"DUP_hc_field\"\n"
+                + "\t\t\t\t\"field_name\":\"DUP_linear_field\"\n"
                 + "\t\t\t}\n"
                 + "\t\t],\n"
-                + "\t\t\"index_name\":\"hc_field\",\n"
+                + "\t\t\"index_name\":\"linear_field\",\n"
                 + "\t\t\"index_type\":\"CUSTOMIZED\",\n"
-                + "\t\t\"indexer\":\"aitheta_indexer\",\n"
+                + "\t\t\"indexer\":\"aitheta2_indexer\",\n"
                 + "\t\t\"parameters\":{\n"
                 + "\t\t\t\"dimension\":\"128\",\n"
-                + "\t\t\t\"build_metric_type\":\"l2\",\n"
-                + "\t\t\t\"search_metric_type\":\"l2\",\n"
-                + "\t\t\t\"index_type\":\"hc\",\n"
-                + "\t\t\t\"proxima.hc.builder.num_in_level_1\":\"1000\",\n"
-                + "\t\t\t\"proxima.hc.builder.num_in_level_2\":\"100\",\n"
-                + "\t\t\t\"proxima.hc.common.leaf_centroid_num\":\"100000\",\n"
-                + "\t\t\t\"proxima.hc.builder.train_sample_count\":\"0\",\n"
-                + "\t\t\t\"proxima.hc.builder.train_sample_ratio\":\"0.0\",\n"
-                + "\t\t\t\"proxima.hc.builder.scan_num_in_level_1\":\"60\",\n"
-                + "\t\t\t\"proxima.hc.builder.scan_num_in_level_2\":\"6000\",\n"
-                + "\t\t\t\"proxima.hc.searcher.max_scan_num\":\"50000\",\n"
-                + "\t\t\t\"use_linear_threshold\":\"10000\",\n"
-                + "\t\t\t\"use_dynamic_params\":\"1\"\n"
+                + "\t\t\t\"enable_rt_build\":\"true\",\n"
+                + "\t\t\t\"distance_type\":\"SquaredEuclidean\",\n"
+                + "\t\t\t\"embedding_delimiter\":\",\",\n"
+                + "\t\t\t\"major_order\":\"row\",\n"
+                + "\t\t\t\"ignore_invalid_doc\":\"true\",\n"
+                + "\t\t\t\"enable_recall_report\":\"true\",\n"
+                + "\t\t\t\"is_embedding_saved\":\"true\",\n"
+                + "\t\t\t\"min_scan_doc_cnt\":\"20000\",\n"
+                + "\t\t\t\"linear_build_threshold\":\"500\",\n"
+                + "\t\t\t\"builder_name\":\"LinearBuilder\",\n"
+                + "\t\t\t\"searcher_name\":\"LinearSearcher\",\n"
+                + "\t\t\t\"searcher_index_params\":\"{\\\"proxima.hnsw.builder.linear_build_threshold\\\":500}\"\n"
                 + "\t\t}\n"
                 + "\t},{\n"
-                + "\t\t\"has_primary_key_attribute\":true,\n"
-                + "\t\t\"index_fields\":\"_id\",\n"
-                + "\t\t\"index_name\":\"_id\",\n"
-                + "\t\t\"index_type\":\"PRIMARYKEY64\",\n"
-                + "\t\t\"is_primary_key_sorted\":false\n"
+                + "\t\t\"index_fields\":[\n"
+                + "\t\t\t{\n"
+                + "\t\t\t\t\"boost\":1,\n"
+                + "\t\t\t\t\"field_name\":\"_id\"\n"
+                + "\t\t\t},\n"
+                + "\t\t\t{\n"
+                + "\t\t\t\t\"boost\":1,\n"
+                + "\t\t\t\t\"field_name\":\"DUP_hnsw_field\"\n"
+                + "\t\t\t}\n"
+                + "\t\t],\n"
+                + "\t\t\"index_name\":\"hnsw_field\",\n"
+                + "\t\t\"index_type\":\"CUSTOMIZED\",\n"
+                + "\t\t\"indexer\":\"aitheta2_indexer\",\n"
+                + "\t\t\"parameters\":{\n"
+                + "\t\t\t\"dimension\":\"128\",\n"
+                + "\t\t\t\"enable_rt_build\":\"true\",\n"
+                + "\t\t\t\"distance_type\":\"SquaredEuclidean\",\n"
+                + "\t\t\t\"embedding_delimiter\":\",\",\n"
+                + "\t\t\t\"major_order\":\"row\",\n"
+                + "\t\t\t\"ignore_invalid_doc\":\"true\",\n"
+                + "\t\t\t\"enable_recall_report\":\"true\",\n"
+                + "\t\t\t\"is_embedding_saved\":\"true\",\n"
+                + "\t\t\t\"min_scan_doc_cnt\":\"20000\",\n"
+                + "\t\t\t\"linear_build_threshold\":\"500\",\n"
+                + "\t\t\t\"builder_name\":\"HnswBuilder\",\n"
+                + "\t\t\t\"searcher_name\":\"HnswSearcher\",\n"
+                + "\t\t\t\"searcher_index_params\":\"{\\\"proxima.hnsw.searcher.ef\\\":500}\",\n"
+                + "\t\t\t\"builder_index_params\":\"{\\\"proxima.hnsw.builder.max_neighbor_cnt\\\":100,\\\""
+                + "proxima.hnsw.builder.ef_construction\\\":500,\\\"proxima.hnsw.builder.thread_cnt\\\":0}\"\n"
+                + "\t\t}\n"
+                + "\t},{\n"
+                + "\t\t\"index_fields\":[\n"
+                + "\t\t\t{\n"
+                + "\t\t\t\t\"boost\":1,\n"
+                + "\t\t\t\t\"field_name\":\"_id\"\n"
+                + "\t\t\t},\n"
+                + "\t\t\t{\n"
+                + "\t\t\t\t\"boost\":1,\n"
+                + "\t\t\t\t\"field_name\":\"DUP_qc_field\"\n"
+                + "\t\t\t}\n"
+                + "\t\t],\n"
+                + "\t\t\"index_name\":\"qc_field\",\n"
+                + "\t\t\"index_type\":\"CUSTOMIZED\",\n"
+                + "\t\t\"indexer\":\"aitheta2_indexer\",\n"
+                + "\t\t\"parameters\":{\n"
+                + "\t\t\t\"dimension\":\"128\",\n"
+                + "\t\t\t\"enable_rt_build\":\"true\",\n"
+                + "\t\t\t\"distance_type\":\"InnerProduct\",\n"
+                + "\t\t\t\"embedding_delimiter\":\",\",\n"
+                + "\t\t\t\"major_order\":\"row\",\n"
+                + "\t\t\t\"ignore_invalid_doc\":\"true\",\n"
+                + "\t\t\t\"enable_recall_report\":\"true\",\n"
+                + "\t\t\t\"is_embedding_saved\":\"true\",\n"
+                + "\t\t\t\"min_scan_doc_cnt\":\"20000\",\n"
+                + "\t\t\t\"linear_build_threshold\":\"500\",\n"
+                + "\t\t\t\"builder_name\":\"QcBuilder\",\n"
+                + "\t\t\t\"searcher_name\":\"QcSearcher\",\n"
+                + "\t\t\t\"searcher_index_params\":\"{\\\"proxima.qc.searcher.scan_ratio\\\":0.01,"
+                + "\\\"proxima.qc.searcher.brute_force_threshold\\\":1000}\",\n"
+                + "\t\t\t\"builder_index_params\":\"{\\\"proxima.qc.builder.train_sample_count\\\":0,"
+                + "\\\"proxima.qc.builder.thread_count\\\":0,\\\"proxima.qc.builder.centroid_count\\\":\\\"1000\\\","
+                + "\\\"proxima.qc.builder.cluster_auto_tuning\\\":false,\\\"proxima.qc.builder.quantize_by_centroid"
+                + "\\\":false,\\\"proxima.qc.builder.store_original_features\\\":false,"
+                + "\\\"proxima.qc.builder.train_sample_ratio\\\":1.0}\"\n"
+                + "\t\t}\n"
                 + "\t}],\n"
+                + "\t\"settings\":{\n"
+                + "\t\t\"enable_all_text_field_meta\":true\n"
+                + "\t},\n"
                 + "\t\"summarys\":{\n"
+                + "\t\t\"compress\":true,\n"
                 + "\t\t\"summary_fields\":[\"_routing\",\"_source\",\"_id\"]\n"
                 + "\t},\n"
                 + "\t\"table_name\":\"%s\",\n"
