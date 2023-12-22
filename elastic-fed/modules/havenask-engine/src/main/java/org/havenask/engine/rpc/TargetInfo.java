@@ -27,6 +27,7 @@ public class TargetInfo {
     public BizInfo biz_info;
     public CustomAppInfo custom_app_info;
     public ServiceInfo service_info;
+    public Map<String, TableGroup> table_groups;
     public Map<String, Map<String, TableInfo>> table_info;
     public Boolean clean_disk;
     public Integer target_version;
@@ -220,6 +221,28 @@ public class TargetInfo {
         @Override
         public int hashCode() {
             return Objects.hash(cm2, zone_name, part_id, part_count, version, cm2_config);
+        }
+    }
+
+    public static class TableGroup {
+        public boolean broadcast = false;
+        public List<String> table_names;
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) {
+                return true;
+            }
+            if (o == null || getClass() != o.getClass()) {
+                return false;
+            }
+            TableGroup that = (TableGroup) o;
+            return Objects.equals(broadcast, that.broadcast) && Objects.equals(table_names, that.table_names);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(broadcast, table_names);
         }
     }
 
@@ -421,6 +444,7 @@ public class TargetInfo {
             && Objects.equals(biz_info, that.biz_info)
             && Objects.equals(custom_app_info, that.custom_app_info)
             && Objects.equals(service_info, that.service_info)
+            && Objects.equals(table_groups, that.table_groups)
             && Objects.equals(table_info, that.table_info)
             && Objects.equals(clean_disk, that.clean_disk)
             && Objects.equals(catalog_address, that.catalog_address);
@@ -428,6 +452,16 @@ public class TargetInfo {
 
     @Override
     public int hashCode() {
-        return Objects.hash(app_info, biz_info, custom_app_info, service_info, table_info, clean_disk, target_version, catalog_address);
+        return Objects.hash(
+            app_info,
+            biz_info,
+            custom_app_info,
+            service_info,
+            table_groups,
+            table_info,
+            clean_disk,
+            target_version,
+            catalog_address
+        );
     }
 }
