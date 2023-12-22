@@ -332,40 +332,47 @@ public class HavenaskEngineEnvironment implements CustomEnvironment {
         long sleepInterval = 1000;
         while (timeout > 0) {
             TargetInfo targetInfo = metaDataSyncer.getSearcherTargetInfo();
-            if (targetInfo == null || false == targetInfo.table_info.containsKey(tableName)) {
-                throw new IOException("havenask table not found in searcher");
-            }
-
-            TargetInfo.TableInfo tableInfo = null;
-            int maxGeneration = -1;
-            for (Map.Entry<String, TargetInfo.TableInfo> entry : targetInfo.table_info.get(tableName).entrySet()) {
-                String k = entry.getKey();
-                TargetInfo.TableInfo v = entry.getValue();
-                if (Integer.valueOf(k) > maxGeneration) {
-                    tableInfo = v;
+            if (targetInfo != null && targetInfo.table_info.containsKey(tableName)) {
+                TargetInfo.TableInfo tableInfo = null;
+                int maxGeneration = -1;
+                for (Map.Entry<String, TargetInfo.TableInfo> entry : targetInfo.table_info.get(tableName).entrySet()) {
+                    String k = entry.getKey();
+                    TargetInfo.TableInfo v = entry.getValue();
+                    if (Integer.valueOf(k) > maxGeneration) {
+                        tableInfo = v;
+                        maxGeneration = Integer.valueOf(k);
+                    }
                 }
-            }
 
-            if (tableInfo != null || false == tableInfo.partitions.containsKey(partitionId)) {
-                LOGGER.debug(
-                    "targetInfo update successfully while deleting shard, table name: [{}], partitionId: [{}]",
-                    tableName,
-                    partitionId
-                );
-                break;
+                if (tableInfo != null && tableInfo.partitions.containsKey(partitionId)) {
+                    LOGGER.debug(
+                        "shard info still in searcher while deleting shard, table name: [{}], partitionId: [{}], try to retry",
+                        tableName,
+                        partitionId
+                    );
+                } else {
+                    LOGGER.debug(
+                        "partition not found in tableInfo, delete shard successfully, table name: [{}], partitionId: [{}]",
+                        tableName,
+                        partitionId
+                    );
+                    break;
+                }
             } else if (targetInfo == null) {
                 LOGGER.debug(
                     "targetInfo is null while deleting shard, table name: [{}], partitionId: [{}], try to retry",
                     tableName,
                     partitionId
                 );
-            } else {
+            } else if (false == targetInfo.table_info.containsKey(tableName)) {
                 LOGGER.debug(
-                    "shard info still in searcher while deleting shard, table name: [{}], partitionId: [{}], try to retry",
+                    "index not found in targetInfo, delete shard successfully, table name: [{}], partitionId: [{}]",
                     tableName,
                     partitionId
                 );
+                break;
             }
+
             timeout -= sleepInterval;
             try {
                 Thread.sleep(sleepInterval);
