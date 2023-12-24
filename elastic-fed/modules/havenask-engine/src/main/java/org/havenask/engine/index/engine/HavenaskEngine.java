@@ -338,6 +338,7 @@ public class HavenaskEngine extends InternalEngine {
                     TargetInfo.TableInfo v = entry.getValue();
                     if (Integer.valueOf(k) > maxGeneration) {
                         tableInfo = v;
+                        maxGeneration = Integer.valueOf(k);
                     }
                 }
 
