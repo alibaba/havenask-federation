@@ -450,6 +450,15 @@ public class MetaDataSyncer extends AbstractLifecycleComponent implements Cluste
         // update table info
         generateDefaultBizConfig(indexNames);
 
+        searcherTargetInfo.table_groups = new HashMap<>();
+        for (String indexName : indexNames) {
+            String tableGroupName = SEARCHER_ZONE_NAME + ".table_group." + indexName;
+            TargetInfo.TableGroup tableGroup = new TargetInfo.TableGroup();
+            tableGroup.table_names = new ArrayList<>();
+            tableGroup.table_names.add(indexName);
+            searcherTargetInfo.table_groups.put(tableGroupName, tableGroup);
+        }
+
         searcherTargetInfo.table_info = new HashMap<>();
         Map<String, Tuple<Integer, Set<Integer>>> indexShards = getIndexShards(clusterState);
         for (String index : indexNames) {
