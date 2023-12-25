@@ -14,7 +14,6 @@
 
 package org.havenask.engine;
 
-import static org.havenask.engine.NativeProcessControlService.HAVENASK_QRS_HTTP_PORT_SETTING;
 import static org.havenask.engine.index.engine.EngineSettings.ENGINE_HAVENASK;
 import static org.havenask.index.store.FsDirectoryFactory.INDEX_LOCK_FACTOR_SETTING;
 
@@ -42,6 +41,8 @@ import org.havenask.client.Client;
 import org.havenask.cluster.metadata.IndexNameExpressionResolver;
 import org.havenask.cluster.node.DiscoveryNodes;
 import org.havenask.cluster.routing.OperationRouting;
+import org.havenask.cluster.routing.allocation.decider.AllocationDecider;
+import org.havenask.cluster.routing.allocation.decider.HavenaskShardsLimitAllocationDecider;
 import org.havenask.cluster.service.ClusterService;
 import org.havenask.common.io.stream.NamedWriteableRegistry;
 import org.havenask.common.settings.ClusterSettings;
@@ -90,6 +91,7 @@ import org.havenask.index.store.Store;
 import org.havenask.index.store.Store.OnClose;
 import org.havenask.plugins.ActionPlugin;
 import org.havenask.plugins.AnalysisPlugin;
+import org.havenask.plugins.ClusterPlugin;
 import org.havenask.plugins.EnginePlugin;
 import org.havenask.plugins.IndexStorePlugin;
 import org.havenask.plugins.MapperPlugin;
@@ -115,7 +117,8 @@ public class HavenaskEnginePlugin extends Plugin
         SearchPlugin,
         NodeEnvironmentPlugin,
         MapperPlugin,
-        IndexStorePlugin {
+        IndexStorePlugin,
+        ClusterPlugin {
     private static Logger logger = LogManager.getLogger(HavenaskEnginePlugin.class);
     private final SetOnce<HavenaskEngineEnvironment> havenaskEngineEnvironmentSetOnce = new SetOnce<>();
     private final SetOnce<NativeProcessControlService> nativeProcessControlServiceSetOnce = new SetOnce<>();
@@ -243,8 +246,9 @@ public class HavenaskEnginePlugin extends Plugin
             NativeProcessControlService.HAVENASK_SEARCHER_HTTP_PORT_SETTING,
             NativeProcessControlService.HAVENASK_SEARCHER_TCP_PORT_SETTING,
             NativeProcessControlService.HAVENASK_SEARCHER_GRPC_PORT_SETTING,
-            HAVENASK_QRS_HTTP_PORT_SETTING,
-            NativeProcessControlService.HAVENASK_QRS_TCP_PORT_SETTING
+            NativeProcessControlService.HAVENASK_QRS_HTTP_PORT_SETTING,
+            NativeProcessControlService.HAVENASK_QRS_TCP_PORT_SETTING,
+            HavenaskShardsLimitAllocationDecider.CLUSTER_TOTAL_HAVENASK_SHARDS_PER_NODE_SETTING
         );
     }
 
@@ -307,6 +311,11 @@ public class HavenaskEnginePlugin extends Plugin
     }
 
     @Override
+    public Collection<AllocationDecider> createAllocationDeciders(Settings settings, ClusterSettings clusterSettings) {
+        return Collections.singletonList(new HavenaskShardsLimitAllocationDecider(settings, clusterSettings));
+    }
+
+    @Override
     public List<QuerySpec<?>> getQueries() {
         QuerySpec<KnnQueryBuilder> hnsw = new QuerySpec<>(KnnQueryBuilder.NAME, KnnQueryBuilder::new, KnnQueryBuilder::fromXContent);
         return Arrays.asList(hnsw);
@@ -319,7 +328,7 @@ public class HavenaskEnginePlugin extends Plugin
 
     @Override
     public FetchPhase getFetchPhase(List<FetchSubPhase> fetchSubPhases) {
-        int port = HAVENASK_QRS_HTTP_PORT_SETTING.get(settings);
+        int port = NativeProcessControlService.HAVENASK_QRS_HTTP_PORT_SETTING.get(settings);
         QrsClient qrsClient = new QrsHttpClient(port);
         qrsClientSetOnce.set(qrsClient);
         return new HavenaskFetchPhase(qrsClientSetOnce.get(), fetchSubPhases);
