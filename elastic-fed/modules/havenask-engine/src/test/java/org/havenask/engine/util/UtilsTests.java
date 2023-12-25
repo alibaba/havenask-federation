@@ -28,9 +28,6 @@
 
 package org.havenask.engine.util;
 
-import org.havenask.common.collect.Tuple;
-import org.havenask.test.HavenaskTestCase;
-
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -38,6 +35,11 @@ import java.nio.file.Path;
 import java.util.Locale;
 import java.util.stream.Stream;
 
+import org.apache.lucene.util.LuceneTestCase;
+import org.havenask.common.collect.Tuple;
+import org.havenask.test.HavenaskTestCase;
+
+@LuceneTestCase.SuppressFileSystems("ExtrasFS")
 public class UtilsTests extends HavenaskTestCase {
     private final Path configPath;
     private final String prefix = "0000000000000000ffffffffffffffff0100000000000000";
