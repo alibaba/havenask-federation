@@ -22,6 +22,7 @@ import java.nio.file.StandardOpenOption;
 import java.util.HashMap;
 import java.util.List;
 
+import org.havenask.cluster.metadata.IndexMetadata;
 import org.havenask.common.Nullable;
 import org.havenask.common.settings.Settings;
 import org.havenask.engine.index.config.BizConfig;
@@ -87,6 +88,7 @@ public class TableConfigGenerator {
 
     private void generateClusterConfig(String version) throws IOException {
         BizConfig bizConfig = new BizConfig();
+        bizConfig.cluster_config.builder_rule_config.partition_count = indexSettings.getAsInt(IndexMetadata.SETTING_NUMBER_OF_SHARDS, 1);
         bizConfig.online_index_config.build_config.max_doc_count = EngineSettings.HAVENASK_FLUSH_MAX_DOC_COUNT.get(indexSettings);
         bizConfig.cluster_config.cluster_name = indexName;
         bizConfig.cluster_config.table_name = indexName;
