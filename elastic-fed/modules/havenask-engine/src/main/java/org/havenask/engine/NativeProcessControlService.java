@@ -65,36 +65,41 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
         "ps aux | grep ha_sql | grep 'roleType=%s' | grep -v grep | awk '{print $2}'";
     private static final String GET_TABLE_SIZE_COMMAND = "du -sk %s | awk '{print $1}'";
 
+    public static final int DEFAULT_HAVENASK_SEARCHER_HTTP_PORT = 39200;
+    public static final int DEFAULT_HAVENASK_SEARCHER_TCP_PORT = 39300;
+    public static final int DEFAULT_HAVENASK_SEARCHER_GRPC_PORT = 39400;
+    public static final int DEFAULT_HAVENASK_QRS_HTTP_PORT = 49200;
+    public static final int DEFAULT_HAVENASK_QRS_TCP_PORT = 49300;
     public static final Setting<Integer> HAVENASK_SEARCHER_HTTP_PORT_SETTING = Setting.intSetting(
         "node.attr.havenask.searcher.http.port",
-        39200,
+        DEFAULT_HAVENASK_SEARCHER_HTTP_PORT,
         Property.NodeScope,
         Property.Final
     );
 
     public static final Setting<Integer> HAVENASK_SEARCHER_TCP_PORT_SETTING = Setting.intSetting(
         "node.attr.havenask.searcher.tcp.port",
-        39300,
+        DEFAULT_HAVENASK_SEARCHER_TCP_PORT,
         Property.NodeScope,
         Property.Final
     );
     public static final Setting<Integer> HAVENASK_SEARCHER_GRPC_PORT_SETTING = Setting.intSetting(
         "node.attr.havenask.searcher.grpc.port",
-        39400,
+        DEFAULT_HAVENASK_SEARCHER_GRPC_PORT,
         Property.NodeScope,
         Property.Final
     );
 
     public static final Setting<Integer> HAVENASK_QRS_HTTP_PORT_SETTING = Setting.intSetting(
         "node.attr.havenask.qrs.http.port",
-        49200,
+        DEFAULT_HAVENASK_QRS_HTTP_PORT,
         Property.NodeScope,
         Property.Final
     );
 
     public static final Setting<Integer> HAVENASK_QRS_TCP_PORT_SETTING = Setting.intSetting(
         "node.attr.havenask.qrs.tcp.port",
-        49300,
+        DEFAULT_HAVENASK_QRS_TCP_PORT,
         Property.NodeScope,
         Property.Final
     );
