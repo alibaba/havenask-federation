@@ -14,6 +14,7 @@
 
 package org.havenask.engine.index.config.generator;
 
+import org.havenask.cluster.metadata.IndexMetadata;
 import org.havenask.common.settings.Settings;
 import org.havenask.engine.HavenaskEnginePlugin;
 import org.havenask.engine.index.config.ZoneBiz;
@@ -819,6 +820,7 @@ public class BizConfigGeneratorTests extends MapperServiceTestCase {
         BizConfigGenerator bizConfigGenerator = new BizConfigGenerator(
             indexName,
             Settings.builder()
+                .put(IndexMetadata.SETTING_NUMBER_OF_SHARDS, 3)
                 .put(EngineSettings.HAVENASK_FLUSH_MAX_DOC_COUNT.getKey(), 10)
                 .put(EngineSettings.HAVENASK_WRITE_QUEUE_SIZE.getKey(), 100)
                 .put(EngineSettings.HAVENASK_HASH_FIELD.getKey(), "test")
@@ -854,7 +856,7 @@ public class BizConfigGeneratorTests extends MapperServiceTestCase {
                     + "\t\t\t\"batch_mode\":false,\n"
                     + "\t\t\t\"build_parallel_num\":1,\n"
                     + "\t\t\t\"merge_parallel_num\":1,\n"
-                    + "\t\t\t\"partition_count\":1\n"
+                    + "\t\t\t\"partition_count\":3\n"
                     + "\t\t},\n"
                     + "\t\t\"cluster_name\":\"%s\",\n"
                     + "\t\t\"hash_mode\":{\n"
