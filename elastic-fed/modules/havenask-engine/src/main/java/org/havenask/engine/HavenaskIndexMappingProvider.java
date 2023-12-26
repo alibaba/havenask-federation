@@ -16,6 +16,7 @@ package org.havenask.engine;
 
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 
 import org.havenask.common.settings.Settings;
@@ -41,6 +42,16 @@ public class HavenaskIndexMappingProvider implements IndexMappingProvider {
     public void validateIndexMapping(String table, Settings indexSettings, MapperService mapperService)
         throws UnsupportedOperationException {
         if (EngineSettings.isHavenaskEngine(indexSettings)) {
+            // check field name
+            mapperService.documentMapper().mappers().forEach(mapper -> {
+                String fieldName = mapper.name();
+                if (fieldName.contains("-")) {
+                    throw new UnsupportedOperationException(
+                        String.format(Locale.ROOT, "Unsupported field name [%s], field name cannot contain hyphen '-'", fieldName)
+                    );
+                }
+            });
+
             SchemaGenerator generate = new SchemaGenerator();
             // validate the index mapping
             generate.getSchema(table, indexSettings, mapperService);
