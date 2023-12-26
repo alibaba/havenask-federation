@@ -14,6 +14,7 @@
 
 package org.havenask.engine.index.config.generator;
 
+import org.havenask.cluster.metadata.IndexMetadata;
 import org.havenask.common.settings.Settings;
 import org.havenask.engine.HavenaskEnginePlugin;
 import org.havenask.engine.index.config.ZoneBiz;
@@ -199,7 +200,11 @@ public class BizConfigGeneratorTests extends MapperServiceTestCase {
                     + "\t\t\"index_name\":\"field\",\n"
                     + "\t\t\"index_type\":\"STRING\"\n"
                     + "\t}],\n"
+                    + "\t\"settings\":{\n"
+                    + "\t\t\"enable_all_text_field_meta\":true\n"
+                    + "\t},\n"
                     + "\t\"summarys\":{\n"
+                    + "\t\t\"compress\":true,\n"
                     + "\t\t\"summary_fields\":[\"_routing\",\"_source\",\"_id\"]\n"
                     + "\t},\n"
                     + "\t\"table_name\":\"%s\",\n"
@@ -450,11 +455,16 @@ public class BizConfigGeneratorTests extends MapperServiceTestCase {
                     + "\t\t\t\"dimension\":\"128\",\n"
                     + "\t\t\t\"enable_rt_build\":\"true\",\n"
                     + "\t\t\t\"distance_type\":\"SquaredEuclidean\",\n"
+                    + "\t\t\t\"ignore_invalid_doc\":\"true\",\n"
                     + "\t\t\t\"builder_name\":\"HnswBuilder\",\n"
                     + "\t\t\t\"searcher_name\":\"HnswSearcher\"\n"
                     + "\t\t}\n"
                     + "\t}],\n"
+                    + "\t\"settings\":{\n"
+                    + "\t\t\"enable_all_text_field_meta\":true\n"
+                    + "\t},\n"
                     + "\t\"summarys\":{\n"
+                    + "\t\t\"compress\":true,\n"
                     + "\t\t\"summary_fields\":[\"_routing\",\"_source\",\"_id\"]\n"
                     + "\t},\n"
                     + "\t\"table_name\":\"%s\",\n"
@@ -722,7 +732,11 @@ public class BizConfigGeneratorTests extends MapperServiceTestCase {
                     + "\t\t\"index_name\":\"field\",\n"
                     + "\t\t\"index_type\":\"STRING\"\n"
                     + "\t}],\n"
+                    + "\t\"settings\":{\n"
+                    + "\t\t\"enable_all_text_field_meta\":true\n"
+                    + "\t},\n"
                     + "\t\"summarys\":{\n"
+                    + "\t\t\"compress\":true,\n"
                     + "\t\t\"summary_fields\":[\"_routing\",\"_source\",\"_id\"]\n"
                     + "\t},\n"
                     + "\t\"table_name\":\"%s\",\n"
@@ -806,6 +820,7 @@ public class BizConfigGeneratorTests extends MapperServiceTestCase {
         BizConfigGenerator bizConfigGenerator = new BizConfigGenerator(
             indexName,
             Settings.builder()
+                .put(IndexMetadata.SETTING_NUMBER_OF_SHARDS, 3)
                 .put(EngineSettings.HAVENASK_FLUSH_MAX_DOC_COUNT.getKey(), 10)
                 .put(EngineSettings.HAVENASK_WRITE_QUEUE_SIZE.getKey(), 100)
                 .put(EngineSettings.HAVENASK_HASH_FIELD.getKey(), "test")
@@ -841,7 +856,7 @@ public class BizConfigGeneratorTests extends MapperServiceTestCase {
                     + "\t\t\t\"batch_mode\":false,\n"
                     + "\t\t\t\"build_parallel_num\":1,\n"
                     + "\t\t\t\"merge_parallel_num\":1,\n"
-                    + "\t\t\t\"partition_count\":1\n"
+                    + "\t\t\t\"partition_count\":3\n"
                     + "\t\t},\n"
                     + "\t\t\"cluster_name\":\"%s\",\n"
                     + "\t\t\"hash_mode\":{\n"

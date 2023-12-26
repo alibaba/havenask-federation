@@ -392,9 +392,10 @@ public class MappingIT extends AbstractHavenaskRestTestCase {
             "embedding_delimiter",
             "linear_build_threshold",
             "enable_recall_report",
-            "min_scan_doc_cnt", };
+            "min_scan_doc_cnt",
+            "ignore_invalid_doc" };
 
-        final String[] indexOptionValues = new String[] { "qc", ",", "10000", "true", "20000" };
+        final String[] indexOptionValues = new String[] { "qc", ",", "10000", "true", "20000", "true" };
 
         final String[] searchIndexParamsNames = new String[] { "proxima.qc.searcher.scan_ratio" };
         final String[] searchIndexParamsValues = new String[] { "0.01" };

@@ -14,13 +14,6 @@
 
 package org.havenask.engine.util;
 
-import com.alibaba.fastjson.JSONObject;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-import org.havenask.SpecialPermission;
-import org.havenask.common.collect.Tuple;
-import org.havenask.index.shard.ShardId;
-
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
@@ -32,6 +25,14 @@ import java.security.PrivilegedExceptionAction;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.stream.Stream;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.havenask.SpecialPermission;
+import org.havenask.common.collect.Tuple;
+import org.havenask.index.shard.ShardId;
+
+import com.alibaba.fastjson.JSONObject;
 
 public class Utils {
     public static <T> T doPrivileged(PrivilegedExceptionAction<T> operation) throws Exception {
@@ -93,7 +94,7 @@ public class Utils {
         // no version file or directory not exists
         if (Objects.equals(maxIndexVersionFile, null)) return null;
         if (Objects.equals(maxIndexVersionFile, "")) {
-            logger.error("directory [{}] has no version file ", versionFilePath);
+            logger.info("directory [{}] has no version file ", versionFilePath);
             return null;
         }
 
@@ -117,7 +118,7 @@ public class Utils {
                 .orElse("");
             return maxVersionFile;
         } catch (Exception e) {
-            logger.error("directory [{}] does not exist or the version num is too big", versionFilePath);
+            logger.info("directory [{}] does not exist or the version num is too big", versionFilePath);
             return null;
         }
     }
@@ -135,7 +136,7 @@ public class Utils {
             }
             return locator;
         } catch (Exception e) {
-            logger.error("get index locator failed in file [{}]", jsonPath);
+            logger.info("get index locator failed in file [{}]", jsonPath);
             return null;
         }
     }
@@ -158,19 +159,19 @@ public class Utils {
         try {
             progressNum = getLongLittleEndian(locator, 32, 48);
         } catch (Exception e) {
-            logger.error("illegal form locator [{}]", locator);
+            logger.info("illegal form locator [{}]", locator);
             return null;
         }
 
         if (16 + 16 + 16 + progressNum * 32 != locator.length()) {
-            logger.error("illegal form locator with progressNum: [{}] and locator length: [{}]", progressNum, locator.length());
+            logger.info("illegal form locator with progressNum: [{}] and locator length: [{}]", progressNum, locator.length());
             return null;
         }
 
         try {
             return getLongLittleEndian(locator, 48, 64);
         } catch (Exception e) {
-            logger.error("illegal form locator [{}]", locator);
+            logger.info("illegal form locator [{}]", locator);
             return null;
         }
     }
@@ -230,5 +231,20 @@ public class Utils {
             }
             return true;
         });
+    }
+
+    public static void cleanVersionPublishFiles(Path filePath) {
+        try (Stream<Path> stream = Files.list(filePath)) {
+            stream.map(path1 -> path1.getFileName().toString()).filter(s -> s.matches("version\\.publish\\.\\d+")).forEach(s -> {
+                try {
+                    Files.delete(filePath.resolve(s));
+                } catch (IOException e) {
+                    logger.info("delete file [{}] failed", filePath.resolve(s));
+                }
+            });
+
+        } catch (Exception e) {
+            logger.info("directory [{}] does not exist or the version num is too big", filePath);
+        }
     }
 }

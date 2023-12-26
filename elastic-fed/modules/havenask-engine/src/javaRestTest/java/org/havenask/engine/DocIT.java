@@ -20,7 +20,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-import com.alibaba.fastjson.JSONObject;
 import org.apache.http.util.EntityUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -45,6 +44,8 @@ import org.havenask.engine.index.mapper.DenseVectorFieldMapper;
 import org.havenask.engine.index.query.KnnQueryBuilder;
 import org.havenask.search.builder.SearchSourceBuilder;
 import org.junit.AfterClass;
+
+import com.alibaba.fastjson.JSONObject;
 
 public class DocIT extends AbstractHavenaskRestTestCase {
     // static logger
@@ -381,22 +382,24 @@ public class DocIT extends AbstractHavenaskRestTestCase {
         return mappingBuilder;
     }
 
-    private static void checkStatsDocCount(String index, long expectedDocCount) throws IOException {
-        Response indexStatsResponse = highLevelClient().getLowLevelClient().performRequest(new Request("GET", "/" + index + "/_stats"));
-        String indexStats = EntityUtils.toString(indexStatsResponse.getEntity());
-        JSONObject indexStatsJson = JSONObject.parseObject(indexStats);
-        long docCount = indexStatsJson.getJSONObject("indices")
-            .getJSONObject(index)
-            .getJSONObject("total")
-            .getJSONObject("docs")
-            .getLong("count");
-        assertEquals(expectedDocCount, docCount);
-        long storeSize = indexStatsJson.getJSONObject("indices")
-            .getJSONObject(index)
-            .getJSONObject("total")
-            .getJSONObject("store")
-            .getLong("size_in_bytes");
-        assertTrue(storeSize >= 10240L);
+    private static void checkStatsDocCount(String index, long expectedDocCount) throws Exception {
+        assertBusy(() -> {
+            Response indexStatsResponse = highLevelClient().getLowLevelClient().performRequest(new Request("GET", "/" + index + "/_stats"));
+            String indexStats = EntityUtils.toString(indexStatsResponse.getEntity());
+            JSONObject indexStatsJson = JSONObject.parseObject(indexStats);
+            long docCount = indexStatsJson.getJSONObject("indices")
+                .getJSONObject(index)
+                .getJSONObject("total")
+                .getJSONObject("docs")
+                .getLong("count");
+            assertEquals(expectedDocCount, docCount);
+            long storeSize = indexStatsJson.getJSONObject("indices")
+                .getJSONObject(index)
+                .getJSONObject("total")
+                .getJSONObject("store")
+                .getLong("size_in_bytes");
+            assertTrue(storeSize >= 10240L);
+        }, 30, TimeUnit.SECONDS);
     }
 
     protected void waitSqlResponseExists(String sqlStr, int expectedRowCount) throws Exception {

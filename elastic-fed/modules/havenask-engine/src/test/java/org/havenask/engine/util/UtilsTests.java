@@ -28,15 +28,18 @@
 
 package org.havenask.engine.util;
 
-import org.havenask.common.collect.Tuple;
-import org.havenask.test.HavenaskTestCase;
-
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Locale;
+import java.util.stream.Stream;
 
+import org.apache.lucene.util.LuceneTestCase;
+import org.havenask.common.collect.Tuple;
+import org.havenask.test.HavenaskTestCase;
+
+@LuceneTestCase.SuppressFileSystems("ExtrasFS")
 public class UtilsTests extends HavenaskTestCase {
     private final Path configPath;
     private final String prefix = "0000000000000000ffffffffffffffff0100000000000000";
@@ -224,5 +227,26 @@ public class UtilsTests extends HavenaskTestCase {
         assertEquals(12, Utils.hexCharToInt('C'));
         assertEquals(15, Utils.hexCharToInt('F'));
         assertThrows(NumberFormatException.class, () -> Utils.hexCharToInt('g'));
+    }
+
+    // test cleanVersionPublishFiles
+    public void testCleanVersionPublishFiles() {
+        String testIndex = "in6";
+        Path indexPath = configPath.resolve(testIndex).resolve("generation_0").resolve("partition_0_65535");
+        Path dirPath = mkIndexDir(testIndex);
+
+        writeTestFile(dirPath, "version.publish.1", "some content");
+        writeTestFile(dirPath, "version.publish.7", "some content");
+        writeTestFile(dirPath, "version.publish.3", "some content");
+        writeTestFile(dirPath, "ssversion.publish.18", "some content");
+        writeTestFile(dirPath, "other", "some content");
+
+        Utils.cleanVersionPublishFiles(indexPath);
+
+        try (Stream<Path> stream = Files.list(dirPath)) {
+            assertEquals(2, stream.count());
+        } catch (IOException e) {
+            logger.error("list directory [{}] error", dirPath);
+        }
     }
 }
