@@ -441,17 +441,17 @@ public class MetaDataSyncer extends AbstractLifecycleComponent implements Cluste
         );
         searcherTargetInfo.biz_info = new TargetInfo.BizInfo(defaultBizsPath);
 
-        List<String> indexNames = getIndexNames(clusterState);
-        for (String tableName : indexNames) {
+        Set<String> localHavenaskIndexNames = getLocalHavenaskIndexNames(clusterState);
+        for (String tableName : localHavenaskIndexNames) {
             createConfigLink(HAVENASK_SEARCHER_HOME, "table", tableName, defaultTablePath, env.getDataPath());
         }
-        indexNames.add(TABLE_NAME_IN0);
+        localHavenaskIndexNames.add(TABLE_NAME_IN0);
 
         // update table info
-        generateDefaultBizConfig(indexNames);
+        generateDefaultBizConfig(localHavenaskIndexNames);
 
         searcherTargetInfo.table_groups = new HashMap<>();
-        for (String indexName : indexNames) {
+        for (String indexName : localHavenaskIndexNames) {
             String tableGroupName = SEARCHER_ZONE_NAME + ".table_group." + indexName;
             TargetInfo.TableGroup tableGroup = new TargetInfo.TableGroup();
             tableGroup.table_names = new ArrayList<>();
@@ -461,7 +461,7 @@ public class MetaDataSyncer extends AbstractLifecycleComponent implements Cluste
 
         searcherTargetInfo.table_info = new HashMap<>();
         Map<String, Tuple<Integer, Set<Integer>>> indexShards = getIndexShards(clusterState);
-        for (String index : indexNames) {
+        for (String index : localHavenaskIndexNames) {
             String configPath = defaultTablePath.toString();
             String indexRoot = indexRootPath.toString();
 
@@ -586,8 +586,8 @@ public class MetaDataSyncer extends AbstractLifecycleComponent implements Cluste
         return String.valueOf(maxId);
     }
 
-    private static List<String> getIndexNames(ClusterState clusterState) {
-        List<String> indexNames = new ArrayList<>();
+    private static Set<String> getLocalHavenaskIndexNames(ClusterState clusterState) {
+        Set<String> indexNames = new HashSet<>();
         RoutingNode localRoutingNode = clusterState.getRoutingNodes().node(clusterState.nodes().getLocalNodeId());
         if (localRoutingNode == null) {
             throw new RuntimeException("localRoutingNode is null");
@@ -625,11 +625,11 @@ public class MetaDataSyncer extends AbstractLifecycleComponent implements Cluste
         return indexShards;
     }
 
-    private synchronized void generateDefaultBizConfig(List<String> indexList) throws IOException {
+    private synchronized void generateDefaultBizConfig(Set<String> indexList) throws IOException {
         Path defaultBizConfigPath = defaultBizsPath.resolve(DEFAULT_BIZ_CONFIG);
         String strZone = Files.readString(defaultBizConfigPath, StandardCharsets.UTF_8);
         ZoneBiz zoneBiz = ZoneBiz.parse(strZone);
-        zoneBiz.turing_options_config.dependency_table = new HashSet<>(indexList);
+        zoneBiz.turing_options_config.dependency_table = indexList;
         Files.write(
             defaultBizConfigPath,
             zoneBiz.toString().getBytes(StandardCharsets.UTF_8),
