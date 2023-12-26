@@ -72,6 +72,10 @@ public class HavenaskShardsLimitAllocationDecider extends AllocationDecider {
         RoutingAllocation allocation,
         BiPredicate<Integer, Integer> decider
     ) {
+        IndexMetadata indexMetadata = allocation.metadata().index(shardRouting.index());
+        if (false == EngineSettings.isHavenaskEngine(indexMetadata.getSettings())) {
+            return allocation.decision(Decision.YES, NAME, "not havenask index, skip HavenaskShardsLimitAllocationDecider.");
+        }
         // execution
         final int clusterHavenaskShardLimit = this.clusterHavenaskShardLimit;
 
