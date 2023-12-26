@@ -41,6 +41,14 @@ public class HavenaskIndexMappingProvider implements IndexMappingProvider {
     public void validateIndexMapping(String table, Settings indexSettings, MapperService mapperService)
         throws UnsupportedOperationException {
         if (EngineSettings.isHavenaskEngine(indexSettings)) {
+            mapperService.documentMapperParser().parse("_doc", mapperService.documentMapper().mappingSource());
+            mapperService.documentMapper().mappers().forEach(mapper -> {
+                String fieldName = mapper.name();
+                if (fieldName.contains("-")) {
+                    throw new UnsupportedOperationException("不支持的字段名，字段名中不能够包含中划线'-'");
+                }
+            });
+
             SchemaGenerator generate = new SchemaGenerator();
             // validate the index mapping
             generate.getSchema(table, indexSettings, mapperService);
