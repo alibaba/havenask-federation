@@ -179,7 +179,8 @@ public class HavenaskSearchQueryProcessor {
     @SuppressWarnings("unchecked")
     private String getSimilarity(String fieldName, Map<String, Object> indexMapping) {
         // TODO: 需要考虑如何优化,
-        // 1.similarity的获取方式，
+        // 1.similarity的获取方式
+        // 2.需要用户使用'_'来分割Object对象的子字段
         String[] fields = fieldName.split("_");
 
         Map<String, Object> curMap = indexMapping;
@@ -197,8 +198,10 @@ public class HavenaskSearchQueryProcessor {
                 return null;
             }
         }
-        if (curMap.get("type") == VECTOR_TYPE) {
-            return curMap.get(SIMILARITY) != null ? (String) curMap.get(SIMILARITY) : VECTOR_SIMILARITY_TYPE_L2_NORM;
+        if (curMap.get("type").equals(VECTOR_TYPE)) {
+            return curMap.get(SIMILARITY) != null
+                ? ((String) curMap.get(SIMILARITY)).toUpperCase(Locale.ROOT)
+                : VECTOR_SIMILARITY_TYPE_L2_NORM;
         }
         return null;
     }
