@@ -39,6 +39,7 @@ import static org.havenask.engine.search.rest.RestHavenaskSqlAction.SQL_DATABASE
 
 public class HavenaskSearchQueryProcessor {
     private static final Logger logger = LogManager.getLogger(HavenaskSearchQueryProcessor.class);
+    private static final String VECTOR_TYPE = "vector";
     private static final String SIMILARITY = "similarity";
     private static final String PROPERTIES_FIELD = "properties";
     private static final String VECTOR_SIMILARITY_TYPE_L2_NORM = "L2_NORM";
@@ -179,17 +180,26 @@ public class HavenaskSearchQueryProcessor {
     private String getSimilarity(String fieldName, Map<String, Object> indexMapping) {
         // TODO: 需要考虑如何优化,
         // 1.similarity的获取方式，
-        // 2.针对嵌套的properties如何查询
-        Object propertiesObj = indexMapping.get(PROPERTIES_FIELD);
-        if (propertiesObj instanceof Map) {
-            Map<String, Object> propertiesMapping = (Map<String, Object>) propertiesObj;
-            Object fieldObj = propertiesMapping.get(fieldName);
-            if (fieldObj instanceof Map) {
-                Map<String, Object> fieldMapping = (Map<String, Object>) fieldObj;
-                return (String) fieldMapping.get(SIMILARITY);
+        String[] fields = fieldName.split("_");
+
+        Map<String, Object> curMap = indexMapping;
+        for (int i = 0; i < fields.length; i++) {
+            Object propertiesObj = curMap.get(PROPERTIES_FIELD);
+            if (propertiesObj instanceof Map) {
+                curMap = (Map<String, Object>) propertiesObj;
+                Object fieldObj = curMap.get(fields[i]);
+                if (fieldObj instanceof Map) {
+                    curMap = (Map<String, Object>) fieldObj;
+                } else {
+                    return null;
+                }
+            } else {
+                return null;
             }
         }
-
+        if (curMap.get("type") == VECTOR_TYPE) {
+            return curMap.get(SIMILARITY) != null ? (String) curMap.get(SIMILARITY) : VECTOR_SIMILARITY_TYPE_L2_NORM;
+        }
         return null;
     }
 

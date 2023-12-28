@@ -33,6 +33,7 @@ import static org.mockito.Mockito.mock;
 public class HavenaskSearchQueryProcessorTests extends HavenaskTestCase {
     private QrsClient qrsClient = mock(QrsClient.class);
     private Map<String, Object> indexMapping = new HashMap<>();
+    private Map<String, Object> ObjectMapping = new HashMap<>();
 
     @Before
     public void setup() {
@@ -40,13 +41,27 @@ public class HavenaskSearchQueryProcessorTests extends HavenaskTestCase {
         Map<String, Object> fieldMapping = new HashMap<>();
         Map<String, Object> field1Mapping = new HashMap<>();
         Map<String, Object> field2Mapping = new HashMap<>();
+        fieldMapping.put("type", "vector");
         fieldMapping.put("similarity", "L2_NORM");
+        field1Mapping.put("type", "vector");
         field1Mapping.put("similarity", "L2_NORM");
+        field2Mapping.put("type", "vector");
         field2Mapping.put("similarity", "DOT_PRODUCT");
         propertiesMapping.put("field", fieldMapping);
         propertiesMapping.put("field1", field1Mapping);
         propertiesMapping.put("field2", field2Mapping);
         indexMapping.put("properties", propertiesMapping);
+
+        Map<String, Object> propertiesObjectMapping = new HashMap<>();
+        Map<String, Object> userMapping = new HashMap<>();
+        Map<String, Object> userPropertiesMapping = new HashMap<>();
+        Map<String, Object> userImageMapping = new HashMap<>();
+        userImageMapping.put("type", "vector");
+        userImageMapping.put("similarity", "L2_NORM");
+        userPropertiesMapping.put("image", userImageMapping);
+        userMapping.put("properties", userPropertiesMapping);
+        propertiesObjectMapping.put("user", userMapping);
+        ObjectMapping.put("properties", propertiesObjectMapping);
     }
 
     public void testMatchAllDocsQuery() throws IOException {
@@ -140,6 +155,19 @@ public class HavenaskSearchQueryProcessorTests extends HavenaskTestCase {
             "select _id, (((1+vector_score('field2'))/2)) as _score from `table` "
                 + "where MATCHINDEX('field2', '0.6,0.8&n=20') order by _score desc limit 10 offset 0",
             dotProductSql
+        );
+    }
+
+    public void testObjectKnnDsl() throws IOException {
+        SearchSourceBuilder l2NormBuilder = new SearchSourceBuilder();
+        l2NormBuilder.query(QueryBuilders.matchAllQuery());
+        l2NormBuilder.knnSearch(List.of(new KnnSearchBuilder("user_image", new float[] { 1.0f, 2.0f }, 20, 20, null)));
+        HavenaskSearchQueryProcessor havenaskSearchQueryProcessor = new HavenaskSearchQueryProcessor(qrsClient);
+        String l2NormSql = havenaskSearchQueryProcessor.transferSearchRequest2HavenaskSql("table", l2NormBuilder, ObjectMapping);
+        assertEquals(
+            "select _id, ((1/(1+vector_score('user_image')))) as _score from `table` "
+                + "where MATCHINDEX('user_image', '1.0,2.0&n=20') order by _score desc limit 10 offset 0",
+            l2NormSql
         );
     }
 

@@ -16,16 +16,23 @@ package org.havenask.engine.index.engine;
 
 import com.carrotsearch.randomizedtesting.annotations.ThreadLeakFilters;
 import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.lucene.document.FieldType;
+import org.apache.lucene.document.SortedNumericDocValuesField;
+import org.apache.lucene.util.BytesRef;
 import org.havenask.action.bulk.BackoffPolicy;
+import org.havenask.common.bytes.BytesArray;
 import org.havenask.common.bytes.BytesReference;
 import org.havenask.common.unit.TimeValue;
 import org.havenask.common.xcontent.XContentBuilder;
 import org.havenask.common.xcontent.XContentType;
+import org.havenask.engine.index.mapper.VectorField;
 import org.havenask.engine.rpc.SearcherClient;
 import org.havenask.engine.rpc.WriteRequest;
 import org.havenask.engine.rpc.WriteResponse;
 import org.havenask.index.engine.Engine.Operation;
 import org.havenask.index.engine.EngineTestCase;
+import org.havenask.index.mapper.KeywordFieldMapper;
+import org.havenask.index.mapper.ParseContext;
 import org.havenask.index.mapper.ParsedDocument;
 import org.havenask.index.shard.ShardId;
 import suez.service.proto.ErrorCode;
@@ -43,18 +50,40 @@ import static org.mockito.Mockito.when;
 
 @ThreadLeakFilters(filters = { KafkaThreadLeakFilter.class })
 public class HavenaskEngineTests extends EngineTestCase {
-
     // test toHaIndex
     public void testToHaIndex() throws IOException {
-        ParsedDocument parsedDocument = createParsedDoc("id", "routing");
+        ParseContext.Document document = testDocument();
+        document.add(new KeywordFieldMapper.KeywordField("user.name", new BytesRef("Bob"), new FieldType()));
+        document.add(new SortedNumericDocValuesField("user.age", 25));
+        document.add(new VectorField("user.image", new float[] { 0.4F, 0.7F }, new FieldType()));
+        String source = "\"user\": { \n"
+            + "        \"properties\": {\n"
+            + "          \"name\": { \n"
+            + "            \"type\": \"keyword\"\n"
+            + "          },\n"
+            + "          \"age\": { \n"
+            + "            \"type\": \"integer\"\n"
+            + "          },\n"
+            + "          \"image\":{\n"
+            + "            \"type\":\"vector\",\n"
+            + "            \"dims\":\"2\",\n"
+            + "            \"similarity\":\"l2_norm\"\n"
+            + "          }\n"
+            + "        }\n"
+            + "      }";
+        BytesReference ref = new BytesArray(source);
+
+        ParsedDocument parsedDocument = testParsedDocument("id", "routing", document, ref, null);
         Map<String, String> haDoc = toHaIndex(parsedDocument);
         assertEquals(haDoc.get("_seq_no"), "-2");
         assertEquals(haDoc.get("_primary_term"), "0");
         assertEquals(haDoc.get("_version"), "0");
         assertEquals(haDoc.get("_id").trim(), "id");
         assertEquals(haDoc.get("_routing"), "routing");
-        assertEquals(haDoc.get("_source"), "{ \"value\" : \"test\" }");
-        assertEquals(haDoc.get("value"), "test");
+        assertEquals(haDoc.get("_source"), source);
+        assertEquals(haDoc.get("user_name"), "Bob");
+        assertEquals(haDoc.get("user_age"), "25");
+        assertEquals(haDoc.get("user_image"), "0.4,0.7");
     }
 
     // test toHaIndex with multi XContentType in _source

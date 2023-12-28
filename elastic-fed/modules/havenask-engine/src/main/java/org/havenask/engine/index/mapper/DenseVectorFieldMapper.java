@@ -112,7 +112,7 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
         @Override
         public DenseVectorFieldMapper build(BuilderContext context) {
             DenseVectorFieldType fieldType = new DenseVectorFieldType(
-                name,
+                buildFullName(context),
                 meta.getValue(),
                 dimension.get(),
                 Similarity.fromString(similarity.get()),
