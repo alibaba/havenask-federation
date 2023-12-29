@@ -382,13 +382,13 @@ public class HavenaskEngine extends InternalEngine {
         ParseContext.Document rootDoc = parsedDocument.rootDoc();
         for (IndexableField field : rootDoc.getFields()) {
             String fieldName = field.name();
-            if (haDoc.containsKey(fieldName)) {
-                continue;
-            }
-
             // multi field index
             if (fieldName.contains(".")) {
                 fieldName = Schema.encodeFieldWithDot(fieldName);
+            }
+
+            if (haDoc.containsKey(fieldName)) {
+                continue;
             }
 
             // for string or number
