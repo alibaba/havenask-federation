@@ -19,7 +19,9 @@ import org.havenask.common.settings.Settings;
 import org.havenask.common.xcontent.XContentBuilder;
 import org.havenask.engine.HavenaskEnginePlugin;
 import org.havenask.engine.index.mapper.DenseVectorFieldMapper.DenseVectorFieldType;
+import org.havenask.index.mapper.ContentPath;
 import org.havenask.index.mapper.DocumentMapper;
+import org.havenask.index.mapper.Mapper;
 import org.havenask.index.mapper.MapperParsingException;
 import org.havenask.index.mapper.MapperService;
 import org.havenask.index.mapper.MapperTestCase;
@@ -204,5 +206,18 @@ public class DenseVectorFieldMapperTests extends MapperTestCase {
         float[] vector = new float[] { 1.0f, -2.0f };
         MapperParsingException e = expectThrows(MapperParsingException.class, () -> mapper.parse(source(b -> b.array("field", vector))));
         assertEquals("The [dot_product] similarity can only be used with unit-length vectors.", e.getCause().getMessage());
+    }
+
+    public void testBuildDenseVectorFieldMapper() throws Exception {
+        String name = "image";
+        ContentPath contentPath = new ContentPath(1);
+        contentPath.add("_doc");
+        contentPath.add("user");
+        Mapper.BuilderContext context = new Mapper.BuilderContext(Settings.EMPTY, contentPath);
+
+        DenseVectorFieldMapper.Builder builder = new DenseVectorFieldMapper.Builder(name);
+        DenseVectorFieldMapper denseVectorFieldMapper = builder.build(context);
+
+        assertEquals("user.image", denseVectorFieldMapper.name());
     }
 }

@@ -75,6 +75,7 @@ import org.havenask.common.xcontent.XContentHelper;
 import org.havenask.engine.HavenaskEngineEnvironment;
 import org.havenask.engine.MetaDataSyncer;
 import org.havenask.engine.NativeProcessControlService;
+import org.havenask.engine.index.config.Schema;
 import org.havenask.engine.index.mapper.VectorField;
 import org.havenask.engine.rpc.ArpcResponse;
 import org.havenask.engine.rpc.QueryTableRequest;
@@ -381,7 +382,12 @@ public class HavenaskEngine extends InternalEngine {
         ParseContext.Document rootDoc = parsedDocument.rootDoc();
         for (IndexableField field : rootDoc.getFields()) {
             String fieldName = field.name();
-            if (haDoc.containsKey(fieldName) || fieldName.contains(".")) {
+            // multi field index
+            if (fieldName.contains(".")) {
+                fieldName = Schema.encodeFieldWithDot(fieldName);
+            }
+
+            if (haDoc.containsKey(fieldName)) {
                 continue;
             }
 
@@ -392,7 +398,7 @@ public class HavenaskEngine extends InternalEngine {
             }
 
             if (Objects.nonNull(stringVal)) {
-                haDoc.put(field.name(), stringVal);
+                haDoc.put(fieldName, stringVal);
                 continue;
             }
 
@@ -400,12 +406,12 @@ public class HavenaskEngine extends InternalEngine {
             if (binaryVal == null) {
                 throw new IOException("invalid field value!");
             }
-            if (field.name().equals(IdFieldMapper.NAME)) {
-                haDoc.put(field.name(), Uid.decodeId(binaryVal.bytes));
-            } else if (field.name().equals(SourceFieldMapper.NAME)) {
+            if (fieldName.equals(IdFieldMapper.NAME)) {
+                haDoc.put(fieldName, Uid.decodeId(binaryVal.bytes));
+            } else if (fieldName.equals(SourceFieldMapper.NAME)) {
                 BytesReference bytes = new BytesArray(binaryVal);
                 String src = XContentHelper.convertToJson(bytes, false, parsedDocument.getXContentType());
-                haDoc.put(field.name(), src);
+                haDoc.put(fieldName, src);
             } else if (field instanceof VectorField) {
                 VectorField vectorField = (VectorField) field;
                 float[] array = (float[]) VectorField.readValue(vectorField.binaryValue().bytes);
@@ -418,9 +424,9 @@ public class HavenaskEngine extends InternalEngine {
                     }
                     b.append(",");
                 }
-                haDoc.put(field.name(), b.toString());
+                haDoc.put(fieldName, b.toString());
             } else { // TODO other special fields support.
-                haDoc.put(field.name(), binaryVal.utf8ToString());
+                haDoc.put(fieldName, binaryVal.utf8ToString());
             }
         }
 
