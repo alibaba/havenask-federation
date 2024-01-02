@@ -51,6 +51,7 @@ public class TransportHavenaskSqlAction extends HandledTransportAction<HavenaskS
         super(HavenaskSqlAction.NAME, transportService, actionFilters, HavenaskSqlRequest::new, Names.SEARCH);
         this.clusterService = clusterService;
         this.ingestForwarder = new IngestActionForwarder(transportService);
+        clusterService.addStateApplier(this.ingestForwarder);
         this.qrsClient = new QrsHttpClient(nativeProcessControlService.getQrsHttpPort());
     }
 

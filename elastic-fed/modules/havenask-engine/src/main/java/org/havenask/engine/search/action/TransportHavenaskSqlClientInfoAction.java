@@ -16,8 +16,6 @@ package org.havenask.engine.search.action;
 
 import java.io.IOException;
 
-import com.alibaba.fastjson.JSONObject;
-
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.havenask.action.ActionListener;
@@ -37,6 +35,8 @@ import org.havenask.tasks.Task;
 import org.havenask.threadpool.ThreadPool.Names;
 import org.havenask.transport.TransportService;
 
+import com.alibaba.fastjson.JSONObject;
+
 public class TransportHavenaskSqlClientInfoAction extends HandledTransportAction<Request, Response> {
     private static final Logger logger = LogManager.getLogger(TransportHavenaskSqlClientInfoAction.class);
 
@@ -54,6 +54,7 @@ public class TransportHavenaskSqlClientInfoAction extends HandledTransportAction
         super(HavenaskSqlClientInfoAction.NAME, transportService, actionFilters, HavenaskSqlClientInfoAction.Request::new, Names.SEARCH);
         this.clusterService = clusterService;
         this.ingestForwarder = new IngestActionForwarder(transportService);
+        clusterService.addStateApplier(this.ingestForwarder);
         this.qrsClient = new QrsHttpClient(nativeProcessControlService.getQrsHttpPort());
     }
 
