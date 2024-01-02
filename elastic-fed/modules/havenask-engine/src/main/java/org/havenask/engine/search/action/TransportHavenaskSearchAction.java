@@ -57,6 +57,7 @@ public class TransportHavenaskSearchAction extends HandledTransportAction<Search
         super(HavenaskSearchAction.NAME, transportService, actionFilters, SearchRequest::new, ThreadPool.Names.SEARCH);
         this.clusterService = clusterService;
         this.ingestForwarder = new IngestActionForwarder(transportService);
+        clusterService.addStateApplier(this.ingestForwarder);
         this.qrsClient = new QrsHttpClient(nativeProcessControlService.getQrsHttpPort());
         havenaskSearchQueryProcessor = new HavenaskSearchQueryProcessor(qrsClient);
         havenaskSearchFetchProcessor = new HavenaskSearchFetchProcessor(qrsClient);
