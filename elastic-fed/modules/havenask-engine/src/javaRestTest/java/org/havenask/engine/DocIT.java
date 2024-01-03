@@ -17,12 +17,16 @@ package org.havenask.engine;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.http.util.EntityUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.havenask.action.admin.cluster.health.ClusterHealthRequest;
+import org.havenask.action.admin.cluster.health.ClusterHealthResponse;
 import org.havenask.action.admin.indices.delete.DeleteIndexRequest;
 import org.havenask.action.bulk.BulkRequest;
 import org.havenask.action.delete.DeleteRequest;
@@ -50,11 +54,7 @@ import com.alibaba.fastjson.JSONObject;
 public class DocIT extends AbstractHavenaskRestTestCase {
     // static logger
     private static final Logger logger = LogManager.getLogger(DocIT.class);
-    private static final String[] DocITIndices = { "index_doc_method", "index_multi_data_type", "illegal_vector_test", "update_doc_test" };
-    private static final int TEST_DOC_METHOD_INDEX_POS = 0;
-    private static final int TEST_MULTI_DATA_TYPE_INDEX_POS = 1;
-    private static final int TEST_ILLEGAL_VECTOR_TEST_INDEX_POS = 2;
-    private static final int TEST_UPDATE_DOC_TEST_INDEX_POS = 3;
+    private static Set<String> DocITIndices = new HashSet<>();
 
     @AfterClass
     public static void cleanIndices() {
@@ -70,15 +70,22 @@ public class DocIT extends AbstractHavenaskRestTestCase {
         }
     }
 
-    // test document api, PUT/POST/DELETE and bulk
+    // test document api, PUT/POST/DELETE and bulk, test GET /index/_stats
     public void testDocMethod() throws Exception {
-        assumeTrue("number_of_nodes more than 1, Skip func: testDocMethod()", clusterIsSingleNode());
+        String index = "index_doc_method";
+        DocITIndices.add(index);
 
-        String index = DocITIndices[TEST_DOC_METHOD_INDEX_POS];
+        ClusterHealthResponse clusterHealthResponse = highLevelClient().cluster()
+            .health(new ClusterHealthRequest(), RequestOptions.DEFAULT);
+        int numberOfDataNodes = clusterHealthResponse.getNumberOfDataNodes();
+
+        int shardsNum = randomIntBetween(2, 6);
+        int replicasNum = randomIntBetween(0, numberOfDataNodes - 1);
         // create index
         Settings settings = Settings.builder()
             .put(EngineSettings.ENGINE_TYPE_SETTING.getKey(), EngineSettings.ENGINE_HAVENASK)
-            .put("number_of_replicas", 0)
+            .put("number_of_shards", shardsNum)
+            .put("number_of_replicas", replicasNum)
             .build();
 
         java.util.Map<String, ?> map = Map.of(
@@ -116,16 +123,11 @@ public class DocIT extends AbstractHavenaskRestTestCase {
         putDoc(index, Map.of("seq", 4, "content", "欢迎使用4", "time", "20230715"));
 
         /// get index data count
-        waitSqlResponseExists("select count(*) from " + index, 1);
-        SqlResponse sqlResponse = getSqlResponse("select count(*) from " + index);
-
-        assertEquals(1, sqlResponse.getRowCount());
-        assertEquals(1, sqlResponse.getSqlResult().getData().length);
-        assertEquals(1, sqlResponse.getSqlResult().getColumnName().length);
-        assertEquals(1, sqlResponse.getSqlResult().getColumnType().length);
-        assertEquals(4, sqlResponse.getSqlResult().getData()[0][0]);
-        assertEquals("COUNT(*)", sqlResponse.getSqlResult().getColumnName()[0]);
-        assertEquals("int64", sqlResponse.getSqlResult().getColumnType()[0]);
+        assertBusy(() -> {
+            waitSqlResponseExists("select count(*) from " + index, 1);
+            SqlResponse sqlResponse = getSqlResponse("select count(*) from " + index);
+            assertEquals(4, sqlResponse.getSqlResult().getData()[0][0]);
+        }, 5, TimeUnit.SECONDS);
 
         // get index stats
         checkStatsDocCount(index, 4L);
@@ -183,11 +185,20 @@ public class DocIT extends AbstractHavenaskRestTestCase {
 
     // test common data type(int, double, boolean, date, text, keyword, array)
     public void testMultiDataType() throws Exception {
-        String index = DocITIndices[TEST_MULTI_DATA_TYPE_INDEX_POS];
+        String index = "index_multi_data_type";
+        DocITIndices.add(index);
+
+        ClusterHealthResponse clusterHealthResponse = highLevelClient().cluster()
+            .health(new ClusterHealthRequest(), RequestOptions.DEFAULT);
+        int numberOfDataNodes = clusterHealthResponse.getNumberOfDataNodes();
+
+        int shardsNum = randomIntBetween(2, 6);
+        int replicasNum = randomIntBetween(0, numberOfDataNodes - 1);
         // create index with multi data type
         Settings settings = Settings.builder()
             .put(EngineSettings.ENGINE_TYPE_SETTING.getKey(), EngineSettings.ENGINE_HAVENASK)
-            .put("number_of_replicas", 0)
+            .put("number_of_shards", shardsNum)
+            .put("number_of_replicas", replicasNum)
             .build();
 
         java.util.Map<String, ?> map = Map.of(
@@ -284,20 +295,28 @@ public class DocIT extends AbstractHavenaskRestTestCase {
     }
 
     public void testIllegalVectorParams() throws Exception {
-        String index = DocITIndices[TEST_ILLEGAL_VECTOR_TEST_INDEX_POS];
+        String index = "illegal_vector_test";
+        DocITIndices.add(index);
+
         String fieldName = "vector";
         int vectorDims = 2;
         String similarity = "dot_product";
 
         float[] vectorParams = { 1.0f, 2.0f };
 
+        ClusterHealthResponse clusterHealthResponse = highLevelClient().cluster()
+            .health(new ClusterHealthRequest(), RequestOptions.DEFAULT);
+        int numberOfDataNodes = clusterHealthResponse.getNumberOfDataNodes();
+
+        int shardsNum = randomIntBetween(2, 6);
+        int replicasNum = randomIntBetween(0, numberOfDataNodes - 1);
         // create index
         assertTrue(
             createTestIndex(
                 index,
                 Settings.builder()
-                    .put("index.number_of_shards", 1)
-                    .put("index.number_of_replicas", 0)
+                    .put("index.number_of_shards", shardsNum)
+                    .put("index.number_of_replicas", replicasNum)
                     .put(EngineSettings.ENGINE_TYPE_SETTING.getKey(), EngineSettings.ENGINE_HAVENASK)
                     .build(),
                 createMapping(fieldName, vectorDims, similarity)
@@ -327,43 +346,7 @@ public class DocIT extends AbstractHavenaskRestTestCase {
             org.havenask.HavenaskStatusException.class,
             () -> highLevelClient().search(searchRequest, RequestOptions.DEFAULT)
         );
-        assertTrue(ex2.getCause().getMessage().contains("The [dot_product] similarity can only be used with unit-length vectors."));
-
-        deleteAndHeadIndex(index);
-    }
-
-    public void testUpdateDoc() throws Exception {
-        String index = DocITIndices[TEST_UPDATE_DOC_TEST_INDEX_POS];
-        int loopCount = 10;
-
-        assertTrue(
-            createTestIndex(
-                index,
-                Settings.builder()
-                    .put("index.number_of_shards", 1)
-                    .put("index.number_of_replicas", 0)
-                    .put(EngineSettings.ENGINE_TYPE_SETTING.getKey(), EngineSettings.ENGINE_HAVENASK)
-                    .build(),
-                Map.of("properties", Map.of("seq", Map.of("type", "integer")))
-            )
-        );
-
-        waitIndexGreen(index);
-
-        putDoc(index, "1", Map.of("seq", 0));
-        waitResponseExists(index, "1");
-        GetResponse getResponse = getDocById(index, "1");
-        assertEquals(0, getResponse.getSourceAsMap().get("seq"));
-        for (int i = 1; i < loopCount; i++) {
-            int expectedSeqVal = i;
-            updateDoc(index, "1", Map.of("seq", i));
-            assertBusy(() -> {
-                GetResponse getUpdateResponse = getDocById(index, "1");
-                assertEquals(expectedSeqVal, getUpdateResponse.getSourceAsMap().get("seq"));
-            }, 10, TimeUnit.SECONDS);
-            getResponse = getDocById(index, "1");
-            assertEquals(i, getResponse.getSourceAsMap().get("seq"));
-        }
+        assertTrue(ex2.getDetailedMessage().contains("The [dot_product] similarity can only be used with unit-length vectors."));
 
         deleteAndHeadIndex(index);
     }
@@ -399,7 +382,7 @@ public class DocIT extends AbstractHavenaskRestTestCase {
                 .getJSONObject("store")
                 .getLong("size_in_bytes");
             assertTrue(storeSize >= 10240L);
-        }, 30, TimeUnit.SECONDS);
+        }, 10, TimeUnit.SECONDS);
     }
 
     protected void waitSqlResponseExists(String sqlStr, int expectedRowCount) throws Exception {

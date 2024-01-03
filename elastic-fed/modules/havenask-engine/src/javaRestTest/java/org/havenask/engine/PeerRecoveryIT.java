@@ -42,9 +42,7 @@ import java.util.concurrent.TimeUnit;
 public class PeerRecoveryIT extends AbstractHavenaskRestTestCase {
     // static logger
     private static final Logger logger = LogManager.getLogger(PeerRecoveryIT.class);
-    private static final String[] PeerRecoveryITIndices = { "two_shard_peer_recovery_test", "kill_searcher_then_peer_recovery_test" };
-    private static final int TEST_TWO_SHARD_PEER_RECOVERY_INDEX_POS = 0;
-    private static final int TEST_KILL_SEARCHER_THEN_PEER_RECOVERY_INDEX_POS = 1;
+    private static Set<String> PeerRecoveryITIndices = new HashSet<>();
 
     @AfterClass
     public static void cleanIndices() {
@@ -63,7 +61,9 @@ public class PeerRecoveryIT extends AbstractHavenaskRestTestCase {
     public void testTwoShardPeerRecovery() throws Exception {
         assumeTrue("number_of_nodes less then 2, Skip func: testTwoShardPeerRecovery()", clusterIsMultiNodes());
 
-        String index = PeerRecoveryITIndices[TEST_TWO_SHARD_PEER_RECOVERY_INDEX_POS];
+        String index = "two_shard_peer_recovery_test";
+        PeerRecoveryITIndices.add(index);
+
         int loopCount = 5;
         int querySize = 250;
         String primaryPreference = "primary";
@@ -115,7 +115,8 @@ public class PeerRecoveryIT extends AbstractHavenaskRestTestCase {
     public void testKillSearcherThenPeerRecovery() throws Exception {
         assumeTrue("number_of_nodes less then 2, Skip func: testTwoShardPeerRecovery()", clusterIsMultiNodes());
 
-        String index = PeerRecoveryITIndices[TEST_KILL_SEARCHER_THEN_PEER_RECOVERY_INDEX_POS];
+        String index = "kill_searcher_then_peer_recovery_test";
+        PeerRecoveryITIndices.add(index);
 
         int loopCount = 5;
         int querySize = 250;
@@ -123,8 +124,10 @@ public class PeerRecoveryIT extends AbstractHavenaskRestTestCase {
         String replicaPreference = "replication";
 
         // create index
+        ClusterHealthResponse chResponse = highLevelClient().cluster().health(new ClusterHealthRequest(), RequestOptions.DEFAULT);
         Settings settings = Settings.builder()
             .put(EngineSettings.ENGINE_TYPE_SETTING.getKey(), EngineSettings.ENGINE_HAVENASK)
+            .put("number_of_shards", chResponse.getNumberOfDataNodes())
             .put("number_of_replicas", 1)
             .put("index.havenask.flush.max_doc_count", 2)
             .build();
@@ -135,14 +138,12 @@ public class PeerRecoveryIT extends AbstractHavenaskRestTestCase {
         waitIndexGreen(index);
 
         for (int i = 0; i < loopCount; i++) {
-            // stop searcher
-            logger.info("prepare peer recovery, kill searcher!");
-            Request request = new Request("POST", "/_havenask/stop?role=searcher");
-            Response response = highLevelClient().getLowLevelClient().performRequest(request);
-            assertEquals(200, response.getStatusLine().getStatusCode());
-
             // wait cluster health turns to be yellow
             assertBusy(() -> {
+                // stop searcher
+                Request request = new Request("POST", "/_havenask/stop?role=searcher");
+                Response response = highLevelClient().getLowLevelClient().performRequest(request);
+                assertEquals(200, response.getStatusLine().getStatusCode());
                 ClusterHealthResponse clusterHealthResponse = highLevelClient().cluster()
                     .health(new ClusterHealthRequest(index), RequestOptions.DEFAULT);
                 logger.info("peer recovery now, cluster health is {}", clusterHealthResponse.getStatus());
@@ -163,12 +164,8 @@ public class PeerRecoveryIT extends AbstractHavenaskRestTestCase {
                 logger.info("primarySearchResponse: " + primarySearchResponse.getHits().getTotalHits());
                 logger.info("replicaSearchResponse: " + replicaSearchResponse.getHits().getTotalHits());
                 assertEquals(primarySearchResponse.getHits().getTotalHits(), replicaSearchResponse.getHits().getTotalHits());
+                compareResponsesHits(primarySearchResponse, replicaSearchResponse);
             });
-
-            compareResponsesHits(
-                getSearchResponseWithPreference(index, querySize, primaryPreference),
-                getSearchResponseWithPreference(index, querySize, replicaPreference)
-            );
         }
 
         deleteAndHeadIndex(index);
