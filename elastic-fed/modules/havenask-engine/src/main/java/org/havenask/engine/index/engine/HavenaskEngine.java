@@ -956,6 +956,8 @@ public class HavenaskEngine extends InternalEngine {
                 JSONArray row = datas.getJSONArray(0);
                 assert row.size() == 1;
                 docCount = row.getLongValue(0);
+            } else {
+                docCount = 0;
             }
         } catch (Exception e) {
             logger.debug("havenask engine get doc stats error", e);
