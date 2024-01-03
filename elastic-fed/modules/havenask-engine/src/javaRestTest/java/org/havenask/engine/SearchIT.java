@@ -15,7 +15,8 @@
 package org.havenask.engine;
 
 import java.io.IOException;
-import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Locale;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
@@ -41,6 +42,7 @@ import org.havenask.common.xcontent.XContentType;
 import org.havenask.engine.index.engine.EngineSettings;
 import org.havenask.engine.index.mapper.DenseVectorFieldMapper;
 import org.havenask.engine.index.query.KnnQueryBuilder;
+import org.havenask.index.query.MatchQueryBuilder;
 import org.havenask.index.query.QueryBuilders;
 import org.havenask.search.builder.KnnSearchBuilder;
 import org.havenask.search.builder.SearchSourceBuilder;
@@ -49,16 +51,12 @@ import org.junit.AfterClass;
 public class SearchIT extends AbstractHavenaskRestTestCase {
     // static logger
     private static final Logger logger = LogManager.getLogger(SearchIT.class);
-    private static final String[] SearchITIndices = { "search_test", "single_shard_test", "multi_shard_test", "multi_vector_test" };
-    private static final int TEST_SEARCH_INDEX_POS = 0;
-    private static final int TEST_SINGLE_SHARD_KNN_INDEX_POS = 1;
-    private static final int TEST_MULTI_SHARD_KNN_INDEX_POS = 2;
-    private static final int TEST_MULTI_KNN_QUERY_INDEX_POS = 3;
+    private static Set<String> searchITIndices = new HashSet<>();
 
     @AfterClass
     public static void cleanIndices() {
         try {
-            for (String index : SearchITIndices) {
+            for (String index : searchITIndices) {
                 if (highLevelClient().indices().exists(new GetIndexRequest(index), RequestOptions.DEFAULT)) {
                     highLevelClient().indices().delete(new DeleteIndexRequest(index), RequestOptions.DEFAULT);
                     logger.info("clean index {}", index);
@@ -70,36 +68,39 @@ public class SearchIT extends AbstractHavenaskRestTestCase {
     }
 
     public void testSearch() throws Exception {
-        String index = SearchITIndices[TEST_SEARCH_INDEX_POS];
-        int dataNum = 3;
+        String index = "search_test";
+        searchITIndices.add(index);
+
         double delta = 0.00001;
+        ClusterHealthResponse clusterHealthResponse = highLevelClient().cluster()
+            .health(new ClusterHealthRequest(), RequestOptions.DEFAULT);
+        int numberOfDataNodes = clusterHealthResponse.getNumberOfDataNodes();
+
+        int shardsNum = randomIntBetween(1, 6);
+        int replicasNum = randomIntBetween(0, numberOfDataNodes - 1);
         // create index
         Settings settings = Settings.builder()
             .put(EngineSettings.ENGINE_TYPE_SETTING.getKey(), EngineSettings.ENGINE_HAVENASK)
-            .put(NUMBER_OF_SHARDS, 2)
-            .put(NUMBER_OF_REPLICAS, 0)
+            .put(NUMBER_OF_SHARDS, shardsNum)
+            .put(NUMBER_OF_REPLICAS, replicasNum)
             .build();
 
-        java.util.Map<String, ?> map = Map.of(
-            "properties",
-            Map.of("seq", Map.of("type", "integer"), "content", Map.of("type", "keyword"), "time", Map.of("type", "date"))
-        );
+        java.util.Map<String, ?> map = Map.of("properties", Map.of("seq", Map.of("type", "integer"), "content", Map.of("type", "text")));
         assertTrue(createTestIndex(index, settings, map));
 
         waitIndexGreen(index);
 
         // PUT docs
-        String[] idList = { "1", "2", "3" };
-        java.util.List<java.util.Map<String, ?>> sourceList = new ArrayList<>();
-        sourceList.add(Map.of("seq", 1, "content", "欢迎使用1", "time", "20230718"));
-        sourceList.add(Map.of("seq", 2, "content", "欢迎使用2", "time", "20230717"));
-        sourceList.add(Map.of("seq", 3, "content", "欢迎使用3", "time", "20230716"));
-        for (int i = 0; i < idList.length; i++) {
-            putDoc(index, idList[i], sourceList.get(i));
+        int dataNum = randomIntBetween(100, 200);
+        for (int i = 0; i < dataNum; i++) {
+            putDoc(index, String.valueOf(i), Map.of("seq", i, "content", "欢迎使用 " + i));
         }
 
         // get data with _search API
         SearchRequest searchRequest = new SearchRequest(index);
+        SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+        searchSourceBuilder.size(dataNum);
+        searchRequest.source(searchSourceBuilder);
 
         assertBusy(() -> {
             SearchResponse searchResponse = highLevelClient().search(searchRequest, RequestOptions.DEFAULT);
@@ -108,23 +109,43 @@ public class SearchIT extends AbstractHavenaskRestTestCase {
         SearchResponse searchResponse = highLevelClient().search(searchRequest, RequestOptions.DEFAULT);
         assertEquals(dataNum, searchResponse.getHits().getTotalHits().value);
 
-        Set<Integer> expectedSeq = Set.of(1, 2, 3);
-        Set<String> expectedContent = Set.of("欢迎使用1", "欢迎使用2", "欢迎使用3");
-        Set<String> expectedTime = Set.of("20230718", "20230717", "20230716");
         for (int i = 0; i < dataNum; i++) {
             assertEquals(index, searchResponse.getHits().getHits()[i].getIndex());
             assertEquals(1.0, searchResponse.getHits().getHits()[i].getScore(), delta);
-            assertTrue(expectedSeq.contains(searchResponse.getHits().getHits()[i].getSourceAsMap().get("seq")));
-            assertTrue(expectedContent.contains(searchResponse.getHits().getHits()[i].getSourceAsMap().get("content")));
-            assertTrue(expectedTime.contains(searchResponse.getHits().getHits()[i].getSourceAsMap().get("time")));
+            int seqNum = (int) searchResponse.getHits().getHits()[i].getSourceAsMap().get("seq");
+            assertEquals("欢迎使用 " + seqNum, searchResponse.getHits().getHits()[i].getSourceAsMap().get("content"));
         }
+
+        // test match search
+        SearchRequest matchSearchRequest = new SearchRequest(index);
+        SearchSourceBuilder matchSearchSourceBuilder = new SearchSourceBuilder();
+        matchSearchSourceBuilder.query(new MatchQueryBuilder("content", "欢迎使用"));
+        matchSearchSourceBuilder.size(dataNum);
+        matchSearchRequest.source(matchSearchSourceBuilder);
+
+        assertBusy(() -> {
+            SearchResponse matchSearchResponse = highLevelClient().search(matchSearchRequest, RequestOptions.DEFAULT);
+            assertEquals(dataNum, matchSearchResponse.getHits().getTotalHits().value);
+        }, 10, TimeUnit.SECONDS);
+
+        // test term search
+        SearchRequest termSearchRequest = new SearchRequest(index);
+        SearchSourceBuilder termSearchSourceBuilder = new SearchSourceBuilder();
+        termSearchSourceBuilder.query(QueryBuilders.termQuery("seq", 1));
+        termSearchRequest.source(termSearchSourceBuilder);
+        assertBusy(() -> {
+            SearchResponse termSearchResponse = highLevelClient().search(termSearchRequest, RequestOptions.DEFAULT);
+            assertEquals(1, termSearchResponse.getHits().getTotalHits().value);
+        }, 10, TimeUnit.SECONDS);
 
         // delete index and HEAD index
         deleteAndHeadIndex(index);
     }
 
     public void testSingleShardKnn() throws Exception {
-        String index = SearchITIndices[TEST_SINGLE_SHARD_KNN_INDEX_POS];
+        String index = "single_shard_test";
+        searchITIndices.add(index);
+
         String fieldName = "image";
         String similarity = "l2_norm";
         int vectorDims = 2;
@@ -193,47 +214,25 @@ public class SearchIT extends AbstractHavenaskRestTestCase {
     }
 
     public void testMultiShardKnn() throws Exception {
-        String index = SearchITIndices[TEST_MULTI_SHARD_KNN_INDEX_POS];
+        String index = "multi_shard_test";
+        searchITIndices.add(index);
+
         String fieldName = "image";
         String similarity = "l2_norm";
         int vectorDims = 2;
-        int dataNum = 8;
 
-        double delta = 0.0000001;
+        ClusterHealthResponse chResponse = highLevelClient().cluster().health(new ClusterHealthRequest(), RequestOptions.DEFAULT);
+        int numberOfDataNodes = chResponse.getNumberOfDataNodes();
 
-        String[] ids = { "1", "2", "3", "4", "5", "6", "7", "8" };
-        float[][] images = new float[][] {
-            { 1.1f, 1.1f },
-            { 2.2f, 2.2f },
-            { 3.3f, 3.3f },
-            { 4.4f, 4.4f },
-            { 5.5f, 5.5f },
-            { 6.6f, 6.6f },
-            { 7.7f, 7.7f },
-            { 8.8f, 8.8f } };
-
-        String[] resSourceAsString = {
-            "{\"image\":[1.1,1.1]}",
-            "{\"image\":[2.2,2.2]}",
-            "{\"image\":[3.3,3.3]}",
-            "{\"image\":[4.4,4.4]}",
-            "{\"image\":[5.5,5.5]}",
-            "{\"image\":[6.6,6.6]}",
-            "{\"image\":[7.7,7.7]}",
-            "{\"image\":[8.8,8.8]}" };
-
-        String[] expectedId = { "1", "2", "3", "4", "5", "6", "7", "8" };
-        float[] expectedScores = { 1.0f, 0.29239765f, 0.093632974f, 0.04389815f, 0.025176233f, 0.016260162f, 0.011348162f, 0.0083626015f };
-
+        int shardsNum = randomIntBetween(1, 6);
+        int replicasNum = randomIntBetween(0, numberOfDataNodes - 1);
         assertTrue(
             highLevelClient().indices()
                 .create(
                     new CreateIndexRequest(index).settings(
                         Settings.builder()
-                            // TODO 暂时只支持单shard
-                            // .put("index.number_of_shards", randomIntBetween(2, 5))
-                            // TODO 目前 replicas 不为零时索引会一直是 yellow，将replicas指定为0，后续增加相关测试
-                            .put("index.number_of_replicas", 0)
+                            .put("index.number_of_shards", shardsNum)
+                            .put("index.number_of_replicas", replicasNum)
                             .put(EngineSettings.ENGINE_TYPE_SETTING.getKey(), EngineSettings.ENGINE_HAVENASK)
                             .build()
                     ).mapping(createMapping(fieldName, vectorDims, similarity)),
@@ -248,9 +247,13 @@ public class SearchIT extends AbstractHavenaskRestTestCase {
             assertEquals(clusterHealthResponse.getStatus(), ClusterHealthStatus.GREEN);
         }, 2, TimeUnit.MINUTES);
 
+        int dataNum = randomIntBetween(100, 200);
         BulkRequest bulkRequest = new BulkRequest();
         for (int i = 0; i < dataNum; i++) {
-            bulkRequest.add(new IndexRequest(index).id(ids[i]).source(Map.of(fieldName, images[i]), XContentType.JSON));
+            bulkRequest.add(
+                new IndexRequest(index).id(String.valueOf(i))
+                    .source(Map.of(fieldName, new float[] { (float) (i + 0.1), (float) (i + 0.1) }), XContentType.JSON)
+            );
         }
 
         highLevelClient().bulk(bulkRequest, RequestOptions.DEFAULT);
@@ -258,8 +261,9 @@ public class SearchIT extends AbstractHavenaskRestTestCase {
         // get data with _search
         SearchRequest searchRequest = new SearchRequest(index);
         SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-        KnnQueryBuilder knnQueryBuilder = new KnnQueryBuilder(fieldName, new float[] { 1.1f, 1.1f }, 10);
+        KnnQueryBuilder knnQueryBuilder = new KnnQueryBuilder(fieldName, new float[] { 0.1f, 0.1f }, dataNum);
         searchSourceBuilder.query(knnQueryBuilder);
+        searchSourceBuilder.size(dataNum);
         searchRequest.source(searchSourceBuilder);
 
         // 执行查询请求并获取相应结果
@@ -271,9 +275,11 @@ public class SearchIT extends AbstractHavenaskRestTestCase {
         assertEquals(dataNum, searchResponse.getHits().getTotalHits().value);
 
         for (int i = 0; i < dataNum; i++) {
-            assertEquals(expectedId[i], searchResponse.getHits().getHits()[i].getId());
-            assertEquals(resSourceAsString[i], searchResponse.getHits().getHits()[i].getSourceAsString());
-            assertEquals(expectedScores[i], searchResponse.getHits().getHits()[i].getScore(), delta);
+            assertEquals(String.valueOf(i), searchResponse.getHits().getHits()[i].getId());
+            assertEquals(
+                String.format(Locale.ROOT, "{\"image\":[%.1f,%.1f]}", (float) (i + 0.1), (float) (i + 0.1)),
+                searchResponse.getHits().getHits()[i].getSourceAsString()
+            );
         }
 
         // delete index and HEAD index
@@ -282,33 +288,25 @@ public class SearchIT extends AbstractHavenaskRestTestCase {
     }
 
     public void testMultiKnnQuery() throws Exception {
-        String index = SearchITIndices[TEST_MULTI_KNN_QUERY_INDEX_POS];
+        String index = "multi_vector_test";
+        searchITIndices.add(index);
+
         String[] fieldNames = { "field1", "field2" };
         int[] multiVectorDims = { 2, 2 };
         String[] similarities = { "l2_norm", "dot_product" };
-        int dataNum = 4;
-        double delta = 0.0000001;
 
-        String[] ids = { "1", "2", "3", "4" };
-        float[][] field0Values = { { 1f, 1f }, { 2f, 2f }, { 3f, 3f }, { 4f, 4f } };
-        float[][] field1Values = { { 0.6f, 0.8f }, { 0.8f, 0.6f }, { 1.0f, 0.0f }, { 0.0f, 1.0f } };
+        ClusterHealthResponse chResponse = highLevelClient().cluster().health(new ClusterHealthRequest(), RequestOptions.DEFAULT);
+        int numberOfDataNodes = chResponse.getNumberOfDataNodes();
 
-        String[][] resSourceAsString = {
-            { "\"field1\":[1.0,1.0]", "\"field2\":[0.6,0.8]" },
-            { "\"field1\":[2.0,2.0]", "\"field2\":[0.8,0.6]" },
-            { "\"field1\":[4.0,4.0]", "\"field2\":[0.0,1.0]" },
-            { "\"field1\":[3.0,3.0]", "\"field2\":[1.0,0.0]" } };
-
-        String[] expectedId = { "1", "2", "4", "3" };
-        float[] expectedScores = { 2f, 1.3133334f, 0.95263153f, 0.9111111f };
-
+        int shardsNum = randomIntBetween(1, 6);
+        int replicasNum = randomIntBetween(0, numberOfDataNodes - 1);
         assertTrue(
             highLevelClient().indices()
                 .create(
                     new CreateIndexRequest(index).settings(
                         Settings.builder()
-                            .put("index.number_of_shards", 1)
-                            .put("index.number_of_replicas", 0)
+                            .put("index.number_of_shards", shardsNum)
+                            .put("index.number_of_replicas", replicasNum)
                             .put(EngineSettings.ENGINE_TYPE_SETTING.getKey(), EngineSettings.ENGINE_HAVENASK)
                             .build()
                     ).mapping(createMultiVectorMapping(fieldNames, multiVectorDims, similarities)),
@@ -323,11 +321,21 @@ public class SearchIT extends AbstractHavenaskRestTestCase {
             assertEquals(clusterHealthResponse.getStatus(), ClusterHealthStatus.GREEN);
         }, 2, TimeUnit.MINUTES);
 
+        int dataNum = randomIntBetween(100, 200);
         BulkRequest bulkRequest = new BulkRequest();
         for (int i = 0; i < dataNum; i++) {
+            float randomFloat = ((float) randomIntBetween(0, 100)) / 100;
             bulkRequest.add(
-                new IndexRequest(index).id(ids[i])
-                    .source(Map.of(fieldNames[0], field0Values[i], fieldNames[1], field1Values[i]), XContentType.JSON)
+                new IndexRequest(index).id(String.valueOf(i))
+                    .source(
+                        Map.of(
+                            fieldNames[0],
+                            new float[] { i, i },
+                            fieldNames[1],
+                            new float[] { randomFloat, (float) Math.sqrt((1 - randomFloat * randomFloat)) }
+                        ),
+                        XContentType.JSON
+                    )
             );
         }
 
@@ -339,10 +347,11 @@ public class SearchIT extends AbstractHavenaskRestTestCase {
         searchSourceBuilder.query(QueryBuilders.matchAllQuery());
         searchSourceBuilder.knnSearch(
             List.of(
-                new KnnSearchBuilder(fieldNames[0], new float[] { 1f, 1f }, 20, 20, null),
-                new KnnSearchBuilder(fieldNames[1], new float[] { 0.6f, 0.8f }, 10, 10, null)
+                new KnnSearchBuilder(fieldNames[0], new float[] { 0f, 0f }, dataNum, dataNum, null),
+                new KnnSearchBuilder(fieldNames[1], new float[] { 0.6f, 0.8f }, dataNum, dataNum, null)
             )
         );
+        searchSourceBuilder.size(dataNum);
         searchRequest.source(searchSourceBuilder);
 
         // 执行查询请求并获取相应结果
@@ -353,18 +362,107 @@ public class SearchIT extends AbstractHavenaskRestTestCase {
         SearchResponse searchResponse = highLevelClient().search(searchRequest, RequestOptions.DEFAULT);
         assertEquals(dataNum, searchResponse.getHits().getTotalHits().value);
 
-        for (int i = 0; i < dataNum; i++) {
-            assertEquals(expectedId[i], searchResponse.getHits().getHits()[i].getId());
-            assertTrue(
-                searchResponse.getHits().getHits()[i].getSourceAsString().contains(resSourceAsString[i][0])
-                    && searchResponse.getHits().getHits()[i].getSourceAsString().contains(resSourceAsString[i][1])
-            );
-            assertEquals(expectedScores[i], searchResponse.getHits().getHits()[i].getScore(), delta);
-        }
-
         // delete index and HEAD index
         assertTrue(highLevelClient().indices().delete(new DeleteIndexRequest(index), RequestOptions.DEFAULT).isAcknowledged());
         assertEquals(false, highLevelClient().indices().exists(new GetIndexRequest(index), RequestOptions.DEFAULT));
+    }
+
+    public void testObjectSearch() throws Exception {
+        String index = "object_search_test";
+        searchITIndices.add(index);
+
+        // create index
+        XContentBuilder mappingBuilder = XContentFactory.jsonBuilder();
+        mappingBuilder.startObject();
+        {
+            mappingBuilder.startObject("properties");
+            {
+                mappingBuilder.startObject("user");
+                {
+                    mappingBuilder.startObject("properties");
+                    {
+                        mappingBuilder.startObject("name");
+                        {
+                            mappingBuilder.field("type", "keyword");
+                        }
+                        mappingBuilder.endObject();
+                        mappingBuilder.startObject("image");
+                        {
+                            mappingBuilder.field("type", "vector").field("dims", 2).field("similarity", "l2_norm");
+                        }
+                        mappingBuilder.endObject();
+                    }
+                    mappingBuilder.endObject();
+                }
+                mappingBuilder.endObject();
+            }
+            mappingBuilder.endObject();
+        }
+        mappingBuilder.endObject();
+
+        ClusterHealthResponse chResponse = highLevelClient().cluster().health(new ClusterHealthRequest(), RequestOptions.DEFAULT);
+        int numberOfDataNodes = chResponse.getNumberOfDataNodes();
+
+        int shardsNum = randomIntBetween(1, 6);
+        int replicasNum = randomIntBetween(0, numberOfDataNodes - 1);
+        assertTrue(
+            highLevelClient().indices()
+                .create(
+                    new CreateIndexRequest(index).settings(
+                        Settings.builder()
+                            .put("index.number_of_shards", shardsNum)
+                            .put("index.number_of_replicas", replicasNum)
+                            .put(EngineSettings.ENGINE_TYPE_SETTING.getKey(), EngineSettings.ENGINE_HAVENASK)
+                            .build()
+                    ).mapping(mappingBuilder),
+                    RequestOptions.DEFAULT
+                )
+                .isAcknowledged()
+        );
+
+        waitIndexGreen(index);
+
+        // put doc
+        int dataNum = randomIntBetween(100, 200);
+        BulkRequest bulkRequest = new BulkRequest();
+        for (int i = 0; i < dataNum; i++) {
+            bulkRequest.add(
+                new IndexRequest(index).id(String.valueOf(i))
+                    .source(
+                        Map.of("user", Map.of("name", "person" + i, "image", new float[] { (float) (i + 0.1), (float) (i + 0.1) })),
+                        XContentType.JSON
+                    )
+            );
+        }
+        highLevelClient().bulk(bulkRequest, RequestOptions.DEFAULT);
+
+        // search object field
+        SearchRequest searchRequest = new SearchRequest(index);
+        SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+        searchSourceBuilder.query(QueryBuilders.termQuery("user_name", "person0"));
+        searchRequest.source(searchSourceBuilder);
+        assertBusy(() -> {
+            SearchResponse searchResponse = highLevelClient().search(searchRequest, RequestOptions.DEFAULT);
+            assertEquals(1, searchResponse.getHits().getTotalHits().value);
+            assertTrue(searchResponse.getHits().getHits()[0].getSourceAsString().contains("\"image\":[0.1,0.1]"));
+            assertTrue(searchResponse.getHits().getHits()[0].getSourceAsString().contains("\"name\":\"person0\""));
+        }, 2, TimeUnit.SECONDS);
+
+        // search object knn
+        SearchRequest knnSearchRequest = new SearchRequest(index);
+        SearchSourceBuilder knnSearchSourceBuilder = new SearchSourceBuilder();
+        knnSearchSourceBuilder.query(QueryBuilders.matchAllQuery());
+        knnSearchSourceBuilder.knnSearch(List.of(new KnnSearchBuilder("user_image", new float[] { 1.5f, 1.2f }, dataNum, dataNum, null)));
+        knnSearchSourceBuilder.size(dataNum);
+        knnSearchRequest.source(knnSearchSourceBuilder);
+
+        // 执行查询请求并获取相应结果
+        assertBusy(() -> {
+            SearchResponse knnSearchResponse = highLevelClient().search(knnSearchRequest, RequestOptions.DEFAULT);
+            assertEquals(dataNum, knnSearchResponse.getHits().getTotalHits().value);
+        }, 10, TimeUnit.SECONDS);
+
+        deleteAndHeadIndex(index);
     }
 
     private static XContentBuilder createMapping(String fieldName, int vectorDims, String similarity) throws IOException {
