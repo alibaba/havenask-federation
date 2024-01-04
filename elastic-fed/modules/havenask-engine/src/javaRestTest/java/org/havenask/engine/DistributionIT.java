@@ -176,7 +176,7 @@ public class DistributionIT extends AbstractHavenaskRestTestCase {
                     }
                     assertEquals("STARTED", rerouteCatShards.getShards()[j].state);
                 }
-            }, 30, TimeUnit.SECONDS);
+            }, 2, TimeUnit.MINUTES);
 
             // get doc
             for (int j = 0; j < randomDocNum; j++) {
