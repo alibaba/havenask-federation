@@ -130,7 +130,7 @@ public class DocIT extends AbstractHavenaskRestTestCase {
         }, 5, TimeUnit.SECONDS);
 
         // get index stats
-        checkStatsDocCount(index, 4L);
+        checkStatsDocCount(index, 4L, replicasNum);
 
         // UPDATE doc
         updateDoc(index, "1", Map.of("seq", 11, "content", "欢迎使用11", "time", "20230718"));
@@ -149,7 +149,7 @@ public class DocIT extends AbstractHavenaskRestTestCase {
         }
 
         // get index data count
-        checkStatsDocCount(index, 4L);
+        checkStatsDocCount(index, 4L, replicasNum);
 
         // delete and check
         String[] deleteIdList = { "1", "2", "3" };
@@ -158,7 +158,7 @@ public class DocIT extends AbstractHavenaskRestTestCase {
             GetResponse getResponse = getDocById(index, deleteIdList[i]);
             assertFalse(getResponse.isExists());
         }
-        checkStatsDocCount(index, 1L);
+        checkStatsDocCount(index, 1L, replicasNum);
 
         // bulk doc
         BulkRequest bulkRequest = new BulkRequest();
@@ -365,17 +365,23 @@ public class DocIT extends AbstractHavenaskRestTestCase {
         return mappingBuilder;
     }
 
-    private static void checkStatsDocCount(String index, long expectedDocCount) throws Exception {
+    private static void checkStatsDocCount(String index, long expectedDocCount, int replicasNum) throws Exception {
         assertBusy(() -> {
             Response indexStatsResponse = highLevelClient().getLowLevelClient().performRequest(new Request("GET", "/" + index + "/_stats"));
             String indexStats = EntityUtils.toString(indexStatsResponse.getEntity());
             JSONObject indexStatsJson = JSONObject.parseObject(indexStats);
-            long docCount = indexStatsJson.getJSONObject("indices")
+            long primariesDocCount = indexStatsJson.getJSONObject("indices")
+                .getJSONObject(index)
+                .getJSONObject("primaries")
+                .getJSONObject("docs")
+                .getLong("count");
+            assertEquals(expectedDocCount, primariesDocCount);
+            long totalDocCount = indexStatsJson.getJSONObject("indices")
                 .getJSONObject(index)
                 .getJSONObject("total")
                 .getJSONObject("docs")
                 .getLong("count");
-            assertEquals(expectedDocCount, docCount);
+            assertEquals(expectedDocCount * (1 + replicasNum), totalDocCount);
             long storeSize = indexStatsJson.getJSONObject("indices")
                 .getJSONObject(index)
                 .getJSONObject("total")
