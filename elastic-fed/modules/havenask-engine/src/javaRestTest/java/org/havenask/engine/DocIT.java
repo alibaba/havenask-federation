@@ -54,12 +54,12 @@ import com.alibaba.fastjson.JSONObject;
 public class DocIT extends AbstractHavenaskRestTestCase {
     // static logger
     private static final Logger logger = LogManager.getLogger(DocIT.class);
-    private static Set<String> DocITIndices = new HashSet<>();
+    private static Set<String> docITIndices = new HashSet<>();
 
     @AfterClass
     public static void cleanIndices() {
         try {
-            for (String index : DocITIndices) {
+            for (String index : docITIndices) {
                 if (highLevelClient().indices().exists(new GetIndexRequest(index), RequestOptions.DEFAULT)) {
                     highLevelClient().indices().delete(new DeleteIndexRequest(index), RequestOptions.DEFAULT);
                     logger.info("clean index {}", index);
@@ -73,13 +73,13 @@ public class DocIT extends AbstractHavenaskRestTestCase {
     // test document api, PUT/POST/DELETE and bulk, test GET /index/_stats
     public void testDocMethod() throws Exception {
         String index = "index_doc_method";
-        DocITIndices.add(index);
+        docITIndices.add(index);
 
         ClusterHealthResponse clusterHealthResponse = highLevelClient().cluster()
             .health(new ClusterHealthRequest(), RequestOptions.DEFAULT);
         int numberOfDataNodes = clusterHealthResponse.getNumberOfDataNodes();
 
-        int shardsNum = randomIntBetween(2, 6);
+        int shardsNum = randomIntBetween(1, 6);
         int replicasNum = randomIntBetween(0, numberOfDataNodes - 1);
         // create index
         Settings settings = Settings.builder()
@@ -186,13 +186,13 @@ public class DocIT extends AbstractHavenaskRestTestCase {
     // test common data type(int, double, boolean, date, text, keyword, array)
     public void testMultiDataType() throws Exception {
         String index = "index_multi_data_type";
-        DocITIndices.add(index);
+        docITIndices.add(index);
 
         ClusterHealthResponse clusterHealthResponse = highLevelClient().cluster()
             .health(new ClusterHealthRequest(), RequestOptions.DEFAULT);
         int numberOfDataNodes = clusterHealthResponse.getNumberOfDataNodes();
 
-        int shardsNum = randomIntBetween(2, 6);
+        int shardsNum = randomIntBetween(1, 6);
         int replicasNum = randomIntBetween(0, numberOfDataNodes - 1);
         // create index with multi data type
         Settings settings = Settings.builder()
@@ -296,7 +296,7 @@ public class DocIT extends AbstractHavenaskRestTestCase {
 
     public void testIllegalVectorParams() throws Exception {
         String index = "illegal_vector_test";
-        DocITIndices.add(index);
+        docITIndices.add(index);
 
         String fieldName = "vector";
         int vectorDims = 2;
@@ -308,7 +308,7 @@ public class DocIT extends AbstractHavenaskRestTestCase {
             .health(new ClusterHealthRequest(), RequestOptions.DEFAULT);
         int numberOfDataNodes = clusterHealthResponse.getNumberOfDataNodes();
 
-        int shardsNum = randomIntBetween(2, 6);
+        int shardsNum = randomIntBetween(1, 6);
         int replicasNum = randomIntBetween(0, numberOfDataNodes - 1);
         // create index
         assertTrue(

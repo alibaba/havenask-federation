@@ -51,12 +51,12 @@ import org.junit.AfterClass;
 public class SearchIT extends AbstractHavenaskRestTestCase {
     // static logger
     private static final Logger logger = LogManager.getLogger(SearchIT.class);
-    private static Set<String> SearchITIndices = new HashSet<>();
+    private static Set<String> searchITIndices = new HashSet<>();
 
     @AfterClass
     public static void cleanIndices() {
         try {
-            for (String index : SearchITIndices) {
+            for (String index : searchITIndices) {
                 if (highLevelClient().indices().exists(new GetIndexRequest(index), RequestOptions.DEFAULT)) {
                     highLevelClient().indices().delete(new DeleteIndexRequest(index), RequestOptions.DEFAULT);
                     logger.info("clean index {}", index);
@@ -69,15 +69,14 @@ public class SearchIT extends AbstractHavenaskRestTestCase {
 
     public void testSearch() throws Exception {
         String index = "search_test";
-        SearchITIndices.add(index);
+        searchITIndices.add(index);
 
-        int dataNum = 3;
         double delta = 0.00001;
         ClusterHealthResponse clusterHealthResponse = highLevelClient().cluster()
             .health(new ClusterHealthRequest(), RequestOptions.DEFAULT);
         int numberOfDataNodes = clusterHealthResponse.getNumberOfDataNodes();
 
-        int shardsNum = randomIntBetween(2, 6);
+        int shardsNum = randomIntBetween(1, 6);
         int replicasNum = randomIntBetween(0, numberOfDataNodes - 1);
         // create index
         Settings settings = Settings.builder()
@@ -95,6 +94,7 @@ public class SearchIT extends AbstractHavenaskRestTestCase {
         waitIndexGreen(index);
 
         // PUT docs
+        int dataNum = 3;
         String[] idList = { "1", "2", "3" };
         java.util.List<java.util.Map<String, ?>> sourceList = new ArrayList<>();
         sourceList.add(Map.of("seq", 1, "content", "欢迎使用 1", "time", "20230718"));
@@ -152,7 +152,7 @@ public class SearchIT extends AbstractHavenaskRestTestCase {
 
     public void testSingleShardKnn() throws Exception {
         String index = "single_shard_test";
-        SearchITIndices.add(index);
+        searchITIndices.add(index);
 
         String fieldName = "image";
         String similarity = "l2_norm";
@@ -223,7 +223,7 @@ public class SearchIT extends AbstractHavenaskRestTestCase {
 
     public void testMultiShardKnn() throws Exception {
         String index = "multi_shard_test";
-        SearchITIndices.add(index);
+        searchITIndices.add(index);
 
         String fieldName = "image";
         String similarity = "l2_norm";
@@ -259,7 +259,7 @@ public class SearchIT extends AbstractHavenaskRestTestCase {
         ClusterHealthResponse chResponse = highLevelClient().cluster().health(new ClusterHealthRequest(), RequestOptions.DEFAULT);
         int numberOfDataNodes = chResponse.getNumberOfDataNodes();
 
-        int shardsNum = randomIntBetween(2, 6);
+        int shardsNum = randomIntBetween(1, 6);
         int replicasNum = randomIntBetween(0, numberOfDataNodes - 1);
         assertTrue(
             highLevelClient().indices()
@@ -317,7 +317,7 @@ public class SearchIT extends AbstractHavenaskRestTestCase {
 
     public void testMultiKnnQuery() throws Exception {
         String index = "multi_vector_test";
-        SearchITIndices.add(index);
+        searchITIndices.add(index);
 
         String[] fieldNames = { "field1", "field2" };
         int[] multiVectorDims = { 2, 2 };
@@ -341,7 +341,7 @@ public class SearchIT extends AbstractHavenaskRestTestCase {
         ClusterHealthResponse chResponse = highLevelClient().cluster().health(new ClusterHealthRequest(), RequestOptions.DEFAULT);
         int numberOfDataNodes = chResponse.getNumberOfDataNodes();
 
-        int shardsNum = randomIntBetween(2, 6);
+        int shardsNum = randomIntBetween(1, 6);
         int replicasNum = randomIntBetween(0, numberOfDataNodes - 1);
         assertTrue(
             highLevelClient().indices()
@@ -410,7 +410,7 @@ public class SearchIT extends AbstractHavenaskRestTestCase {
 
     public void testObjectSearch() throws Exception {
         String index = "object_search_test";
-        SearchITIndices.add(index);
+        searchITIndices.add(index);
 
         int dataNum = 3;
         String[] userNames = { "Alice", "Bob", "Eve" };
@@ -448,7 +448,7 @@ public class SearchIT extends AbstractHavenaskRestTestCase {
         ClusterHealthResponse chResponse = highLevelClient().cluster().health(new ClusterHealthRequest(), RequestOptions.DEFAULT);
         int numberOfDataNodes = chResponse.getNumberOfDataNodes();
 
-        int shardsNum = randomIntBetween(2, 6);
+        int shardsNum = randomIntBetween(1, 6);
         int replicasNum = randomIntBetween(0, numberOfDataNodes - 1);
         assertTrue(
             highLevelClient().indices()

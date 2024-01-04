@@ -41,12 +41,12 @@ import java.util.concurrent.TimeUnit;
 
 public class DistributionIT extends AbstractHavenaskRestTestCase {
     private static final Logger logger = LogManager.getLogger(DistributionIT.class);
-    private static Set<String> DistributionITIndices = new HashSet<>();
+    private static Set<String> distributionITIndices = new HashSet<>();
 
     @AfterClass
     public static void cleanIndices() {
         try {
-            for (String index : DistributionITIndices) {
+            for (String index : distributionITIndices) {
                 if (highLevelClient().indices().exists(new GetIndexRequest(index), RequestOptions.DEFAULT)) {
                     highLevelClient().indices().delete(new DeleteIndexRequest(index), RequestOptions.DEFAULT);
                     logger.info("clean index {}", index);
@@ -61,11 +61,11 @@ public class DistributionIT extends AbstractHavenaskRestTestCase {
         assumeTrue("number_of_nodes less then 2, Skip func: testTwoShardPeerRecovery()", clusterIsMultiNodes());
 
         String index = "multi_node_shard_reroute_test";
-        DistributionITIndices.add(index);
+        distributionITIndices.add(index);
 
         ClusterHealthResponse clusterHealthResponse = highLevelClient().cluster()
             .health(new ClusterHealthRequest(), RequestOptions.DEFAULT);
-        DistributionITIndices.add(index);
+        distributionITIndices.add(index);
         createTestIndex(
             index,
             Settings.builder()

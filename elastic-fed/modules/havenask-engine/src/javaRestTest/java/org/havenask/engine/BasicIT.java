@@ -50,12 +50,12 @@ public class BasicIT extends AbstractHavenaskRestTestCase {
 
     // static logger
     private static final Logger logger = LogManager.getLogger(BasicIT.class);
-    private static Set<String> BasicITIndices = new HashSet<>();
+    private static Set<String> basicITIndices = new HashSet<>();
 
     @AfterClass
     public static void cleanIndices() {
         try {
-            for (String index : BasicITIndices) {
+            for (String index : basicITIndices) {
                 if (highLevelClient().indices().exists(new GetIndexRequest(index), RequestOptions.DEFAULT)) {
                     highLevelClient().indices().delete(new DeleteIndexRequest(index), RequestOptions.DEFAULT);
                     logger.info("clean index {}", index);
@@ -69,13 +69,13 @@ public class BasicIT extends AbstractHavenaskRestTestCase {
     // create index, get index, delete index, HEAD index and set mapping
     public void testIndexMethod() throws Exception {
         String index = "index_method_test";
-        BasicITIndices.add(index);
+        basicITIndices.add(index);
 
         ClusterHealthResponse clusterHealthResponse = highLevelClient().cluster()
             .health(new ClusterHealthRequest(), RequestOptions.DEFAULT);
         int numberOfDataNodes = clusterHealthResponse.getNumberOfDataNodes();
 
-        int shardsNum = randomIntBetween(2, 6);
+        int shardsNum = randomIntBetween(1, 6);
         int replicasNum = randomIntBetween(0, numberOfDataNodes - 1);
         // create index
         assertTrue(
@@ -149,13 +149,13 @@ public class BasicIT extends AbstractHavenaskRestTestCase {
         int randomTimes = randomIntBetween(2, 6);
         for (int i = 0; i < randomTimes; i++) {
             String index = "create_and_delete_same_index_test";
-            BasicITIndices.add(index);
+            basicITIndices.add(index);
 
             ClusterHealthResponse clusterHealthResponse = highLevelClient().cluster()
                 .health(new ClusterHealthRequest(), RequestOptions.DEFAULT);
             int numberOfDataNodes = clusterHealthResponse.getNumberOfDataNodes();
 
-            int shardsNum = randomIntBetween(2, 6);
+            int shardsNum = randomIntBetween(1, 6);
             int replicasNum = randomIntBetween(0, numberOfDataNodes - 1);
             // create index
             assertTrue(
@@ -211,12 +211,12 @@ public class BasicIT extends AbstractHavenaskRestTestCase {
     }
 
     public void testCreateAndDeleteDiffIndex() throws Exception {
-        int randomNum = randomIntBetween(2, 6);
+        int randomIndicesNum = randomIntBetween(3, 6);
         String baseName = "create_and_delete_diff_index_test";
         List<String> indices = new ArrayList<>();
-        for (int i = 0; i < randomNum; i++) {
+        for (int i = 0; i < randomIndicesNum; i++) {
             indices.add(baseName + i);
-            BasicITIndices.add(baseName + i);
+            basicITIndices.add(baseName + i);
         }
 
         ClusterHealthResponse clusterHealthResponse = highLevelClient().cluster()
@@ -224,8 +224,8 @@ public class BasicIT extends AbstractHavenaskRestTestCase {
         int numberOfDataNodes = clusterHealthResponse.getNumberOfDataNodes();
 
         // create indexs
-        for (int i = 0; i < randomNum; i++) {
-            int shardsNum = randomIntBetween(2, 6);
+        for (int i = 0; i < randomIndicesNum; i++) {
+            int shardsNum = randomIntBetween(1, 6);
             int replicasNum = randomIntBetween(0, numberOfDataNodes - 1);
             assertTrue(
                 highLevelClient().indices()
@@ -243,13 +243,13 @@ public class BasicIT extends AbstractHavenaskRestTestCase {
             );
         }
 
-        for (int i = 0; i < randomNum; i++) {
+        for (int i = 0; i < randomIndicesNum; i++) {
             String curIndex = indices.get(i);
             waitIndexGreen(curIndex);
         }
 
         // get index
-        for (int i = 0; i < randomNum; i++) {
+        for (int i = 0; i < randomIndicesNum; i++) {
             assertEquals(true, highLevelClient().indices().exists(new GetIndexRequest(indices.get(i)), RequestOptions.DEFAULT));
             GetIndexResponse getIndexResponse = highLevelClient().indices()
                 .get(new GetIndexRequest(indices.get(i)), RequestOptions.DEFAULT);
@@ -261,7 +261,7 @@ public class BasicIT extends AbstractHavenaskRestTestCase {
         }
 
         // put and get doc
-        for (int i = 0; i < randomNum; i++) {
+        for (int i = 0; i < randomIndicesNum; i++) {
             int randomDocNum = randomIntBetween(1, 4);
             for (int j = 0; j < randomDocNum; j++) {
                 String curId = String.valueOf(i) + String.valueOf(j);
@@ -284,7 +284,7 @@ public class BasicIT extends AbstractHavenaskRestTestCase {
         }
 
         // delete index
-        for (int i = 0; i < randomNum; i++) {
+        for (int i = 0; i < randomIndicesNum; i++) {
             deleteAndHeadIndex(indices.get(i));
         }
     }

@@ -42,12 +42,12 @@ import java.util.concurrent.TimeUnit;
 public class PeerRecoveryIT extends AbstractHavenaskRestTestCase {
     // static logger
     private static final Logger logger = LogManager.getLogger(PeerRecoveryIT.class);
-    private static Set<String> PeerRecoveryITIndices = new HashSet<>();
+    private static Set<String> peerRecoveryITIndices = new HashSet<>();
 
     @AfterClass
     public static void cleanIndices() {
         try {
-            for (String index : PeerRecoveryITIndices) {
+            for (String index : peerRecoveryITIndices) {
                 if (highLevelClient().indices().exists(new GetIndexRequest(index), RequestOptions.DEFAULT)) {
                     highLevelClient().indices().delete(new DeleteIndexRequest(index), RequestOptions.DEFAULT);
                     logger.info("clean index {}", index);
@@ -62,7 +62,7 @@ public class PeerRecoveryIT extends AbstractHavenaskRestTestCase {
         assumeTrue("number_of_nodes less then 2, Skip func: testTwoShardPeerRecovery()", clusterIsMultiNodes());
 
         String index = "two_shard_peer_recovery_test";
-        PeerRecoveryITIndices.add(index);
+        peerRecoveryITIndices.add(index);
 
         int loopCount = 5;
         int querySize = 250;
@@ -116,7 +116,7 @@ public class PeerRecoveryIT extends AbstractHavenaskRestTestCase {
         assumeTrue("number_of_nodes less then 2, Skip func: testTwoShardPeerRecovery()", clusterIsMultiNodes());
 
         String index = "kill_searcher_then_peer_recovery_test";
-        PeerRecoveryITIndices.add(index);
+        peerRecoveryITIndices.add(index);
 
         int loopCount = 5;
         int querySize = 250;
