@@ -18,7 +18,9 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Locale;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.logging.log4j.LogManager;
@@ -48,22 +50,12 @@ import org.junit.AfterClass;
 public class MappingIT extends AbstractHavenaskRestTestCase {
     // static logger
     private static final Logger logger = LogManager.getLogger(MappingIT.class);
-    private static final String[] MappingITIndices = {
-        "index_supported_data_type",
-        "index_unsupported_data_type",
-        "index_vector_data",
-        "index_vector_data_with_partial_params",
-        "index_test_illegal_vector_params_check" };
-    private static final int TEST_SUPPORTED_DATA_TYPE_INDEX_POS = 0;
-    private static final int TEST_UNSUPPORTED_DATA_TYPE_INDEX_POS = 1;
-    private static final int TEST_VECTOR_DATA_INDEX_POS = 2;
-    private static final int TEST_VECTOR_DATA_WITH_PARTIAL_PARAMS_INDEX_POS = 3;
-    private static final int TEST_ILLEGAL_VECTOR_PARAMS_CHECK_INDEX_POS = 4;
+    private static Set<String> mappingITIndices = new HashSet<>();
 
     @AfterClass
     public static void cleanIndices() {
         try {
-            for (String index : MappingITIndices) {
+            for (String index : mappingITIndices) {
                 if (highLevelClient().indices().exists(new GetIndexRequest(index), RequestOptions.DEFAULT)) {
                     highLevelClient().indices().delete(new DeleteIndexRequest(index), RequestOptions.DEFAULT);
                     logger.info("clean index {}", index);
@@ -76,7 +68,10 @@ public class MappingIT extends AbstractHavenaskRestTestCase {
 
     // test supported data type
     public void testSupportedDataType() throws Exception {
-        String index = MappingITIndices[TEST_SUPPORTED_DATA_TYPE_INDEX_POS];
+        String index = "index_supported_data_type";
+        mappingITIndices.add(index);
+
+        int shardsNum = randomIntBetween(1, 6);
         // create index
         assertTrue(
             highLevelClient().indices()
@@ -84,6 +79,7 @@ public class MappingIT extends AbstractHavenaskRestTestCase {
                     new CreateIndexRequest(index).settings(
                         Settings.builder()
                             .put(EngineSettings.ENGINE_TYPE_SETTING.getKey(), EngineSettings.ENGINE_HAVENASK)
+                            .put("number_of_shards", shardsNum)
                             .put("number_of_replicas", 0)
                             .build()
                     )
@@ -140,7 +136,8 @@ public class MappingIT extends AbstractHavenaskRestTestCase {
 
     // test unsupported data type
     public void testUnsupportedDataType() throws Exception {
-        String index = MappingITIndices[TEST_UNSUPPORTED_DATA_TYPE_INDEX_POS];
+        String index = "index_unsupported_data_type";
+        mappingITIndices.add(index);
 
         ArrayList<String> unsupportedDataType = new ArrayList<String>(
             Arrays.asList(
@@ -168,7 +165,6 @@ public class MappingIT extends AbstractHavenaskRestTestCase {
                 "completion",
                 "search_as_you_type",
                 "token_count",    // Text search types
-                "dense_vector",
                 "sparse_vector",
                 "rank_feature",
                 "rank_features",   // Document ranking types
@@ -199,9 +195,10 @@ public class MappingIT extends AbstractHavenaskRestTestCase {
 
     // 对havenask v2版本的向量索引配置适配后的测试
     public void testVectorData() throws Exception {
-        final int TYPE_POS = 0;
+        String index = "index_vector_data";
+        mappingITIndices.add(index);
 
-        String index = MappingITIndices[TEST_VECTOR_DATA_INDEX_POS];
+        final int TYPE_POS = 0;
         String fieldName = "image";
         int vectorDims = 2;
         String similarity = "L2_NORM";
@@ -280,6 +277,8 @@ public class MappingIT extends AbstractHavenaskRestTestCase {
 
         for (int type = 0; type < types.length; type++) {
             indexOptionValues[TYPE_POS] = types[type];
+            // int shardsNum = randomIntBetween(1, 6);
+            // int replicasNum = randomIntBetween(1, 2);
             // create index
             assertTrue(
                 highLevelClient().indices()
@@ -287,8 +286,11 @@ public class MappingIT extends AbstractHavenaskRestTestCase {
                         new CreateIndexRequest(index).settings(
                             Settings.builder()
                                 .put(EngineSettings.ENGINE_TYPE_SETTING.getKey(), EngineSettings.ENGINE_HAVENASK)
-                                .put("index.number_of_shards", 1)
+                                // TODO 目前knn查询如果有shard中没有doc会出错，暂时将shard数设置为2
+                                .put("index.number_of_shards", 2)
+                                // .put("index.number_of_shards", shardsNum)
                                 .put("index.number_of_replicas", 0)
+                                // .put("index.number_of_replicas", replicasNum)
                                 .build()
                         )
                             .mapping(
@@ -371,18 +373,20 @@ public class MappingIT extends AbstractHavenaskRestTestCase {
     /**
      *     "dimension": "2",
      *     "embedding_delimiter": ",",
-     *     "builder_name": "QcBuilder",
-     *     "searcher_name": "QcSearcher",
-     *     "build_index_params": "{}",
-     *     "search_index_params": "{\"proxima.qc.searcher.scan_ratio\":0.10}",
      *     "linear_build_threshold": "10000",
+     *     "enable_recall_report": "true",
      *     "min_scan_doc_cnt":"20000",
-     *     "enable_recall_report": "true"
+     *     "ignore_invalid_doc":"true",
+     *     "build_index_params": {},
+     *     "search_index_params": {proxima.qc.searcher.scan_ratio:0.10}
      */
+
     @SuppressWarnings("unchecked")
     public void testVectorDataWithPartialParams() throws Exception {
+        String index = "index_vector_data_with_partial_params";
+        mappingITIndices.add(index);
+
         final int TYPE_POS = 0;
-        String index = MappingITIndices[TEST_VECTOR_DATA_WITH_PARTIAL_PARAMS_INDEX_POS];
         String fieldName = "image";
         int vectorDims = 2;
         String similarity = "L2_NORM";
@@ -434,6 +438,8 @@ public class MappingIT extends AbstractHavenaskRestTestCase {
             0.015042119F,
             0.010640562F };
 
+        // int shardsNum = randomIntBetween(1, 6);
+        // int replicasNum = randomIntBetween(0, 2);
         // create index
         assertTrue(
             highLevelClient().indices()
@@ -441,8 +447,11 @@ public class MappingIT extends AbstractHavenaskRestTestCase {
                     new CreateIndexRequest(index).settings(
                         Settings.builder()
                             .put(EngineSettings.ENGINE_TYPE_SETTING.getKey(), EngineSettings.ENGINE_HAVENASK)
-                            .put("index.number_of_shards", 1)
+                            // TODO 目前knn查询如果有shard中没有doc会出错，暂时将shard数设置为2
+                            .put("index.number_of_shards", 2)
+                            // .put("index.number_of_shards", shardsNum)
                             .put("index.number_of_replicas", 0)
+                            // .put("index.number_of_replicas", replicasNum)
                             .build()
                     )
                         .mapping(
@@ -520,7 +529,9 @@ public class MappingIT extends AbstractHavenaskRestTestCase {
     }
 
     public void testIllegalVectorParamsCheck() throws Exception {
-        String index = MappingITIndices[TEST_ILLEGAL_VECTOR_PARAMS_CHECK_INDEX_POS];
+        String index = "index_test_illegal_vector_params_check";
+        mappingITIndices.add(index);
+
         String fieldName = "image";
         int vectorDims = 2;
         String similarity = "DOT_PRODUCT";
