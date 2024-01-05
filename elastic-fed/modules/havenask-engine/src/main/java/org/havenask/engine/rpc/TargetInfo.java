@@ -235,7 +235,9 @@ public class TargetInfo {
             if (this == o) return true;
             if (o == null || getClass() != o.getClass()) return false;
             TableGroup that = (TableGroup) o;
-            return broadcast == that.broadcast && Objects.equals(table_names, that.table_names) && Objects.equals(unpublish_part_ids, that.unpublish_part_ids);
+            return broadcast == that.broadcast
+                && Objects.equals(table_names, that.table_names)
+                && Objects.equals(unpublish_part_ids, that.unpublish_part_ids);
         }
 
         @Override

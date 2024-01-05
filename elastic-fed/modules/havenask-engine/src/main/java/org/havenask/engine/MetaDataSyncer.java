@@ -628,6 +628,15 @@ public class MetaDataSyncer extends AbstractLifecycleComponent implements Cluste
             }
         }
 
+        // add in0 table group
+        {
+            String tableGroupName = SEARCHER_ZONE_NAME + ".table_group." + TABLE_NAME_IN0;
+            TargetInfo.TableGroup tableGroup = new TargetInfo.TableGroup();
+            tableGroup.table_names = new ArrayList<>();
+            tableGroup.table_names.add(TABLE_NAME_IN0);
+            tableGroups.put(tableGroupName, tableGroup);
+        }
+
         return tableGroups;
     }
 
