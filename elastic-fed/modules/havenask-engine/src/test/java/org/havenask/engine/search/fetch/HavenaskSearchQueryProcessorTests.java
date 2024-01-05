@@ -58,7 +58,7 @@ public class HavenaskSearchQueryProcessorTests extends HavenaskTestCase {
         Map<String, Object> userImageMapping = new HashMap<>();
         userImageMapping.put("type", "vector");
         userImageMapping.put("similarity", "L2_NORM");
-        userPropertiesMapping.put("image", userImageMapping);
+        userPropertiesMapping.put("image_vector", userImageMapping);
         userMapping.put("properties", userPropertiesMapping);
         propertiesObjectMapping.put("user", userMapping);
         ObjectMapping.put("properties", propertiesObjectMapping);
@@ -161,12 +161,12 @@ public class HavenaskSearchQueryProcessorTests extends HavenaskTestCase {
     public void testObjectKnnDsl() throws IOException {
         SearchSourceBuilder l2NormBuilder = new SearchSourceBuilder();
         l2NormBuilder.query(QueryBuilders.matchAllQuery());
-        l2NormBuilder.knnSearch(List.of(new KnnSearchBuilder("user_image", new float[] { 1.0f, 2.0f }, 20, 20, null)));
+        l2NormBuilder.knnSearch(List.of(new KnnSearchBuilder("user.image_vector", new float[] { 1.0f, 2.0f }, 20, 20, null)));
         HavenaskSearchQueryProcessor havenaskSearchQueryProcessor = new HavenaskSearchQueryProcessor(qrsClient);
         String l2NormSql = havenaskSearchQueryProcessor.transferSearchRequest2HavenaskSql("table", l2NormBuilder, ObjectMapping);
         assertEquals(
-            "select _id, ((1/(1+vector_score('user_image')))) as _score from `table` "
-                + "where MATCHINDEX('user_image', '1.0,2.0&n=20') order by _score desc limit 10 offset 0",
+            "select _id, ((1/(1+vector_score('user_image_vector')))) as _score from `table` "
+                + "where MATCHINDEX('user_image_vector', '1.0,2.0&n=20') order by _score desc limit 10 offset 0",
             l2NormSql
         );
     }
