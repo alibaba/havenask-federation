@@ -123,6 +123,7 @@ public class MetaDataSyncer extends AbstractLifecycleComponent implements Cluste
     private AtomicBoolean qrsSynced = new AtomicBoolean(false);
     private AtomicBoolean qrsPending = new AtomicBoolean(false);
     private AtomicReference<TargetInfo> searcherTargetInfo = new AtomicReference<>();
+    private AtomicReference<TargetInfo> searcherSignature = new AtomicReference<>();
     private int syncTimes = 0;
     private int qrsSyncTimes = 0;
     private ConcurrentHashSet<String> indexLockSet = new ConcurrentHashSet<>();
@@ -255,6 +256,7 @@ public class MetaDataSyncer extends AbstractLifecycleComponent implements Cluste
                                 LOGGER.info("update searcher heartbeat target success");
                                 searcherSynced.set(true);
                                 searcherTargetInfo.set(searcherResponse.getCustomInfo());
+                                searcherSignature.set(searcherResponse.getSignature());
                                 syncTimes = 0;
                                 return;
                             } else {
@@ -366,11 +368,21 @@ public class MetaDataSyncer extends AbstractLifecycleComponent implements Cluste
     }
 
     /**
+     * 获取searcher signature
+     *
+     * @return searcher signature
+     */
+    public TargetInfo getSearcherSignature() {
+        return searcherSignature.get();
+    }
+
+    /**
      * 设置sync metadata
      */
     public synchronized void setSearcherPendingSync() {
         searcherPending.set(true);
         searcherTargetInfo.set(null);
+        searcherSignature.set(null);
     }
 
     /**

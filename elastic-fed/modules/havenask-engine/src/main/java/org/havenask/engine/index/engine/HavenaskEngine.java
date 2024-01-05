@@ -372,9 +372,9 @@ public class HavenaskEngine extends InternalEngine {
         long sleepInterval = 1000;
         while (timeout > 0) {
             try {
-                TargetInfo targetInfo = metaDataSyncer.getSearcherTargetInfo();
-                if (targetInfo == null || false == targetInfo.table_info.containsKey(tableName)) {
-                    throw new IOException("havenask table not found in searcher");
+                TargetInfo targetInfo = metaDataSyncer.getSearcherSignature();
+                if (targetInfo == null) {
+                    throw new IOException("havenask ttargetInfo not ready");
                 }
 
                 TargetInfo.TableGroup tableGroup = targetInfo.table_groups.get(SQL_DATABASE + ".table_group." + tableName);
