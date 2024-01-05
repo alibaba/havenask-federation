@@ -21,6 +21,7 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 public class TargetInfo {
     public AppInfo app_info;
@@ -227,22 +228,19 @@ public class TargetInfo {
     public static class TableGroup {
         public boolean broadcast = false;
         public List<String> table_names;
+        public Set<Integer> unpublish_part_ids;
 
         @Override
         public boolean equals(Object o) {
-            if (this == o) {
-                return true;
-            }
-            if (o == null || getClass() != o.getClass()) {
-                return false;
-            }
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
             TableGroup that = (TableGroup) o;
-            return Objects.equals(broadcast, that.broadcast) && Objects.equals(table_names, that.table_names);
+            return broadcast == that.broadcast && Objects.equals(table_names, that.table_names) && Objects.equals(unpublish_part_ids, that.unpublish_part_ids);
         }
 
         @Override
         public int hashCode() {
-            return Objects.hash(broadcast, table_names);
+            return Objects.hash(broadcast, table_names, unpublish_part_ids);
         }
     }
 

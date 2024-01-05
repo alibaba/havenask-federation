@@ -755,6 +755,11 @@ public class HavenaskEngine extends InternalEngine {
 
     @Override
     public void refresh(String source) throws EngineException {
+        if ("recovery_finalization".equals(source)) {
+            // finalizeRecovery
+            metaDataSyncer.setSearcherPendingSync();
+        }
+
         maybeRefresh(source);
     }
 

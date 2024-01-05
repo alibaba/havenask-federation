@@ -31,6 +31,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Matcher;
@@ -450,14 +451,7 @@ public class MetaDataSyncer extends AbstractLifecycleComponent implements Cluste
         // update table info
         generateDefaultBizConfig(localHavenaskIndexNames);
 
-        searcherTargetInfo.table_groups = new HashMap<>();
-        for (String indexName : localHavenaskIndexNames) {
-            String tableGroupName = SEARCHER_ZONE_NAME + ".table_group." + indexName;
-            TargetInfo.TableGroup tableGroup = new TargetInfo.TableGroup();
-            tableGroup.table_names = new ArrayList<>();
-            tableGroup.table_names.add(indexName);
-            searcherTargetInfo.table_groups.put(tableGroupName, tableGroup);
-        }
+        searcherTargetInfo.table_groups = getTableGroups(clusterState);
 
         searcherTargetInfo.table_info = new HashMap<>();
         Map<String, Tuple<Integer, Set<Integer>>> indexShards = getIndexShards(clusterState);
@@ -601,6 +595,40 @@ public class MetaDataSyncer extends AbstractLifecycleComponent implements Cluste
             }
         }
         return indexNames;
+    }
+
+    private static Map<String, TargetInfo.TableGroup> getTableGroups(ClusterState clusterState) {
+        Map<String, TargetInfo.TableGroup> tableGroups = new HashMap<>();
+        RoutingNode localRoutingNode = clusterState.getRoutingNodes().node(clusterState.nodes().getLocalNodeId());
+        if (localRoutingNode == null) {
+            throw new RuntimeException("localRoutingNode is null");
+        }
+
+        for (ShardRouting shardRouting : localRoutingNode) {
+            IndexMetadata indexMetadata = clusterState.metadata().index(shardRouting.getIndexName());
+            if (EngineSettings.isHavenaskEngine(indexMetadata.getSettings())) {
+                String tableName = Utils.getHavenaskTableName(shardRouting.shardId());
+                String tableGroupName = SEARCHER_ZONE_NAME + ".table_group." + tableName;
+                TargetInfo.TableGroup tableGroup;
+                if (tableGroups.containsKey(tableGroupName)) {
+                    tableGroup = tableGroups.get(tableGroupName);
+                } else {
+                    tableGroup = new TargetInfo.TableGroup();
+                    tableGroup.table_names = new ArrayList<>();
+                    tableGroup.table_names.add(tableName);
+                    tableGroups.put(tableGroupName, tableGroup);
+                }
+
+                if (false == shardRouting.active()) {
+                    if (tableGroup.unpublish_part_ids == null) {
+                        tableGroup.unpublish_part_ids = new TreeSet<>();
+                    }
+                    tableGroup.unpublish_part_ids.add(shardRouting.getId());
+                }
+            }
+        }
+
+        return tableGroups;
     }
 
     private static Map<String, Tuple<Integer, Set<Integer>>> getIndexShards(ClusterState clusterState) {
