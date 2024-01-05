@@ -79,13 +79,13 @@ public abstract class AbstractHavenaskRestTestCase extends HavenaskRestTestCase 
     public boolean clusterIsSingleNode() throws IOException {
         ClusterHealthResponse clusterHealthResponse = highLevelClient().cluster()
             .health(new ClusterHealthRequest(), RequestOptions.DEFAULT);
-        return clusterHealthResponse.getNumberOfNodes() == 1;
+        return clusterHealthResponse.getNumberOfDataNodes() == 1;
     }
 
     public boolean clusterIsMultiNodes() throws IOException {
         ClusterHealthResponse clusterHealthResponse = highLevelClient().cluster()
             .health(new ClusterHealthRequest(), RequestOptions.DEFAULT);
-        return clusterHealthResponse.getNumberOfNodes() >= 2;
+        return clusterHealthResponse.getNumberOfDataNodes() >= 2;
     }
 
     protected void waitIndexGreen(String index) throws Exception {

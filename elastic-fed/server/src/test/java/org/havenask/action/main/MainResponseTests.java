@@ -55,6 +55,7 @@ import org.havenask.test.VersionUtils;
 import java.io.IOException;
 import java.util.Date;
 
+import static org.havenask.action.main.MainResponse.FLAVOR;
 import static org.havenask.action.main.MainResponse.TAGLINE;
 
 public class MainResponseTests extends AbstractSerializingTestCase<MainResponse> {
@@ -101,6 +102,7 @@ public class MainResponseTests extends AbstractSerializingTestCase<MainResponse>
                 + "\"version\":{"
                     + "\"distribution\":\"" + build.getDistribution() + "\","
                     + "\"number\":\"" + build.getQualifiedVersion() + "\","
+                    + "\"build_flavor\":\"" + FLAVOR + "\","
                     + "\"build_type\":\"" + current.type().displayName() + "\","
                     + "\"build_hash\":\"" + current.hash() + "\","
                     + "\"build_date\":\"" + current.date() + "\","

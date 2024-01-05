@@ -19,6 +19,7 @@ import org.apache.logging.log4j.Logger;
 import org.havenask.action.search.SearchRequest;
 import org.havenask.client.ha.SqlResponse;
 import org.havenask.common.Strings;
+import org.havenask.engine.index.config.Schema;
 import org.havenask.engine.index.mapper.DenseVectorFieldMapper;
 import org.havenask.engine.index.query.ProximaQueryBuilder;
 import org.havenask.engine.rpc.QrsClient;
@@ -32,6 +33,7 @@ import org.havenask.search.builder.KnnSearchBuilder;
 import org.havenask.search.builder.SearchSourceBuilder;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 
@@ -90,7 +92,7 @@ public class HavenaskSearchQueryProcessor {
                     throw new IOException("unsupported knn parameter: " + dsl);
                 }
 
-                String fieldName = knnSearchBuilder.getField();
+                String fieldName = Schema.encodeFieldWithDot(knnSearchBuilder.getField());
 
                 if (indexMapping == null) {
                     throw new IllegalArgumentException(
@@ -129,7 +131,7 @@ public class HavenaskSearchQueryProcessor {
         } else if (queryBuilder != null) {
             if (queryBuilder instanceof MatchAllQueryBuilder) {} else if (queryBuilder instanceof ProximaQueryBuilder) {
                 ProximaQueryBuilder<?> proximaQueryBuilder = (ProximaQueryBuilder<?>) queryBuilder;
-                String fieldName = proximaQueryBuilder.getFieldName();
+                String fieldName = Schema.encodeFieldWithDot(proximaQueryBuilder.getFieldName());
 
                 if (indexMapping == null) {
                     throw new IllegalArgumentException(
@@ -176,36 +178,6 @@ public class HavenaskSearchQueryProcessor {
         return sqlQuery.toString();
     }
 
-    @SuppressWarnings("unchecked")
-    private String getSimilarity(String fieldName, Map<String, Object> indexMapping) {
-        // TODO: 需要考虑如何优化,
-        // 1.similarity的获取方式
-        // 2.需要用户使用'_'来分割Object对象的子字段
-        String[] fields = fieldName.split("_");
-
-        Map<String, Object> curMap = indexMapping;
-        for (int i = 0; i < fields.length; i++) {
-            Object propertiesObj = curMap.get(PROPERTIES_FIELD);
-            if (propertiesObj instanceof Map) {
-                curMap = (Map<String, Object>) propertiesObj;
-                Object fieldObj = curMap.get(fields[i]);
-                if (fieldObj instanceof Map) {
-                    curMap = (Map<String, Object>) fieldObj;
-                } else {
-                    return null;
-                }
-            } else {
-                return null;
-            }
-        }
-        if (curMap.get("type").equals(VECTOR_TYPE)) {
-            return curMap.get(SIMILARITY) != null
-                ? ((String) curMap.get(SIMILARITY)).toUpperCase(Locale.ROOT)
-                : VECTOR_SIMILARITY_TYPE_L2_NORM;
-        }
-        return null;
-    }
-
     private void checkVectorMagnitude(String similarity, float[] queryVector) {
         if (similarity.equals(VECTOR_SIMILARITY_TYPE_DOT_PRODUCT) && Math.abs(computeSquaredMagnitude(queryVector) - 1.0f) > 1e-4f) {
             throw new IllegalArgumentException(
@@ -237,5 +209,44 @@ public class HavenaskSearchQueryProcessor {
             throw new IOException("unsupported similarity: " + similarity);
         }
         return scoreComputeStr.toString();
+    }
+
+    @SuppressWarnings("unchecked")
+    private String getSimilarity(String fieldName, Map<String, Object> indexMapping) {
+        Map<String, Object> flattenFields = flattenFields(Map.of(PROPERTIES_FIELD, indexMapping), null);
+        String flattenFieldName = "properties_" + fieldName;
+
+        if (flattenFields.get(flattenFieldName) != null && flattenFields.get(flattenFieldName) instanceof Map) {
+            Map<String, Object> properties = (Map<String, Object>) flattenFields.get(flattenFieldName);
+            if (properties.get("type").equals(VECTOR_TYPE)) {
+                return properties.get(SIMILARITY) != null
+                    ? ((String) properties.get(SIMILARITY)).toUpperCase(Locale.ROOT)
+                    : VECTOR_SIMILARITY_TYPE_L2_NORM;
+            }
+        }
+
+        return null;
+    }
+
+    private static Map<String, Object> flattenFields(Map<String, Object> map, String parentPath) {
+        Map<String, Object> flatMap = new HashMap<>();
+        String prefix = parentPath != null ? parentPath + "_" : "";
+        for (Map.Entry<String, Object> entry : map.entrySet()) {
+            if (entry.getValue() instanceof Map) {
+                @SuppressWarnings("unchecked")
+                Map<String, Object> value = (Map<String, Object>) entry.getValue();
+                String type = (String) value.get("type");
+                if (type == null || type.equals("object")) {
+                    if (value.containsKey("properties")) {
+                        @SuppressWarnings("unchecked")
+                        Map<String, Object> properties = (Map<String, Object>) value.get("properties");
+                        flatMap.putAll(flattenFields(properties, prefix + entry.getKey()));
+                    }
+                } else {
+                    flatMap.put(prefix + entry.getKey(), entry.getValue());
+                }
+            }
+        }
+        return flatMap;
     }
 }
