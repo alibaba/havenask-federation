@@ -797,12 +797,15 @@ public class HavenaskEngine extends InternalEngine {
         if ("recovery_finalization".equals(source)) {
             // finalizeRecovery
             try {
+                metaDataSyncer.addRecoveryDoneShard(shardId);
                 metaDataSyncer.setSearcherPendingSync();
                 checkTableGroup();
             } catch (IOException e) {
                 logger.error(() -> new ParameterizedMessage("shard [{}] searchable exception", engineConfig.getShardId()), e);
                 failEngine("active havenask table searchable failed", e);
                 throw new EngineException(shardId, "active havenask table searchable failed", e);
+            } finally {
+                metaDataSyncer.removeRecoveryDoneShard(shardId);
             }
         }
 

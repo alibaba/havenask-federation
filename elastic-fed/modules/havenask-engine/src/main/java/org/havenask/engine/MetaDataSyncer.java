@@ -128,6 +128,7 @@ public class MetaDataSyncer extends AbstractLifecycleComponent implements Cluste
     private int qrsSyncTimes = 0;
     private ConcurrentHashSet<String> indexLockSet = new ConcurrentHashSet<>();
     private ConcurrentHashSet<String> shardLockSet = new ConcurrentHashSet<>();
+    private ConcurrentHashSet<ShardId> recoveryDoneShards = new ConcurrentHashSet<>();
 
     public MetaDataSyncer(
         ClusterService clusterService,
@@ -385,6 +386,14 @@ public class MetaDataSyncer extends AbstractLifecycleComponent implements Cluste
         searcherSignature.set(null);
     }
 
+    public synchronized void addRecoveryDoneShard(ShardId shardId) {
+        recoveryDoneShards.add(shardId);
+    }
+
+    public synchronized void removeRecoveryDoneShard(ShardId shardId) {
+        recoveryDoneShards.remove(shardId);
+    }
+
     /**
      * 设置qrsSync metadata
      */
@@ -609,7 +618,7 @@ public class MetaDataSyncer extends AbstractLifecycleComponent implements Cluste
         return indexNames;
     }
 
-    private static Map<String, TargetInfo.TableGroup> getTableGroups(ClusterState clusterState) {
+    private Map<String, TargetInfo.TableGroup> getTableGroups(ClusterState clusterState) {
         Map<String, TargetInfo.TableGroup> tableGroups = new HashMap<>();
         RoutingNode localRoutingNode = clusterState.getRoutingNodes().node(clusterState.nodes().getLocalNodeId());
         if (localRoutingNode == null) {
@@ -631,7 +640,7 @@ public class MetaDataSyncer extends AbstractLifecycleComponent implements Cluste
                     tableGroups.put(tableGroupName, tableGroup);
                 }
 
-                if (false == shardRouting.active()) {
+                if (false == shardRouting.active() && false == recoveryDoneShards.contains(shardRouting.shardId())) {
                     if (tableGroup.unpublish_part_ids == null) {
                         tableGroup.unpublish_part_ids = new TreeSet<>();
                     }
