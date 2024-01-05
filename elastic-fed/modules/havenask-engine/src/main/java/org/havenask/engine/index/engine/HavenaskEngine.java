@@ -367,6 +367,45 @@ public class HavenaskEngine extends InternalEngine {
         }
     }
 
+    private void checkTableGroup() throws IOException {
+        long timeout = 60000;
+        long sleepInterval = 1000;
+        while (timeout > 0) {
+            try {
+                TargetInfo targetInfo = metaDataSyncer.getSearcherTargetInfo();
+                if (targetInfo == null || false == targetInfo.table_info.containsKey(tableName)) {
+                    throw new IOException("havenask table not found in searcher");
+                }
+
+                TargetInfo.TableGroup tableGroup = targetInfo.table_groups.get(SQL_DATABASE + ".table_group." + tableName);
+                if (tableGroup == null) {
+                    throw new IOException("havenask table not found in searcher table groups");
+                }
+
+                if (tableGroup.unpublish_part_ids != null && tableGroup.unpublish_part_ids.contains(shardId.id())) {
+                    throw new IOException("havenask table shard not found in searcher table groups");
+                }
+
+                return;
+            } catch (Exception e) {
+                logger.debug(
+                    () -> new ParameterizedMessage("shard [{}] checkTableGroup exception, waiting for retry", engineConfig.getShardId()),
+                    e
+                );
+                timeout -= sleepInterval;
+                try {
+                    Thread.sleep(sleepInterval);
+                } catch (InterruptedException ex) {
+                    throw new IOException("shard [" + engineConfig.getShardId() + "] check havenask table group interrupted", ex);
+                }
+            }
+        }
+
+        if (timeout <= 0) {
+            throw new IOException("shard [" + engineConfig.getShardId() + "] check havenask table group timeout");
+        }
+    }
+
     /**
      * convert lucene fields to indexlib fields.
      */
@@ -757,7 +796,14 @@ public class HavenaskEngine extends InternalEngine {
     public void refresh(String source) throws EngineException {
         if ("recovery_finalization".equals(source)) {
             // finalizeRecovery
-            metaDataSyncer.setSearcherPendingSync();
+            try {
+                metaDataSyncer.setSearcherPendingSync();
+                checkTableGroup();
+            } catch (IOException e) {
+                logger.error(() -> new ParameterizedMessage("shard [{}] searchable exception", engineConfig.getShardId()), e);
+                failEngine("active havenask table searchable failed", e);
+                throw new EngineException(shardId, "active havenask table searchable failed", e);
+            }
         }
 
         maybeRefresh(source);
