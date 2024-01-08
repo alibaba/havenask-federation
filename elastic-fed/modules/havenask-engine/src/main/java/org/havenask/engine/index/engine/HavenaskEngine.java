@@ -806,8 +806,9 @@ public class HavenaskEngine extends InternalEngine {
     @Override
     public void refresh(String source) throws EngineException {
         if ("post_recovery".equals(source)) {
-            // finalizeRecovery
+            // post_recovery
             try {
+                logger.info("havenask engine post recovery, shardId: {}", shardId);
                 metaDataSyncer.addRecoveryDoneShard(shardId);
                 metaDataSyncer.setSearcherPendingSync();
                 checkTableGroup();
