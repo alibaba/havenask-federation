@@ -215,6 +215,7 @@ public class HavenaskEngine extends InternalEngine {
             private long lastRefreshTime = 0;
             private long indexes = 0;
             private long deletes = 0;
+            private long checkpoint = 0;
             private long lastDocCount = 0;
             private long newDocCount = -1;
 
@@ -223,6 +224,7 @@ public class HavenaskEngine extends InternalEngine {
                 indexes = numDocIndexes.count();
                 deletes = numDocDeletes.count();
                 lastRefreshTime = lastCommitInfo.getCommitTimestamp();
+                checkpoint = getProcessedLocalCheckpoint();
 
                 // get doc count from havenask
                 this.newDocCount = getDocCount();
@@ -241,7 +243,7 @@ public class HavenaskEngine extends InternalEngine {
                     return false;
                 }
 
-                if (newDocCount < 0) {
+                if (newDocCount <= 0) {
                     return true;
                 }
 
@@ -254,6 +256,10 @@ public class HavenaskEngine extends InternalEngine {
                 }
 
                 if (lastRefreshTime != lastCommitInfo.getCommitTimestamp()) {
+                    return true;
+                }
+
+                if (checkpoint != getProcessedLocalCheckpoint()) {
                     return true;
                 }
 
