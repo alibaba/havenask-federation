@@ -32,6 +32,7 @@ import static org.mockito.Mockito.mock;
 
 public class HavenaskSearchQueryProcessorTests extends HavenaskTestCase {
     private QrsClient qrsClient = mock(QrsClient.class);
+    private HavenaskSearchQueryProcessor havenaskSearchQueryProcessor = new HavenaskSearchQueryProcessor(qrsClient);
     private Map<String, Object> indexMapping = new HashMap<>();
     private Map<String, Object> ObjectMapping = new HashMap<>();
 
@@ -56,9 +57,13 @@ public class HavenaskSearchQueryProcessorTests extends HavenaskTestCase {
         Map<String, Object> userMapping = new HashMap<>();
         Map<String, Object> userPropertiesMapping = new HashMap<>();
         Map<String, Object> userImageMapping = new HashMap<>();
+        Map<String, Object> userFirstNameMapping = new HashMap<>();
         userImageMapping.put("type", "vector");
         userImageMapping.put("similarity", "L2_NORM");
         userPropertiesMapping.put("image_vector", userImageMapping);
+        userFirstNameMapping.put("type", "keyword");
+        userPropertiesMapping.put("first_name", userFirstNameMapping);
+        userMapping.put("properties", userPropertiesMapping);
         userMapping.put("properties", userPropertiesMapping);
         propertiesObjectMapping.put("user", userMapping);
         ObjectMapping.put("properties", propertiesObjectMapping);
@@ -68,7 +73,6 @@ public class HavenaskSearchQueryProcessorTests extends HavenaskTestCase {
         SearchSourceBuilder builder = new SearchSourceBuilder();
         builder.query(QueryBuilders.matchAllQuery());
 
-        HavenaskSearchQueryProcessor havenaskSearchQueryProcessor = new HavenaskSearchQueryProcessor(qrsClient);
         String sql = havenaskSearchQueryProcessor.transferSearchRequest2HavenaskSql("table", builder, null);
         assertEquals("select _id from `table` limit 10 offset 0", sql);
     }
@@ -76,13 +80,33 @@ public class HavenaskSearchQueryProcessorTests extends HavenaskTestCase {
     public void testProximaQuery() throws IOException {
         SearchSourceBuilder builder = new SearchSourceBuilder();
         builder.query(new KnnQueryBuilder("field", new float[] { 1.0f, 2.0f }, 20));
-
-        HavenaskSearchQueryProcessor havenaskSearchQueryProcessor = new HavenaskSearchQueryProcessor(qrsClient);
         String sql = havenaskSearchQueryProcessor.transferSearchRequest2HavenaskSql("table", builder, indexMapping);
         assertEquals(
             "select _id, (1/(1+vector_score('field'))) as _score from `table` where "
                 + "MATCHINDEX('field', '1.0,2.0&n=20') order by _score desc limit 10 offset 0",
             sql
+        );
+
+        SearchSourceBuilder objectSearcherBuilder = new SearchSourceBuilder();
+        objectSearcherBuilder.query(new KnnQueryBuilder("user_image_vector", new float[] { 1.0f, 2.0f }, 20));
+        String objectSql = havenaskSearchQueryProcessor.transferSearchRequest2HavenaskSql("table", objectSearcherBuilder, ObjectMapping);
+        assertEquals(
+            "select _id, (1/(1+vector_score('user_image_vector'))) as _score from `table` where "
+                + "MATCHINDEX('user_image_vector', '1.0,2.0&n=20') order by _score desc limit 10 offset 0",
+            objectSql
+        );
+
+        SearchSourceBuilder objectSearcherWithDotBuilder = new SearchSourceBuilder();
+        objectSearcherWithDotBuilder.query(new KnnQueryBuilder("user.image_vector", new float[] { 1.0f, 2.0f }, 20));
+        String objectWithDotSql = havenaskSearchQueryProcessor.transferSearchRequest2HavenaskSql(
+            "table",
+            objectSearcherWithDotBuilder,
+            ObjectMapping
+        );
+        assertEquals(
+            "select _id, (1/(1+vector_score('user_image_vector'))) as _score from `table` where "
+                + "MATCHINDEX('user_image_vector', '1.0,2.0&n=20') order by _score desc limit 10 offset 0",
+            objectWithDotSql
         );
     }
 
@@ -90,7 +114,6 @@ public class HavenaskSearchQueryProcessorTests extends HavenaskTestCase {
         try {
             SearchSourceBuilder builder = new SearchSourceBuilder();
             builder.query(QueryBuilders.existsQuery("field"));
-            HavenaskSearchQueryProcessor havenaskSearchQueryProcessor = new HavenaskSearchQueryProcessor(qrsClient);
             havenaskSearchQueryProcessor.transferSearchRequest2HavenaskSql("table", builder, null);
             fail();
         } catch (IOException e) {
@@ -101,9 +124,22 @@ public class HavenaskSearchQueryProcessorTests extends HavenaskTestCase {
     public void testMatchQuery() throws IOException {
         SearchSourceBuilder builder = new SearchSourceBuilder();
         builder.query(QueryBuilders.matchQuery("field", "value"));
-        HavenaskSearchQueryProcessor havenaskSearchQueryProcessor = new HavenaskSearchQueryProcessor(qrsClient);
         String sql = havenaskSearchQueryProcessor.transferSearchRequest2HavenaskSql("table", builder, null);
         assertEquals("select _id from `table` where MATCHINDEX('field', 'value') limit 10 offset 0", sql);
+
+        SearchSourceBuilder objectSearcherBuilder = new SearchSourceBuilder();
+        objectSearcherBuilder.query(QueryBuilders.matchQuery("user_first_name", "alice"));
+        String objectSql = havenaskSearchQueryProcessor.transferSearchRequest2HavenaskSql("table", objectSearcherBuilder, ObjectMapping);
+        assertEquals("select _id from `table` where MATCHINDEX('user_first_name', 'alice') limit 10 offset 0", objectSql);
+
+        SearchSourceBuilder objectSearcherWithDotBuilder = new SearchSourceBuilder();
+        objectSearcherWithDotBuilder.query(QueryBuilders.matchQuery("user.first_name", "bob"));
+        String objectWithDotSql = havenaskSearchQueryProcessor.transferSearchRequest2HavenaskSql(
+            "table",
+            objectSearcherWithDotBuilder,
+            ObjectMapping
+        );
+        assertEquals("select _id from `table` where MATCHINDEX('user_first_name', 'bob') limit 10 offset 0", objectWithDotSql);
     }
 
     public void testLimit() throws IOException {
@@ -111,7 +147,7 @@ public class HavenaskSearchQueryProcessorTests extends HavenaskTestCase {
         builder.query(QueryBuilders.matchAllQuery());
         builder.from(10);
         builder.size(10);
-        HavenaskSearchQueryProcessor havenaskSearchQueryProcessor = new HavenaskSearchQueryProcessor(qrsClient);
+
         String sql = havenaskSearchQueryProcessor.transferSearchRequest2HavenaskSql("table", builder, null);
         assertEquals("select _id from `table` limit 10 offset 10", sql);
     }
@@ -120,7 +156,7 @@ public class HavenaskSearchQueryProcessorTests extends HavenaskTestCase {
         SearchSourceBuilder builder = new SearchSourceBuilder();
         builder.query(QueryBuilders.matchAllQuery());
         builder.size(10);
-        HavenaskSearchQueryProcessor havenaskSearchQueryProcessor = new HavenaskSearchQueryProcessor(qrsClient);
+
         String sql = havenaskSearchQueryProcessor.transferSearchRequest2HavenaskSql("table", builder, null);
         assertEquals(sql, "select _id from `table` limit 10 offset 0");
     }
@@ -129,7 +165,7 @@ public class HavenaskSearchQueryProcessorTests extends HavenaskTestCase {
         SearchSourceBuilder builder = new SearchSourceBuilder();
         builder.query(QueryBuilders.matchAllQuery());
         builder.from(10);
-        HavenaskSearchQueryProcessor havenaskSearchQueryProcessor = new HavenaskSearchQueryProcessor(qrsClient);
+
         String sql = havenaskSearchQueryProcessor.transferSearchRequest2HavenaskSql("table", builder, null);
         assertEquals(sql, "select _id from `table` limit 10 offset 10");
     }
@@ -139,7 +175,7 @@ public class HavenaskSearchQueryProcessorTests extends HavenaskTestCase {
         SearchSourceBuilder l2NormBuilder = new SearchSourceBuilder();
         l2NormBuilder.query(QueryBuilders.matchAllQuery());
         l2NormBuilder.knnSearch(List.of(new KnnSearchBuilder("field1", new float[] { 1.0f, 2.0f }, 20, 20, null)));
-        HavenaskSearchQueryProcessor havenaskSearchQueryProcessor = new HavenaskSearchQueryProcessor(qrsClient);
+
         String l2NormSql = havenaskSearchQueryProcessor.transferSearchRequest2HavenaskSql("table", l2NormBuilder, indexMapping);
         assertEquals(
             "select _id, ((1/(1+vector_score('field1')))) as _score from `table` "
@@ -162,7 +198,7 @@ public class HavenaskSearchQueryProcessorTests extends HavenaskTestCase {
         SearchSourceBuilder l2NormBuilder = new SearchSourceBuilder();
         l2NormBuilder.query(QueryBuilders.matchAllQuery());
         l2NormBuilder.knnSearch(List.of(new KnnSearchBuilder("user.image_vector", new float[] { 1.0f, 2.0f }, 20, 20, null)));
-        HavenaskSearchQueryProcessor havenaskSearchQueryProcessor = new HavenaskSearchQueryProcessor(qrsClient);
+
         String l2NormSql = havenaskSearchQueryProcessor.transferSearchRequest2HavenaskSql("table", l2NormBuilder, ObjectMapping);
         assertEquals(
             "select _id, ((1/(1+vector_score('user_image_vector')))) as _score from `table` "
@@ -181,7 +217,7 @@ public class HavenaskSearchQueryProcessorTests extends HavenaskTestCase {
                 new KnnSearchBuilder("field2", new float[] { 0.6f, 0.8f }, 10, 10, null)
             )
         );
-        HavenaskSearchQueryProcessor havenaskSearchQueryProcessor = new HavenaskSearchQueryProcessor(qrsClient);
+
         String sql = havenaskSearchQueryProcessor.transferSearchRequest2HavenaskSql("table", builder, indexMapping);
         assertEquals(
             "select _id, ((1/(1+vector_score('field1'))) + ((1+vector_score('field2'))/2)) as _score from `table` "
@@ -196,7 +232,6 @@ public class HavenaskSearchQueryProcessorTests extends HavenaskTestCase {
         dotProductBuilder.query(QueryBuilders.matchAllQuery());
         dotProductBuilder.knnSearch(List.of(new KnnSearchBuilder("field2", new float[] { 1.0f, 2.0f }, 20, 20, null)));
         try {
-            HavenaskSearchQueryProcessor havenaskSearchQueryProcessor = new HavenaskSearchQueryProcessor(qrsClient);
             havenaskSearchQueryProcessor.transferSearchRequest2HavenaskSql("table", dotProductBuilder, indexMapping);
             fail("should throw IllegalArgumentException");
         } catch (IllegalArgumentException e) {
@@ -210,7 +245,7 @@ public class HavenaskSearchQueryProcessorTests extends HavenaskTestCase {
             SearchSourceBuilder builder = new SearchSourceBuilder();
             builder.query(QueryBuilders.matchAllQuery());
             builder.knnSearch(List.of(new KnnSearchBuilder("field", new float[] { 1.0f, 2.0f }, 20, 20, 1.0f)));
-            HavenaskSearchQueryProcessor havenaskSearchQueryProcessor = new HavenaskSearchQueryProcessor(qrsClient);
+
             havenaskSearchQueryProcessor.transferSearchRequest2HavenaskSql("table", builder, indexMapping);
             fail();
         } catch (IOException e) {
@@ -229,7 +264,7 @@ public class HavenaskSearchQueryProcessorTests extends HavenaskTestCase {
             KnnSearchBuilder knnSearchBuilder = new KnnSearchBuilder("field", new float[] { 1.0f, 2.0f }, 20, 20, null);
             knnSearchBuilder.addFilterQuery(QueryBuilders.matchAllQuery());
             builder.knnSearch(List.of(knnSearchBuilder));
-            HavenaskSearchQueryProcessor havenaskSearchQueryProcessor = new HavenaskSearchQueryProcessor(qrsClient);
+
             havenaskSearchQueryProcessor.transferSearchRequest2HavenaskSql("table", builder, indexMapping);
             fail();
         } catch (IOException e) {
