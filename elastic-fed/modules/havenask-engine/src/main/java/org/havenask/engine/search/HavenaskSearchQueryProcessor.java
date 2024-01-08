@@ -146,7 +146,7 @@ public class HavenaskSearchQueryProcessor {
                 checkVectorMagnitude(similarity, proximaQueryBuilder.getVector());
 
                 selectParams.append(", ").append(getScoreComputeStr(fieldName, similarity)).append(" as _score");
-                where.append(" where MATCHINDEX('").append(proximaQueryBuilder.getFieldName()).append("', '");
+                where.append(" where MATCHINDEX('").append(fieldName).append("', '");
                 for (int i = 0; i < proximaQueryBuilder.getVector().length; i++) {
 
                     where.append(proximaQueryBuilder.getVector()[i]);
@@ -158,11 +158,15 @@ public class HavenaskSearchQueryProcessor {
                 orderBy.append(" order by _score desc");
             } else if (queryBuilder instanceof TermQueryBuilder) {
                 TermQueryBuilder termQueryBuilder = (TermQueryBuilder) queryBuilder;
-                where.append(" where ").append(termQueryBuilder.fieldName()).append("='").append(termQueryBuilder.value()).append("'");
+                where.append(" where ")
+                    .append(Schema.encodeFieldWithDot(termQueryBuilder.fieldName()))
+                    .append("='")
+                    .append(termQueryBuilder.value())
+                    .append("'");
             } else if (queryBuilder instanceof MatchQueryBuilder) {
                 MatchQueryBuilder matchQueryBuilder = (MatchQueryBuilder) queryBuilder;
                 where.append(" where MATCHINDEX('")
-                    .append(matchQueryBuilder.fieldName())
+                    .append(Schema.encodeFieldWithDot(matchQueryBuilder.fieldName()))
                     .append("', '")
                     .append(matchQueryBuilder.value())
                     .append("')");
@@ -170,10 +174,18 @@ public class HavenaskSearchQueryProcessor {
                 throw new IOException("unsupported DSL: " + dsl);
             }
         }
-        sqlQuery.append("select").append(selectParams).append(" from ").append('`').append(table).append('`');
-        sqlQuery.append(where).append(orderBy);
-
-        sqlQuery.append(" limit ").append(size).append(" offset ").append(from);
+        sqlQuery.append("select")
+            .append(selectParams)
+            .append(" from ")
+            .append('`')
+            .append(table)
+            .append('`')
+            .append(where)
+            .append(orderBy)
+            .append(" limit ")
+            .append(size)
+            .append(" offset ")
+            .append(from);
 
         return sqlQuery.toString();
     }
