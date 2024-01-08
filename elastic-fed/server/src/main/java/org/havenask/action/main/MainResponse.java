@@ -63,7 +63,8 @@ public class MainResponse extends ActionResponse implements ToXContentObject {
     private String clusterUuid;
     private Build build;
     private String versionNumber;
-    public static final String TAGLINE = "The Havenask Federation Project";
+    public static final String FLAVOR = "default";
+    public static final String TAGLINE = "You Know, for Search";
 
     MainResponse() {}
 
@@ -151,6 +152,7 @@ public class MainResponse extends ActionResponse implements ToXContentObject {
             builder.field("distribution", build.getDistribution());
         }
             builder.field("number", versionNumber)
+            .field("build_flavor", FLAVOR)
             .field("build_type", build.type().displayName())
             .field("build_hash", build.hash())
             .field("build_date", build.date())

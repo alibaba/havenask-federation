@@ -73,16 +73,17 @@ public class QueryTransformerTests extends MapperServiceTestCase {
 
     public void testMatchAllDocsQuery() throws IOException {
         builder.query(QueryBuilders.matchAllQuery());
-        String sql = QueryTransformer.toSql("table", builder, mapperService);
-        assertEquals(sql, "select _id from table");
+        String sql = QueryTransformer.toSql("table", builder, mapperService, 0);
+        assertEquals(sql, "select /*+ SCAN_ATTR(partitionIds='0')*/ _id from table");
     }
 
     public void testProximaQuery() throws IOException {
         SearchSourceBuilder builder = new SearchSourceBuilder();
         builder.query(new KnnQueryBuilder("field", new float[] { 1.0f, 2.0f }, 20));
-        String sql = QueryTransformer.toSql("table", builder, mapperService);
+        String sql = QueryTransformer.toSql("table", builder, mapperService, 0);
         assertEquals(
-            "select _id, (1/(1+vector_score('field'))) as _score from table where MATCHINDEX('field', '1.0,2.0&n=20') order by _score desc",
+            "select /*+ SCAN_ATTR(partitionIds='0')*/ _id, (1/(1+vector_score('field'))) "
+                + "as _score from table where MATCHINDEX('field', '1.0,2.0&n=20') order by _score desc",
             sql
         );
     }
@@ -91,7 +92,7 @@ public class QueryTransformerTests extends MapperServiceTestCase {
         try {
             SearchSourceBuilder builder = new SearchSourceBuilder();
             builder.query(QueryBuilders.existsQuery("field"));
-            QueryTransformer.toSql("table", builder, mapperService);
+            QueryTransformer.toSql("table", builder, mapperService, 0);
             fail();
         } catch (IOException e) {
             assertEquals(e.getMessage(), "unsupported DSL: {\"query\":{\"exists\":{\"field\":\"field\",\"boost\":1.0}}}");
@@ -102,16 +103,16 @@ public class QueryTransformerTests extends MapperServiceTestCase {
     public void testTermQuery() throws IOException {
         SearchSourceBuilder builder = new SearchSourceBuilder();
         builder.query(QueryBuilders.termQuery("field", "value"));
-        String sql = QueryTransformer.toSql("table", builder, mapperService);
-        assertEquals(sql, "select _id from table where field='value'");
+        String sql = QueryTransformer.toSql("table", builder, mapperService, 0);
+        assertEquals(sql, "select /*+ SCAN_ATTR(partitionIds='0')*/ _id from table where field='value'");
     }
 
     // test match query
     public void testMatchQuery() throws IOException {
         SearchSourceBuilder builder = new SearchSourceBuilder();
         builder.query(QueryBuilders.matchQuery("field", "value"));
-        String sql = QueryTransformer.toSql("table", builder, mapperService);
-        assertEquals(sql, "select _id from table where MATCHINDEX('field', 'value')");
+        String sql = QueryTransformer.toSql("table", builder, mapperService, 0);
+        assertEquals(sql, "select /*+ SCAN_ATTR(partitionIds='0')*/ _id from table where MATCHINDEX('field', 'value')");
     }
 
     // test limit
@@ -120,8 +121,8 @@ public class QueryTransformerTests extends MapperServiceTestCase {
         builder.query(QueryBuilders.matchAllQuery());
         builder.from(10);
         builder.size(10);
-        String sql = QueryTransformer.toSql("table", builder, mapperService);
-        assertEquals("select _id from table limit 20", sql);
+        String sql = QueryTransformer.toSql("table", builder, mapperService, 0);
+        assertEquals("select /*+ SCAN_ATTR(partitionIds='0')*/ _id from table limit 20", sql);
     }
 
     // test no from
@@ -129,8 +130,8 @@ public class QueryTransformerTests extends MapperServiceTestCase {
         SearchSourceBuilder builder = new SearchSourceBuilder();
         builder.query(QueryBuilders.matchAllQuery());
         builder.size(10);
-        String sql = QueryTransformer.toSql("table", builder, mapperService);
-        assertEquals(sql, "select _id from table limit 10");
+        String sql = QueryTransformer.toSql("table", builder, mapperService, 0);
+        assertEquals(sql, "select /*+ SCAN_ATTR(partitionIds='0')*/ _id from table limit 10");
     }
 
     // test no size
@@ -138,8 +139,8 @@ public class QueryTransformerTests extends MapperServiceTestCase {
         SearchSourceBuilder builder = new SearchSourceBuilder();
         builder.query(QueryBuilders.matchAllQuery());
         builder.from(10);
-        String sql = QueryTransformer.toSql("table", builder, mapperService);
-        assertEquals(sql, "select _id from table");
+        String sql = QueryTransformer.toSql("table", builder, mapperService, 0);
+        assertEquals(sql, "select /*+ SCAN_ATTR(partitionIds='0')*/ _id from table");
     }
 
     // test knn dsl
@@ -147,9 +148,9 @@ public class QueryTransformerTests extends MapperServiceTestCase {
         SearchSourceBuilder l2NormBuilder = new SearchSourceBuilder();
         l2NormBuilder.query(QueryBuilders.matchAllQuery());
         l2NormBuilder.knnSearch(List.of(new KnnSearchBuilder("field1", new float[] { 1.0f, 2.0f }, 20, 20, null)));
-        String l2NormSql = QueryTransformer.toSql("table", l2NormBuilder, mapperService);
+        String l2NormSql = QueryTransformer.toSql("table", l2NormBuilder, mapperService, 0);
         assertEquals(
-            "select _id, ((1/(1+vector_score('field1')))) as _score from table "
+            "select /*+ SCAN_ATTR(partitionIds='0')*/ _id, ((1/(1+vector_score('field1')))) as _score from table "
                 + "where MATCHINDEX('field1', '1.0,2.0&n=20') order by _score desc",
             l2NormSql
         );
@@ -157,9 +158,9 @@ public class QueryTransformerTests extends MapperServiceTestCase {
         SearchSourceBuilder dotProductBuilder = new SearchSourceBuilder();
         dotProductBuilder.query(QueryBuilders.matchAllQuery());
         dotProductBuilder.knnSearch(List.of(new KnnSearchBuilder("field2", new float[] { 0.6f, 0.8f }, 20, 20, null)));
-        String dotProductSql = QueryTransformer.toSql("table", dotProductBuilder, mapperService);
+        String dotProductSql = QueryTransformer.toSql("table", dotProductBuilder, mapperService, 0);
         assertEquals(
-            "select _id, (((1+vector_score('field2'))/2)) as _score from table "
+            "select /*+ SCAN_ATTR(partitionIds='0')*/ _id, (((1+vector_score('field2'))/2)) as _score from table "
                 + "where MATCHINDEX('field2', '0.6,0.8&n=20') order by _score desc",
             dotProductSql
         );
@@ -175,9 +176,10 @@ public class QueryTransformerTests extends MapperServiceTestCase {
                 new KnnSearchBuilder("field2", new float[] { 0.6f, 0.8f }, 10, 10, null)
             )
         );
-        String sql = QueryTransformer.toSql("table", builder, mapperService);
+        String sql = QueryTransformer.toSql("table", builder, mapperService, 0);
         assertEquals(
-            "select _id, ((1/(1+vector_score('field1'))) + ((1+vector_score('field2'))/2)) as _score from table "
+            "select /*+ SCAN_ATTR(partitionIds='0')*/ _id, ((1/(1+vector_score('field1'))) + "
+                + "((1+vector_score('field2'))/2)) as _score from table "
                 + "where MATCHINDEX('field1', '1.0,2.0&n=20') or MATCHINDEX('field2', '0.6,0.8&n=10') order by _score desc",
             sql
         );
@@ -188,7 +190,7 @@ public class QueryTransformerTests extends MapperServiceTestCase {
         dotProductBuilder.query(QueryBuilders.matchAllQuery());
         dotProductBuilder.knnSearch(List.of(new KnnSearchBuilder("field2", new float[] { 1.0f, 2.0f }, 20, 20, null)));
         try {
-            String dotProductSql = QueryTransformer.toSql("table", dotProductBuilder, mapperService);
+            String dotProductSql = QueryTransformer.toSql("table", dotProductBuilder, mapperService, 0);
             fail("should throw IllegalArgumentException");
         } catch (IllegalArgumentException e) {
             assertEquals("The [dot_product] similarity can only be used with unit-length vectors.", e.getMessage());
@@ -201,7 +203,7 @@ public class QueryTransformerTests extends MapperServiceTestCase {
             SearchSourceBuilder builder = new SearchSourceBuilder();
             builder.query(QueryBuilders.matchAllQuery());
             builder.knnSearch(List.of(new KnnSearchBuilder("field", new float[] { 1.0f, 2.0f }, 20, 20, 1.0f)));
-            QueryTransformer.toSql("table", builder, mapperService);
+            QueryTransformer.toSql("table", builder, mapperService, 0);
             fail();
         } catch (IOException e) {
             assertEquals(
@@ -219,7 +221,7 @@ public class QueryTransformerTests extends MapperServiceTestCase {
             KnnSearchBuilder knnSearchBuilder = new KnnSearchBuilder("field", new float[] { 1.0f, 2.0f }, 20, 20, null);
             knnSearchBuilder.addFilterQuery(QueryBuilders.matchAllQuery());
             builder.knnSearch(List.of(knnSearchBuilder));
-            QueryTransformer.toSql("table", builder, mapperService);
+            QueryTransformer.toSql("table", builder, mapperService, 0);
             fail();
         } catch (IOException e) {
             assertEquals(

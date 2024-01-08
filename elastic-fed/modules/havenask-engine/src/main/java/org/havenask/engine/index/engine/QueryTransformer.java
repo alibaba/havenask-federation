@@ -28,13 +28,15 @@ import org.havenask.search.builder.KnnSearchBuilder;
 import org.havenask.search.builder.SearchSourceBuilder;
 
 public class QueryTransformer {
-    public static String toSql(String table, SearchSourceBuilder dsl, MapperService mapperService) throws IOException {
+    public static String toSql(String table, SearchSourceBuilder dsl, MapperService mapperService, int shardId) throws IOException {
         StringBuilder sqlQuery = new StringBuilder();
         QueryBuilder queryBuilder = dsl.query();
         StringBuilder where = new StringBuilder();
+        StringBuilder shardParams = new StringBuilder();
         StringBuilder selectParams = new StringBuilder();
         StringBuilder orderBy = new StringBuilder();
 
+        shardParams.append(String.format(Locale.ROOT, " /*+ SCAN_ATTR(partitionIds='%s')*/", shardId));
         selectParams.append(" _id");
 
         if (dsl.knnSearch().size() > 0) {
@@ -115,7 +117,7 @@ public class QueryTransformer {
                 throw new IOException("unsupported DSL: " + dsl);
             }
         }
-        sqlQuery.append("select").append(selectParams).append(" from ").append(table);
+        sqlQuery.append("select").append(shardParams).append(selectParams).append(" from ").append(table);
         sqlQuery.append(where).append(orderBy);
         int size = 0;
         if (dsl.size() >= 0) {
