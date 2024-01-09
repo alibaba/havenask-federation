@@ -26,6 +26,7 @@ public class BizConfig {
     public boolean direct_write = true;
     public WalConfig wal_config = new WalConfig();
     public OnlineIndexConfig online_index_config = new OnlineIndexConfig();
+    public BackgroundTaskConfig background_task_config = new BackgroundTaskConfig();
     public boolean realtime = true;
 
     public static class OnlineIndexConfig {
@@ -33,7 +34,6 @@ public class BizConfig {
         public boolean enable_async_dump_segment = true;
         public int max_realtime_dump_interval = 60;
         public BuildConfig build_config = new BuildConfig();
-        public BackgroundTaskConfig background_task_config = new BackgroundTaskConfig();
     }
 
     public static class WalConfig {
