@@ -26,12 +26,13 @@ public class BizConfig {
     public boolean direct_write = true;
     public WalConfig wal_config = new WalConfig();
     public OnlineIndexConfig online_index_config = new OnlineIndexConfig();
+    public BackgroundTaskConfig background_task_config = new BackgroundTaskConfig();
     public boolean realtime = true;
 
     public static class OnlineIndexConfig {
         public boolean on_disk_flush_realtime_index = true;
         public boolean enable_async_dump_segment = true;
-        public int max_realtime_dump_interval = 60;
+        public int max_realtime_dump_interval = 600;
         public BuildConfig build_config = new BuildConfig();
     }
 
@@ -80,9 +81,14 @@ public class BizConfig {
     }
 
     public static class BuildConfig {
-        public int max_doc_count = 100000;
-        public int build_total_memory = 128;
+        public int max_doc_count = 10000;
+        public int building_memory_limit_mb = 128;
         public int keep_version_count = 40;
+        public int keep_version_hour = 4;
+    }
+
+    public static class BackgroundTaskConfig {
+        public int dump_interval_ms = 60000;
     }
 
     public static class OfflineIndexConfig {

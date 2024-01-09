@@ -55,7 +55,7 @@ public class HavenaskIndexSettingProvider implements IndexSettingProvider {
                 throw new IllegalArgumentException("havenask engine not support routing.partition.size > 1");
             }
 
-            String hashField = templateAndRequestSettings.get(EngineSettings.HAVENASK_HASH_FIELD.getKey(), "");
+            String hashField = templateAndRequestSettings.get(EngineSettings.HAVENASK_HASH_MODE_HASH_FIELD.getKey(), "");
             List<String> routingPaths = templateAndRequestSettings.getAsList(
                 IndexMetadata.INDEX_ROUTING_PATH.getKey(),
                 org.havenask.common.collect.List.of()

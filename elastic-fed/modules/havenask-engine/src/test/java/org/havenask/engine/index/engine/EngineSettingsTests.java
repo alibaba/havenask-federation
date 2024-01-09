@@ -77,34 +77,34 @@ public class EngineSettingsTests extends HavenaskTestCase {
     }
 
     public void testHavenaskMaxDocCount() {
-        Settings settings = Settings.builder().put("index.havenask.flush.max_doc_count", "100").build();
-        assertEquals(100, (int) EngineSettings.HAVENASK_FLUSH_MAX_DOC_COUNT.get(settings));
+        Settings settings = Settings.builder().put("index.havenask.build_config.max_doc_count", "100").build();
+        assertEquals(100, (int) EngineSettings.HAVENASK_BUILD_CONFIG_MAX_DOC_COUNT.get(settings));
 
-        settings = Settings.builder().put("index.havenask.flush.max_doc_count", "100000").build();
-        assertEquals(100000, (int) EngineSettings.HAVENASK_FLUSH_MAX_DOC_COUNT.get(settings));
+        settings = Settings.builder().put("index.havenask.build_config.max_doc_count", "100000").build();
+        assertEquals(100000, (int) EngineSettings.HAVENASK_BUILD_CONFIG_MAX_DOC_COUNT.get(settings));
 
         try {
-            settings = Settings.builder().put("index.havenask.flush.max_doc_count", "0").build();
-            EngineSettings.HAVENASK_FLUSH_MAX_DOC_COUNT.get(settings);
+            settings = Settings.builder().put("index.havenask.build_config.max_doc_count", "0").build();
+            EngineSettings.HAVENASK_BUILD_CONFIG_MAX_DOC_COUNT.get(settings);
             fail("should throw IllegalArgumentException");
         } catch (IllegalArgumentException e) {
-            assertEquals("index.havenask.flush.max_doc_count must be a positive integer", e.getMessage());
+            assertEquals("index.havenask.build_config.max_doc_count must be a positive integer", e.getMessage());
         }
 
         try {
-            settings = Settings.builder().put("index.havenask.flush.max_doc_count", "-1").build();
-            EngineSettings.HAVENASK_FLUSH_MAX_DOC_COUNT.get(settings);
+            settings = Settings.builder().put("index.havenask.build_config.max_doc_count", "-1").build();
+            EngineSettings.HAVENASK_BUILD_CONFIG_MAX_DOC_COUNT.get(settings);
             fail("should throw IllegalArgumentException");
         } catch (IllegalArgumentException e) {
-            assertEquals("index.havenask.flush.max_doc_count must be a positive integer", e.getMessage());
+            assertEquals("index.havenask.build_config.max_doc_count must be a positive integer", e.getMessage());
         }
 
         try {
-            settings = Settings.builder().put("index.havenask.flush.max_doc_count", "abc").build();
-            EngineSettings.HAVENASK_FLUSH_MAX_DOC_COUNT.get(settings);
+            settings = Settings.builder().put("index.havenask.build_config.max_doc_count", "abc").build();
+            EngineSettings.HAVENASK_BUILD_CONFIG_MAX_DOC_COUNT.get(settings);
             fail("should throw IllegalArgumentException");
         } catch (IllegalArgumentException e) {
-            assertEquals("Failed to parse value [abc] for setting [index.havenask.flush.max_doc_count]", e.getMessage());
+            assertEquals("Failed to parse value [abc] for setting [index.havenask.build_config.max_doc_count]", e.getMessage());
         }
     }
 }

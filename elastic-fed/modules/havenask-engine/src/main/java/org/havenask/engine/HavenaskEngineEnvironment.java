@@ -431,7 +431,7 @@ public class HavenaskEngineEnvironment implements CustomEnvironment {
             + "  },\n"
             + "  \"offline_index_config\": {\n"
             + "    \"build_config\": {\n"
-            + "      \"build_total_memory\": 5120,\n"
+            + "      \"building_memory_limit_mb\": 5120,\n"
             + "      \"keep_version_count\": 40\n"
             + "    }\n"
             + "  }\n"
