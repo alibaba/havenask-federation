@@ -197,13 +197,13 @@ public class HavenaskIndexSettingProviderTests extends HavenaskTestCase {
         }
     }
 
-    // test index.havenask.hash.field
+    // test index.havenask.hash_mode.hash_field
     public void testGetAdditionalIndexSettingsWithHashField() {
         HavenaskIndexSettingProvider provider = new HavenaskIndexSettingProvider(Settings.EMPTY);
         Settings settings = provider.getAdditionalIndexSettings(
             "test",
             false,
-            Settings.builder().put("index.engine", "havenask").put("index.havenask.hash.field", "test").build()
+            Settings.builder().put("index.engine", "havenask").put("index.havenask.hash_mode.hash_field", "test").build()
         );
         List<String> routings = settings.getAsList(IndexMetadata.INDEX_ROUTING_PATH.getKey());
         assertEquals(1, routings.size());
@@ -217,7 +217,7 @@ public class HavenaskIndexSettingProviderTests extends HavenaskTestCase {
             false,
             Settings.builder()
                 .put("index.engine", "havenask")
-                .put("index.havenask.hash.field", "test")
+                .put("index.havenask.hash_mode.hash_field", "test")
                 .put("index.routing_path", "test")
                 .build()
         );
@@ -234,7 +234,7 @@ public class HavenaskIndexSettingProviderTests extends HavenaskTestCase {
                 false,
                 Settings.builder()
                     .put("index.engine", "havenask")
-                    .put("index.havenask.hash.field", "test")
+                    .put("index.havenask.hash_mode.hash_field", "test")
                     .put("index.routing_path", "test2")
                     .build()
             );

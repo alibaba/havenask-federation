@@ -97,7 +97,7 @@ public class BizConfigGeneratorTests extends MapperServiceTestCase {
                     + "\t\"direct_write\":true,\n"
                     + "\t\"offline_index_config\":{\n"
                     + "\t\t\"build_config\":{\n"
-                    + "\t\t\t\"build_total_memory\":128,\n"
+                    + "\t\t\t\"building_memory_limit_mb\":128,\n"
                     + "\t\t\t\"keep_version_count\":40,\n"
                     + "\t\t\t\"max_doc_count\":100000\n"
                     + "\t\t},\n"
@@ -114,7 +114,7 @@ public class BizConfigGeneratorTests extends MapperServiceTestCase {
                     + "\t},\n"
                     + "\t\"online_index_config\":{\n"
                     + "\t\t\"build_config\":{\n"
-                    + "\t\t\t\"build_total_memory\":128,\n"
+                    + "\t\t\t\"building_memory_limit_mb\":128,\n"
                     + "\t\t\t\"keep_version_count\":40,\n"
                     + "\t\t\t\"max_doc_count\":100000\n"
                     + "\t\t},\n"
@@ -335,7 +335,7 @@ public class BizConfigGeneratorTests extends MapperServiceTestCase {
                     + "\t\"direct_write\":true,\n"
                     + "\t\"offline_index_config\":{\n"
                     + "\t\t\"build_config\":{\n"
-                    + "\t\t\t\"build_total_memory\":128,\n"
+                    + "\t\t\t\"building_memory_limit_mb\":128,\n"
                     + "\t\t\t\"keep_version_count\":40,\n"
                     + "\t\t\t\"max_doc_count\":100000\n"
                     + "\t\t},\n"
@@ -352,7 +352,7 @@ public class BizConfigGeneratorTests extends MapperServiceTestCase {
                     + "\t},\n"
                     + "\t\"online_index_config\":{\n"
                     + "\t\t\"build_config\":{\n"
-                    + "\t\t\t\"build_total_memory\":128,\n"
+                    + "\t\t\t\"building_memory_limit_mb\":128,\n"
                     + "\t\t\t\"keep_version_count\":40,\n"
                     + "\t\t\t\"max_doc_count\":100000\n"
                     + "\t\t},\n"
@@ -629,7 +629,7 @@ public class BizConfigGeneratorTests extends MapperServiceTestCase {
                     + "\t\"direct_write\":true,\n"
                     + "\t\"offline_index_config\":{\n"
                     + "\t\t\"build_config\":{\n"
-                    + "\t\t\t\"build_total_memory\":128,\n"
+                    + "\t\t\t\"building_memory_limit_mb\":128,\n"
                     + "\t\t\t\"keep_version_count\":40,\n"
                     + "\t\t\t\"max_doc_count\":100000\n"
                     + "\t\t},\n"
@@ -646,7 +646,7 @@ public class BizConfigGeneratorTests extends MapperServiceTestCase {
                     + "\t},\n"
                     + "\t\"online_index_config\":{\n"
                     + "\t\t\"build_config\":{\n"
-                    + "\t\t\t\"build_total_memory\":128,\n"
+                    + "\t\t\t\"building_memory_limit_mb\":128,\n"
                     + "\t\t\t\"keep_version_count\":40,\n"
                     + "\t\t\t\"max_doc_count\":5\n"
                     + "\t\t},\n"
@@ -821,9 +821,9 @@ public class BizConfigGeneratorTests extends MapperServiceTestCase {
             indexName,
             Settings.builder()
                 .put(IndexMetadata.SETTING_NUMBER_OF_SHARDS, 3)
-                .put(EngineSettings.HAVENASK_FLUSH_MAX_DOC_COUNT.getKey(), 10)
-                .put(EngineSettings.HAVENASK_WRITE_QUEUE_SIZE.getKey(), 100)
-                .put(EngineSettings.HAVENASK_HASH_FIELD.getKey(), "test")
+                .put(EngineSettings.HAVENASK_BUILD_CONFIG_MAX_DOC_COUNT.getKey(), 10)
+                .put(EngineSettings.HAVENASK_WAL_CONFIG_SINK_QUEUE_SIZE.getKey(), 100)
+                .put(EngineSettings.HAVENASK_HASH_MODE_HASH_FIELD.getKey(), "test")
                 .build(),
             mapperService,
             configPath
@@ -868,7 +868,7 @@ public class BizConfigGeneratorTests extends MapperServiceTestCase {
                     + "\t\"direct_write\":true,\n"
                     + "\t\"offline_index_config\":{\n"
                     + "\t\t\"build_config\":{\n"
-                    + "\t\t\t\"build_total_memory\":128,\n"
+                    + "\t\t\t\"building_memory_limit_mb\":128,\n"
                     + "\t\t\t\"keep_version_count\":40,\n"
                     + "\t\t\t\"max_doc_count\":100000\n"
                     + "\t\t},\n"
@@ -885,7 +885,7 @@ public class BizConfigGeneratorTests extends MapperServiceTestCase {
                     + "\t},\n"
                     + "\t\"online_index_config\":{\n"
                     + "\t\t\"build_config\":{\n"
-                    + "\t\t\t\"build_total_memory\":128,\n"
+                    + "\t\t\t\"building_memory_limit_mb\":128,\n"
                     + "\t\t\t\"keep_version_count\":40,\n"
                     + "\t\t\t\"max_doc_count\":10\n"
                     + "\t\t},\n"

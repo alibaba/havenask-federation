@@ -89,13 +89,13 @@ public class TableConfigGenerator {
     private void generateClusterConfig(String version) throws IOException {
         BizConfig bizConfig = new BizConfig();
         bizConfig.cluster_config.builder_rule_config.partition_count = indexSettings.getAsInt(IndexMetadata.SETTING_NUMBER_OF_SHARDS, 1);
-        bizConfig.online_index_config.build_config.max_doc_count = EngineSettings.HAVENASK_FLUSH_MAX_DOC_COUNT.get(indexSettings);
+        bizConfig.online_index_config.build_config.max_doc_count = EngineSettings.HAVENASK_BUILD_CONFIG_MAX_DOC_COUNT.get(indexSettings);
         bizConfig.cluster_config.cluster_name = indexName;
         bizConfig.cluster_config.table_name = indexName;
         bizConfig.wal_config.sink.queue_name = indexName;
-        bizConfig.wal_config.sink.queue_size = String.valueOf(EngineSettings.HAVENASK_WRITE_QUEUE_SIZE.get(indexSettings));
-        if (EngineSettings.HAVENASK_HASH_FIELD.exists(indexSettings)) {
-            bizConfig.cluster_config.hash_mode.hash_field = EngineSettings.HAVENASK_HASH_FIELD.get(indexSettings);
+        bizConfig.wal_config.sink.queue_size = String.valueOf(EngineSettings.HAVENASK_WAL_CONFIG_SINK_QUEUE_SIZE.get(indexSettings));
+        if (EngineSettings.HAVENASK_HASH_MODE_HASH_FIELD.exists(indexSettings)) {
+            bizConfig.cluster_config.hash_mode.hash_field = EngineSettings.HAVENASK_HASH_MODE_HASH_FIELD.get(indexSettings);
         }
         // bizConfig.realtime = true;//EngineSettings.HAVENASK_REALTIME_ENABLE.get(indexSettings);
         Path clusterConfigPath = configPath.resolve(version).resolve(CLUSTER_DIR).resolve(indexName + CLUSTER_FILE_SUFFIX);

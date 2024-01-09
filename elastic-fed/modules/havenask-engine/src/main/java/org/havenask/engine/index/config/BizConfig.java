@@ -33,6 +33,7 @@ public class BizConfig {
         public boolean enable_async_dump_segment = true;
         public int max_realtime_dump_interval = 60;
         public BuildConfig build_config = new BuildConfig();
+        public BackgroundTaskConfig background_task_config = new BackgroundTaskConfig();
     }
 
     public static class WalConfig {
@@ -80,9 +81,14 @@ public class BizConfig {
     }
 
     public static class BuildConfig {
-        public int max_doc_count = 100000;
-        public int build_total_memory = 128;
+        public int max_doc_count = 10000;
+        public int building_memory_limit_mb = 128;
         public int keep_version_count = 40;
+        public int keep_version_hour = 4;
+    }
+
+    public static class BackgroundTaskConfig {
+        public int dump_interval_ms = 10000;
     }
 
     public static class OfflineIndexConfig {
