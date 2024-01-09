@@ -110,17 +110,17 @@ public class EngineSettings {
     );
 
     public static final Setting<Integer> HAVENASK_BUILD_CONFIG_MAX_DOC_COUNT = new Setting<>(
-            "index.havenask.build_config.max_doc_count",
-            "100000",
-            Integer::parseInt,
-            new Setting.Validator<>() {
-                @Override
-                public void validate(Integer value) {
-                    if (value <= 0) throw new IllegalArgumentException("index.havenask.build_config.max_doc_count must be a positive integer");
-                }
-            },
-            Setting.Property.IndexScope,
-            Property.Final
+        "index.havenask.build_config.max_doc_count",
+        "10000",
+        Integer::parseInt,
+        new Setting.Validator<>() {
+            @Override
+            public void validate(Integer value) {
+                if (value <= 0) throw new IllegalArgumentException("index.havenask.build_config.max_doc_count must be a positive integer");
+            }
+        },
+        Setting.Property.IndexScope,
+        Property.Final
     );
 
     public static final Setting<Integer> HAVENASK_WAL_CONFIG_SINK_QUEUE_SIZE = new Setting<>(

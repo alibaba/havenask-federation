@@ -32,7 +32,7 @@ public class BizConfig {
     public static class OnlineIndexConfig {
         public boolean on_disk_flush_realtime_index = true;
         public boolean enable_async_dump_segment = true;
-        public int max_realtime_dump_interval = 60;
+        public int max_realtime_dump_interval = 600;
         public BuildConfig build_config = new BuildConfig();
     }
 
@@ -88,7 +88,7 @@ public class BizConfig {
     }
 
     public static class BackgroundTaskConfig {
-        public int dump_interval_ms = 10000;
+        public int dump_interval_ms = 60000;
     }
 
     public static class OfflineIndexConfig {
