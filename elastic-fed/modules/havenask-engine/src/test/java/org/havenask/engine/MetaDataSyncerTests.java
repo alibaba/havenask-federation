@@ -14,47 +14,65 @@
 
 package org.havenask.engine;
 
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
-import junit.framework.TestCase;
+import org.havenask.Version;
+import org.havenask.cluster.ClusterModule;
+import org.havenask.cluster.ClusterName;
 import org.havenask.cluster.ClusterState;
+import org.havenask.cluster.EmptyClusterInfoService;
+import org.havenask.cluster.HavenaskAllocationTestCase;
+import org.havenask.cluster.block.ClusterBlocks;
+import org.havenask.cluster.metadata.IndexMetadata;
+import org.havenask.cluster.metadata.Metadata;
+import org.havenask.cluster.node.DiscoveryNode;
 import org.havenask.cluster.node.DiscoveryNodes;
-import org.havenask.cluster.routing.RoutingNode;
-import org.havenask.cluster.routing.RoutingNodes;
-import org.havenask.cluster.routing.ShardRouting;
+import org.havenask.cluster.routing.RoutingTable;
+import org.havenask.cluster.routing.allocation.AllocationService;
+import org.havenask.cluster.routing.allocation.allocator.BalancedShardsAllocator;
+import org.havenask.cluster.routing.allocation.decider.AllocationDecider;
+import org.havenask.cluster.routing.allocation.decider.AllocationDeciders;
+import org.havenask.cluster.routing.allocation.decider.HavenaskShardsLimitAllocationDecider;
 import org.havenask.cluster.service.ClusterService;
-import org.havenask.common.io.stream.StreamInput;
+import org.havenask.common.settings.ClusterSettings;
+import org.havenask.common.settings.Setting;
 import org.havenask.common.settings.Settings;
 import org.havenask.discovery.DiscoveryModule;
-import org.havenask.engine.index.config.ZoneBiz;
 import org.havenask.engine.index.engine.EngineSettings;
 import org.havenask.engine.rpc.TargetInfo;
 import org.havenask.engine.rpc.UpdateHeartbeatTargetRequest;
-import org.havenask.engine.util.Utils;
+import org.havenask.engine.util.RangeUtil;
 import org.havenask.env.Environment;
+import org.havenask.env.NodeEnvironment;
 import org.havenask.env.TestEnvironment;
-import org.havenask.index.shard.ShardId;
-import org.havenask.test.HavenaskTestCase;
+import org.havenask.test.gateway.TestGatewayAllocator;
+import org.havenask.threadpool.TestThreadPool;
+import org.havenask.threadpool.ThreadPool;
 import org.junit.After;
 import org.junit.Before;
 
+import static java.util.Collections.emptyList;
+import static java.util.Collections.emptyMap;
+import static org.havenask.cluster.HavenaskAllocationTestCase.SNAPSHOT_INFO_SERVICE_WITH_NO_SHARD_SIZES;
+import static org.havenask.cluster.node.DiscoveryNodeRole.DATA_ROLE;
+import static org.havenask.cluster.node.DiscoveryNodeRole.INGEST_ROLE;
+import static org.havenask.cluster.node.DiscoveryNodeRole.MASTER_ROLE;
 import static org.havenask.discovery.DiscoveryModule.SINGLE_NODE_DISCOVERY_TYPE;
-import static org.havenask.engine.index.config.generator.BizConfigGenerator.BIZ_DIR;
-import static org.havenask.engine.index.config.generator.BizConfigGenerator.DEFAULT_DIR;
-import static org.havenask.engine.index.config.generator.BizConfigGenerator.DEFAULT_BIZ_CONFIG;
-import static org.havenask.engine.index.config.generator.TableConfigGenerator.TABLE_DIR;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
+import static org.havenask.engine.util.RangeUtil.MAX_PARTITION_RANGE;
+import static org.havenask.engine.util.RangeUtil.splitRange;
 
-public class MetaDataSyncerTests extends HavenaskTestCase {
+public class MetaDataSyncerTests extends HavenaskAllocationTestCase {
     private MetaDataSyncer metaDataSyncer;
-
+    private ThreadPool threadPool;
     private ClusterState clusterState;
     private Path defaultRuntimeDataPath;
 
@@ -63,62 +81,18 @@ public class MetaDataSyncerTests extends HavenaskTestCase {
     private static final int DEFAULT_PART_ID = 0;
     private static final int DEFAULT_SEARCHER_TCP_PORT = 39300;
     private static final int DEFAUlT_SEARCHER_GRPC_PORT = 39400;
-    private static final String INDEX_SUB_PATH = "generation_0/partition_0_65535";
-    private static final String[] subDirNames = { "test1", "test2", "test3", "test4", "in0" };
-    private static final String[] cm2ConfigBizNames = {
-        "general.para_search_2",
-        "general.para_search_2.search",
-        "general.default_sql",
-        "general.para_search_4",
-        "general.default.search",
-        "general.default_agg",
-        "general.default_agg.search",
-        "general.default",
-        "general.para_search_4.search" };
+    private static final String GENETATION_PATH = "generation_0";
+    private static final String[] indexNames = { "test1", "in0" };
+    private static final String[] havenaskIndexNames = { "test1" };
+    private static final String[] cm2ConfigBizNames = { "general.default_sql" };
 
     @Before
     @Override
     public void setUp() throws Exception {
         super.setUp();
 
-        String[] indexNames = { "test1", "test2", "test3", "test4", "in0" };
-        int indexCount = 5;
-
         // generate clusterService
-        ClusterService clusterService = mock(ClusterService.class);
-        ClusterState state = mock(ClusterState.class);
-        when(clusterService.state()).thenReturn(state);
-        RoutingNodes routingNodes = mock(RoutingNodes.class);
-        DiscoveryNodes nodes = mock(DiscoveryNodes.class);
-        RoutingNode routingNode = mock(RoutingNode.class);
-
-        when(state.getRoutingNodes()).thenReturn(routingNodes);
-        when(state.nodes()).thenReturn(nodes);
-        when(nodes.getLocalNodeId()).thenReturn("localNodeId");
-        when(routingNodes.node("localNodeId")).thenReturn(routingNode);
-
-        ShardId[] shardIds = new ShardId[indexCount];
-        for (int i = 0; i < shardIds.length; i++) {
-            shardIds[i] = mock(ShardId.class);
-            when(shardIds[i].getIndexName()).thenReturn(indexNames[i]);
-        }
-
-        StreamInput in = mock(StreamInput.class);
-        when(in.readByte()).thenReturn((byte) 1);
-        ShardRouting[] shardRoutings = new ShardRouting[indexCount];
-        for (int i = 0; i < shardRoutings.length; i++) {
-            shardRoutings[i] = new ShardRouting(shardIds[i], in);
-        }
-
-        List<ShardRouting> listShardRoutings = new ArrayList<>();
-        for (int i = 0; i < shardRoutings.length; i++) {
-            listShardRoutings.add(shardRoutings[i]);
-        }
-        when(routingNode.iterator()).thenReturn(listShardRoutings.iterator());
-
-        // generate HavenaskEngineEnvironment
-        ShardId shardId = new ShardId("indexFile", "indexFile", 0);
-        String tableName = Utils.getHavenaskTableName(shardId);
+        threadPool = new TestThreadPool(getTestName());
         Path workDir = createTempDir();
         Settings settings = Settings.builder()
             .put(Environment.PATH_HOME_SETTING.getKey(), workDir.toString())
@@ -126,50 +100,88 @@ public class MetaDataSyncerTests extends HavenaskTestCase {
             .put(EngineSettings.ENGINE_TYPE_SETTING.getKey(), EngineSettings.ENGINE_HAVENASK)
             .put(DiscoveryModule.DISCOVERY_TYPE_SETTING.getKey(), SINGLE_NODE_DISCOVERY_TYPE)
             .build();
-        Path indexFile = workDir.resolve(HavenaskEngineEnvironment.DEFAULT_DATA_PATH)
-            .resolve(HavenaskEngineEnvironment.HAVENASK_RUNTIMEDATA_PATH)
-            .resolve(tableName);
-        Files.createDirectories(indexFile);
-        TestCase.assertTrue(Files.exists(indexFile));
+        Set<Setting<?>> buildInSettings = new HashSet<>(ClusterSettings.BUILT_IN_CLUSTER_SETTINGS);
+        buildInSettings.add(NativeProcessControlService.HAVENASK_COMMAND_TIMEOUT_SETTING);
+        ClusterService clusterService = new ClusterService(settings, new ClusterSettings(settings, buildInSettings), threadPool);
 
-        Path configPath = workDir.resolve(HavenaskEngineEnvironment.DEFAULT_DATA_PATH)
-            .resolve(HavenaskEngineEnvironment.HAVENASK_CONFIG_PATH);
-        Files.createDirectories(configPath.resolve(TABLE_DIR).resolve("0"));
-        Files.createDirectories(configPath.resolve(BIZ_DIR).resolve(DEFAULT_DIR).resolve("0"));
-        Files.createDirectories(configPath.resolve(BIZ_DIR).resolve(DEFAULT_DIR).resolve("0").resolve("zones").resolve("general"));
-        ZoneBiz zoneBiz = new ZoneBiz();
-        Files.write(
-            configPath.resolve(BIZ_DIR).resolve(DEFAULT_DIR).resolve("0").resolve(DEFAULT_BIZ_CONFIG),
-            zoneBiz.toString().getBytes(StandardCharsets.UTF_8),
-            StandardOpenOption.CREATE
+        // generate clusterState
+        Set<Setting<?>> clusterSetSettings = new HashSet<>(ClusterSettings.BUILT_IN_CLUSTER_SETTINGS);
+        clusterSetSettings.add(HavenaskShardsLimitAllocationDecider.CLUSTER_TOTAL_HAVENASK_SHARDS_PER_NODE_SETTING);
+        ClusterSettings clusterSettings = new ClusterSettings(settings, clusterSetSettings);
+        List<AllocationDecider> deciders = new ArrayList<>(ClusterModule.createAllocationDeciders(settings, clusterSettings, emptyList()));
+        Collections.shuffle(deciders, random());
+        AllocationService strategy = new HavenaskAllocationTestCase.MockAllocationService(
+            new AllocationDeciders(deciders),
+            new TestGatewayAllocator(),
+            new BalancedShardsAllocator(settings),
+            EmptyClusterInfoService.INSTANCE,
+            SNAPSHOT_INFO_SERVICE_WITH_NO_SHARD_SIZES
         );
+
+        final DiscoveryNode localNode = new DiscoveryNode(
+            "node1",
+            buildNewFakeTransportAddress(),
+            emptyMap(),
+            Set.of(DATA_ROLE, INGEST_ROLE, MASTER_ROLE),
+            Version.CURRENT
+        );
+
+        Metadata metadata = Metadata.builder()
+            .put(
+                IndexMetadata.builder("test1")
+                    .settings(
+                        settings(Version.CURRENT).put(EngineSettings.ENGINE_TYPE_SETTING.getKey(), EngineSettings.ENGINE_HAVENASK)
+                            .put(IndexMetadata.SETTING_NUMBER_OF_SHARDS, 7)
+                            .put(IndexMetadata.SETTING_NUMBER_OF_REPLICAS, 0)
+                    )
+            )
+            .build();
+        RoutingTable routingTable = RoutingTable.builder().addAsNew(metadata.index("test1")).build();
+
+        ClusterState state = ClusterState.builder(new ClusterName(MetaDataSyncerTests.class.getSimpleName()))
+            .nodes(DiscoveryNodes.builder().add(localNode).add(localNode).localNodeId(localNode.getId()).masterNodeId(localNode.getId()))
+            .metadata(metadata)
+            .routingTable(routingTable)
+            .blocks(ClusterBlocks.EMPTY_CLUSTER_BLOCK)
+            .build();
+
+        state = strategy.reroute(state, "reroute");
+        state = startInitializingShardsAndReroute(strategy, state);
+
+        state = strategy.reroute(state, "reroute");
+        // generate HavenaskEngineEnvironment
         Environment environment = TestEnvironment.newEnvironment(settings);
         HavenaskEngineEnvironment havenaskEngineEnvironment = new HavenaskEngineEnvironment(environment, settings);
 
-        // generate NativeProcessControlService
-        NativeProcessControlService nativeProcessControlService = mock(NativeProcessControlService.class);
+        try (NodeEnvironment nodeEnvironment = new NodeEnvironment(settings, environment)) {
+            // generate NativeProcessControlService
+            NativeProcessControlService nativeProcessControlService = new MockNativeProcessControlService(
+                null,
+                clusterService,
+                threadPool,
+                environment,
+                nodeEnvironment,
+                new HavenaskEngineEnvironment(environment, settings)
+            );
 
-        when(nativeProcessControlService.getSearcherTcpPort()).thenReturn(39300);
-        when(nativeProcessControlService.getSearcherGrpcPort()).thenReturn(39400);
-        when(nativeProcessControlService.getQrsTcpPort()).thenReturn(49300);
+            // generate metaDataSyncer
+            metaDataSyncer = new MetaDataSyncer(clusterService, null, havenaskEngineEnvironment, nativeProcessControlService, null, null);
+            this.clusterState = state;
 
-        when(clusterService.getSettings()).thenReturn(settings);
-
-        // generate metaDataSyncer
-        metaDataSyncer = new MetaDataSyncer(clusterService, null, havenaskEngineEnvironment, nativeProcessControlService, null, null);
-        this.clusterState = state;
-        // get defaultRuntimeDataPath
-        defaultRuntimeDataPath = havenaskEngineEnvironment.getRuntimedataPath();
+            // get defaultRuntimeDataPath
+            defaultRuntimeDataPath = havenaskEngineEnvironment.getRuntimedataPath();
+        }
     }
 
     @After
     @Override
     public void tearDown() throws Exception {
         super.tearDown();
+        ThreadPool.terminate(threadPool, 10, TimeUnit.SECONDS);
+        threadPool = null;
         metaDataSyncer.close();
     }
 
-    @AwaitsFix(bugUrl = "https://github.com/alibaba/havenask-federation/issues/256")
     public void testCreateQrsUpdateHeartbeatTargetRequest() throws Exception {
         UpdateHeartbeatTargetRequest qrsTargetRequest = metaDataSyncer.createQrsUpdateHeartbeatTargetRequest(clusterState);
         TargetInfo.ServiceInfo serviceInfo = qrsTargetRequest.getServiceInfo();
@@ -194,18 +206,28 @@ public class MetaDataSyncerTests extends HavenaskTestCase {
         }
     }
 
-    @AwaitsFix(bugUrl = "https://github.com/alibaba/havenask-federation/issues/256")
     public void testCreateSearcherUpdateHeartbeatTargetRequest() throws Exception {
-        for (String subDir : subDirNames) {
-            Path versionPath = defaultRuntimeDataPath.resolve(subDir).resolve(INDEX_SUB_PATH);
-            Path FilePath = versionPath.resolve("version." + randomIntBetween(0, 8));
-            Files.createDirectories(versionPath);
-            Files.createFile(FilePath);
+        for (String indexName : havenaskIndexNames) {
+            int shardCount = clusterState.metadata().index(indexName).getNumberOfShards();
+            List<RangeUtil.PartitionRange> vec = splitRange(0, MAX_PARTITION_RANGE, shardCount);
+            for (int i = 0; i < shardCount; i++) {
+                String partition = String.format(Locale.ROOT, "partition_%d_%d", vec.get(i).first, vec.get(i).second);
+                Path versionPath = defaultRuntimeDataPath.resolve(indexName).resolve(GENETATION_PATH).resolve(partition);
+                Path FilePath = versionPath.resolve("version." + randomIntBetween(0, 8));
+                Files.createDirectories(versionPath);
+                Files.createFile(FilePath);
+            }
         }
         UpdateHeartbeatTargetRequest searcherTargetRequest = metaDataSyncer.createSearcherUpdateHeartbeatTargetRequest(clusterState);
 
         TargetInfo.ServiceInfo serviceInfo = searcherTargetRequest.getServiceInfo();
         Map<String, Map<String, TargetInfo.TableInfo>> tableInfos = searcherTargetRequest.getTableInfo();
+
+        TargetInfo.TableGroup havenaskTableGroup = searcherTargetRequest.getTargetInfo().table_groups.get("general.table_group.test1");
+        assertEquals(false, havenaskTableGroup.broadcast);
+        assertEquals(1, havenaskTableGroup.table_names.size());
+        assertEquals("test1", havenaskTableGroup.table_names.get(0));
+        assertEquals(3, havenaskTableGroup.unpublish_part_ids.size());
 
         assertEquals(TARGET_VERSION, searcherTargetRequest.getTargetVersion());
         assertEquals(false, searcherTargetRequest.getCleanDisk());
@@ -214,15 +236,14 @@ public class MetaDataSyncerTests extends HavenaskTestCase {
         assertEquals(DEFAULT_PART_ID, (int) serviceInfo.part_id);
         assertEquals(0, (int) serviceInfo.version);
 
-        assertEquals(subDirNames.length, tableInfos.size());
-        for (int i = 0; i < subDirNames.length; i++) {
-            assert (tableInfos.containsKey(subDirNames[i]));
-            Map<String, TargetInfo.TableInfo> curTableInfoMap = tableInfos.get(subDirNames[i]);
+        assertEquals(indexNames.length, tableInfos.size());
+        for (int i = 0; i < indexNames.length; i++) {
+            assert (tableInfos.containsKey(indexNames[i]));
+            Map<String, TargetInfo.TableInfo> curTableInfoMap = tableInfos.get(indexNames[i]);
             assert (curTableInfoMap.containsKey("0"));
             TargetInfo.TableInfo curTableInfo = curTableInfoMap.get("0");
-            assertEquals("in0" != subDirNames[i] ? 1 : 0, (int) curTableInfo.table_mode);
-            assertEquals("in0" != subDirNames[i] ? 2 : 3, (int) curTableInfo.table_type);
-            assertEquals(1, (int) curTableInfo.total_partition_count);
+            assertEquals("in0" != indexNames[i] ? 1 : 0, (int) curTableInfo.table_mode);
+            assertEquals("in0" != indexNames[i] ? 2 : 3, (int) curTableInfo.table_type);
         }
     }
 }
