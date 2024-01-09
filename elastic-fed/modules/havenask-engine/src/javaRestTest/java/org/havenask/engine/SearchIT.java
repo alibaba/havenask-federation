@@ -26,6 +26,7 @@ import org.havenask.action.admin.cluster.health.ClusterHealthRequest;
 import org.havenask.action.admin.cluster.health.ClusterHealthResponse;
 import org.havenask.action.admin.indices.delete.DeleteIndexRequest;
 import org.havenask.action.bulk.BulkRequest;
+import org.havenask.action.get.GetResponse;
 import org.havenask.action.index.IndexRequest;
 import org.havenask.action.search.SearchRequest;
 import org.havenask.action.search.SearchResponse;
@@ -209,8 +210,7 @@ public class SearchIT extends AbstractHavenaskRestTestCase {
         }
 
         // delete index and HEAD index
-        assertTrue(highLevelClient().indices().delete(new DeleteIndexRequest(index), RequestOptions.DEFAULT).isAcknowledged());
-        assertEquals(false, highLevelClient().indices().exists(new GetIndexRequest(index), RequestOptions.DEFAULT));
+        deleteAndHeadIndex(index);
     }
 
     public void testMultiShardKnn() throws Exception {
@@ -283,8 +283,7 @@ public class SearchIT extends AbstractHavenaskRestTestCase {
         }
 
         // delete index and HEAD index
-        assertTrue(highLevelClient().indices().delete(new DeleteIndexRequest(index), RequestOptions.DEFAULT).isAcknowledged());
-        assertEquals(false, highLevelClient().indices().exists(new GetIndexRequest(index), RequestOptions.DEFAULT));
+        deleteAndHeadIndex(index);
     }
 
     public void testMultiKnnQuery() throws Exception {
@@ -363,8 +362,7 @@ public class SearchIT extends AbstractHavenaskRestTestCase {
         assertEquals(dataNum, searchResponse.getHits().getTotalHits().value);
 
         // delete index and HEAD index
-        assertTrue(highLevelClient().indices().delete(new DeleteIndexRequest(index), RequestOptions.DEFAULT).isAcknowledged());
-        assertEquals(false, highLevelClient().indices().exists(new GetIndexRequest(index), RequestOptions.DEFAULT));
+        deleteAndHeadIndex(index);
     }
 
     public void testObjectSearch() throws Exception {
@@ -386,7 +384,7 @@ public class SearchIT extends AbstractHavenaskRestTestCase {
                             mappingBuilder.field("type", "keyword");
                         }
                         mappingBuilder.endObject();
-                        mappingBuilder.startObject("image");
+                        mappingBuilder.startObject("image_vector");
                         {
                             mappingBuilder.field("type", "vector").field("dims", 2).field("similarity", "l2_norm");
                         }
@@ -429,7 +427,7 @@ public class SearchIT extends AbstractHavenaskRestTestCase {
             bulkRequest.add(
                 new IndexRequest(index).id(String.valueOf(i))
                     .source(
-                        Map.of("user", Map.of("name", "person" + i, "image", new float[] { (float) (i + 0.1), (float) (i + 0.1) })),
+                        Map.of("user", Map.of("name", "person" + i, "image_vector", new float[] { (float) (i + 0.1), (float) (i + 0.1) })),
                         XContentType.JSON
                     )
             );
@@ -439,12 +437,12 @@ public class SearchIT extends AbstractHavenaskRestTestCase {
         // search object field
         SearchRequest searchRequest = new SearchRequest(index);
         SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-        searchSourceBuilder.query(QueryBuilders.termQuery("user_name", "person0"));
+        searchSourceBuilder.query(QueryBuilders.termQuery("user.name", "person0"));
         searchRequest.source(searchSourceBuilder);
         assertBusy(() -> {
             SearchResponse searchResponse = highLevelClient().search(searchRequest, RequestOptions.DEFAULT);
             assertEquals(1, searchResponse.getHits().getTotalHits().value);
-            assertTrue(searchResponse.getHits().getHits()[0].getSourceAsString().contains("\"image\":[0.1,0.1]"));
+            assertTrue(searchResponse.getHits().getHits()[0].getSourceAsString().contains("\"image_vector\":[0.1,0.1]"));
             assertTrue(searchResponse.getHits().getHits()[0].getSourceAsString().contains("\"name\":\"person0\""));
         }, 2, TimeUnit.SECONDS);
 
@@ -452,7 +450,9 @@ public class SearchIT extends AbstractHavenaskRestTestCase {
         SearchRequest knnSearchRequest = new SearchRequest(index);
         SearchSourceBuilder knnSearchSourceBuilder = new SearchSourceBuilder();
         knnSearchSourceBuilder.query(QueryBuilders.matchAllQuery());
-        knnSearchSourceBuilder.knnSearch(List.of(new KnnSearchBuilder("user_image", new float[] { 1.5f, 1.2f }, dataNum, dataNum, null)));
+        knnSearchSourceBuilder.knnSearch(
+            List.of(new KnnSearchBuilder("user.image_vector", new float[] { 1.5f, 1.2f }, dataNum, dataNum, null))
+        );
         knnSearchSourceBuilder.size(dataNum);
         knnSearchRequest.source(knnSearchSourceBuilder);
 
@@ -463,6 +463,237 @@ public class SearchIT extends AbstractHavenaskRestTestCase {
         }, 10, TimeUnit.SECONDS);
 
         deleteAndHeadIndex(index);
+    }
+
+    public void testSourceFilteringSearch() throws Exception {
+        String index = "source_filtering_test";
+        searchITIndices.add(index);
+
+        ClusterHealthResponse clusterHealthResponse = highLevelClient().cluster()
+            .health(new ClusterHealthRequest(), RequestOptions.DEFAULT);
+        int numberOfDataNodes = clusterHealthResponse.getNumberOfDataNodes();
+
+        int shardsNum = randomIntBetween(1, 6);
+        int replicasNum = randomIntBetween(0, numberOfDataNodes - 1);
+        assertTrue(
+            createTestIndex(
+                index,
+                Settings.builder()
+                    .put(EngineSettings.ENGINE_TYPE_SETTING.getKey(), EngineSettings.ENGINE_HAVENASK)
+                    .put("number_of_shards", shardsNum)
+                    .put("number_of_replicas", replicasNum)
+                    .build(),
+                Map.of(
+                    "properties",
+                    Map.of(
+                        "user",
+                        Map.of("properties", Map.of("name", Map.of("type", "keyword"), "password", Map.of("type", "keyword"))),
+                        "title",
+                        Map.of("type", "keyword"),
+                        "content",
+                        Map.of("type", "text")
+                    )
+                )
+            )
+        );
+
+        // put doc
+        int dataNum = randomIntBetween(100, 200);
+        BulkRequest bulkRequest = new BulkRequest();
+        for (int i = 0; i < dataNum; i++) {
+            bulkRequest.add(
+                new IndexRequest(index).id(String.valueOf(i))
+                    .source(
+                        Map.of(
+                            "user",
+                            Map.of("name", "person" + i, "password", "password" + i),
+                            "title",
+                            "title" + i,
+                            "content",
+                            "content" + i
+                        ),
+                        XContentType.JSON
+                    )
+            );
+        }
+        highLevelClient().bulk(bulkRequest, RequestOptions.DEFAULT);
+
+        // test source filtering
+
+        // test include
+        sourceFilteringSearch(
+            index,
+            dataNum,
+            new String[] { "user.*" },
+            null,
+            new String[] { "name", "password" },
+            new String[] { "title", "content" }
+        );
+
+        // test exclude
+        sourceFilteringSearch(
+            index,
+            dataNum,
+            null,
+            new String[] { "user.*", "content" },
+            new String[] { "title" },
+            new String[] { "name", "password", "content" }
+        );
+
+        // test include & exclude
+        sourceFilteringSearch(
+            index,
+            dataNum,
+            new String[] { "user.*", "title" },
+            new String[] { "content", "user.name" },
+            new String[] { "password", "title" },
+            new String[] { "name", "content" }
+        );
+
+        // delete index
+        deleteAndHeadIndex(index);
+    }
+
+    public void testLuceneIndexSearch() throws Exception {
+        String index = "lucene_index_test";
+        searchITIndices.add(index);
+
+        // create index
+        ClusterHealthResponse clusterHealthResponse = highLevelClient().cluster()
+            .health(new ClusterHealthRequest(), RequestOptions.DEFAULT);
+        int numberOfDataNodes = clusterHealthResponse.getNumberOfDataNodes();
+
+        int shardsNum = randomIntBetween(1, 6);
+        int replicasNum = randomIntBetween(0, numberOfDataNodes - 1);
+        assertTrue(
+            createTestIndex(
+                index,
+                Settings.builder()
+                    .put(EngineSettings.ENGINE_TYPE_SETTING.getKey(), EngineSettings.ENGINE_LUCENE)
+                    .put("number_of_shards", shardsNum)
+                    .put("number_of_replicas", replicasNum)
+                    .build(),
+                Map.of("properties", Map.of("user", Map.of("type", "keyword"), "content", Map.of("type", "text")))
+            )
+        );
+
+        // put doc
+        int dataNum = randomIntBetween(100, 200);
+        BulkRequest bulkRequest = new BulkRequest();
+        for (int i = 0; i < dataNum; i++) {
+            bulkRequest.add(
+                new IndexRequest(index).id(String.valueOf(i))
+                    .source(Map.of("user", "user" + i, "content", "content" + i), XContentType.JSON)
+            );
+        }
+        highLevelClient().bulk(bulkRequest, RequestOptions.DEFAULT);
+
+        // search doc
+        SearchRequest searchRequest = new SearchRequest(index);
+        SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+        searchSourceBuilder.size(dataNum);
+        searchRequest.source(searchSourceBuilder);
+
+        assertBusy(() -> {
+            SearchResponse searchResponse = highLevelClient().search(searchRequest, RequestOptions.DEFAULT);
+            assertEquals(dataNum, searchResponse.getHits().getTotalHits().value);
+            for (int i = 0; i < dataNum; i++) {
+                assertEquals(index, searchResponse.getHits().getHits()[i].getIndex());
+                assertTrue(searchResponse.getHits().getHits()[i].getSourceAsString().contains("user"));
+                assertTrue(searchResponse.getHits().getHits()[i].getSourceAsString().contains("content"));
+            }
+        }, 2, TimeUnit.SECONDS);
+
+        // update doc
+        int updateNum = randomIntBetween(10, 20);
+        for (int i = 0; i < updateNum; i++) {
+            updateDoc(index, String.valueOf(i), Map.of("user", "update_user" + i, "content", "update_content" + i));
+        }
+
+        // get doc
+        for (int i = 0; i < updateNum; i++) {
+            GetResponse getResponse = getDocById(index, String.valueOf(i));
+            assertEquals(index, getResponse.getIndex());
+            assertTrue(getResponse.getSourceAsString().contains("update_user" + i));
+            assertTrue(getResponse.getSourceAsString().contains("update_content" + i));
+        }
+
+        // delete index
+        deleteAndHeadIndex(index);
+    }
+
+    public void testLuceneAndHavenaskIndexSearch() throws Exception {
+        String luceneIndex = "lucene_index_test";
+        String havenaskIndex = "havenask_index_test";
+        searchITIndices.add(luceneIndex);
+        searchITIndices.add(havenaskIndex);
+
+        // create index
+        ClusterHealthResponse clusterHealthResponse = highLevelClient().cluster()
+            .health(new ClusterHealthRequest(), RequestOptions.DEFAULT);
+        int numberOfDataNodes = clusterHealthResponse.getNumberOfDataNodes();
+        int shardsNum = randomIntBetween(1, 6);
+        int replicasNum = randomIntBetween(0, numberOfDataNodes - 1);
+        assertTrue(
+            createTestIndex(
+                luceneIndex,
+                Settings.builder()
+                    .put(EngineSettings.ENGINE_TYPE_SETTING.getKey(), EngineSettings.ENGINE_LUCENE)
+                    .put("number_of_shards", shardsNum)
+                    .put("number_of_replicas", replicasNum)
+                    .build(),
+                Map.of("properties", Map.of("user", Map.of("type", "keyword"), "content", Map.of("type", "text")))
+            )
+        );
+
+        assertTrue(
+            createTestIndex(
+                havenaskIndex,
+                Settings.builder()
+                    .put(EngineSettings.ENGINE_TYPE_SETTING.getKey(), EngineSettings.ENGINE_HAVENASK)
+                    .put("number_of_shards", shardsNum)
+                    .put("number_of_replicas", replicasNum)
+                    .build(),
+                Map.of("properties", Map.of("user", Map.of("type", "keyword"), "content", Map.of("type", "text")))
+            )
+        );
+
+        // put doc
+        int luceneDataNum = randomIntBetween(100, 200);
+        BulkRequest luceneBulkRequest = new BulkRequest();
+        for (int i = 0; i < luceneDataNum; i++) {
+            luceneBulkRequest.add(
+                new IndexRequest(luceneIndex).id(String.valueOf(i))
+                    .source(Map.of("user", "lucene_user" + i, "content", "lucene_content" + i), XContentType.JSON)
+            );
+        }
+        highLevelClient().bulk(luceneBulkRequest, RequestOptions.DEFAULT);
+
+        int havenaskDataNum = randomIntBetween(100, 200);
+        BulkRequest havenaskBulkRequest = new BulkRequest();
+        for (int i = 0; i < havenaskDataNum; i++) {
+            havenaskBulkRequest.add(
+                new IndexRequest(havenaskIndex).id(String.valueOf(i))
+                    .source(Map.of("user", "havenask_user" + i, "content", "havenask_content" + i), XContentType.JSON)
+            );
+        }
+        highLevelClient().bulk(havenaskBulkRequest, RequestOptions.DEFAULT);
+
+        // search doc
+        int totalDataNum = luceneDataNum + havenaskDataNum;
+
+        SearchRequest searchRequest = new SearchRequest(luceneIndex, havenaskIndex);
+        SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+        searchSourceBuilder.size(totalDataNum);
+        searchRequest.source(searchSourceBuilder);
+        assertBusy(() -> {
+            SearchResponse searchResponse = highLevelClient().search(searchRequest, RequestOptions.DEFAULT);
+            assertEquals(totalDataNum, searchResponse.getHits().getTotalHits().value);
+        }, 2, TimeUnit.SECONDS);
+
+        // delete index
+        deleteAndHeadIndex(luceneIndex);
+        deleteAndHeadIndex(havenaskIndex);
     }
 
     private static XContentBuilder createMapping(String fieldName, int vectorDims, String similarity) throws IOException {
@@ -504,5 +735,33 @@ public class SearchIT extends AbstractHavenaskRestTestCase {
         }
         mappingBuilder.endObject();
         return mappingBuilder;
+    }
+
+    private void sourceFilteringSearch(
+        String index,
+        int dataNum,
+        String[] includes,
+        String[] excludes,
+        String[] expectedIncludes,
+        String[] expectedExcludes
+    ) throws Exception {
+        SearchRequest searchRequest = new SearchRequest(index);
+        SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+        searchSourceBuilder.fetchSource(includes, excludes);
+        searchSourceBuilder.query(QueryBuilders.matchAllQuery());
+        searchSourceBuilder.size(dataNum);
+        searchRequest.source(searchSourceBuilder);
+        assertBusy(() -> {
+            SearchResponse searchResponse = highLevelClient().search(searchRequest, RequestOptions.DEFAULT);
+            assertEquals(dataNum, searchResponse.getHits().getTotalHits().value);
+            for (int i = 0; i < dataNum; i++) {
+                for (String include : expectedIncludes) {
+                    assertTrue(searchResponse.getHits().getHits()[i].getSourceAsString().contains(include));
+                }
+                for (String exclude : expectedExcludes) {
+                    assertFalse(searchResponse.getHits().getHits()[i].getSourceAsString().contains(exclude));
+                }
+            }
+        }, 2, TimeUnit.SECONDS);
     }
 }
