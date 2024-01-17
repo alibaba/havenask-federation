@@ -380,7 +380,7 @@ public class HavenaskStore extends Store {
                 Files.delete(shardPath.resolve(existingFile));
                 logger.debug("cleanupAndVerify: deleted unreferenced file [{}]", existingFile);
             } catch (IOException e) {
-                logger.warn(new ParameterizedMessage("cleanupAndVerify: failed to delete unreferenced file [{}]", existingFile), e);
+                logger.info(new ParameterizedMessage("cleanupAndVerify: failed to delete unreferenced file [{}]", existingFile), e);
             }
         }
 
@@ -394,7 +394,7 @@ public class HavenaskStore extends Store {
                 Files.delete(shardPath.resolve(existingDirectory));
                 logger.debug("cleanupAndVerify: deleted unreferenced directory [{}]", existingDirectory);
             } catch (IOException e) {
-                logger.warn(
+                logger.info(
                     new ParameterizedMessage("cleanupAndVerify: failed to delete unreferenced directory [{}]", existingDirectory),
                     e
                 );
@@ -411,6 +411,14 @@ public class HavenaskStore extends Store {
             directoryNames.add(directoryName);
         });
         return directoryNames.toArray(new String[directoryNames.size()]);
+    }
+
+    private List<Path> retryListAllHavenaskDirectoryPaths(Path dir) {
+        try {
+            return listAllHavenaskDirectoryPaths(dir);
+        } catch (IOException e) {
+            return retryListAllHavenaskDirectoryPaths(dir);
+        }
     }
 
     private List<Path> listAllHavenaskDirectoryPaths(Path dir) throws IOException {
