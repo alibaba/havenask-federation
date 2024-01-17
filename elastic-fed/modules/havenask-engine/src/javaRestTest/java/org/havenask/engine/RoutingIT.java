@@ -38,7 +38,6 @@ import java.util.concurrent.TimeUnit;
 public class RoutingIT extends AbstractHavenaskRestTestCase {
     private static final Logger logger = LogManager.getLogger(RoutingIT.class);
     private static Set<String> routingITIndices = new HashSet<>();
-    private static String HAVENASK_HASH_FIELD = "index.havenask.hash.field";
 
     @AfterClass
     public static void cleanIndices() {
@@ -126,7 +125,7 @@ public class RoutingIT extends AbstractHavenaskRestTestCase {
             .put(EngineSettings.ENGINE_TYPE_SETTING.getKey(), EngineSettings.ENGINE_HAVENASK)
             .put(NUMBER_OF_SHARDS, shardsNum)
             .put(NUMBER_OF_REPLICAS, replicasNum)
-            .put(HAVENASK_HASH_FIELD, "content")
+            .put(EngineSettings.HAVENASK_HASH_MODE_HASH_FIELD.getKey(), "content")
             .build();
 
         java.util.Map<String, ?> map = Map.of("properties", Map.of("seq", Map.of("type", "integer"), "content", Map.of("type", "keyword")));

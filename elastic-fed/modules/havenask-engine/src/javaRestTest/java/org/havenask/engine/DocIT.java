@@ -126,6 +126,7 @@ public class DocIT extends AbstractHavenaskRestTestCase {
         assertBusy(() -> {
             waitSqlResponseExists("select count(*) from " + index, 1);
             SqlResponse sqlResponse = getSqlResponse("select count(*) from " + index);
+            assertEquals(1, sqlResponse.getSqlResult().getData().length);
             assertEquals(4, sqlResponse.getSqlResult().getData()[0][0]);
         }, 5, TimeUnit.SECONDS);
 
