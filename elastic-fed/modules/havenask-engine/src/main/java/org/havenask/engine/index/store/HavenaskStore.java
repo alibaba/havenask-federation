@@ -122,6 +122,22 @@ public class HavenaskStore extends Store {
                     }
                     metadata.put(realPath, storeFileMetadata);
                 });
+            } else if (name.contains("__FENCE__")) {
+                fileMap.forEach((fileName, file) -> {
+                    String parentFenceName = name.substring(name.indexOf("__FENCE__"));
+                    String parentRealPath = parentFenceName + "/" + fileName;
+                    StoreFileMetadata storeFileMetadata = new StoreFileMetadata(
+                        parentRealPath,
+                        file.length,
+                        file.type.name(),
+                        HAVENASK_VERSION
+                    );
+                    // version文件需要拷贝到最外层目录
+                    if (fileName.startsWith("version.")) {
+                        metadata.put(fileName, new StoreFileMetadata(fileName, file.length, file.type.name(), HAVENASK_VERSION));
+                    }
+                    metadata.put(parentRealPath, storeFileMetadata);
+                });
             } else {
                 fileMap.forEach((fileName, file) -> {
                     StoreFileMetadata storeFileMetadata = new StoreFileMetadata(fileName, file.length, file.type.name(), HAVENASK_VERSION);

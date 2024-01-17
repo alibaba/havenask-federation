@@ -163,7 +163,50 @@ public class HavenaskStoreTests extends HavenaskTestCase {
             + "      \"length\":\n"
             + "        372\n"
             + "      }\n"
-            + "    }\n"
+            + "    },\n"
+            + "\"\\/usr\\/share\\/havenask\\/data\\/havenask\\/local_search_12000\\/general_p0_r0\\/runtimedata\\"
+            + "/image_index1\\/generation_0\\/partition_0_13107\":\n"
+            + "    {\n"
+            + "\"segment_1_level_0\\/attribute\\/_id\":\n"
+            + "      {\n"
+            + "      \"length\":\n"
+            + "        -2\n"
+            + "      },\n"
+            + "    \"segment_1_level_0\\/attribute\\/_id\\/data\":\n"
+            + "      {\n"
+            + "      \"length\":\n"
+            + "        210\n"
+            + "      },\n"
+            + "    \"segment_1_level_0\\/attribute\\/_id\\/data_info\":\n"
+            + "      {\n"
+            + "      \"length\":\n"
+            + "        72\n"
+            + "      },\n"
+            + "    \"segment_1_level_0\\/attribute\\/_id\\/offset\":\n"
+            + "      {\n"
+            + "      \"length\":\n"
+            + "        44\n"
+            + "      }"
+            + "   },"
+            + "\"\\/usr\\/share\\/havenask\\/data\\/havenask\\/local_search_12000\\/general_p0_r0\\/runtimedata\\"
+            + "/image_index1\\/generation_0\\/partition_0_13107\\/__FENCE__2DQFAdcBaayEkuws5yzXoAOkVB\":\n"
+            + "    {\n"
+            + "    \"segment_536870931_level_0\":\n"
+            + "      {\n"
+            + "      \"length\":\n"
+            + "        31\n"
+            + "      },\n"
+            + "    \"segment_536870931_level_0\\/attribute\":\n"
+            + "      {\n"
+            + "      \"length\":\n"
+            + "        57\n"
+            + "      },\n"
+            + "    \"segment_536870931_level_0\\/attribute\\/_id\":\n"
+            + "      {\n"
+            + "      \"length\":\n"
+            + "        128\n"
+            + "      }"
+            + "   }"
             + "  },\n"
             + "\"package_files\":\n"
             + "  {\n"
@@ -173,19 +216,26 @@ public class HavenaskStoreTests extends HavenaskTestCase {
 
         {
             Map<String, StoreFileMetadata> snapshot = havenaskStore.getHavenaskMetadata(indexCommit);
-            assertEquals(snapshot.size(), 6);
+            assertEquals(snapshot.size(), 13);
             assertEquals(snapshot.get("deploy_meta.0").length(), 711);
             assertEquals(snapshot.get("index_format_version").length(), 82);
             assertEquals(snapshot.get("index_partition_meta").length(), 28);
             assertEquals(snapshot.get("schema.json").length(), 2335);
             assertEquals(snapshot.get("version.0").length(), 372);
-            assertEquals(snapshot.get("entry_table.0").length(), 400);
+            assertEquals(snapshot.get("entry_table.0").length(), 1350);
+            assertEquals(snapshot.get("segment_1_level_0/attribute/_id").length(), 0);
+            assertEquals(snapshot.get("segment_1_level_0/attribute/_id/data").length(), 210);
+            assertEquals(snapshot.get("segment_1_level_0/attribute/_id/data_info").length(), 72);
+            assertEquals(snapshot.get("segment_1_level_0/attribute/_id/offset").length(), 44);
+            assertEquals(snapshot.get("__FENCE__2DQFAdcBaayEkuws5yzXoAOkVB/segment_536870931_level_0").length(), 31);
+            assertEquals(snapshot.get("__FENCE__2DQFAdcBaayEkuws5yzXoAOkVB/segment_536870931_level_0/attribute").length(), 57);
+            assertEquals(snapshot.get("__FENCE__2DQFAdcBaayEkuws5yzXoAOkVB/segment_536870931_level_0/attribute/_id").length(), 128);
         }
 
         // commit is null
         {
             Map<String, StoreFileMetadata> snapshot = havenaskStore.getHavenaskMetadata(null);
-            assertEquals(snapshot.size(), 6);
+            assertEquals(snapshot.size(), 13);
         }
     }
 
