@@ -73,7 +73,7 @@ public class PeerRecoveryIT extends AbstractHavenaskRestTestCase {
         Settings settings = Settings.builder()
             .put(EngineSettings.ENGINE_TYPE_SETTING.getKey(), EngineSettings.ENGINE_HAVENASK)
             .put("number_of_replicas", 1)
-            .put("index.havenask.flush.max_doc_count", 2)
+            .put(EngineSettings.HAVENASK_BUILD_CONFIG_MAX_DOC_COUNT.getKey(), 2)
             .build();
 
         java.util.Map<String, ?> map = Map.of("properties", Map.of("foo", Map.of("type", "keyword")));
@@ -129,7 +129,7 @@ public class PeerRecoveryIT extends AbstractHavenaskRestTestCase {
             .put(EngineSettings.ENGINE_TYPE_SETTING.getKey(), EngineSettings.ENGINE_HAVENASK)
             .put("number_of_shards", chResponse.getNumberOfDataNodes())
             .put("number_of_replicas", 1)
-            .put("index.havenask.flush.max_doc_count", 2)
+            .put(EngineSettings.HAVENASK_BUILD_CONFIG_MAX_DOC_COUNT.getKey(), 2)
             .build();
 
         java.util.Map<String, ?> map = Map.of("properties", Map.of("foo", Map.of("type", "keyword")));

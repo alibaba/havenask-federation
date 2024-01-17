@@ -114,7 +114,7 @@ public class FlushIT extends AbstractHavenaskRestTestCase {
                                         .put(EngineSettings.ENGINE_TYPE_SETTING.getKey(), EngineSettings.ENGINE_HAVENASK)
                                         .put("number_of_replicas", 0)
                                         .put("refresh_interval", "200ms")
-                                        .put("index.havenask.flush.max_doc_count", index.maxDocCount)
+                                        .put(EngineSettings.HAVENASK_BUILD_CONFIG_MAX_DOC_COUNT.getKey(), index.maxDocCount)
                                         .build()
                                 ).mapping(Map.of("properties", Map.of("foo", Map.of("type", "keyword")))),
                                 RequestOptions.DEFAULT
