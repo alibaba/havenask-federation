@@ -41,7 +41,7 @@ public class HavenaskDirectory extends FilterDirectory {
     }
 
     List<String> listHavenaskFiles() throws IOException {
-        List<Path> files = listAllHavenaskFiles(shardPath);
+        List<Path> files = retryListAllHavenaskFiles(shardPath);
         String shardPathStr = shardPath.toString();
         List<String> fileNames = new ArrayList<>();
         files.forEach(path -> {
@@ -51,16 +51,20 @@ public class HavenaskDirectory extends FilterDirectory {
         return fileNames;
     }
 
+    static List<Path> retryListAllHavenaskFiles(Path dir) {
+        try {
+            return listAllHavenaskFiles(dir);
+        } catch (IOException e) {
+            return retryListAllHavenaskFiles(dir);
+        }
+    }
+
     static List<Path> listAllHavenaskFiles(Path dir) throws IOException {
         List<Path> files = new ArrayList<>();
         try (Stream<Path> stream = Files.list(dir)) {
             stream.forEach(path -> {
                 if (Files.isDirectory(path)) {
-                    try {
-                        files.addAll(listAllHavenaskFiles(path));
-                    } catch (IOException e) {
-                        throw new RuntimeException(e);
-                    }
+                    files.addAll(retryListAllHavenaskFiles(path));
                 } else {
                     files.add(path);
                 }
