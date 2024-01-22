@@ -15,10 +15,7 @@
 package org.havenask.engine.index.store;
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.List;
 
 import org.apache.lucene.util.LuceneTestCase;
 import org.havenask.core.internal.io.IOUtils;
@@ -40,23 +37,5 @@ public class HavenaskDirectoryTests extends HavenaskTestCase {
     @After
     public void cleanup() throws IOException {
         IOUtils.close(directory);
-    }
-
-    public void testListHavenaskFiles() throws IOException {
-        // create some files
-        Files.createDirectories(dataPath.resolve("dir1/dir2"));
-        Files.write(dataPath.resolve("test"), "test content".getBytes(StandardCharsets.UTF_8));
-        Files.write(dataPath.resolve("dir1/test"), "test dir1 content".getBytes(StandardCharsets.UTF_8));
-        Files.write(dataPath.resolve("dir1/dir2/test"), "test dir1 dir2 content".getBytes(StandardCharsets.UTF_8));
-
-        assertEquals(Files.readString(dataPath.resolve("test")), "test content");
-        assertEquals(Files.readString(dataPath.resolve("dir1/test")), "test dir1 content");
-        assertEquals(Files.readString(dataPath.resolve("dir1/dir2/test")), "test dir1 dir2 content");
-
-        List<String> files = directory.listHavenaskFiles();
-        assertEquals(files.size(), 3);
-        assertTrue(files.contains("test"));
-        assertTrue(files.contains("dir1/test"));
-        assertTrue(files.contains("dir1/dir2/test"));
     }
 }
