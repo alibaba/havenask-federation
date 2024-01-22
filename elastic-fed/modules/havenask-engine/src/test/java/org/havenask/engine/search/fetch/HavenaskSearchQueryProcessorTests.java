@@ -125,12 +125,12 @@ public class HavenaskSearchQueryProcessorTests extends HavenaskTestCase {
         SearchSourceBuilder builder = new SearchSourceBuilder();
         builder.query(QueryBuilders.matchQuery("field", "value"));
         String sql = havenaskSearchQueryProcessor.transferSearchRequest2HavenaskSql("table", builder, null);
-        assertEquals("select _id from `table` where MATCHINDEX('field', 'value') limit 10 offset 0", sql);
+        assertEquals("select _id from `table` where MATCHINDEX('field', 'value', 'default_op:OR') limit 10 offset 0", sql);
 
         SearchSourceBuilder objectSearcherBuilder = new SearchSourceBuilder();
         objectSearcherBuilder.query(QueryBuilders.matchQuery("user_first_name", "alice"));
         String objectSql = havenaskSearchQueryProcessor.transferSearchRequest2HavenaskSql("table", objectSearcherBuilder, ObjectMapping);
-        assertEquals("select _id from `table` where MATCHINDEX('user_first_name', 'alice') limit 10 offset 0", objectSql);
+        assertEquals("select _id from `table` where MATCHINDEX('user_first_name', 'alice', 'default_op:OR') limit 10 offset 0", objectSql);
 
         SearchSourceBuilder objectSearcherWithDotBuilder = new SearchSourceBuilder();
         objectSearcherWithDotBuilder.query(QueryBuilders.matchQuery("user.first_name", "bob"));
@@ -139,7 +139,7 @@ public class HavenaskSearchQueryProcessorTests extends HavenaskTestCase {
             objectSearcherWithDotBuilder,
             ObjectMapping
         );
-        assertEquals("select _id from `table` where MATCHINDEX('user_first_name', 'bob') limit 10 offset 0", objectWithDotSql);
+        assertEquals("select _id from `table` where MATCHINDEX('user_first_name', 'bob', 'default_op:OR') limit 10 offset 0", objectWithDotSql);
     }
 
     public void testLimit() throws IOException {
