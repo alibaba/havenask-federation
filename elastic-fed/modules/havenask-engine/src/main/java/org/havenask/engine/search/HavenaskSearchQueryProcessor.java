@@ -169,7 +169,7 @@ public class HavenaskSearchQueryProcessor {
                     .append(Schema.encodeFieldWithDot(matchQueryBuilder.fieldName()))
                     .append("', '")
                     .append(matchQueryBuilder.value())
-                    .append("')");
+                    .append("', 'default_op:OR')");
             } else {
                 throw new IOException("unsupported DSL: " + dsl);
             }
