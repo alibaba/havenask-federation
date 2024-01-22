@@ -139,7 +139,10 @@ public class HavenaskSearchQueryProcessorTests extends HavenaskTestCase {
             objectSearcherWithDotBuilder,
             ObjectMapping
         );
-        assertEquals("select _id from `table` where MATCHINDEX('user_first_name', 'bob', 'default_op:OR') limit 10 offset 0", objectWithDotSql);
+        assertEquals(
+            "select _id from `table` where MATCHINDEX('user_first_name', 'bob', 'default_op:OR') limit 10 offset 0",
+            objectWithDotSql
+        );
     }
 
     public void testLimit() throws IOException {
