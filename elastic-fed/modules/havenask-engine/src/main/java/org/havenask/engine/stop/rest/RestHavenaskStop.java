@@ -3,7 +3,7 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * http://www.apache.org/licenses/LICENSE-2.0
+ *    http://www.apache.org/licenses/LICENSE-2.0
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -14,13 +14,17 @@
 
 package org.havenask.engine.stop.rest;
 
+import org.havenask.action.ActionListener;
 import org.havenask.client.node.NodeClient;
 import org.havenask.engine.stop.action.HavenaskStopAction;
 import org.havenask.engine.stop.action.HavenaskStopRequest;
 
+import org.havenask.engine.stop.action.HavenaskStopResponse;
 import org.havenask.rest.BaseRestHandler;
+import org.havenask.rest.BytesRestResponse;
 import org.havenask.rest.RestRequest;
 import org.havenask.rest.RestRequest.Method;
+import org.havenask.rest.RestStatus;
 
 import java.util.List;
 
@@ -41,7 +45,19 @@ public class RestHavenaskStop extends BaseRestHandler {
         String role = request.param("role");
         String[] nodeIds = request.paramAsStringArray("node", null);
         HavenaskStopRequest havenaskStopRequest = new HavenaskStopRequest(role, nodeIds);
-        return channel -> client.admin().cluster().execute(HavenaskStopAction.INSTANCE, havenaskStopRequest);
+        return channel -> client.admin()
+            .cluster()
+            .execute(HavenaskStopAction.INSTANCE, havenaskStopRequest, new ActionListener<HavenaskStopResponse>() {
+                @Override
+                public void onResponse(HavenaskStopResponse response) {
+                    channel.sendResponse(new BytesRestResponse(RestStatus.OK, response.toString()));
+                }
+
+                @Override
+                public void onFailure(Exception e) {
+                    channel.sendResponse(new BytesRestResponse(RestStatus.EXPECTATION_FAILED, e.getMessage()));
+                }
+            });
     }
 
 }

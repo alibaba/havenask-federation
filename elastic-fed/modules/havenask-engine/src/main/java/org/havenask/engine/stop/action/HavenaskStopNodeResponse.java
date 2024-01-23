@@ -25,6 +25,7 @@ import org.havenask.common.xcontent.XContentBuilder;
 import java.io.IOException;
 
 public class HavenaskStopNodeResponse extends BaseNodeResponse implements ToXContentObject {
+    private final String nodeId;
     private final String result;
     private final int resultCode;
 
@@ -32,12 +33,14 @@ public class HavenaskStopNodeResponse extends BaseNodeResponse implements ToXCon
         super(in);
         result = in.readString();
         resultCode = in.readInt();
+        nodeId = getNode().getId();
     }
 
     public HavenaskStopNodeResponse(DiscoveryNode node, String result, int resultCode) {
         super(node);
         this.result = result;
         this.resultCode = resultCode;
+        this.nodeId = node.getId();
     }
 
     public String getResult() {

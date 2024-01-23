@@ -21,27 +21,19 @@ import org.havenask.common.io.stream.StreamInput;
 import org.havenask.common.io.stream.StreamOutput;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 
 public class HavenaskStopResponse extends BaseNodesResponse<HavenaskStopNodeResponse> {
-    private List<String> results = new ArrayList<>();
-    private List<Integer> resultCodes = new ArrayList<>();
+    private List<HavenaskStopNodeResponse> nodeResponses;
 
     public HavenaskStopResponse(StreamInput in) throws IOException {
         super(in);
-        for (HavenaskStopNodeResponse node : getNodes()) {
-            results.add(node.getResult());
-            resultCodes.add(node.getResultCode());
-        }
+        nodeResponses = getNodes();
     }
 
     public HavenaskStopResponse(ClusterName clusterName, List<HavenaskStopNodeResponse> nodes, List<FailedNodeException> failures) {
         super(clusterName, nodes, failures);
-        for (HavenaskStopNodeResponse node : nodes) {
-            results.add(node.getResult());
-            resultCodes.add(node.getResultCode());
-        }
+        nodeResponses = getNodes();
     }
 
     @Override
