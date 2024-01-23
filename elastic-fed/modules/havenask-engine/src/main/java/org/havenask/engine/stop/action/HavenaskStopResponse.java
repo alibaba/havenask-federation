@@ -14,48 +14,43 @@
 
 package org.havenask.engine.stop.action;
 
-import org.havenask.action.ActionResponse;
+import org.havenask.action.FailedNodeException;
+import org.havenask.action.support.nodes.BaseNodesResponse;
+import org.havenask.cluster.ClusterName;
 import org.havenask.common.io.stream.StreamInput;
 import org.havenask.common.io.stream.StreamOutput;
-import org.havenask.common.xcontent.ToXContentObject;
-import org.havenask.common.xcontent.XContentBuilder;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
-public class HavenaskStopResponse extends ActionResponse implements ToXContentObject {
-    private final String result;
-    private final int resultCode;
+public class HavenaskStopResponse extends BaseNodesResponse<HavenaskStopNodeResponse> {
+    private List<String> results = new ArrayList<>();
+    private List<Integer> resultCodes = new ArrayList<>();
 
     public HavenaskStopResponse(StreamInput in) throws IOException {
-        result = in.readString();
-        resultCode = in.readInt();
+        super(in);
+        for (HavenaskStopNodeResponse node : getNodes()) {
+            results.add(node.getResult());
+            resultCodes.add(node.getResultCode());
+        }
     }
 
-    public HavenaskStopResponse(String result, int resultCode) {
-        this.result = result;
-        this.resultCode = resultCode;
-    }
-
-    public String getResult() {
-        return result;
-    }
-
-    public int getResultCode() {
-        return resultCode;
-    }
-
-    @Override
-    public void writeTo(StreamOutput out) throws IOException {
-        out.writeString(result);
-        out.writeInt(resultCode);
+    public HavenaskStopResponse(ClusterName clusterName, List<HavenaskStopNodeResponse> nodes, List<FailedNodeException> failures) {
+        super(clusterName, nodes, failures);
+        for (HavenaskStopNodeResponse node : nodes) {
+            results.add(node.getResult());
+            resultCodes.add(node.getResultCode());
+        }
     }
 
     @Override
-    public XContentBuilder toXContent(XContentBuilder builder, Params params) throws IOException {
-        // String to XContentBuilder
-        builder.startObject();
-        builder.field("result", result);
-        builder.endObject();
-        return builder;
+    protected List<HavenaskStopNodeResponse> readNodesFrom(StreamInput in) throws IOException {
+        return in.readList(HavenaskStopNodeResponse::readNodeResponse);
+    }
+
+    @Override
+    protected void writeNodesTo(StreamOutput out, List<HavenaskStopNodeResponse> nodes) throws IOException {
+        out.writeList(nodes);
     }
 }
