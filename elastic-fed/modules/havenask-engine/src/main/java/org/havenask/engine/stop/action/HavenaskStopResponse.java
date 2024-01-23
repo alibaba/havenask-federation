@@ -45,4 +45,18 @@ public class HavenaskStopResponse extends BaseNodesResponse<HavenaskStopNodeResp
     protected void writeNodesTo(StreamOutput out, List<HavenaskStopNodeResponse> nodes) throws IOException {
         out.writeList(nodes);
     }
+
+    @Override
+    public String toString() {
+        StringBuilder resStr = new StringBuilder();
+        resStr.append("[\n");
+        for (int i = 0; i < nodeResponses.size(); i++) {
+            resStr.append(nodeResponses.get(i).toString());
+            if (i < nodeResponses.size() - 1) {
+                resStr.append(",\n");
+            }
+        }
+        resStr.append("\n]");
+        return resStr.toString();
+    }
 }

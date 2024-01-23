@@ -70,4 +70,19 @@ public class HavenaskStopNodeResponse extends BaseNodeResponse implements ToXCon
         builder.endObject();
         return builder;
     }
+
+    @Override
+    public String toString() {
+        return "    { \n"
+            + "       nodeId: "
+            + nodeId
+            + ";\n"
+            + "       result: "
+            + result
+            + "\n"
+            + "       resultCode: "
+            + resultCode
+            + "\n"
+            + "   }";
+    }
 }

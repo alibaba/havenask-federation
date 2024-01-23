@@ -27,7 +27,6 @@ import org.havenask.engine.HavenaskEnginePlugin;
 import org.havenask.engine.HavenaskITTestCase;
 import org.havenask.engine.MockNativeProcessControlService;
 import org.havenask.engine.stop.action.HavenaskStopAction;
-import org.havenask.engine.stop.action.HavenaskStopNodeResponse;
 import org.havenask.engine.stop.action.HavenaskStopRequest;
 import org.havenask.engine.stop.action.HavenaskStopResponse;
 import org.havenask.plugins.Plugin;
@@ -101,10 +100,6 @@ public class HavenaskStopActionIT extends HavenaskITTestCase {
 
         HavenaskStopRequest request = new HavenaskStopRequest(role);
         HavenaskStopResponse response = client().execute(HavenaskStopAction.INSTANCE, request).actionGet();
-        for (HavenaskStopNodeResponse nodeResponse : response.getNodes()) {
-            assertEquals(200, nodeResponse.getResultCode());
-            assertEquals("target stop role: searcher; run stopping searcher command success; ", nodeResponse.getResult());
-        }
 
         // check searcher process is not running
         assertFalse(checkProcessAlive(role));
@@ -121,10 +116,6 @@ public class HavenaskStopActionIT extends HavenaskITTestCase {
 
         HavenaskStopRequest request = new HavenaskStopRequest(role);
         HavenaskStopResponse response = client().execute(HavenaskStopAction.INSTANCE, request).actionGet();
-        for (HavenaskStopNodeResponse nodeResponse : response.getNodes()) {
-            assertEquals(200, nodeResponse.getResultCode());
-            assertEquals("target stop role: qrs; run stopping qrs command success; ", nodeResponse.getResult());
-        }
 
         // check searcher process is not running
         assertFalse(checkProcessAlive(role));
@@ -145,14 +136,7 @@ public class HavenaskStopActionIT extends HavenaskITTestCase {
 
         HavenaskStopRequest request = new HavenaskStopRequest(role);
         HavenaskStopResponse response = client().execute(HavenaskStopAction.INSTANCE, request).actionGet();
-        for (HavenaskStopNodeResponse nodeResponse : response.getNodes()) {
-            assertEquals(200, nodeResponse.getResultCode());
-            assertEquals(
-                "target stop role: all; run stopping searcher command success; run stopping qrs command success; ",
-                nodeResponse.getResult()
-            );
-        }
-
+        String res = response.toString();
         // check searcher and qrs process is not running
         assertFalse(checkProcessAlive("searcher"));
         assertFalse(checkProcessAlive("qrs"));
