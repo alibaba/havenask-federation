@@ -136,7 +136,7 @@ public class HavenaskStopActionIT extends HavenaskITTestCase {
 
         HavenaskStopRequest request = new HavenaskStopRequest(role);
         HavenaskStopResponse response = client().execute(HavenaskStopAction.INSTANCE, request).actionGet();
-        String res = response.toString();
+
         // check searcher and qrs process is not running
         assertFalse(checkProcessAlive("searcher"));
         assertFalse(checkProcessAlive("qrs"));

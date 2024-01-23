@@ -29,7 +29,6 @@ import org.havenask.transport.TransportService;
 import java.io.IOException;
 import java.util.List;
 
-// todo: stop接口需要继承TransportNodesAction，HandledTransportAction只适合单机版使用
 public class TransportHavenaskStopAction extends TransportNodesAction<
     HavenaskStopRequest,
     HavenaskStopResponse,
