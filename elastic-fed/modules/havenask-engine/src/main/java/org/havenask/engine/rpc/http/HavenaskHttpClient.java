@@ -41,7 +41,7 @@ public class HavenaskHttpClient implements HavenaskClient {
     private static final Logger LOGGER = LogManager.getLogger(HavenaskHttpClient.class);
     private static final String HEART_BEAT_URL = "/HeartbeatService/heartbeat";
 
-    private final static long SOCKET_TIMEOUT = 120;
+    private static final long SOCKET_TIMEOUT = 120;
     protected OkHttpClient client;
     protected final String url;
 
