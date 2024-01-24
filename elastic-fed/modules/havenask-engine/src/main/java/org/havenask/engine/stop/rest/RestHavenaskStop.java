@@ -14,14 +14,17 @@
 
 package org.havenask.engine.stop.rest;
 
+import org.havenask.action.ActionListener;
 import org.havenask.client.node.NodeClient;
 import org.havenask.engine.stop.action.HavenaskStopAction;
 import org.havenask.engine.stop.action.HavenaskStopRequest;
 
+import org.havenask.engine.stop.action.HavenaskStopResponse;
 import org.havenask.rest.BaseRestHandler;
+import org.havenask.rest.BytesRestResponse;
 import org.havenask.rest.RestRequest;
 import org.havenask.rest.RestRequest.Method;
-import org.havenask.rest.action.RestToXContentListener;
+import org.havenask.rest.RestStatus;
 
 import java.util.List;
 
@@ -40,8 +43,21 @@ public class RestHavenaskStop extends BaseRestHandler {
     protected RestChannelConsumer prepareRequest(RestRequest request, NodeClient client) {
         // role can be "searcher", "qrs", "all"
         String role = request.param("role");
-        HavenaskStopRequest havenaskStopRequest = new HavenaskStopRequest(role);
-        return channel -> client.execute(HavenaskStopAction.INSTANCE, havenaskStopRequest, new RestToXContentListener<>(channel));
+        String[] nodeIds = request.paramAsStringArray("node", null);
+        HavenaskStopRequest havenaskStopRequest = new HavenaskStopRequest(role, nodeIds);
+        return channel -> client.admin()
+            .cluster()
+            .execute(HavenaskStopAction.INSTANCE, havenaskStopRequest, new ActionListener<HavenaskStopResponse>() {
+                @Override
+                public void onResponse(HavenaskStopResponse response) {
+                    channel.sendResponse(new BytesRestResponse(RestStatus.OK, response.toString()));
+                }
+
+                @Override
+                public void onFailure(Exception e) {
+                    channel.sendResponse(new BytesRestResponse(RestStatus.EXPECTATION_FAILED, e.getMessage()));
+                }
+            });
     }
 
 }

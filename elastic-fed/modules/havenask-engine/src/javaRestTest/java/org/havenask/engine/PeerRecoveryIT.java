@@ -14,6 +14,7 @@
 
 package org.havenask.engine;
 
+import org.apache.http.util.EntityUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.havenask.action.admin.cluster.health.ClusterHealthRequest;
@@ -36,6 +37,7 @@ import org.junit.AfterClass;
 
 import java.io.IOException;
 import java.util.HashSet;
+import java.util.Locale;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
@@ -123,6 +125,23 @@ public class PeerRecoveryIT extends AbstractHavenaskRestTestCase {
         String primaryPreference = "primary";
         String replicaPreference = "replication";
 
+        String dataNodeName = null;
+        Response catNodesResponse = highLevelClient().getLowLevelClient()
+            .performRequest(new Request("GET", "/_cat" + "/nodes?format=json"));
+        String catNodesStr = EntityUtils.toString(catNodesResponse.getEntity());
+        CatNodes catNodes = CatNodes.parse(catNodesStr);
+        for (int i = 0; i < catNodes.getNodes().length; i++) {
+            CatNodes.NodeInfo nodeInfo = catNodes.getNodes()[i];
+            if (nodeInfo.nodeRole.contains("d")) {
+                dataNodeName = nodeInfo.name;
+                break;
+            }
+        }
+        if (dataNodeName == null) {
+            throw new RuntimeException("no data node found");
+        }
+        final String stopSearcherNodeName = dataNodeName;
+
         // create index
         ClusterHealthResponse chResponse = highLevelClient().cluster().health(new ClusterHealthRequest(), RequestOptions.DEFAULT);
         Settings settings = Settings.builder()
@@ -141,7 +160,10 @@ public class PeerRecoveryIT extends AbstractHavenaskRestTestCase {
             // wait cluster health turns to be yellow
             assertBusy(() -> {
                 // stop searcher
-                Request request = new Request("POST", "/_havenask/stop?role=searcher");
+                Request request = new Request(
+                    "POST",
+                    String.format(Locale.ROOT, "/_havenask/stop?role=searcher&node=%s", stopSearcherNodeName)
+                );
                 Response response = highLevelClient().getLowLevelClient().performRequest(request);
                 assertEquals(200, response.getStatusLine().getStatusCode());
                 ClusterHealthResponse clusterHealthResponse = highLevelClient().cluster()

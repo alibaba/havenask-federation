@@ -14,32 +14,74 @@
 
 package org.havenask.engine.stop.action;
 
-import org.havenask.action.ActionListener;
+import org.havenask.action.FailedNodeException;
 import org.havenask.action.support.ActionFilters;
-import org.havenask.action.support.HandledTransportAction;
+import org.havenask.action.support.nodes.TransportNodesAction;
+import org.havenask.cluster.service.ClusterService;
 import org.havenask.common.inject.Inject;
+import org.havenask.common.io.stream.StreamInput;
 import org.havenask.common.unit.TimeValue;
 import org.havenask.engine.NativeProcessControlService;
 import org.havenask.rest.RestStatus;
-import org.havenask.tasks.Task;
 import org.havenask.threadpool.ThreadPool;
 import org.havenask.transport.TransportService;
 
-// todo: stop接口需要继承TransportNodesAction，HandledTransportAction只适合单机版使用
-public class TransportHavenaskStopAction extends HandledTransportAction<HavenaskStopRequest, HavenaskStopResponse> {
+import java.io.IOException;
+import java.util.List;
+
+public class TransportHavenaskStopAction extends TransportNodesAction<
+    HavenaskStopRequest,
+    HavenaskStopResponse,
+    HavenaskStopNodeRequest,
+    HavenaskStopNodeResponse> {
 
     private static final String stopSearcherCommand = "ps -ef | grep searcher | grep -v grep | awk '{print $2}' | xargs kill -9";
     private static final String stopQrsCommand = "ps -ef | grep qrs | grep -v grep | awk '{print $2}' | xargs kill -9";
     private final TimeValue commandTimeout;
 
     @Inject
-    public TransportHavenaskStopAction(TransportService transportService, ActionFilters actionFilters) {
-        super(HavenaskStopAction.NAME, transportService, actionFilters, HavenaskStopRequest::new, ThreadPool.Names.SEARCH);
+    public TransportHavenaskStopAction(
+        ThreadPool threadPool,
+        ClusterService clusterService,
+        TransportService transportService,
+        ActionFilters actionFilters
+    ) {
+        super(
+            HavenaskStopAction.NAME,
+            threadPool,
+            clusterService,
+            transportService,
+            actionFilters,
+            HavenaskStopRequest::new,
+            HavenaskStopNodeRequest::new,
+            ThreadPool.Names.MANAGEMENT,
+            ThreadPool.Names.MANAGEMENT,
+            HavenaskStopNodeResponse.class
+        );
         commandTimeout = TimeValue.timeValueSeconds(10);
     }
 
     @Override
-    protected void doExecute(Task task, HavenaskStopRequest request, ActionListener<HavenaskStopResponse> listener) {
+    protected HavenaskStopResponse newResponse(
+        HavenaskStopRequest request,
+        List<HavenaskStopNodeResponse> responses,
+        List<FailedNodeException> failures
+    ) {
+        return new HavenaskStopResponse(clusterService.getClusterName(), responses, failures);
+    }
+
+    @Override
+    protected HavenaskStopNodeRequest newNodeRequest(HavenaskStopRequest request) {
+        return new HavenaskStopNodeRequest(request);
+    }
+
+    @Override
+    protected HavenaskStopNodeResponse newNodeResponse(StreamInput in) throws IOException {
+        return new HavenaskStopNodeResponse(in);
+    }
+
+    @Override
+    protected HavenaskStopNodeResponse nodeOperation(HavenaskStopNodeRequest request) {
         String role = request.getRole();
         StringBuilder result = new StringBuilder("target stop role: " + role + "; ");
         // use shell to kill the process
@@ -54,10 +96,13 @@ public class TransportHavenaskStopAction extends HandledTransportAction<Havenask
                 if (success) result.append("run stopping qrs command success; ");
                 else result.append("stop qrs failed; ");
             }
-            listener.onResponse(new HavenaskStopResponse(result.toString(), RestStatus.OK.getStatus()));
+            return new HavenaskStopNodeResponse(clusterService.localNode(), result.toString(), RestStatus.OK.getStatus());
         } catch (Exception e) {
-            listener.onResponse(new HavenaskStopResponse("exception occur :" + e, RestStatus.EXPECTATION_FAILED.getStatus()));
+            return new HavenaskStopNodeResponse(
+                clusterService.localNode(),
+                "exception occur :" + e,
+                RestStatus.EXPECTATION_FAILED.getStatus()
+            );
         }
-
     }
 }

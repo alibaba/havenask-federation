@@ -14,8 +14,8 @@
 
 package org.havenask.engine.stop.action;
 
-import org.havenask.action.ActionRequest;
 import org.havenask.action.ActionRequestValidationException;
+import org.havenask.action.support.nodes.BaseNodesRequest;
 import org.havenask.common.io.stream.StreamInput;
 import org.havenask.common.io.stream.StreamOutput;
 
@@ -23,17 +23,22 @@ import java.io.IOException;
 
 import static org.havenask.action.ValidateActions.addValidationError;
 
-public class HavenaskStopRequest extends ActionRequest {
+public class HavenaskStopRequest extends BaseNodesRequest<HavenaskStopRequest> {
 
     private String role;
-
-    public HavenaskStopRequest(String role) {
-        this.role = role;
-    }
 
     public HavenaskStopRequest(StreamInput in) throws IOException {
         super(in);
         this.role = in.readString();
+    }
+
+    /**
+     * Execute stop action for nodes based on the specified nodes ids.
+     * If none ids are passed, all nodes will execute stop action.
+     */
+    public HavenaskStopRequest(String role, String... nodesIds) {
+        super(nodesIds);
+        this.role = role;
     }
 
     @Override
