@@ -87,57 +87,96 @@ public class TableConfigGenerator {
     }
 
     private void generateClusterConfig(String version) throws IOException {
-        BizConfig bizConfig = new BizConfig();
-        bizConfig.cluster_config.builder_rule_config.partition_count = indexSettings.getAsInt(IndexMetadata.SETTING_NUMBER_OF_SHARDS, 1);
-        bizConfig.online_index_config.build_config.max_doc_count = EngineSettings.HAVENASK_BUILD_CONFIG_MAX_DOC_COUNT.get(indexSettings);
-        bizConfig.cluster_config.cluster_name = indexName;
-        bizConfig.cluster_config.table_name = indexName;
-        bizConfig.wal_config.sink.queue_name = indexName;
-        bizConfig.wal_config.sink.queue_size = String.valueOf(EngineSettings.HAVENASK_WAL_CONFIG_SINK_QUEUE_SIZE.get(indexSettings));
-        if (EngineSettings.HAVENASK_HASH_MODE_HASH_FIELD.exists(indexSettings)) {
-            bizConfig.cluster_config.hash_mode.hash_field = EngineSettings.HAVENASK_HASH_MODE_HASH_FIELD.get(indexSettings);
-        }
-        // bizConfig.realtime = true;//EngineSettings.HAVENASK_REALTIME_ENABLE.get(indexSettings);
+        String clusterJson = EngineSettings.HAVENASK_CLUSTER_JSON.get(indexSettings);
         Path clusterConfigPath = configPath.resolve(version).resolve(CLUSTER_DIR).resolve(indexName + CLUSTER_FILE_SUFFIX);
-        Files.write(
-            clusterConfigPath,
-            bizConfig.toString().getBytes(StandardCharsets.UTF_8),
-            StandardOpenOption.CREATE,
-            StandardOpenOption.TRUNCATE_EXISTING
-        );
+        if (clusterJson != "") {
+            Files.write(
+                clusterConfigPath,
+                clusterJson.getBytes(StandardCharsets.UTF_8),
+                StandardOpenOption.CREATE,
+                StandardOpenOption.TRUNCATE_EXISTING
+            );
+        } else {
+            BizConfig bizConfig = new BizConfig();
+            bizConfig.cluster_config.builder_rule_config.partition_count = indexSettings.getAsInt(
+                IndexMetadata.SETTING_NUMBER_OF_SHARDS,
+                1
+            );
+            bizConfig.online_index_config.build_config.max_doc_count = EngineSettings.HAVENASK_BUILD_CONFIG_MAX_DOC_COUNT.get(
+                indexSettings
+            );
+            bizConfig.cluster_config.cluster_name = indexName;
+            bizConfig.cluster_config.table_name = indexName;
+            bizConfig.wal_config.sink.queue_name = indexName;
+            bizConfig.wal_config.sink.queue_size = String.valueOf(EngineSettings.HAVENASK_WAL_CONFIG_SINK_QUEUE_SIZE.get(indexSettings));
+            if (EngineSettings.HAVENASK_HASH_MODE_HASH_FIELD.exists(indexSettings)) {
+                bizConfig.cluster_config.hash_mode.hash_field = EngineSettings.HAVENASK_HASH_MODE_HASH_FIELD.get(indexSettings);
+            }
+            // bizConfig.realtime = true;//EngineSettings.HAVENASK_REALTIME_ENABLE.get(indexSettings);
+
+            Files.write(
+                clusterConfigPath,
+                bizConfig.toString().getBytes(StandardCharsets.UTF_8),
+                StandardOpenOption.CREATE,
+                StandardOpenOption.TRUNCATE_EXISTING
+            );
+        }
     }
 
     private Schema generateSchema(String version) throws IOException {
         SchemaGenerator schemaGenerator = new SchemaGenerator();
         Schema schema = schemaGenerator.getSchema(indexName, indexSettings, mapperService);
         Path schemaPath = configPath.resolve(version).resolve(SCHEMAS_DIR).resolve(indexName + SCHEMAS_FILE_SUFFIX);
-        Files.write(
-            schemaPath,
-            schema.toString().getBytes(StandardCharsets.UTF_8),
-            StandardOpenOption.CREATE,
-            StandardOpenOption.TRUNCATE_EXISTING
-        );
+
+        String schemaJson = EngineSettings.HAVENASK_SCHEMA_JSON.get(indexSettings);
+        if (schemaJson != "") {
+            Files.write(
+                schemaPath,
+                schemaJson.getBytes(StandardCharsets.UTF_8),
+                StandardOpenOption.CREATE,
+                StandardOpenOption.TRUNCATE_EXISTING
+            );
+        } else {
+            Files.write(
+                schemaPath,
+                schema.toString().getBytes(StandardCharsets.UTF_8),
+                StandardOpenOption.CREATE,
+                StandardOpenOption.TRUNCATE_EXISTING
+            );
+        }
+
         return schema;
     }
 
     private void generateDataTable(Schema schema, String version) throws IOException {
-        DataTable dataTable = new DataTable();
-        ProcessorChainConfig processorChainConfig = new ProcessorChainConfig();
-        processorChainConfig.clusters = List.of(indexName);
-        if (schema != null && schema.getDupFields().size() > 0) {
-            ProcessChain processChain = new ProcessChain();
-            processChain.class_name = "DupFieldProcessor";
-            processChain.parameters = new HashMap<>();
-            schema.getDupFields().forEach((field) -> { processChain.parameters.put(SchemaGenerator.DUP_PREFIX + field, field); });
-            processorChainConfig.document_processor_chain.add(processChain);
-        }
-        dataTable.processor_chain_config = List.of(processorChainConfig);
+        String dataTableJson = EngineSettings.HAVENASK_DATA_TABLE_JSON.get(indexSettings);
         Path dataTablePath = configPath.resolve(version).resolve(DATA_TABLES_DIR).resolve(indexName + DATA_TABLES_FILE_SUFFIX);
-        Files.write(
-            dataTablePath,
-            dataTable.toString().getBytes(StandardCharsets.UTF_8),
-            StandardOpenOption.CREATE,
-            StandardOpenOption.TRUNCATE_EXISTING
-        );
+        if (dataTableJson != "") {
+            Files.write(
+                dataTablePath,
+                dataTableJson.getBytes(StandardCharsets.UTF_8),
+                StandardOpenOption.CREATE,
+                StandardOpenOption.TRUNCATE_EXISTING
+            );
+        } else {
+            DataTable dataTable = new DataTable();
+            ProcessorChainConfig processorChainConfig = new ProcessorChainConfig();
+            processorChainConfig.clusters = List.of(indexName);
+            if (schema != null && schema.getDupFields().size() > 0) {
+                ProcessChain processChain = new ProcessChain();
+                processChain.class_name = "DupFieldProcessor";
+                processChain.parameters = new HashMap<>();
+                schema.getDupFields().forEach((field) -> { processChain.parameters.put(SchemaGenerator.DUP_PREFIX + field, field); });
+                processorChainConfig.document_processor_chain.add(processChain);
+            }
+            dataTable.processor_chain_config = List.of(processorChainConfig);
+
+            Files.write(
+                dataTablePath,
+                dataTable.toString().getBytes(StandardCharsets.UTF_8),
+                StandardOpenOption.CREATE,
+                StandardOpenOption.TRUNCATE_EXISTING
+            );
+        }
     }
 }

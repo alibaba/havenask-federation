@@ -145,6 +145,30 @@ public class EngineSettings {
         Property.Final
     );
 
+    public static final Setting<String> HAVENASK_CLUSTER_JSON = new Setting<>(
+        "index.havenask.cluster.json",
+        "",
+        (s) -> s,
+        Setting.Property.IndexScope,
+        Property.Final
+    );
+
+    public static final Setting<String> HAVENASK_DATA_TABLE_JSON = new Setting<>(
+        "index.havenask.data_table.json",
+        "",
+        (s) -> s,
+        Setting.Property.IndexScope,
+        Property.Final
+    );
+
+    public static final Setting<String> HAVENASK_SCHEMA_JSON = new Setting<>(
+        "index.havenask.schema.json",
+        "",
+        (s) -> s,
+        Setting.Property.IndexScope,
+        Property.Final
+    );
+
     public static boolean isHavenaskEngine(Settings indexSettings) {
         return ENGINE_HAVENASK.equals(ENGINE_TYPE_SETTING.get(indexSettings));
     }

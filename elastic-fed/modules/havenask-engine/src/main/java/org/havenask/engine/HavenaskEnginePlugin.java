@@ -53,6 +53,7 @@ import org.havenask.common.settings.Settings;
 import org.havenask.common.settings.SettingsFilter;
 import org.havenask.common.unit.TimeValue;
 import org.havenask.common.xcontent.NamedXContentRegistry;
+import org.havenask.engine.create.rest.RestHavenaskCreate;
 import org.havenask.engine.index.HavenaskIndexEventListener;
 import org.havenask.engine.index.engine.EngineSettings;
 import org.havenask.engine.index.engine.HavenaskEngine;
@@ -242,6 +243,9 @@ public class HavenaskEnginePlugin extends Plugin
             EngineSettings.HAVENASK_BUILD_CONFIG_MAX_DOC_COUNT,
             EngineSettings.HAVENASK_WAL_CONFIG_SINK_QUEUE_SIZE,
             EngineSettings.HAVENASK_HASH_MODE_HASH_FIELD,
+            EngineSettings.HAVENASK_CLUSTER_JSON,
+            EngineSettings.HAVENASK_DATA_TABLE_JSON,
+            EngineSettings.HAVENASK_SCHEMA_JSON,
             NativeProcessControlService.HAVENASK_COMMAND_TIMEOUT_SETTING,
             NativeProcessControlService.HAVENASK_SEARCHER_HTTP_PORT_SETTING,
             NativeProcessControlService.HAVENASK_SEARCHER_TCP_PORT_SETTING,
@@ -272,7 +276,12 @@ public class HavenaskEnginePlugin extends Plugin
         IndexNameExpressionResolver indexNameExpressionResolver,
         Supplier<DiscoveryNodes> nodesInCluster
     ) {
-        return Arrays.asList(new RestHavenaskSqlAction(), new RestHavenaskSqlClientInfoAction(), new RestHavenaskStop());
+        return Arrays.asList(
+            new RestHavenaskSqlAction(),
+            new RestHavenaskSqlClientInfoAction(),
+            new RestHavenaskStop(),
+            new RestHavenaskCreate()
+        );
     }
 
     @Override
