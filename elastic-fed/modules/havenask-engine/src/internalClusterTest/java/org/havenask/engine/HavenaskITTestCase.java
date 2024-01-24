@@ -19,11 +19,12 @@ import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.net.URI;
 
-import com.sun.net.httpserver.HttpServer;
 import org.havenask.common.SuppressForbidden;
 import org.havenask.test.HavenaskIntegTestCase;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
+
+import com.sun.net.httpserver.HttpServer;
 
 @SuppressForbidden(reason = "use a http server")
 public abstract class HavenaskITTestCase extends HavenaskIntegTestCase {
@@ -170,6 +171,13 @@ public abstract class HavenaskITTestCase extends HavenaskIntegTestCase {
                         + "        \"Message\": \"\"\n"
                         + "    }\n"
                         + "}";
+                } else if (query.contains("timeout")) {
+                    try {
+                        Thread.sleep(2000);
+                    } catch (InterruptedException e) {
+                        throw new RuntimeException(e);
+                    }
+                    strResponse = "";
                 } else {
                     strResponse = "{\"total_time\":2.016,\"has_soft_failure\":false,\"covered_percent\":1.0,"
                         + "\"row_count\":3,\"format_type\":\"full_json\",\"search_info\":{},\"rpc_info\":\"\","
@@ -570,6 +578,14 @@ public abstract class HavenaskITTestCase extends HavenaskIntegTestCase {
                     os.close();
                 }
 
+            });
+            qrsServer.createContext("/timeout", exchange -> {
+                exchange.sendResponseHeaders(200, 0);
+                try {
+                    Thread.sleep(20000);
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
             });
             qrsServer.start();
         }

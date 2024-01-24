@@ -14,9 +14,11 @@
 
 package org.havenask.engine.rpc.http;
 
+import static org.hamcrest.CoreMatchers.containsString;
+import static org.hamcrest.CoreMatchers.instanceOf;
+
 import java.io.IOException;
 
-import com.carrotsearch.randomizedtesting.annotations.ThreadLeakFilters;
 import org.havenask.OkHttpThreadLeakFilter;
 import org.havenask.engine.HavenaskITTestCase;
 import org.havenask.engine.rpc.HeartbeatTargetResponse;
@@ -27,10 +29,18 @@ import org.havenask.engine.rpc.SqlClientInfoResponse;
 import org.havenask.engine.rpc.TargetInfo;
 import org.havenask.engine.rpc.UpdateHeartbeatTargetRequest;
 
-import static org.hamcrest.CoreMatchers.containsString;
+import com.carrotsearch.randomizedtesting.annotations.ThreadLeakFilters;
 
 @ThreadLeakFilters(filters = { OkHttpThreadLeakFilter.class })
 public class QrsHttpClientIT extends HavenaskITTestCase {
+
+    public void testTimeout() {
+        QrsClient client = new QrsHttpClient(49200, 1);
+        String sql = "timeout";
+        QrsSqlRequest request = new QrsSqlRequest(sql, null);
+        RuntimeException e = expectThrows(RuntimeException.class, () -> { client.executeSql(request); });
+        assertThat(e.getCause(), instanceOf(IOException.class));
+    }
 
     public void testSql() throws IOException {
         QrsClient client = new QrsHttpClient(49200);
