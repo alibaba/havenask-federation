@@ -38,6 +38,10 @@ public class QrsHttpClient extends HavenaskHttpClient implements QrsClient {
         super(port);
     }
 
+    public QrsHttpClient(int port, long socketTimeout) {
+        super(port, socketTimeout);
+    }
+
     @Override
     public QrsSqlResponse executeSql(QrsSqlRequest qrsSqlRequest) throws IOException {
         long start = System.nanoTime();

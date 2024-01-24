@@ -14,11 +14,13 @@
 
 package org.havenask.engine.rpc.http;
 
-import okhttp3.MediaType;
-import okhttp3.OkHttpClient;
-import okhttp3.Request;
-import okhttp3.RequestBody;
-import okhttp3.Response;
+import static org.havenask.common.xcontent.XContentType.JSON;
+
+import java.io.IOException;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
+import java.util.concurrent.TimeUnit;
+
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.havenask.common.Strings;
@@ -29,21 +31,29 @@ import org.havenask.engine.rpc.HavenaskClient;
 import org.havenask.engine.rpc.HeartbeatTargetResponse;
 import org.havenask.engine.rpc.UpdateHeartbeatTargetRequest;
 
-import java.io.IOException;
-import java.security.AccessController;
-import java.security.PrivilegedAction;
-
-import static org.havenask.common.xcontent.XContentType.JSON;
+import okhttp3.MediaType;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.RequestBody;
+import okhttp3.Response;
 
 public class HavenaskHttpClient implements HavenaskClient {
     private static final Logger LOGGER = LogManager.getLogger(HavenaskHttpClient.class);
     private static final String HEART_BEAT_URL = "/HeartbeatService/heartbeat";
 
-    protected OkHttpClient client = AccessController.doPrivileged((PrivilegedAction<OkHttpClient>) () -> new OkHttpClient());
+    private static final long SOCKET_TIMEOUT = 120;
+    protected OkHttpClient client;
     protected final String url;
 
     public HavenaskHttpClient(int port) {
+        this(port, SOCKET_TIMEOUT);
+    }
+
+    public HavenaskHttpClient(int port, long socketTimeout) {
         this.url = "http://127.0.0.1:" + port;
+        client = AccessController.doPrivileged(
+            (PrivilegedAction<OkHttpClient>) () -> new OkHttpClient.Builder().readTimeout(socketTimeout, TimeUnit.SECONDS).build()
+        );
     }
 
     @Override
