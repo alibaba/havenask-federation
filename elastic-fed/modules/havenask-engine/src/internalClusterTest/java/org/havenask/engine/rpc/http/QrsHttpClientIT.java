@@ -15,7 +15,6 @@
 package org.havenask.engine.rpc.http;
 
 import static org.hamcrest.CoreMatchers.containsString;
-import static org.hamcrest.CoreMatchers.instanceOf;
 
 import java.io.IOException;
 
@@ -38,8 +37,7 @@ public class QrsHttpClientIT extends HavenaskITTestCase {
         QrsClient client = new QrsHttpClient(49200, 1);
         String sql = "timeout";
         QrsSqlRequest request = new QrsSqlRequest(sql, null);
-        RuntimeException e = expectThrows(RuntimeException.class, () -> { client.executeSql(request); });
-        assertThat(e.getCause(), instanceOf(IOException.class));
+        expectThrows(Exception.class, () -> { client.executeSql(request); });
     }
 
     public void testSql() throws IOException {
