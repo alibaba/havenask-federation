@@ -459,4 +459,159 @@ public class BizConfigGeneratorTests extends MapperServiceTestCase {
             assertEquals(expect, content);
         }
     }
+
+    public void testGenerateByHavenaskParamsSettings() throws IOException {
+        String indexName = randomAlphaOfLength(5);
+        MapperService mapperService = createMapperService(fieldMapping(b -> b.field("type", "keyword")));
+        Path configPath = createTempDir();
+        Files.createDirectories(configPath.resolve(BIZ_DIR).resolve(DEFAULT_DIR).resolve("0").resolve(CLUSTER_DIR));
+        Files.createDirectories(configPath.resolve(BIZ_DIR).resolve(DEFAULT_DIR).resolve("0").resolve(SCHEMAS_DIR));
+        Files.createDirectories(configPath.resolve(BIZ_DIR).resolve(DEFAULT_DIR).resolve("0").resolve(DATA_TABLES_DIR));
+
+        String clusterJson = "{\n"
+            + "    \"build_option_config\" : {\n"
+            + "        \"async_build\" : true,\n"
+            + "        \"async_queue_size\" : 1000,\n"
+            + "        \"document_filter\" : true,\n"
+            + "        \"max_recover_time\" : 30,\n"
+            + "        \"sort_build\" : true,\n"
+            + "        \"sort_descriptions\" : [\n"
+            + "            {\n"
+            + "                \"sort_field\" : \"hits\",\n"
+            + "                \"sort_pattern\" : \"asc\"\n"
+            + "            }\n"
+            + "        ],\n"
+            + "        \"sort_queue_mem\" : 4096,\n"
+            + "        \"sort_queue_size\" : 10000000\n"
+            + "    }"
+            + "}";
+
+        String schemaJson = "{\n"
+            + "    \"columns\": [\n"
+            + "        {\n"
+            + "            \"name\": \"title\",\n"
+            + "            \"type\": \"TEXT\",\n"
+            + "            \"analyzer\": \"simple_analyzer\"\n"
+            + "        },\n"
+            + "        {\n"
+            + "            \"name\": \"subject\",\n"
+            + "            \"type\": \"TEXT\",\n"
+            + "            \"analyzer\": \"simple_analyzer\"\n"
+            + "        },\n"
+            + "        {\n"
+            + "            \"name\": \"id\",\n"
+            + "            \"type\": \"UINT32\"\n"
+            + "        },\n"
+            + "        {\n"
+            + "            \"name\": \"hits\",\n"
+            + "            \"type\": \"UINT32\"\n"
+            + "        },\n"
+            + "        {\n"
+            + "            \"name\": \"createtime\",\n"
+            + "            \"type\": \"UINT64\"\n"
+            + "        }\n"
+            + "    ]"
+            + "}";
+
+        String data_tableJson = "{\n"
+            + "    \"processor_chain_config\" : [\n"
+            + "        {\n"
+            + "            \"clusters\" : [\n"
+            + "                \"in0\"\n"
+            + "            ],\n"
+            + "            \"document_processor_chain\" : [\n"
+            + "                {\n"
+            + "                    \"class_name\" : \"TokenizeDocumentProcessor\",\n"
+            + "                    \"module_name\" : \"\",\n"
+            + "                    \"parameters\" : {\n"
+            + "                    }\n"
+            + "                }\n"
+            + "            ],\n"
+            + "            \"modules\" : [\n"
+            + "            ]\n"
+            + "        }\n"
+            + "    ],\n"
+            + "    \"processor_config\" : {\n"
+            + "        \"processor_queue_size\" : 2000,\n"
+            + "        \"processor_thread_num\" : 10\n"
+            + "    },\n"
+            + "    \"processor_rule_config\" : {\n"
+            + "        \"parallel_num\" : 1,\n"
+            + "        \"partition_count\" : 1\n"
+            + "    }\n"
+            + "}";
+
+        BizConfigGenerator bizConfigGenerator = new BizConfigGenerator(
+            indexName,
+            Settings.builder()
+                .put(IndexMetadata.SETTING_NUMBER_OF_SHARDS, 3)
+                .put(EngineSettings.HAVENASK_BUILD_CONFIG_MAX_DOC_COUNT.getKey(), 10)
+                .put(EngineSettings.HAVENASK_WAL_CONFIG_SINK_QUEUE_SIZE.getKey(), 100)
+                .put(EngineSettings.HAVENASK_HASH_MODE_HASH_FIELD.getKey(), "test")
+                .put(EngineSettings.HAVENASK_CLUSTER_JSON.getKey(), clusterJson)
+                .put(EngineSettings.HAVENASK_SCHEMA_JSON.getKey(), schemaJson)
+                .put(EngineSettings.HAVENASK_DATA_TABLE_JSON.getKey(), data_tableJson)
+                .build(),
+            mapperService,
+            configPath
+        );
+        bizConfigGenerator.generate();
+
+        {
+            Path clusterConfigPath = configPath.resolve(BIZ_DIR)
+                .resolve(DEFAULT_DIR)
+                .resolve("0")
+                .resolve(CLUSTER_DIR)
+                .resolve(indexName + CLUSTER_FILE_SUFFIX);
+            assertTrue(Files.exists(clusterConfigPath));
+            String content = Files.readString(clusterConfigPath);
+
+            assertEquals(clusterJson, content);
+        }
+
+        {
+            Path schemaConfigPath = configPath.resolve(BIZ_DIR)
+                .resolve(DEFAULT_DIR)
+                .resolve("0")
+                .resolve(SCHEMAS_DIR)
+                .resolve(indexName + SCHEMAS_FILE_SUFFIX);
+            assertTrue(Files.exists(schemaConfigPath));
+            String content = Files.readString(schemaConfigPath);
+
+            assertEquals(schemaJson, content);
+        }
+
+        {
+            Path dataTablesPath = configPath.resolve(BIZ_DIR)
+                .resolve(DEFAULT_DIR)
+                .resolve("0")
+                .resolve(DATA_TABLES_DIR)
+                .resolve(indexName + DATA_TABLES_FILE_SUFFIX);
+            assertTrue(Files.exists(dataTablesPath));
+            String content = Files.readString(dataTablesPath);
+
+            assertEquals(data_tableJson, content);
+        }
+
+        bizConfigGenerator.remove();
+        Path clusterConfigPath = configPath.resolve(BIZ_DIR)
+            .resolve(DEFAULT_DIR)
+            .resolve("0")
+            .resolve(CLUSTER_DIR)
+            .resolve(indexName + CLUSTER_FILE_SUFFIX);
+        assertFalse(Files.exists(clusterConfigPath));
+
+        Path schemaConfigPath = configPath.resolve(BIZ_DIR)
+            .resolve(DEFAULT_DIR)
+            .resolve("0")
+            .resolve(SCHEMAS_DIR)
+            .resolve(indexName + SCHEMAS_FILE_SUFFIX);
+        assertFalse(Files.exists(schemaConfigPath));
+
+        Path dataTablesPath = configPath.resolve(BIZ_DIR)
+            .resolve("0")
+            .resolve(DATA_TABLES_DIR)
+            .resolve(indexName + DATA_TABLES_FILE_SUFFIX);
+        assertFalse(Files.exists(dataTablesPath));
+    }
 }
