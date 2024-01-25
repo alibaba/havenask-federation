@@ -112,5 +112,7 @@ fed启动后，默认端口是9200，假设在本地访问，访问示例如下�
 # 联系我们
 官方技术交流钉钉群：
 
-![image](https://github.com/alibaba/havenask-federation/assets/5070449/ad08444f-4570-45fd-908d-a90a6cca3f79)
+![296146789-ad08444f-4570-45fd-908d-a90a6cca3f79](https://github.com/alibaba/havenask-federation/assets/5070449/55f4d8b9-b997-466d-b525-5e5c382246be)
+
+
 
