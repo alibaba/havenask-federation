@@ -50,7 +50,7 @@ public class Schema {
     // currently only multi-field index contains '.'
     public static final String encodeFieldWithDot(String field) {
         field = field.replace('.', FIELD_DOT_REPLACEMENT);
-        field.replace('@', FIELD_DOT_REPLACEMENT);
+        field = field.replace('@', FIELD_DOT_REPLACEMENT);
         return field;
     }
 
