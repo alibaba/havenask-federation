@@ -244,7 +244,7 @@ public class HavenaskSearchQueryProcessor {
         StringBuilder sortBuilder = new StringBuilder();
         if (dsl.sorts() != null && dsl.sorts().size() > 0) {
             sortBuilder.append(" order by ");
-            for (SortBuilder sortField : dsl.sorts()) {
+            for (SortBuilder<?> sortField : dsl.sorts()) {
                 if (sortField instanceof FieldSortBuilder == false) {
                     throw new IOException("unsupported DSL(unsupported sort): " + dsl);
                 }
