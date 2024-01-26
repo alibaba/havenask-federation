@@ -14,6 +14,12 @@
 
 package org.havenask.engine.search.fetch;
 
+import static org.mockito.Mockito.mock;
+
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
+
 import org.havenask.common.collect.List;
 import org.havenask.engine.index.query.KnnQueryBuilder;
 import org.havenask.engine.rpc.QrsClient;
@@ -21,14 +27,9 @@ import org.havenask.engine.search.HavenaskSearchQueryProcessor;
 import org.havenask.index.query.QueryBuilders;
 import org.havenask.search.builder.KnnSearchBuilder;
 import org.havenask.search.builder.SearchSourceBuilder;
+import org.havenask.search.sort.SortOrder;
 import org.havenask.test.HavenaskTestCase;
 import org.junit.Before;
-
-import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
-
-import static org.mockito.Mockito.mock;
 
 public class HavenaskSearchQueryProcessorTests extends HavenaskTestCase {
     private QrsClient qrsClient = mock(QrsClient.class);
@@ -125,12 +126,18 @@ public class HavenaskSearchQueryProcessorTests extends HavenaskTestCase {
         SearchSourceBuilder builder = new SearchSourceBuilder();
         builder.query(QueryBuilders.matchQuery("field", "value"));
         String sql = havenaskSearchQueryProcessor.transferSearchRequest2HavenaskSql("table", builder, null);
-        assertEquals("select _id from `table` where MATCHINDEX('field', 'value', 'default_op:OR') limit 10 offset 0", sql);
+        assertEquals(
+            "select _id, bm25_score() as _score from `table` where MATCHINDEX('field', 'value', 'default_op:OR') order by _score desc limit 10 offset 0",
+            sql
+        );
 
         SearchSourceBuilder objectSearcherBuilder = new SearchSourceBuilder();
         objectSearcherBuilder.query(QueryBuilders.matchQuery("user_first_name", "alice"));
         String objectSql = havenaskSearchQueryProcessor.transferSearchRequest2HavenaskSql("table", objectSearcherBuilder, ObjectMapping);
-        assertEquals("select _id from `table` where MATCHINDEX('user_first_name', 'alice', 'default_op:OR') limit 10 offset 0", objectSql);
+        assertEquals(
+            "select _id, bm25_score() as _score from `table` where MATCHINDEX('user_first_name', 'alice', 'default_op:OR') order by _score desc limit 10 offset 0",
+            objectSql
+        );
 
         SearchSourceBuilder objectSearcherWithDotBuilder = new SearchSourceBuilder();
         objectSearcherWithDotBuilder.query(QueryBuilders.matchQuery("user.first_name", "bob"));
@@ -140,7 +147,7 @@ public class HavenaskSearchQueryProcessorTests extends HavenaskTestCase {
             ObjectMapping
         );
         assertEquals(
-            "select _id from `table` where MATCHINDEX('user_first_name', 'bob', 'default_op:OR') limit 10 offset 0",
+            "select _id, bm25_score() as _score from `table` where MATCHINDEX('user_first_name', 'bob', 'default_op:OR') order by _score desc limit 10 offset 0",
             objectWithDotSql
         );
     }
@@ -276,6 +283,47 @@ public class HavenaskSearchQueryProcessorTests extends HavenaskTestCase {
                 "unsupported knn parameter: {\"query\":{\"match_all\":{\"boost\":1.0}},"
                     + "\"knn\":[{\"field\":\"field\",\"k\":20,\"num_candidates\":20,\"query_vector\":[1.0,2.0],"
                     + "\"filter\":[{\"match_all\":{\"boost\":1.0}}]}]}"
+            );
+        }
+    }
+
+    public void testRangeDocsQuery() throws IOException {
+        SearchSourceBuilder builder = new SearchSourceBuilder();
+        builder.query(QueryBuilders.rangeQuery("field").gte(1).lte(2));
+
+        String sql = havenaskSearchQueryProcessor.transferSearchRequest2HavenaskSql("table", builder, null);
+        assertEquals("select _id from `table` limit 10 offset 0", sql);
+    }
+
+    public void testSortQuery() throws IOException {
+        {
+            SearchSourceBuilder builder = new SearchSourceBuilder();
+            builder.sort("field", SortOrder.DESC);
+
+            String sql = havenaskSearchQueryProcessor.transferSearchRequest2HavenaskSql("table", builder, null);
+            assertEquals("select _id from `table` order by field desc limit 10 offset 0", sql);
+        }
+
+        {
+            SearchSourceBuilder builder = new SearchSourceBuilder();
+            builder.sort("field1", SortOrder.DESC).sort("field2", SortOrder.ASC);
+
+            String sql = havenaskSearchQueryProcessor.transferSearchRequest2HavenaskSql("table", builder, null);
+            assertEquals("select _id from `table` order by field1 desc, field2 asc limit 10 offset 0", sql);
+        }
+    }
+
+    public void testBoolQuery() throws IOException {
+        {
+            SearchSourceBuilder builder = new SearchSourceBuilder();
+            builder.query(
+                QueryBuilders.boolQuery().must(QueryBuilders.matchQuery("field", "value")).must(QueryBuilders.termQuery("field2", "value2"))
+            );
+
+            String sql = havenaskSearchQueryProcessor.transferSearchRequest2HavenaskSql("table", builder, null);
+            assertEquals(
+                "select _id, bm25_score() as _score from `table` where MATCHINDEX('field', 'value', 'default_op:OR') and field2='value2' order by _score desc limit 10 offset 0",
+                sql
             );
         }
     }
