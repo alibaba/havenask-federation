@@ -127,8 +127,8 @@ public class HavenaskSearchQueryProcessorTests extends HavenaskTestCase {
         builder.query(QueryBuilders.matchQuery("field", "value"));
         String sql = havenaskSearchQueryProcessor.transferSearchRequest2HavenaskSql("table", builder, null);
         assertEquals(
-            "select _id, bm25_score() as _score from `table` " +
-                    "where MATCHINDEX('field', 'value', 'default_op:OR') order by _score desc limit 10 offset 0",
+            "select _id, bm25_score() as _score from `table` "
+                + "where MATCHINDEX('field', 'value', 'default_op:OR') order by _score desc limit 10 offset 0",
             sql
         );
 
@@ -136,8 +136,8 @@ public class HavenaskSearchQueryProcessorTests extends HavenaskTestCase {
         objectSearcherBuilder.query(QueryBuilders.matchQuery("user_first_name", "alice"));
         String objectSql = havenaskSearchQueryProcessor.transferSearchRequest2HavenaskSql("table", objectSearcherBuilder, ObjectMapping);
         assertEquals(
-            "select _id, bm25_score() as _score from `table` " +
-                    "where MATCHINDEX('user_first_name', 'alice', 'default_op:OR') order by _score desc limit 10 offset 0",
+            "select _id, bm25_score() as _score from `table` "
+                + "where MATCHINDEX('user_first_name', 'alice', 'default_op:OR') order by _score desc limit 10 offset 0",
             objectSql
         );
 
@@ -149,8 +149,8 @@ public class HavenaskSearchQueryProcessorTests extends HavenaskTestCase {
             ObjectMapping
         );
         assertEquals(
-            "select _id, bm25_score() as _score from `table` " +
-                    "where MATCHINDEX('user_first_name', 'bob', 'default_op:OR') order by _score desc limit 10 offset 0",
+            "select _id, bm25_score() as _score from `table` "
+                + "where MATCHINDEX('user_first_name', 'bob', 'default_op:OR') order by _score desc limit 10 offset 0",
             objectWithDotSql
         );
     }
@@ -339,9 +339,9 @@ public class HavenaskSearchQueryProcessorTests extends HavenaskTestCase {
 
             String sql = havenaskSearchQueryProcessor.transferSearchRequest2HavenaskSql("table", builder, null);
             assertEquals(
-                "select _id, bm25_score() as _score from `table`" +
-                        " where MATCHINDEX('field', 'value', 'default_op:OR') and field2='value2'" +
-                        " and QUERY('', 'field3:[1,2]') order by _score desc limit 10 offset 0",
+                "select _id, bm25_score() as _score from `table`"
+                    + " where MATCHINDEX('field', 'value', 'default_op:OR') and field2='value2'"
+                    + " and QUERY('', 'field3:[1,2]') order by _score desc limit 10 offset 0",
                 sql
             );
         }
