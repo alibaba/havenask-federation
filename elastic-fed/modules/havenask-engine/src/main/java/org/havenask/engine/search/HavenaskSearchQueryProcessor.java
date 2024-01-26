@@ -185,13 +185,13 @@ public class HavenaskSearchQueryProcessor {
             } else if (queryBuilder instanceof MatchPhraseQueryBuilder) {
                 MatchPhraseQueryBuilder matchQueryBuilder = (MatchPhraseQueryBuilder) queryBuilder;
                 where.append(" where ")
-                        .append("QUERY('', '")
-                        .append(Schema.encodeFieldWithDot(matchQueryBuilder.fieldName()))
-                        .append(":")
-                        .append("\"")
-                        .append(matchQueryBuilder.value())
-                        .append("\"")
-                        .append("')");
+                    .append("QUERY('', '")
+                    .append(Schema.encodeFieldWithDot(matchQueryBuilder.fieldName()))
+                    .append(":")
+                    .append("\"")
+                    .append(matchQueryBuilder.value())
+                    .append("\"")
+                    .append("')");
                 selectParams.append(", bm25_score() as _score");
                 orderBy.append(" order by _score desc");
             } else if (queryBuilder instanceof RangeQueryBuilder) {
@@ -263,7 +263,10 @@ public class HavenaskSearchQueryProcessor {
 
                 FieldSortBuilder fieldSortBuilder = (FieldSortBuilder) sortField;
 
-                sortBuilder.append("`").append(Schema.encodeFieldWithDot(fieldSortBuilder.getFieldName())).append("` ").append(sortField.order());
+                sortBuilder.append("`")
+                    .append(Schema.encodeFieldWithDot(fieldSortBuilder.getFieldName()))
+                    .append("` ")
+                    .append(sortField.order());
 
                 if (sortBuilder.length() > 0) {
                     sortBuilder.append(", ");

@@ -127,7 +127,8 @@ public class HavenaskSearchQueryProcessorTests extends HavenaskTestCase {
         builder.query(QueryBuilders.matchQuery("field", "value"));
         String sql = havenaskSearchQueryProcessor.transferSearchRequest2HavenaskSql("table", builder, null);
         assertEquals(
-            "select _id, bm25_score() as _score from `table` where MATCHINDEX('field', 'value', 'default_op:OR') order by _score desc limit 10 offset 0",
+            "select _id, bm25_score() as _score from `table` " +
+                    "where MATCHINDEX('field', 'value', 'default_op:OR') order by _score desc limit 10 offset 0",
             sql
         );
 
@@ -135,7 +136,8 @@ public class HavenaskSearchQueryProcessorTests extends HavenaskTestCase {
         objectSearcherBuilder.query(QueryBuilders.matchQuery("user_first_name", "alice"));
         String objectSql = havenaskSearchQueryProcessor.transferSearchRequest2HavenaskSql("table", objectSearcherBuilder, ObjectMapping);
         assertEquals(
-            "select _id, bm25_score() as _score from `table` where MATCHINDEX('user_first_name', 'alice', 'default_op:OR') order by _score desc limit 10 offset 0",
+            "select _id, bm25_score() as _score from `table` " +
+                    "where MATCHINDEX('user_first_name', 'alice', 'default_op:OR') order by _score desc limit 10 offset 0",
             objectSql
         );
 
@@ -147,7 +149,8 @@ public class HavenaskSearchQueryProcessorTests extends HavenaskTestCase {
             ObjectMapping
         );
         assertEquals(
-            "select _id, bm25_score() as _score from `table` where MATCHINDEX('user_first_name', 'bob', 'default_op:OR') order by _score desc limit 10 offset 0",
+            "select _id, bm25_score() as _score from `table` " +
+                    "where MATCHINDEX('user_first_name', 'bob', 'default_op:OR') order by _score desc limit 10 offset 0",
             objectWithDotSql
         );
     }
@@ -292,7 +295,7 @@ public class HavenaskSearchQueryProcessorTests extends HavenaskTestCase {
         builder.query(QueryBuilders.rangeQuery("field").gte(1).lte(2));
 
         String sql = havenaskSearchQueryProcessor.transferSearchRequest2HavenaskSql("table", builder, null);
-        assertEquals("select _id from `table` limit 10 offset 0", sql);
+        assertEquals("select _id from `table` where QUERY('', 'field:[1,2]') limit 10 offset 0", sql);
     }
 
     public void testMatchPhaseQuery() throws IOException {
@@ -312,7 +315,7 @@ public class HavenaskSearchQueryProcessorTests extends HavenaskTestCase {
             builder.sort("field", SortOrder.DESC);
 
             String sql = havenaskSearchQueryProcessor.transferSearchRequest2HavenaskSql("table", builder, null);
-            assertEquals("select _id from `table` order by field desc limit 10 offset 0", sql);
+            assertEquals("select _id from `table` order by `field` desc limit 10 offset 0", sql);
         }
 
         {
@@ -320,7 +323,7 @@ public class HavenaskSearchQueryProcessorTests extends HavenaskTestCase {
             builder.sort("field1", SortOrder.DESC).sort("field2", SortOrder.ASC);
 
             String sql = havenaskSearchQueryProcessor.transferSearchRequest2HavenaskSql("table", builder, null);
-            assertEquals("select _id from `table` order by field1 desc, field2 asc limit 10 offset 0", sql);
+            assertEquals("select _id from `table` order by `field1` desc, `field2` asc limit 10 offset 0", sql);
         }
     }
 
@@ -336,7 +339,9 @@ public class HavenaskSearchQueryProcessorTests extends HavenaskTestCase {
 
             String sql = havenaskSearchQueryProcessor.transferSearchRequest2HavenaskSql("table", builder, null);
             assertEquals(
-                "select _id, bm25_score() as _score from `table` where MATCHINDEX('field', 'value', 'default_op:OR') and field2='value2' and QUERY('', 'field3:[1,2]') order by _score desc limit 10 offset 0",
+                "select _id, bm25_score() as _score from `table`" +
+                        " where MATCHINDEX('field', 'value', 'default_op:OR') and field2='value2'" +
+                        " and QUERY('', 'field3:[1,2]') order by _score desc limit 10 offset 0",
                 sql
             );
         }
