@@ -34,6 +34,7 @@ import org.havenask.engine.rpc.QrsSqlRequest;
 import org.havenask.engine.rpc.QrsSqlResponse;
 import org.havenask.index.query.BoolQueryBuilder;
 import org.havenask.index.query.MatchAllQueryBuilder;
+import org.havenask.index.query.MatchPhraseQueryBuilder;
 import org.havenask.index.query.MatchQueryBuilder;
 import org.havenask.index.query.QueryBuilder;
 import org.havenask.index.query.RangeQueryBuilder;
@@ -181,6 +182,18 @@ public class HavenaskSearchQueryProcessor {
 
                 selectParams.append(", bm25_score() as _score");
                 orderBy.append(" order by _score desc");
+            } else if (queryBuilder instanceof MatchPhraseQueryBuilder) {
+                MatchPhraseQueryBuilder matchQueryBuilder = (MatchPhraseQueryBuilder) queryBuilder;
+                where.append(" where ")
+                        .append("QUERY('', '")
+                        .append(Schema.encodeFieldWithDot(matchQueryBuilder.fieldName()))
+                        .append(":")
+                        .append("\"")
+                        .append(matchQueryBuilder.value())
+                        .append("\"")
+                        .append("')");
+                selectParams.append(", bm25_score() as _score");
+                orderBy.append(" order by _score desc");
             } else if (queryBuilder instanceof RangeQueryBuilder) {
                 RangeQueryBuilder rangeQueryBuilder = (RangeQueryBuilder) queryBuilder;
                 where.append(" where ")
@@ -222,8 +235,7 @@ public class HavenaskSearchQueryProcessor {
                         orderBy.append(" order by _score desc");
                     } else if (subQueryBuilder instanceof RangeQueryBuilder) {
                         RangeQueryBuilder rangeQueryBuilder = (RangeQueryBuilder) subQueryBuilder;
-                        where.append(" where ")
-                            .append("QUERY('', '")
+                        where.append("QUERY('', '")
                             .append(Schema.encodeFieldWithDot(rangeQueryBuilder.fieldName()))
                             .append(":")
                             .append(rangeQueryBuilder.includeLower() ? "[" : "{")

@@ -295,6 +295,17 @@ public class HavenaskSearchQueryProcessorTests extends HavenaskTestCase {
         assertEquals("select _id from `table` limit 10 offset 0", sql);
     }
 
+    public void testMatchPhaseQuery() throws IOException {
+        SearchSourceBuilder builder = new SearchSourceBuilder();
+        builder.query(QueryBuilders.matchPhraseQuery("field", "value"));
+
+        String sql = havenaskSearchQueryProcessor.transferSearchRequest2HavenaskSql("table", builder, null);
+        assertEquals(
+            "select _id, bm25_score() as _score from `table` where QUERY('', 'field:\"value\"') order by _score desc limit 10 offset 0",
+            sql
+        );
+    }
+
     public void testSortQuery() throws IOException {
         {
             SearchSourceBuilder builder = new SearchSourceBuilder();
@@ -317,12 +328,15 @@ public class HavenaskSearchQueryProcessorTests extends HavenaskTestCase {
         {
             SearchSourceBuilder builder = new SearchSourceBuilder();
             builder.query(
-                QueryBuilders.boolQuery().must(QueryBuilders.matchQuery("field", "value")).must(QueryBuilders.termQuery("field2", "value2"))
+                QueryBuilders.boolQuery()
+                    .must(QueryBuilders.matchQuery("field", "value"))
+                    .must(QueryBuilders.termQuery("field2", "value2"))
+                    .must(QueryBuilders.rangeQuery("field3").gte(1).lte(2))
             );
 
             String sql = havenaskSearchQueryProcessor.transferSearchRequest2HavenaskSql("table", builder, null);
             assertEquals(
-                "select _id, bm25_score() as _score from `table` where MATCHINDEX('field', 'value', 'default_op:OR') and field2='value2' order by _score desc limit 10 offset 0",
+                "select _id, bm25_score() as _score from `table` where MATCHINDEX('field', 'value', 'default_op:OR') and field2='value2' and QUERY('', 'field3:[1,2]') order by _score desc limit 10 offset 0",
                 sql
             );
         }
