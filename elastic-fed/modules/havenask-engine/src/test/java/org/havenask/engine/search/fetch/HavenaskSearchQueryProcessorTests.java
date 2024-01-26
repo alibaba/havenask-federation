@@ -292,10 +292,10 @@ public class HavenaskSearchQueryProcessorTests extends HavenaskTestCase {
 
     public void testRangeDocsQuery() throws IOException {
         SearchSourceBuilder builder = new SearchSourceBuilder();
-        builder.query(QueryBuilders.rangeQuery("field").gte(1).lte(2));
+        builder.query(QueryBuilders.rangeQuery("field").gte(1).lt(2));
 
         String sql = havenaskSearchQueryProcessor.transferSearchRequest2HavenaskSql("table", builder, null);
-        assertEquals("select _id from `table` where QUERY('', 'field:[1,2]') limit 10 offset 0", sql);
+        assertEquals("select _id from `table` where QUERY('', 'field:[1,2)') limit 10 offset 0", sql);
     }
 
     public void testMatchPhaseQuery() throws IOException {

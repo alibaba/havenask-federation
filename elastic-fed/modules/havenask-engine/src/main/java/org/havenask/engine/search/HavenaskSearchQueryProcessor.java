@@ -200,11 +200,11 @@ public class HavenaskSearchQueryProcessor {
                     .append("QUERY('', '")
                     .append(Schema.encodeFieldWithDot(rangeQueryBuilder.fieldName()))
                     .append(":")
-                    .append(rangeQueryBuilder.includeLower() ? "[" : "{")
+                    .append(rangeQueryBuilder.includeLower() ? "[" : "(")
                     .append(rangeQueryBuilder.from())
                     .append(",")
                     .append(rangeQueryBuilder.to())
-                    .append(rangeQueryBuilder.includeUpper() ? "]" : "}")
+                    .append(rangeQueryBuilder.includeUpper() ? "]" : ")")
                     .append("')");
             } else if (queryBuilder instanceof BoolQueryBuilder) {
                 BoolQueryBuilder boolQueryBuilder = (BoolQueryBuilder) queryBuilder;
@@ -238,11 +238,11 @@ public class HavenaskSearchQueryProcessor {
                         where.append("QUERY('', '")
                             .append(Schema.encodeFieldWithDot(rangeQueryBuilder.fieldName()))
                             .append(":")
-                            .append(rangeQueryBuilder.includeLower() ? "[" : "{")
+                            .append(rangeQueryBuilder.includeLower() ? "[" : "(")
                             .append(rangeQueryBuilder.from())
                             .append(",")
                             .append(rangeQueryBuilder.to())
-                            .append(rangeQueryBuilder.includeUpper() ? "]" : "}")
+                            .append(rangeQueryBuilder.includeUpper() ? "]" : ")")
                             .append("')");
                     } else {
                         throw new IOException("unsupported DSL(unsupported bool filter): " + dsl);
