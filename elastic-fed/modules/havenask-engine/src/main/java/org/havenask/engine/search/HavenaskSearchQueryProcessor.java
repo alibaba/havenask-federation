@@ -251,7 +251,7 @@ public class HavenaskSearchQueryProcessor {
 
                 FieldSortBuilder fieldSortBuilder = (FieldSortBuilder) sortField;
 
-                sortBuilder.append(Schema.encodeFieldWithDot(fieldSortBuilder.getFieldName())).append(" ").append(sortField.order());
+                sortBuilder.append("`").append(Schema.encodeFieldWithDot(fieldSortBuilder.getFieldName())).append("` ").append(sortField.order());
 
                 if (sortBuilder.length() > 0) {
                     sortBuilder.append(", ");

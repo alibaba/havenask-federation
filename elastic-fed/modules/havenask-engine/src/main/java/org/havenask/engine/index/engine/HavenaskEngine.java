@@ -439,7 +439,7 @@ public class HavenaskEngine extends InternalEngine {
         for (IndexableField field : rootDoc.getFields()) {
             String fieldName = field.name();
             // multi field index
-            if (fieldName.contains(".")) {
+            if (fieldName.contains(".") || fieldName.contains("@")) {
                 fieldName = Schema.encodeFieldWithDot(fieldName);
             }
 

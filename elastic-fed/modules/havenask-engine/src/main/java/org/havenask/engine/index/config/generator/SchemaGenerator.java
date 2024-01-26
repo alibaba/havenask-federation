@@ -28,6 +28,19 @@
 
 package org.havenask.engine.index.config.generator;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.havenask.common.io.Streams;
@@ -48,20 +61,6 @@ import org.havenask.index.mapper.IdFieldMapper;
 import org.havenask.index.mapper.MappedFieldType;
 import org.havenask.index.mapper.MapperService;
 import org.havenask.index.mapper.TextSearchInfo;
-
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
 
 public class SchemaGenerator {
     // have deprecated fields or not support now.
@@ -148,10 +147,7 @@ public class SchemaGenerator {
             }
 
             // multi field index
-            if (fieldName.contains(".")) {
-                String originField = fieldName.substring(0, fieldName.lastIndexOf('.'));
-                schema.copyToFields.computeIfAbsent(originField, (k) -> new LinkedList<>()).add(fieldName);
-                // replace '.' in field name
+            if (fieldName.contains(".") || fieldName.contains("@")) {
                 fieldName = Schema.encodeFieldWithDot(fieldName);
             }
 
