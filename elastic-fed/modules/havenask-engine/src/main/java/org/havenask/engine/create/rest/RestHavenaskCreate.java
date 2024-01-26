@@ -50,13 +50,13 @@ public class RestHavenaskCreate extends BaseRestHandler {
 
         Map<String, Object> settings = (Map<String, Object>) source.remove("settings");
         if (clusters != null) {
-            settings.put("index.havenask.cluster.json", JsonPrettyFormatter.toJsonString(clusters));
+            settings.put("index.havenask.cluster_json", JsonPrettyFormatter.toJsonString(clusters));
         }
         if (dataTables != null) {
-            settings.put("index.havenask.data_table.json", JsonPrettyFormatter.toJsonString(dataTables));
+            settings.put("index.havenask.data_table_json", JsonPrettyFormatter.toJsonString(dataTables));
         }
         if (schemas != null) {
-            settings.put("index.havenask.schema.json", JsonPrettyFormatter.toJsonString(schemas));
+            settings.put("index.havenask.schema_json", JsonPrettyFormatter.toJsonString(schemas));
         }
 
         CreateIndexRequest createIndexRequest = new CreateIndexRequest(index);

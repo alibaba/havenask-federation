@@ -89,7 +89,7 @@ public class TableConfigGenerator {
     private void generateClusterConfig(String version) throws IOException {
         String clusterJson = EngineSettings.HAVENASK_CLUSTER_JSON.get(indexSettings);
         Path clusterConfigPath = configPath.resolve(version).resolve(CLUSTER_DIR).resolve(indexName + CLUSTER_FILE_SUFFIX);
-        if (clusterJson != "") {
+        if (clusterJson != null && !clusterJson.equals("")) {
             Files.write(
                 clusterConfigPath,
                 clusterJson.getBytes(StandardCharsets.UTF_8),
@@ -129,7 +129,7 @@ public class TableConfigGenerator {
         Path schemaPath = configPath.resolve(version).resolve(SCHEMAS_DIR).resolve(indexName + SCHEMAS_FILE_SUFFIX);
 
         String schemaJson = EngineSettings.HAVENASK_SCHEMA_JSON.get(indexSettings);
-        if (schemaJson != "") {
+        if (schemaJson != null && !schemaJson.equals("")) {
             Files.write(
                 schemaPath,
                 schemaJson.getBytes(StandardCharsets.UTF_8),
@@ -151,7 +151,7 @@ public class TableConfigGenerator {
     private void generateDataTable(Schema schema, String version) throws IOException {
         String dataTableJson = EngineSettings.HAVENASK_DATA_TABLE_JSON.get(indexSettings);
         Path dataTablePath = configPath.resolve(version).resolve(DATA_TABLES_DIR).resolve(indexName + DATA_TABLES_FILE_SUFFIX);
-        if (dataTableJson != "") {
+        if (dataTableJson != null && !dataTableJson.equals("")) {
             Files.write(
                 dataTablePath,
                 dataTableJson.getBytes(StandardCharsets.UTF_8),
