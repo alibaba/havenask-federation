@@ -14,6 +14,8 @@
 
 package org.havenask.engine.search.action;
 
+import java.util.Map;
+
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.havenask.action.ActionListener;
@@ -25,19 +27,19 @@ import org.havenask.action.support.ActionFilters;
 import org.havenask.action.support.HandledTransportAction;
 import org.havenask.client.ha.SqlResponse;
 import org.havenask.cluster.ClusterState;
+import org.havenask.cluster.metadata.IndexAbstraction;
+import org.havenask.cluster.metadata.IndexMetadata;
 import org.havenask.cluster.service.ClusterService;
 import org.havenask.common.inject.Inject;
 import org.havenask.engine.NativeProcessControlService;
-import org.havenask.engine.search.HavenaskSearchQueryProcessor;
 import org.havenask.engine.rpc.QrsClient;
 import org.havenask.engine.rpc.http.QrsHttpClient;
 import org.havenask.engine.search.HavenaskSearchFetchProcessor;
+import org.havenask.engine.search.HavenaskSearchQueryProcessor;
 import org.havenask.search.internal.InternalSearchResponse;
 import org.havenask.tasks.Task;
 import org.havenask.threadpool.ThreadPool;
 import org.havenask.transport.TransportService;
-
-import java.util.Map;
 
 public class TransportHavenaskSearchAction extends HandledTransportAction<SearchRequest, SearchResponse> {
     private static final Logger logger = LogManager.getLogger(TransportHavenaskSearchAction.class);
@@ -77,13 +79,18 @@ public class TransportHavenaskSearchAction extends HandledTransportAction<Search
             }
             String tableName = request.indices()[0];
 
+            ClusterState clusterState = clusterService.state();
+            IndexAbstraction indexAbstraction = clusterState.metadata().getIndicesLookup().get(tableName);
+            if (indexAbstraction == null) {
+                throw new IllegalArgumentException("illegal index name! index name not exist.");
+            }
+
+            IndexMetadata indexMetadata = indexAbstraction.getWriteIndex();
+            tableName = indexMetadata.getIndex().getName();
+
             long startTime = System.nanoTime();
 
-            ClusterState clusterState = clusterService.state();
-
-            Map<String, Object> indexMapping = clusterState.metadata().index(tableName).mapping() != null
-                ? clusterState.metadata().index(tableName).mapping().getSourceAsMap()
-                : null;
+            Map<String, Object> indexMapping = indexMetadata.mapping() != null ? indexMetadata.mapping().getSourceAsMap() : null;
             SqlResponse havenaskSearchQueryPhaseSqlResponse = havenaskSearchQueryProcessor.executeQuery(request, tableName, indexMapping);
 
             InternalSearchResponse internalSearchResponse = havenaskSearchFetchProcessor.executeFetch(
@@ -100,7 +107,7 @@ public class TransportHavenaskSearchAction extends HandledTransportAction<Search
             );
             listener.onResponse(searchResponse);
         } catch (Exception e) {
-            logger.error("Failed to execute havenask search, ", e);
+            logger.info("Failed to execute havenask search, ", e);
             listener.onFailure(e);
         }
     }
