@@ -28,8 +28,10 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.Locale;
 
+import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import org.havenask.cluster.metadata.IndexMetadata;
 import org.havenask.common.settings.Settings;
@@ -493,30 +495,22 @@ public class BizConfigGeneratorTests extends MapperServiceTestCase {
             + "}";
 
         String schemaJson = "{\n"
-            + "    \"columns\": [\n"
-            + "        {\n"
-            + "            \"name\": \"title\",\n"
-            + "            \"type\": \"TEXT\",\n"
-            + "            \"analyzer\": \"simple_analyzer\"\n"
-            + "        },\n"
-            + "        {\n"
-            + "            \"name\": \"subject\",\n"
-            + "            \"type\": \"TEXT\",\n"
-            + "            \"analyzer\": \"simple_analyzer\"\n"
-            + "        },\n"
-            + "        {\n"
-            + "            \"name\": \"id\",\n"
-            + "            \"type\": \"UINT32\"\n"
-            + "        },\n"
-            + "        {\n"
-            + "            \"name\": \"hits\",\n"
-            + "            \"type\": \"UINT32\"\n"
-            + "        },\n"
-            + "        {\n"
-            + "            \"name\": \"createtime\",\n"
-            + "            \"type\": \"UINT64\"\n"
-            + "        }\n"
-            + "    ]"
+            + "\t\"attributes\":[\"_seq_no\",\"_id\",\"_version\",\"_primary_term\"],\n"
+            + "\t\"fields\":[{\n"
+            + "\t\t\"analyzer\":\"simple_analyzer\",\n"
+            + "\t\t\"binary_field\":false,\n"
+            + "\t\t\"field_name\":\"foo\",\n"
+            + "\t\t\"field_type\":\"TEXT\"\n"
+            + "\t}],\n"
+            + "\t\"indexs\":[{\n"
+            + "\t\t\"doc_payload_flag\":1,\n"
+            + "\t\t\"index_fields\":\"foo\",\n"
+            + "\t\t\"index_name\":\"foo\",\n"
+            + "\t\t\"index_type\":\"TEXT\",\n"
+            + "\t\t\"position_list_flag\":1,\n"
+            + "\t\t\"position_payload_flag\":1,\n"
+            + "\t\t\"term_frequency_flag\":1\n"
+            + "\t}]\n"
             + "}";
 
         String data_tableJson = "{\n"
@@ -624,6 +618,75 @@ public class BizConfigGeneratorTests extends MapperServiceTestCase {
         }
 
         {
+            String expectedSchemaJsonStr = String.format(
+                Locale.ROOT,
+                "{\n"
+                    + "\t\"attributes\":[\"_seq_no\",\"_id\",\"_version\",\"_primary_term\"],\n"
+                    + "\t\"fields\":[{\n"
+                    + "\t\t\"binary_field\":false,\n"
+                    + "\t\t\"field_name\":\"_routing\",\n"
+                    + "\t\t\"field_type\":\"STRING\"\n"
+                    + "\t},{\n"
+                    + "\t\t\"binary_field\":false,\n"
+                    + "\t\t\"field_name\":\"_seq_no\",\n"
+                    + "\t\t\"field_type\":\"INT64\"\n"
+                    + "\t},{\n"
+                    + "\t\t\"analyzer\":\"simple_analyzer\",\n"
+                    + "\t\t\"binary_field\":false,\n"
+                    + "\t\t\"field_name\":\"foo\",\n"
+                    + "\t\t\"field_type\":\"TEXT\"\n"
+                    + "\t},{\n"
+                    + "\t\t\"binary_field\":false,\n"
+                    + "\t\t\"field_name\":\"_source\",\n"
+                    + "\t\t\"field_type\":\"STRING\"\n"
+                    + "\t},{\n"
+                    + "\t\t\"binary_field\":false,\n"
+                    + "\t\t\"field_name\":\"_id\",\n"
+                    + "\t\t\"field_type\":\"STRING\"\n"
+                    + "\t},{\n"
+                    + "\t\t\"binary_field\":false,\n"
+                    + "\t\t\"field_name\":\"_version\",\n"
+                    + "\t\t\"field_type\":\"INT64\"\n"
+                    + "\t},{\n"
+                    + "\t\t\"binary_field\":false,\n"
+                    + "\t\t\"field_name\":\"_primary_term\",\n"
+                    + "\t\t\"field_type\":\"INT64\"\n"
+                    + "\t}],\n"
+                    + "\t\"indexs\":[{\n"
+                    + "\t\t\"has_primary_key_attribute\":true,\n"
+                    + "\t\t\"index_fields\":\"_id\",\n"
+                    + "\t\t\"index_name\":\"_id\",\n"
+                    + "\t\t\"index_type\":\"PRIMARYKEY64\",\n"
+                    + "\t\t\"is_primary_key_sorted\":false\n"
+                    + "\t},{\n"
+                    + "\t\t\"index_fields\":\"_routing\",\n"
+                    + "\t\t\"index_name\":\"_routing\",\n"
+                    + "\t\t\"index_type\":\"STRING\"\n"
+                    + "\t},{\n"
+                    + "\t\t\"index_fields\":\"_seq_no\",\n"
+                    + "\t\t\"index_name\":\"_seq_no\",\n"
+                    + "\t\t\"index_type\":\"NUMBER\"\n"
+                    + "\t},{\n"
+                    + "\t\t\"doc_payload_flag\":1,\n"
+                    + "\t\t\"index_fields\":\"foo\",\n"
+                    + "\t\t\"index_name\":\"foo\",\n"
+                    + "\t\t\"index_type\":\"TEXT\",\n"
+                    + "\t\t\"position_list_flag\":1,\n"
+                    + "\t\t\"position_payload_flag\":1,\n"
+                    + "\t\t\"term_frequency_flag\":1\n"
+                    + "\t}],\n"
+                    + "\t\"settings\":{\n"
+                    + "\t\t\"enable_all_text_field_meta\":true\n"
+                    + "\t},\n"
+                    + "\t\"summarys\":{\n"
+                    + "\t\t\"compress\":true,\n"
+                    + "\t\t\"summary_fields\":[\"_routing\",\"_source\",\"_id\"]\n"
+                    + "\t},\n"
+                    + "\t\"table_name\":\"%s\",\n"
+                    + "\t\"table_type\":\"normal\"\n"
+                    + "}",
+                indexName
+            );
             Path schemaConfigPath = configPath.resolve(BIZ_DIR)
                 .resolve(DEFAULT_DIR)
                 .resolve("0")
@@ -632,7 +695,7 @@ public class BizConfigGeneratorTests extends MapperServiceTestCase {
             assertTrue(Files.exists(schemaConfigPath));
             String content = Files.readString(schemaConfigPath);
 
-            assertEquals(schemaJson, content);
+            assertTrue(compareJsonObjects(JSONObject.parseObject(expectedSchemaJsonStr), JSONObject.parseObject(content)));
         }
 
         {
@@ -669,4 +732,66 @@ public class BizConfigGeneratorTests extends MapperServiceTestCase {
         assertFalse(Files.exists(dataTablesPath));
     }
 
+    public static boolean compareJsonObjects(JSONObject json1, JSONObject json2) {
+        // 如果两个JSONObject的key集合不一样，则它们不相等
+        if (!json1.keySet().equals(json2.keySet())) {
+            return false;
+        }
+        for (String key : json1.keySet()) {
+            Object value1 = json1.get(key);
+            Object value2 = json2.get(key);
+
+            if (value1 instanceof JSONObject && value2 instanceof JSONObject) {
+                // 如果两个值都是JSONObject，递归比较
+                if (!compareJsonObjects((JSONObject) value1, (JSONObject) value2)) {
+                    return false;
+                }
+            } else if (value1 instanceof JSONArray && value2 instanceof JSONArray) {
+                // 如果两个值都是JSONArray，比较排序后的数组
+                if (!compareJsonArrays((JSONArray) value1, (JSONArray) value2)) {
+                    return false;
+                }
+            } else if (!value1.equals(value2)) {
+                // 如果两个值不相等，JSONObject不相等
+                return false;
+            }
+        }
+        return true;
+    }
+
+    public static boolean compareJsonArrays(JSONArray array1, JSONArray array2) {
+        // 如果两个JSONArray的长度不一样，它们不相等
+        if (array1.size() != array2.size()) {
+            return false;
+        }
+
+        // 深拷贝，排序后比较
+        JSONArray sortedArray1 = new JSONArray(array1);
+        JSONArray sortedArray2 = new JSONArray(array2);
+
+        Comparator<Object> comparator = new Comparator<Object>() {
+            public int compare(Object o1, Object o2) {
+                return o1.toString().compareTo(o2.toString());
+            }
+        };
+
+        // 对数组元素进行排序，如果元素是JSONObject，递归排序其key
+        sortedArray1.sort(comparator);
+        sortedArray2.sort(comparator);
+
+        for (int i = 0; i < sortedArray1.size(); i++) {
+            Object value1 = sortedArray1.get(i);
+            Object value2 = sortedArray2.get(i);
+            if (value1 instanceof JSONObject && value2 instanceof JSONObject) {
+                // 如果元素是JSONObject，递归比较
+                if (!compareJsonObjects((JSONObject) value1, (JSONObject) value2)) {
+                    return false;
+                }
+            } else if (!value1.equals(value2)) {
+                // 如果元素不相等，JSONArray不相等
+                return false;
+            }
+        }
+        return true;
+    }
 }

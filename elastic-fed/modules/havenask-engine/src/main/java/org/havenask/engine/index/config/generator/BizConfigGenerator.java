@@ -22,20 +22,20 @@ import java.nio.file.StandardOpenOption;
 import java.util.HashMap;
 import java.util.List;
 
-import com.alibaba.fastjson.JSONObject;
 import org.havenask.cluster.metadata.IndexMetadata;
 import org.havenask.common.Nullable;
 import org.havenask.common.settings.Settings;
 import org.havenask.engine.index.config.BizConfig;
-import org.havenask.engine.index.config.ClusterJsonMinMustParams;
 import org.havenask.engine.index.config.DataTable;
 import org.havenask.engine.index.config.Processor.ProcessChain;
 import org.havenask.engine.index.config.Processor.ProcessorChainConfig;
 import org.havenask.engine.index.config.Schema;
 import org.havenask.engine.index.engine.EngineSettings;
-import org.havenask.engine.util.JsonPrettyFormatter;
 import org.havenask.engine.util.VersionUtils;
 import org.havenask.index.mapper.MapperService;
+
+import static org.havenask.engine.index.config.generator.HavenaskEngineConfigGenerator.generateClusterJsonStr;
+import static org.havenask.engine.index.config.generator.HavenaskEngineConfigGenerator.generateSchemaJsonStr;
 
 public class BizConfigGenerator {
 
@@ -98,28 +98,7 @@ public class BizConfigGenerator {
         Path clusterConfigPath = configPath.resolve(version).resolve(CLUSTER_DIR).resolve(indexName + CLUSTER_FILE_SUFFIX);
 
         if (clusterJson != null && !clusterJson.equals("")) {
-            ClusterJsonMinMustParams clusterJsonMinMustParams = new ClusterJsonMinMustParams();
-            clusterJsonMinMustParams.cluster_config.builder_rule_config.partition_count = indexSettings.getAsInt(
-                IndexMetadata.SETTING_NUMBER_OF_SHARDS,
-                1
-            );
-            clusterJsonMinMustParams.online_index_config.build_config.max_doc_count = EngineSettings.HAVENASK_BUILD_CONFIG_MAX_DOC_COUNT
-                .get(indexSettings);
-            clusterJsonMinMustParams.cluster_config.cluster_name = indexName;
-            clusterJsonMinMustParams.cluster_config.table_name = indexName;
-            clusterJsonMinMustParams.wal_config.sink.queue_name = indexName;
-            clusterJsonMinMustParams.wal_config.sink.queue_size = String.valueOf(
-                EngineSettings.HAVENASK_WAL_CONFIG_SINK_QUEUE_SIZE.get(indexSettings)
-            );
-            if (EngineSettings.HAVENASK_HASH_MODE_HASH_FIELD.exists(indexSettings)) {
-                clusterJsonMinMustParams.cluster_config.hash_mode.hash_field = EngineSettings.HAVENASK_HASH_MODE_HASH_FIELD.get(
-                    indexSettings
-                );
-            }
-            String defaultClusterJson = clusterJsonMinMustParams.toString();
-            String clusterJsonStr = JsonPrettyFormatter.toJsonString(
-                mergeClusterJson(JSONObject.parseObject(clusterJson), JSONObject.parseObject(defaultClusterJson))
-            );
+            String clusterJsonStr = generateClusterJsonStr(indexName, indexSettings, clusterJson);
 
             Files.write(
                 clusterConfigPath,
@@ -160,9 +139,11 @@ public class BizConfigGenerator {
 
         String schemaJson = EngineSettings.HAVENASK_SCHEMA_JSON.get(indexSettings);
         if (schemaJson != null && !schemaJson.equals("")) {
+            String schemaJsonStr = generateSchemaJsonStr(indexName, schemaJson);
+
             Files.write(
                 schemaPath,
-                schemaJson.getBytes(StandardCharsets.UTF_8),
+                schemaJsonStr.getBytes(StandardCharsets.UTF_8),
                 StandardOpenOption.CREATE,
                 StandardOpenOption.TRUNCATE_EXISTING
             );
@@ -207,21 +188,5 @@ public class BizConfigGenerator {
                 StandardOpenOption.TRUNCATE_EXISTING
             );
         }
-    }
-
-    private JSONObject mergeClusterJson(JSONObject clusterJson, JSONObject defaultClusterJson) {
-        for (String key : defaultClusterJson.keySet()) {
-            Object valueB = defaultClusterJson.get(key);
-            if (clusterJson.containsKey(key)) {
-                Object valueA = clusterJson.get(key);
-                if (valueA instanceof JSONObject && valueB instanceof JSONObject) {
-                    clusterJson.put(key, mergeClusterJson((JSONObject) valueA, (JSONObject) valueB));
-                }
-            } else {
-                clusterJson.put(key, valueB);
-            }
-        }
-
-        return clusterJson;
     }
 }
