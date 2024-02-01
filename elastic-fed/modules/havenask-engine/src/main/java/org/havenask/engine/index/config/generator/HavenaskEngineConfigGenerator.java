@@ -85,9 +85,10 @@ public class HavenaskEngineConfigGenerator {
                             jsonArrayA.add(item);
                         }
                     }
+                } else if (schemaJson.get(key) instanceof JSONObject && defaultSchemaJson.get(key) instanceof JSONObject) {
+                    schemaJson.put(key, mergeSchemaJson((JSONObject) schemaJson.get(key), (JSONObject) defaultSchemaJson.get(key)));
                 } else {
-                    // TODO 在REST层做校验应该更好
-                    throw new RuntimeException(key + " is illegal with value:" + schemaJson.get(key));
+                    schemaJson.put(key, defaultSchemaJson.get(key));
                 }
             } else {
                 schemaJson.put(key, defaultSchemaJson.get(key));

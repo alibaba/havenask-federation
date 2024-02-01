@@ -264,4 +264,28 @@ public class HavenaskEngineTests extends EngineTestCase {
         assertTrue(cost < DEFAULT_TIMEOUT.millis());
         assertEquals(response, writeResponse);
     }
+
+    public void testBuildDocMessage() throws IOException {
+        ParsedDocument parsedDocument = testParsedDocument("id", "routing", new ParseContext.Document(), BytesArray.EMPTY, null);
+        String sourceDoc =
+            "{\"image_vector\": [42, 8, -15], \"title_vector\": [25, 1, 4, -12, 2], \"title\": \"alpine lake\", \"file_type\": \"png\"}";
+        BytesReference source = new BytesArray(sourceDoc);
+        String res = HavenaskEngine.buildDocMessage(source, parsedDocument, Operation.TYPE.INDEX);
+
+        String expectedRes = "CMD=add\u001F\n"
+            + "image_vector=42,8,-15\u001F\n"
+            + "title_vector=25,1,4,-12,2\u001F\n"
+            + "title=alpine lake\u001F\n"
+            + "file_type=png\u001F\n"
+            + "_source={\"image_vector\": [42, 8, -15], \"title_vector\": [25, 1, 4, -12, 2], "
+            + "\"title\": \"alpine lake\", \"file_type\": \"png\"}\u001F\n"
+            + "_id=id\u001F\n"
+            + "_routing=routing\u001F\n"
+            + "_version=0\u001F\n"
+            + "_seq_no=-2\u001F\n"
+            + "_primary_term=0\u001F\n"
+            + "\u001E\n";
+
+        assertEquals(expectedRes, res);
+    }
 }

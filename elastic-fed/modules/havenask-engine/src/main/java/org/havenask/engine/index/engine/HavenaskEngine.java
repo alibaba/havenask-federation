@@ -25,11 +25,13 @@ import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.LongConsumer;
@@ -71,7 +73,10 @@ import org.havenask.common.metrics.CounterMetric;
 import org.havenask.common.settings.Settings;
 import org.havenask.common.unit.TimeValue;
 import org.havenask.common.util.SingleObjectCache;
+import org.havenask.common.xcontent.XContentFactory;
 import org.havenask.common.xcontent.XContentHelper;
+import org.havenask.common.xcontent.XContentParser;
+import org.havenask.common.xcontent.XContentType;
 import org.havenask.engine.HavenaskEngineEnvironment;
 import org.havenask.engine.MetaDataSyncer;
 import org.havenask.engine.NativeProcessControlService;
@@ -541,6 +546,143 @@ public class HavenaskEngine extends InternalEngine {
         return new WriteRequest(table, hashId, message.toString());
     }
 
+    static String buildDocMessage(BytesReference source, ParsedDocument parsedDocument, Operation.TYPE type) throws IOException {
+        StringBuilder message = new StringBuilder();
+        switch (type) {
+            case INDEX:
+                message.append("CMD=add\u001F\n");
+                break;
+            case DELETE:
+                message.append("CMD=delete\u001F\n");
+                break;
+            default:
+                throw new IllegalArgumentException("invalid operation type!");
+        }
+        addSource2DocMessage(source, message);
+        message.append("_source").append("=").append(source.utf8ToString()).append("\u001F\n");
+        addMetaInfo2DocMessage(parsedDocument, message);
+        message.append("\u001E\n");
+        return message.toString();
+    }
+
+    static void addSource2DocMessage(BytesReference source, StringBuilder message) throws IOException {
+        try (XContentParser parser = XContentFactory.xContent(XContentType.JSON).createParser(null, null, source.streamInput())) {
+            parser.nextToken();
+            parseJson(parser, "", message);
+        }
+    }
+
+    static void parseJson(XContentParser parser, String currentPath, StringBuilder message) throws IOException {
+        String fieldName = null;
+
+        while (parser.nextToken() != XContentParser.Token.END_OBJECT) {
+            switch (parser.currentToken()) {
+                case FIELD_NAME:
+                    fieldName = parser.currentName();
+                    break;
+                case START_OBJECT:
+                    parseJson(parser, extendPath(currentPath, fieldName), message);
+                    break;
+                case START_ARRAY:
+                    message.append(extendPath(currentPath, fieldName)).append("=");
+                    while (parser.nextToken() != XContentParser.Token.END_ARRAY) {
+                        switch (parser.currentToken()) {
+                            case VALUE_NUMBER:
+                                XContentParser.NumberType numberType = parser.numberType();
+                                switch (numberType) {
+                                    case INT:
+                                        message.append(parser.intValue());
+                                        break;
+                                    case LONG:
+                                        message.append(parser.longValue());
+                                        break;
+                                    case DOUBLE:
+                                        message.append(parser.doubleValue());
+                                        break;
+                                    case FLOAT:
+                                        message.append(parser.floatValue());
+                                        break;
+                                }
+                                break;
+                            case VALUE_STRING:
+                                message.append(parser.text());
+                                break;
+                            case VALUE_BOOLEAN:
+                                message.append(parser.booleanValue());
+                                break;
+                            default:
+                                // TODO
+                        }
+                        message.append(",");
+                    }
+                    // 删掉最后一个多余的","
+                    message.delete(message.length() - 1, message.length());
+                    message.append("\u001F\n");
+                    break;
+                case VALUE_STRING:
+                    message.append(extendPath(currentPath, fieldName)).append("=").append(parser.text()).append("\u001F\n");
+                    break;
+                case VALUE_NUMBER:
+                    XContentParser.NumberType numberType = parser.numberType();
+                    switch (numberType) {
+                        case INT:
+                            message.append(extendPath(currentPath, fieldName)).append("=").append(parser.intValue()).append("\u001F\n");
+                            break;
+                        case LONG:
+                            message.append(extendPath(currentPath, fieldName)).append("=").append(parser.longValue()).append("\u001F\n");
+                            break;
+                        case DOUBLE:
+                            message.append(extendPath(currentPath, fieldName)).append("=").append(parser.doubleValue()).append("\u001F\n");
+                            break;
+                        case FLOAT:
+                            message.append(extendPath(currentPath, fieldName)).append("=").append(parser.floatValue()).append("\u001F\n");
+                            break;
+                    }
+                    break;
+                case VALUE_BOOLEAN:
+                    message.append(extendPath(currentPath, fieldName)).append("=").append(parser.booleanValue()).append("\u001F\n");
+                    break;
+                default:
+                    // Throw an error or ignore the token
+            }
+        }
+    }
+
+    private static String extendPath(String currentPath, String fieldName) {
+        return currentPath.isEmpty() ? fieldName : currentPath + "_" + fieldName;
+    }
+
+    static void addMetaInfo2DocMessage(ParsedDocument parsedDocument, StringBuilder message) {
+        if (parsedDocument == null) {
+            return;
+        }
+        message.append("_id").append("=").append(parsedDocument.id()).append("\u001F\n");
+        if (parsedDocument.routing() != null) {
+            message.append("_routing").append("=").append(parsedDocument.routing()).append("\u001F\n");
+        }
+        if (parsedDocument.rootDoc() == null) {
+            return;
+        }
+        ParseContext.Document rootDoc = parsedDocument.rootDoc();
+
+        Set<String> existFieldNames = new HashSet<>();
+        for (IndexableField field : rootDoc.getFields()) {
+            String fieldName = field.name();
+            if (existFieldNames.contains(fieldName)) {
+                continue;
+            }
+            String stringVal = field.stringValue();
+            if (Objects.isNull(stringVal)) {
+                stringVal = Optional.ofNullable(field.numericValue()).map(Number::toString).orElse(null);
+            }
+
+            if (Objects.nonNull(stringVal)) {
+                message.append(fieldName).append("=").append(stringVal).append("\u001F\n");
+            }
+            existFieldNames.add(fieldName);
+        }
+    }
+
     @Override
     protected boolean assertSearcherIsWarmedUp(String source, SearcherScope scope) {
         // for havenask we don't need to care about "externalReaderManager.isWarmedup"
@@ -552,6 +694,10 @@ public class HavenaskEngine extends InternalEngine {
         long start = System.nanoTime();
         index.parsedDoc().updateSeqID(index.seqNo(), index.primaryTerm());
         index.parsedDoc().version().setLongValue(plan.versionForIndexing);
+        if (EngineSettings.HAVENASK_SCHEMA_JSON.get(engineConfig.getIndexSettings().getSettings()) != null
+            && !EngineSettings.HAVENASK_SCHEMA_JSON.get(engineConfig.getIndexSettings().getSettings()).equals("")) {
+            return getIndexResutlBySchema(index.source(), index.parsedDoc(), index.operationType(), index, start);
+        }
         Map<String, String> haDoc = toHaIndex(index.parsedDoc());
         if (realTimeEnable) {
             ProducerRecord<String, String> record = buildProducerRecord(
@@ -570,6 +716,59 @@ public class HavenaskEngine extends InternalEngine {
         } else {
             try {
                 WriteRequest writeRequest = buildWriteRequest(tableName, partitionRange.first, index.operationType(), haDoc);
+                WriteResponse writeResponse = retryWrite(shardId, searcherClient, writeRequest);
+                if (writeResponse.getErrorCode() != null) {
+                    throw new IOException(
+                        "havenask index exception, error code: "
+                            + writeResponse.getErrorCode()
+                            + ", error message:"
+                            + writeResponse.getErrorMessage()
+                    );
+                }
+                if (logger.isTraceEnabled()) {
+                    logger.trace(
+                        "[{}] index into lucene, id: {}, version: {}, primaryTerm: {}, seqNo: {}, cost: {} us",
+                        shardId,
+                        index.id(),
+                        index.version(),
+                        index.primaryTerm(),
+                        index.seqNo(),
+                        (System.nanoTime() - start) / 1000
+                    );
+                }
+
+                numDocIndexes.inc();
+                return new IndexResult(index.version(), index.primaryTerm(), index.seqNo(), true);
+            } catch (IOException e) {
+                logger.warn("havenask index exception", e);
+                failEngine(e.getMessage(), e);
+                throw e;
+            }
+        }
+    }
+
+    protected IndexResult getIndexResutlBySchema(
+        BytesReference source,
+        ParsedDocument parsedDocument,
+        Operation.TYPE type,
+        Index index,
+        long start
+    ) throws IOException {
+        String message = buildDocMessage(source, parsedDocument, type);
+        if (realTimeEnable) {
+            long hashId = HashAlgorithm.getHashId(parsedDocument.id());
+            long partition = HashAlgorithm.getPartitionId(hashId, kafkaPartition);
+            ProducerRecord<String, String> record = new ProducerRecord<>(kafkaTopic, (int) partition, parsedDocument.id(), message);
+            try {
+                producer.send(record).get();
+            } catch (Exception e) {
+                throw new HavenaskException("havenask realtime index exception", e);
+            }
+            return new IndexResult(index.version(), index.primaryTerm(), index.seqNo(), true);
+        } else {
+            try {
+                WriteRequest writeRequest = new WriteRequest(tableName, partitionRange.first, message.toString());
+
                 WriteResponse writeResponse = retryWrite(shardId, searcherClient, writeRequest);
                 if (writeResponse.getErrorCode() != null) {
                     throw new IOException(

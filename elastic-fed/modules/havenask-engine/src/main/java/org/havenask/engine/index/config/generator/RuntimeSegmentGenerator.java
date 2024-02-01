@@ -26,10 +26,13 @@ import org.apache.logging.log4j.Logger;
 import org.havenask.common.Nullable;
 import org.havenask.common.settings.Settings;
 import org.havenask.engine.index.config.Schema;
+import org.havenask.engine.index.engine.EngineSettings;
 import org.havenask.engine.util.RangeUtil;
 import org.havenask.engine.util.Utils;
 import org.havenask.index.mapper.MapperService;
 import org.havenask.index.shard.ShardId;
+
+import static org.havenask.engine.index.config.generator.HavenaskEngineConfigGenerator.generateSchemaJsonStr;
 
 public class RuntimeSegmentGenerator {
     private static final Logger LOGGER = LogManager.getLogger(RuntimeSegmentGenerator.class);
@@ -232,9 +235,16 @@ public class RuntimeSegmentGenerator {
             StandardOpenOption.TRUNCATE_EXISTING
         );
 
-        SchemaGenerator schemaGenerator = new SchemaGenerator();
-        Schema schema = schemaGenerator.getSchema(indexName, indexSettings, mapperService);
-        String strSchema = schema.toString();
+        String strSchema;
+        String schemaJson = EngineSettings.HAVENASK_SCHEMA_JSON.get(indexSettings);
+        if (schemaJson != null && !schemaJson.equals("")) {
+            strSchema = generateSchemaJsonStr(indexName, schemaJson);
+        } else {
+            SchemaGenerator schemaGenerator = new SchemaGenerator();
+            Schema schema = schemaGenerator.getSchema(indexName, indexSettings, mapperService);
+            strSchema = schema.toString();
+        }
+
         Files.write(
             dataPath.resolve(SCHEMA_FILE_NAME),
             strSchema.getBytes(StandardCharsets.UTF_8),
