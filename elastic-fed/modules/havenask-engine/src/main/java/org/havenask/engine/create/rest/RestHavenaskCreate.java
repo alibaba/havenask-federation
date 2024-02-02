@@ -103,13 +103,12 @@ public class RestHavenaskCreate extends BaseRestHandler {
                 );
             }
         }
-        if (settings.hasValue("index.number_of_shards")) {
-            validateValueAtPathWithSettingsValue(
-                clusterJsonObject,
-                "cluster_config.builder_rule_config.partition_count",
-                String.valueOf(settings.getAsInt("index.number_of_shards", 1))
-            );
-        }
+
+        validateValueAtPathWithSettingsValue(
+            clusterJsonObject,
+            "cluster_config.builder_rule_config.partition_count",
+            String.valueOf(settings.getAsInt("index.number_of_shards", 1))
+        );
         validateValueAtPath(clusterJsonObject, "cluster_config.cluster_name", index);
         validateValueAtPath(clusterJsonObject, "cluster_config.table_name", index);
         validateValueAtPath(clusterJsonObject, "wal_config.sink.queue_name", index);
