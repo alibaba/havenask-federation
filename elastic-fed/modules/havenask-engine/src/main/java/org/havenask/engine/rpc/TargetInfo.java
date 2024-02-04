@@ -273,7 +273,7 @@ public class TargetInfo {
             public String check_index_path;
             public Integer deploy_status;
             public List<List<Object>> deploy_status_map;
-            public Integer inc_version;
+            public Long inc_version;
             public Integer keep_count;
             public String loaded_config_path;
             public String loaded_index_root;

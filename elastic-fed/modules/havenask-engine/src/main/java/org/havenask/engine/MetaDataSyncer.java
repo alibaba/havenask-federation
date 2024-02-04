@@ -36,6 +36,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Stream;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -490,14 +491,14 @@ public class MetaDataSyncer extends AbstractLifecycleComponent implements Cluste
                 {
                     Path versionPath = defaultRuntimeDataPath.resolve(index).resolve(INDEX_SUB_PATH0);
                     TargetInfo.TableInfo.Partition curPartition = new TargetInfo.TableInfo.Partition();
-                    curPartition.inc_version = extractIncVersion(Utils.getIndexMaxVersion(versionPath));
+                    curPartition.inc_version = extractIncVersion(versionPath);
                     partitions.put(DEFAULT_PARTITION_NAME0, curPartition);
                 }
 
                 {
                     Path versionPath = defaultRuntimeDataPath.resolve(index).resolve(INDEX_SUB_PATH1);
                     TargetInfo.TableInfo.Partition curPartition = new TargetInfo.TableInfo.Partition();
-                    curPartition.inc_version = extractIncVersion(Utils.getIndexMaxVersion(versionPath));
+                    curPartition.inc_version = extractIncVersion(versionPath);
                     partitions.put(DEFAULT_PARTITION_NAME1, curPartition);
                 }
 
@@ -513,7 +514,7 @@ public class MetaDataSyncer extends AbstractLifecycleComponent implements Cluste
                     String partitionId = RangeUtil.getRangeName(totalPartitionCount, shardId);
                     TargetInfo.TableInfo.Partition curPartition = new TargetInfo.TableInfo.Partition();
                     Path versionPath = defaultRuntimeDataPath.resolve(index).resolve("generation_0").resolve(partitionName);
-                    curPartition.inc_version = extractIncVersion(Utils.getIndexMaxVersion(versionPath));
+                    curPartition.inc_version = extractIncVersion(versionPath);
                     partitions.put(partitionId, curPartition);
                 });
                 curTableInfo = new TargetInfo.TableInfo(tableMode, tableType, configPath, indexRoot, totalPartitionCount, partitions);
@@ -530,16 +531,17 @@ public class MetaDataSyncer extends AbstractLifecycleComponent implements Cluste
         return new UpdateHeartbeatTargetRequest(searcherTargetInfo);
     }
 
-    private static int extractIncVersion(String versionStr) {
-        String pattern = "version\\.(\\d+)";
-        Pattern regex = Pattern.compile(pattern);
-        Matcher matcher = regex.matcher(versionStr);
-        if (matcher.find()) {
-            String numberStr = matcher.group(1);
-            int number = Integer.parseInt(numberStr);
-            return number;
-        } else {
-            return -1;
+    static long extractIncVersion(Path versionFilePath) {
+        try (Stream<Path> stream = Files.list(versionFilePath)) {
+            long maxVersion = stream.map(path -> path.getFileName().toString())
+                .filter(s -> s.matches("version\\.\\d+"))
+                .map(s -> Long.parseLong(s.substring(s.indexOf('.') + 1)))
+                .max(Long::compare)
+                .orElse(-1L);
+            return maxVersion;
+        } catch (Exception e) {
+            LOGGER.info("directory [{}] does not exist or the version num is too big", versionFilePath);
+            return -1L;
         }
     }
 
