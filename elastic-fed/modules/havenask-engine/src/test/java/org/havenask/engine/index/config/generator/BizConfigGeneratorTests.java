@@ -30,6 +30,7 @@ import java.nio.file.Path;
 import java.util.Collection;
 import java.util.Locale;
 
+import com.alibaba.fastjson.JSONObject;
 import org.havenask.cluster.metadata.IndexMetadata;
 import org.havenask.common.settings.Settings;
 import org.havenask.engine.HavenaskEnginePlugin;
@@ -469,6 +470,11 @@ public class BizConfigGeneratorTests extends MapperServiceTestCase {
         Files.createDirectories(configPath.resolve(BIZ_DIR).resolve(DEFAULT_DIR).resolve("0").resolve(DATA_TABLES_DIR));
 
         String clusterJson = "{\n"
+            + "   \"cluster_config\":{\n"
+            + "       \"builder_rule_config\":{\n"
+            + "           \"partition_count\":1\n"
+            + "       }\n"
+            + "   },\n"
             + "    \"build_option_config\" : {\n"
             + "        \"async_build\" : true,\n"
             + "        \"async_queue_size\" : 1000,\n"
@@ -558,6 +564,54 @@ public class BizConfigGeneratorTests extends MapperServiceTestCase {
         bizConfigGenerator.generate();
 
         {
+            String expectedClusterJsonStr = String.format(
+                Locale.ROOT,
+                "{\n"
+                    + "\t\"cluster_config\":{\n"
+                    + "\t\t\"cluster_name\":\"%s\",\n"
+                    + "\t\t\"builder_rule_config\":{\n"
+                    + "\t\t\t\"partition_count\":1\n"
+                    + "\t\t},\n"
+                    + "\t\t\"hash_mode\":{\n"
+                    + "\t\t\t\"hash_field\":\"test\",\n"
+                    + "\t\t\t\"hash_function\":\"HASH\"\n"
+                    + "\t\t},\n"
+                    + "\t\t\"table_name\":\"%s\"\n"
+                    + "\t},\n"
+                    + "\t\"direct_write\":true,\n"
+                    + "\t\"online_index_config\":{\n"
+                    + "\t\t\"build_config\":{\n"
+                    + "\t\t\t\"max_doc_count\":10\n"
+                    + "\t\t}\n"
+                    + "\t},\n"
+                    + "\t\"build_option_config\":{\n"
+                    + "\t\t\"sort_queue_mem\":4096,\n"
+                    + "\t\t\"async_queue_size\":1000,\n"
+                    + "\t\t\"document_filter\":true,\n"
+                    + "\t\t\"max_recover_time\":30,\n"
+                    + "\t\t\"sort_descriptions\":[\n"
+                    + "\t\t\t{\n"
+                    + "\t\t\t\t\"sort_field\":\"hits\",\n"
+                    + "\t\t\t\t\"sort_pattern\":\"asc\"\n"
+                    + "\t\t\t}\n"
+                    + "\t\t],\n"
+                    + "\t\t\"sort_build\":true,\n"
+                    + "\t\t\"async_build\":true,\n"
+                    + "\t\t\"sort_queue_size\":10000000\n"
+                    + "\t},\n"
+                    + "\t\"wal_config\":{\n"
+                    + "\t\t\"sink\":{\n"
+                    + "\t\t\t\"queue_name\":\"%s\",\n"
+                    + "\t\t\t\"queue_size\":\"100\"\n"
+                    + "\t\t},\n"
+                    + "\t\t\"strategy\":\"queue\"\n"
+                    + "\t}\n"
+                    + "}",
+                indexName,
+                indexName,
+                indexName
+            );
+
             Path clusterConfigPath = configPath.resolve(BIZ_DIR)
                 .resolve(DEFAULT_DIR)
                 .resolve("0")
@@ -566,7 +620,7 @@ public class BizConfigGeneratorTests extends MapperServiceTestCase {
             assertTrue(Files.exists(clusterConfigPath));
             String content = Files.readString(clusterConfigPath);
 
-            assertEquals(clusterJson, content);
+            assertTrue(JSONObject.parseObject(expectedClusterJsonStr).equals(JSONObject.parseObject(content)));
         }
 
         {
@@ -614,4 +668,5 @@ public class BizConfigGeneratorTests extends MapperServiceTestCase {
             .resolve(indexName + DATA_TABLES_FILE_SUFFIX);
         assertFalse(Files.exists(dataTablesPath));
     }
+
 }

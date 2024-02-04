@@ -146,7 +146,7 @@ public class EngineSettings {
     );
 
     public static final Setting<String> HAVENASK_CLUSTER_JSON = new Setting<>(
-        "index.havenask.cluster.json",
+        "index.havenask.cluster_json",
         "",
         (s) -> s,
         Setting.Property.IndexScope,
@@ -154,7 +154,7 @@ public class EngineSettings {
     );
 
     public static final Setting<String> HAVENASK_DATA_TABLE_JSON = new Setting<>(
-        "index.havenask.data_table.json",
+        "index.havenask.data_table_json",
         "",
         (s) -> s,
         Setting.Property.IndexScope,
@@ -162,7 +162,7 @@ public class EngineSettings {
     );
 
     public static final Setting<String> HAVENASK_SCHEMA_JSON = new Setting<>(
-        "index.havenask.schema.json",
+        "index.havenask.schema_json",
         "",
         (s) -> s,
         Setting.Property.IndexScope,
