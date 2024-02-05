@@ -27,13 +27,11 @@ import org.havenask.cluster.metadata.IndexMetadata;
 import org.havenask.common.Nullable;
 import org.havenask.common.settings.Settings;
 import org.havenask.engine.index.config.BizConfig;
-import org.havenask.engine.index.config.ClusterJsonMinMustParams;
 import org.havenask.engine.index.config.DataTable;
 import org.havenask.engine.index.config.Processor.ProcessChain;
 import org.havenask.engine.index.config.Processor.ProcessorChainConfig;
 import org.havenask.engine.index.config.Schema;
 import org.havenask.engine.index.engine.EngineSettings;
-import org.havenask.engine.util.JsonPrettyFormatter;
 import org.havenask.engine.util.VersionUtils;
 import org.havenask.index.mapper.MapperService;
 
