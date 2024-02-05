@@ -162,6 +162,16 @@ public class RestHavenaskCreateTests extends MapperServiceTestCase {
 
         Map<String, Object> errorSourceSettings = Map.of("index.engine", "lucene");
         testIllegalParams(indexName, null, errorSourceSettings);
+
+        Map<String, Object> defaultNumberOfShardsSourceSettings = Map.of(
+            "index.havenask.hash_mode.hash_field",
+            "_id",
+            "index.havenask.build_config.max_doc_count",
+            "10000",
+            "index.havenask.wal_config.sink.queue_size",
+            "5000"
+        );
+        testIllegalParams(indexName, illegalPartitionCount, defaultNumberOfShardsSourceSettings);
     }
 
     private void testIllegalParams(String indexName, String illegalClusterJsonStr, Map<String, Object> sourceSettings) {

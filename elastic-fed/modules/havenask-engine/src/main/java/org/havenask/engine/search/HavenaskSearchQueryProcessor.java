@@ -14,6 +14,13 @@
 
 package org.havenask.engine.search;
 
+import static org.havenask.engine.search.rest.RestHavenaskSqlAction.SQL_DATABASE;
+
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.Locale;
+import java.util.Map;
+
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.havenask.action.search.SearchRequest;
@@ -25,19 +32,17 @@ import org.havenask.engine.index.query.ProximaQueryBuilder;
 import org.havenask.engine.rpc.QrsClient;
 import org.havenask.engine.rpc.QrsSqlRequest;
 import org.havenask.engine.rpc.QrsSqlResponse;
+import org.havenask.index.query.BoolQueryBuilder;
 import org.havenask.index.query.MatchAllQueryBuilder;
+import org.havenask.index.query.MatchPhraseQueryBuilder;
 import org.havenask.index.query.MatchQueryBuilder;
 import org.havenask.index.query.QueryBuilder;
+import org.havenask.index.query.RangeQueryBuilder;
 import org.havenask.index.query.TermQueryBuilder;
 import org.havenask.search.builder.KnnSearchBuilder;
 import org.havenask.search.builder.SearchSourceBuilder;
-
-import java.io.IOException;
-import java.util.HashMap;
-import java.util.Locale;
-import java.util.Map;
-
-import static org.havenask.engine.search.rest.RestHavenaskSqlAction.SQL_DATABASE;
+import org.havenask.search.sort.FieldSortBuilder;
+import org.havenask.search.sort.SortBuilder;
 
 public class HavenaskSearchQueryProcessor {
     private static final Logger logger = LogManager.getLogger(HavenaskSearchQueryProcessor.class);
@@ -55,6 +60,10 @@ public class HavenaskSearchQueryProcessor {
 
     public SqlResponse executeQuery(SearchRequest request, String tableName, Map<String, Object> indexMapping) throws IOException {
         String sql = transferSearchRequest2HavenaskSql(tableName, request.source(), indexMapping);
+        if (logger.isTraceEnabled()) {
+            logger.trace("dsl: {}, sql: {}", request.source(), sql);
+        }
+
         String kvpair = "format:full_json;timeout:10000;databaseName:" + SQL_DATABASE;
         QrsSqlRequest qrsQueryPhaseSqlRequest = new QrsSqlRequest(sql, kvpair);
         QrsSqlResponse qrsQueryPhaseSqlResponse = qrsClient.executeSql(qrsQueryPhaseSqlRequest);
@@ -170,10 +179,107 @@ public class HavenaskSearchQueryProcessor {
                     .append("', '")
                     .append(matchQueryBuilder.value())
                     .append("', 'default_op:OR')");
+
+                selectParams.append(", bm25_score() as _score");
+                orderBy.append(" order by _score desc");
+            } else if (queryBuilder instanceof MatchPhraseQueryBuilder) {
+                MatchPhraseQueryBuilder matchQueryBuilder = (MatchPhraseQueryBuilder) queryBuilder;
+                where.append(" where ")
+                    .append("QUERY('', '")
+                    .append(Schema.encodeFieldWithDot(matchQueryBuilder.fieldName()))
+                    .append(":")
+                    .append("\"")
+                    .append(matchQueryBuilder.value())
+                    .append("\"")
+                    .append("')");
+                selectParams.append(", bm25_score() as _score");
+                orderBy.append(" order by _score desc");
+            } else if (queryBuilder instanceof RangeQueryBuilder) {
+                RangeQueryBuilder rangeQueryBuilder = (RangeQueryBuilder) queryBuilder;
+                where.append(" where ")
+                    .append("QUERY('', '")
+                    .append(Schema.encodeFieldWithDot(rangeQueryBuilder.fieldName()))
+                    .append(":")
+                    .append(rangeQueryBuilder.includeLower() ? "[" : "(")
+                    .append(rangeQueryBuilder.from())
+                    .append(",")
+                    .append(rangeQueryBuilder.to())
+                    .append(rangeQueryBuilder.includeUpper() ? "]" : ")")
+                    .append("')");
+            } else if (queryBuilder instanceof BoolQueryBuilder) {
+                BoolQueryBuilder boolQueryBuilder = (BoolQueryBuilder) queryBuilder;
+                where.append(" where ");
+                boolean first = true;
+                for (QueryBuilder subQueryBuilder : boolQueryBuilder.must()) {
+                    if (false == first) {
+                        where.append(" and ");
+                    }
+                    if (first) {
+                        first = false;
+                    }
+                    if (subQueryBuilder instanceof TermQueryBuilder) {
+                        TermQueryBuilder termQueryBuilder = (TermQueryBuilder) subQueryBuilder;
+                        where.append(Schema.encodeFieldWithDot(termQueryBuilder.fieldName()))
+                            .append("='")
+                            .append(termQueryBuilder.value())
+                            .append("'");
+                    } else if (subQueryBuilder instanceof MatchQueryBuilder) {
+                        MatchQueryBuilder matchQueryBuilder = (MatchQueryBuilder) subQueryBuilder;
+                        where.append("MATCHINDEX('")
+                            .append(Schema.encodeFieldWithDot(matchQueryBuilder.fieldName()))
+                            .append("', '")
+                            .append(matchQueryBuilder.value())
+                            .append("', 'default_op:OR')");
+
+                        selectParams.append(", bm25_score() as _score");
+                        orderBy.append(" order by _score desc");
+                    } else if (subQueryBuilder instanceof RangeQueryBuilder) {
+                        RangeQueryBuilder rangeQueryBuilder = (RangeQueryBuilder) subQueryBuilder;
+                        where.append("QUERY('', '")
+                            .append(Schema.encodeFieldWithDot(rangeQueryBuilder.fieldName()))
+                            .append(":")
+                            .append(rangeQueryBuilder.includeLower() ? "[" : "(")
+                            .append(rangeQueryBuilder.from())
+                            .append(",")
+                            .append(rangeQueryBuilder.to())
+                            .append(rangeQueryBuilder.includeUpper() ? "]" : ")")
+                            .append("')");
+                    } else {
+                        throw new IOException("unsupported DSL(unsupported bool filter): " + dsl);
+                    }
+                }
             } else {
                 throw new IOException("unsupported DSL: " + dsl);
             }
         }
+
+        StringBuilder sortBuilder = new StringBuilder();
+        if (dsl.sorts() != null && dsl.sorts().size() > 0) {
+            sortBuilder.append(" order by ");
+            for (SortBuilder<?> sortField : dsl.sorts()) {
+                if (sortField instanceof FieldSortBuilder == false) {
+                    throw new IOException("unsupported DSL(unsupported sort): " + dsl);
+                }
+
+                FieldSortBuilder fieldSortBuilder = (FieldSortBuilder) sortField;
+
+                sortBuilder.append("`")
+                    .append(Schema.encodeFieldWithDot(fieldSortBuilder.getFieldName()))
+                    .append("` ")
+                    .append(sortField.order());
+
+                if (sortBuilder.length() > 0) {
+                    sortBuilder.append(", ");
+                }
+            }
+
+            sortBuilder.delete(sortBuilder.length() - 2, sortBuilder.length());
+        }
+
+        if (orderBy.length() == 0) {
+            orderBy = sortBuilder;
+        }
+
         sqlQuery.append("select")
             .append(selectParams)
             .append(" from ")

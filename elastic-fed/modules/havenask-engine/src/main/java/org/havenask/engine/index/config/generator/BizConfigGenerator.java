@@ -22,15 +22,18 @@ import java.nio.file.StandardOpenOption;
 import java.util.HashMap;
 import java.util.List;
 
+import com.alibaba.fastjson.JSONObject;
 import org.havenask.cluster.metadata.IndexMetadata;
 import org.havenask.common.Nullable;
 import org.havenask.common.settings.Settings;
 import org.havenask.engine.index.config.BizConfig;
+import org.havenask.engine.index.config.ClusterJsonMinMustParams;
 import org.havenask.engine.index.config.DataTable;
 import org.havenask.engine.index.config.Processor.ProcessChain;
 import org.havenask.engine.index.config.Processor.ProcessorChainConfig;
 import org.havenask.engine.index.config.Schema;
 import org.havenask.engine.index.engine.EngineSettings;
+import org.havenask.engine.util.JsonPrettyFormatter;
 import org.havenask.engine.util.VersionUtils;
 import org.havenask.index.mapper.MapperService;
 
@@ -188,5 +191,21 @@ public class BizConfigGenerator {
                 StandardOpenOption.TRUNCATE_EXISTING
             );
         }
+    }
+
+    private JSONObject mergeClusterJson(JSONObject clusterJson, JSONObject defaultClusterJson) {
+        for (String key : defaultClusterJson.keySet()) {
+            Object valueB = defaultClusterJson.get(key);
+            if (clusterJson.containsKey(key)) {
+                Object valueA = clusterJson.get(key);
+                if (valueA instanceof JSONObject && valueB instanceof JSONObject) {
+                    clusterJson.put(key, mergeClusterJson((JSONObject) valueA, (JSONObject) valueB));
+                }
+            } else {
+                clusterJson.put(key, valueB);
+            }
+        }
+
+        return clusterJson;
     }
 }
