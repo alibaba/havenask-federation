@@ -25,13 +25,11 @@ import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.Set;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.LongConsumer;
@@ -51,6 +49,7 @@ import org.apache.kafka.common.serialization.StringSerializer;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.message.ParameterizedMessage;
+import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexableField;
 import org.apache.lucene.search.QueryCache;
@@ -146,6 +145,7 @@ public class HavenaskEngine extends InternalEngine {
     private final CounterMetric numDocDeletes = new CounterMetric();
     private final CounterMetric numDocIndexes = new CounterMetric();
     private volatile boolean running;
+    private final boolean setUpBySchemaJson;
 
     public HavenaskEngine(
         EngineConfig engineConfig,
@@ -181,6 +181,10 @@ public class HavenaskEngine extends InternalEngine {
             throw new EngineException(shardId, "init kafka producer failed", e);
         }
         running = true;
+        {
+            String schemaJsonStr = EngineSettings.HAVENASK_SCHEMA_JSON.get(engineConfig.getIndexSettings().getSettings());
+            setUpBySchemaJson = schemaJsonStr != null && !schemaJsonStr.isEmpty();
+        }
 
         long commitTimestamp = getLastCommittedSegmentInfos().userData.containsKey(HavenaskCommitInfo.COMMIT_TIMESTAMP_KEY)
             ? Long.valueOf(getLastCommittedSegmentInfos().userData.get(HavenaskCommitInfo.COMMIT_TIMESTAMP_KEY))
@@ -565,13 +569,18 @@ public class HavenaskEngine extends InternalEngine {
     }
 
     static void addSource2DocMessage(BytesReference source, StringBuilder message) throws IOException {
+        XContentType contentType = XContentFactory.xContentType(source.streamInput());
+        if (contentType == null) {
+            throw new IllegalArgumentException("source has illegal XContentType");
+        }
+
         try (XContentParser parser = XContentFactory.xContent(XContentType.JSON).createParser(null, null, source.streamInput())) {
             parser.nextToken();
-            parseJson2HaDoc(parser, "", message);
+            parseSource2HaDoc(parser, "", message);
         }
     }
 
-    static void parseJson2HaDoc(XContentParser parser, String currentPath, StringBuilder message) throws IOException {
+    static void parseSource2HaDoc(XContentParser parser, String currentPath, StringBuilder message) throws IOException {
         String fieldName = null;
 
         while (parser.nextToken() != XContentParser.Token.END_OBJECT) {
@@ -580,7 +589,7 @@ public class HavenaskEngine extends InternalEngine {
                     fieldName = parser.currentName();
                     break;
                 case START_OBJECT:
-                    parseJson2HaDoc(parser, extendPath(currentPath, fieldName), message);
+                    parseSource2HaDoc(parser, extendPath(currentPath, fieldName), message);
                     break;
                 case START_ARRAY:
                     message.append(extendPath(currentPath, fieldName)).append("=");
@@ -655,12 +664,10 @@ public class HavenaskEngine extends InternalEngine {
         if (parsedDocument == null) {
             return;
         }
-        Set<String> existFieldNames = new HashSet<>();
+
         message.append("_id").append("=").append(parsedDocument.id()).append("\u001F\n");
-        existFieldNames.add("_id");
         if (parsedDocument.routing() != null) {
             message.append("_routing").append("=").append(parsedDocument.routing()).append("\u001F\n");
-            existFieldNames.add("_id");
         }
         if (parsedDocument.rootDoc() == null) {
             return;
@@ -668,34 +675,46 @@ public class HavenaskEngine extends InternalEngine {
 
         ParseContext.Document rootDoc = parsedDocument.rootDoc();
         for (IndexableField field : rootDoc.getFields()) {
-            String fieldName = field.name();
-            if (existFieldNames.contains(fieldName)) {
-                continue;
+            switch (field.name()) {
+                case "_id":
+                    // ignore
+                    break;
+                case "_seq_no":
+                    if (field.fieldType().docValuesType() == DocValuesType.NONE) {
+                        appendFieldStringValueToMessage(field, message);
+                    }
+                    break;
+                case "_primary_term":
+                    appendFieldStringValueToMessage(field, message);
+                    break;
+                case "_source":
+                    BytesRef binaryVal = field.binaryValue();
+                    if (binaryVal == null) {
+                        throw new IOException("invalid field value!");
+                    }
+                    BytesReference bytes = new BytesArray(binaryVal);
+                    String src = XContentHelper.convertToJson(bytes, false, parsedDocument.getXContentType());
+                    message.append(field.name()).append("=").append(src).append("\u001F\n");
+                    break;
+                case "_version":
+                    appendFieldStringValueToMessage(field, message);
+                    break;
+                default:
+                    // TODO: if need to process other case, now we just do nothing;
+                    break;
             }
-            existFieldNames.add(fieldName);
-            String stringVal = field.stringValue();
-            if (Objects.isNull(stringVal)) {
-                stringVal = Optional.ofNullable(field.numericValue()).map(Number::toString).orElse(null);
-            }
+        }
+    }
 
-            if (Objects.nonNull(stringVal)) {
-                message.append(fieldName).append("=").append(stringVal).append("\u001F\n");
-                continue;
-            }
+    private static void appendFieldStringValueToMessage(IndexableField field, StringBuilder message) {
+        String fieldName = field.name();
+        String stringVal = field.stringValue();
+        if (Objects.isNull(stringVal)) {
+            stringVal = Optional.ofNullable(field.numericValue()).map(Number::toString).orElse(null);
+        }
 
-            BytesRef binaryVal = field.binaryValue();
-            if (binaryVal == null) {
-                throw new IOException("invalid field value!");
-            }
-            if (fieldName.equals(IdFieldMapper.NAME)) {
-                message.append(fieldName).append("=").append(Uid.decodeId(binaryVal.bytes)).append("\u001F\n");
-            } else if (fieldName.equals(SourceFieldMapper.NAME)) {
-                BytesReference bytes = new BytesArray(binaryVal);
-                String src = XContentHelper.convertToJson(bytes, false, parsedDocument.getXContentType());
-                message.append(fieldName).append("=").append(src).append("\u001F\n");
-            } else {
-                message.append(fieldName).append("=").append(binaryVal.utf8ToString()).append("\u001F\n");
-            }
+        if (Objects.nonNull(stringVal)) {
+            message.append(fieldName).append("=").append(stringVal).append("\u001F\n");
         }
     }
 
@@ -710,8 +729,7 @@ public class HavenaskEngine extends InternalEngine {
         long start = System.nanoTime();
         index.parsedDoc().updateSeqID(index.seqNo(), index.primaryTerm());
         index.parsedDoc().version().setLongValue(plan.versionForIndexing);
-        if (EngineSettings.HAVENASK_SCHEMA_JSON.get(engineConfig.getIndexSettings().getSettings()) != null
-            && !EngineSettings.HAVENASK_SCHEMA_JSON.get(engineConfig.getIndexSettings().getSettings()).equals("")) {
+        if (setUpBySchemaJson) {
             return getIndexResult(index.source(), index.parsedDoc(), index.operationType(), index, start);
         }
         Map<String, String> haDoc = toHaIndex(index.parsedDoc());
@@ -764,7 +782,7 @@ public class HavenaskEngine extends InternalEngine {
     }
 
     /**
-     * use this method to convert the input JSON into a haDoc format if the user provides schema.json
+     * use this method to convert the input source into a haDoc format if the user provides schema.json
      * instead of mappings when creating the index.
      */
     protected IndexResult getIndexResult(BytesReference source, ParsedDocument parsedDocument, Operation.TYPE type, Index index, long start)
