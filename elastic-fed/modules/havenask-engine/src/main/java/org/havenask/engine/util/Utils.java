@@ -124,6 +124,23 @@ public class Utils {
     }
 
     /**
+     * return the max version file's version number under the certain index directory
+     */
+    public static long getIndexMaxVersionNum(Path versionFilePath) throws IOException {
+        try (Stream<Path> stream = Files.list(versionFilePath)) {
+            long maxVersion = stream.map(path -> path.getFileName().toString())
+                .filter(s -> s.matches("version\\.\\d+"))
+                .map(s -> Long.parseLong(s.substring(s.indexOf('.') + 1)))
+                .max(Long::compare)
+                .orElse(-1L);
+            return maxVersion;
+        } catch (IOException e) {
+            logger.info("directory [{}] does not exist or the version num is too big", versionFilePath);
+            throw e;
+        }
+    }
+
+    /**
      * return the loactor in the version file
      */
     private static String getIndexLocator(Path jsonPath) {

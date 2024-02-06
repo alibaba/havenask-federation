@@ -246,21 +246,4 @@ public class MetaDataSyncerTests extends HavenaskAllocationTestCase {
             assertEquals("in0" != indexNames[i] ? 2 : 3, (int) curTableInfo.table_type);
         }
     }
-
-    public void testextractIncVersion() throws Exception {
-        Path home = createTempDir();
-        Files.createFile(home.resolve("version.1"));
-        Files.createFile(home.resolve("version.10"));
-        Files.createFile(home.resolve("version.11"));
-        long incVersion = MetaDataSyncer.extractIncVersion(home);
-        assertEquals(11L, incVersion);
-
-        Path illegalPathVersionDir = home.resolve("illegalPathVersionDir");
-        Files.createDirectory(illegalPathVersionDir);
-        Files.createFile(illegalPathVersionDir.resolve("illegalversion.1"));
-        Files.createFile(illegalPathVersionDir.resolve("illegalversion.2"));
-        Files.createFile(illegalPathVersionDir.resolve("illegalversion.3"));
-        long illegalIncVersion = MetaDataSyncer.extractIncVersion(illegalPathVersionDir);
-        assertEquals(-1L, illegalIncVersion);
-    }
 }
