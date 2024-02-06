@@ -16,6 +16,7 @@ package org.havenask.engine;
 
 import static org.havenask.engine.HavenaskEnginePlugin.HAVENASK_THREAD_POOL_NAME;
 
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.DirectoryStream;
@@ -28,6 +29,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
@@ -268,7 +270,7 @@ public class MetaDataSyncer extends AbstractLifecycleComponent implements Cluste
                                 );
                             }
                         } catch (Throwable e) {
-                            LOGGER.error("update searcher heartbeat target failed", e);
+                            LOGGER.info("update searcher heartbeat target failed", e);
                         }
 
                         searcherSynced.set(false);
@@ -317,7 +319,7 @@ public class MetaDataSyncer extends AbstractLifecycleComponent implements Cluste
                             }
 
                         } catch (Throwable e) {
-                            LOGGER.error("update qrs heartbeat target failed, ", e);
+                            LOGGER.info("update qrs heartbeat target failed, ", e);
                         }
 
                         qrsSynced.set(false);
@@ -490,14 +492,26 @@ public class MetaDataSyncer extends AbstractLifecycleComponent implements Cluste
                 {
                     Path versionPath = defaultRuntimeDataPath.resolve(index).resolve(INDEX_SUB_PATH0);
                     TargetInfo.TableInfo.Partition curPartition = new TargetInfo.TableInfo.Partition();
-                    curPartition.inc_version = extractIncVersion(Utils.getIndexMaxVersion(versionPath));
+                    Long inc_version = Utils.getIndexMaxVersionNum(versionPath);
+                    if (inc_version == -1L) {
+                        throw new FileNotFoundException(
+                            String.format(Locale.ROOT, "inc_version does not exist under directory [%s]", versionPath)
+                        );
+                    }
+                    curPartition.inc_version = inc_version;
                     partitions.put(DEFAULT_PARTITION_NAME0, curPartition);
                 }
 
                 {
                     Path versionPath = defaultRuntimeDataPath.resolve(index).resolve(INDEX_SUB_PATH1);
                     TargetInfo.TableInfo.Partition curPartition = new TargetInfo.TableInfo.Partition();
-                    curPartition.inc_version = extractIncVersion(Utils.getIndexMaxVersion(versionPath));
+                    Long inc_version = Utils.getIndexMaxVersionNum(versionPath);
+                    if (inc_version == -1L) {
+                        throw new FileNotFoundException(
+                            String.format(Locale.ROOT, "inc_version does not exist under directory [%s]", versionPath)
+                        );
+                    }
+                    curPartition.inc_version = inc_version;
                     partitions.put(DEFAULT_PARTITION_NAME1, curPartition);
                 }
 
@@ -513,7 +527,17 @@ public class MetaDataSyncer extends AbstractLifecycleComponent implements Cluste
                     String partitionId = RangeUtil.getRangeName(totalPartitionCount, shardId);
                     TargetInfo.TableInfo.Partition curPartition = new TargetInfo.TableInfo.Partition();
                     Path versionPath = defaultRuntimeDataPath.resolve(index).resolve("generation_0").resolve(partitionName);
-                    curPartition.inc_version = extractIncVersion(Utils.getIndexMaxVersion(versionPath));
+                    try {
+                        Long inc_version = Utils.getIndexMaxVersionNum(versionPath);
+                        if (inc_version == -1L) {
+                            throw new FileNotFoundException(
+                                String.format(Locale.ROOT, "inc_version does not exist under directory [%s]", versionPath)
+                            );
+                        }
+                        curPartition.inc_version = inc_version;
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
                     partitions.put(partitionId, curPartition);
                 });
                 curTableInfo = new TargetInfo.TableInfo(tableMode, tableType, configPath, indexRoot, totalPartitionCount, partitions);
@@ -528,19 +552,6 @@ public class MetaDataSyncer extends AbstractLifecycleComponent implements Cluste
         }
 
         return new UpdateHeartbeatTargetRequest(searcherTargetInfo);
-    }
-
-    private static int extractIncVersion(String versionStr) {
-        String pattern = "version\\.(\\d+)";
-        Pattern regex = Pattern.compile(pattern);
-        Matcher matcher = regex.matcher(versionStr);
-        if (matcher.find()) {
-            String numberStr = matcher.group(1);
-            int number = Integer.parseInt(numberStr);
-            return number;
-        } else {
-            return -1;
-        }
     }
 
     private static void createConfigLink(String zoneName, String prefix, String bizName, Path configPath, Path dataPath)

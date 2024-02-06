@@ -88,9 +88,13 @@ public class HavenaskStore extends Store {
     Map<String, StoreFileMetadata> getHavenaskMetadata(IndexCommit commit) throws IOException {
         long commitVersion = 0;
         if (commit == null) {
-            String maxIndexVersionFile = Utils.getIndexMaxVersion(shardPath);
-            if (maxIndexVersionFile != null) {
-                commitVersion = Long.parseLong(maxIndexVersionFile.substring(maxIndexVersionFile.indexOf('.') + 1));
+            try {
+                Long maxIndexVersionFileNum = Utils.getIndexMaxVersionNum(shardPath);
+                if (maxIndexVersionFileNum != -1L) {
+                    commitVersion = maxIndexVersionFileNum;
+                }
+            } catch (IOException e) {
+                // ignore
             }
         } else if (commit.getUserData().containsKey(HavenaskCommitInfo.COMMIT_VERSION_KEY)) {
             commitVersion = Long.valueOf(commit.getUserData().get(HavenaskCommitInfo.COMMIT_VERSION_KEY));

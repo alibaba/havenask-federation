@@ -249,4 +249,21 @@ public class UtilsTests extends HavenaskTestCase {
             logger.error("list directory [{}] error", dirPath);
         }
     }
+
+    public void testGetIndexMaxVersionNum() throws Exception {
+        Path home = createTempDir();
+        Files.createFile(home.resolve("version.1"));
+        Files.createFile(home.resolve("version.10"));
+        Files.createFile(home.resolve("version.11"));
+        long incVersion = Utils.getIndexMaxVersionNum(home);
+        assertEquals(11L, incVersion);
+
+        Path illegalPathVersionDir = home.resolve("illegalPathVersionDir");
+        Files.createDirectory(illegalPathVersionDir);
+        Files.createFile(illegalPathVersionDir.resolve("illegalversion.1"));
+        Files.createFile(illegalPathVersionDir.resolve("illegalversion.2"));
+        Files.createFile(illegalPathVersionDir.resolve("illegalversion.3"));
+        long illegalIncVersion = Utils.getIndexMaxVersionNum(illegalPathVersionDir);
+        assertEquals(-1L, illegalIncVersion);
+    }
 }
