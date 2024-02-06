@@ -279,7 +279,8 @@ public class HavenaskEngineTests extends EngineTestCase {
             + "  \"my_object\":{\n"
             + "    \"first\":\"first\",\n"
             + "    \"last\":\"last\"\n"
-            + "  }\n"
+            + "  },\n"
+            + "  \"my_null\":null\n"
             + "}";
         BytesReference basicSource = new BytesArray(basicSourceDoc);
         ParsedDocument parsedDocument = testParsedDocument("id", "routing", new ParseContext.Document(), basicSource, null);
@@ -315,7 +316,8 @@ public class HavenaskEngineTests extends EngineTestCase {
             + "  \"my_object\":{\n"
             + "    \"first\":\"first\",\n"
             + "    \"last\":\"last\"\n"
-            + "  }\n"
+            + "  },\n"
+            + "  \"my_null\":null\n"
             + "}\u001F\n"
             + "\u001E\n";
         assertEquals(expectedBasicRes, basicRes);
