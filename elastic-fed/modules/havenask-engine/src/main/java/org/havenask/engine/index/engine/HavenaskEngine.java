@@ -574,7 +574,7 @@ public class HavenaskEngine extends InternalEngine {
             throw new IllegalArgumentException("source has illegal XContentType");
         }
 
-        try (XContentParser parser = XContentFactory.xContent(XContentType.JSON).createParser(null, null, source.streamInput())) {
+        try (XContentParser parser = XContentFactory.xContent(contentType).createParser(null, null, source.streamInput())) {
             parser.nextToken();
             parseSource2HaDoc(parser, "", message);
         }
@@ -587,6 +587,9 @@ public class HavenaskEngine extends InternalEngine {
             switch (parser.currentToken()) {
                 case FIELD_NAME:
                     fieldName = parser.currentName();
+                    if (fieldName.contains(".") || fieldName.contains("@")) {
+                        fieldName = Schema.encodeFieldWithDot(fieldName);
+                    }
                     break;
                 case START_OBJECT:
                     parseSource2HaDoc(parser, extendPath(currentPath, fieldName), message);
@@ -651,7 +654,7 @@ public class HavenaskEngine extends InternalEngine {
                     message.append(extendPath(currentPath, fieldName)).append("=").append(parser.booleanValue()).append("\u001F\n");
                     break;
                 default:
-                    // Throw an error or ignore the token
+                    // TODO: we do not parse VALUE_EMBEDDED_OBJECT and VALUE_NULL now, maybe need to parse them later.
             }
         }
     }
@@ -700,7 +703,7 @@ public class HavenaskEngine extends InternalEngine {
                     appendFieldStringValueToMessage(field, message);
                     break;
                 default:
-                    // TODO: if need to process other case, now we just do nothing;
+                    // ignore other field;
                     break;
             }
         }

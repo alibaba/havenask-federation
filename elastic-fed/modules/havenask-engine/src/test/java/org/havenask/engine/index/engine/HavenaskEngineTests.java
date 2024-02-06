@@ -266,13 +266,67 @@ public class HavenaskEngineTests extends EngineTestCase {
     }
 
     public void testBuildDocMessage() throws IOException {
-        String sourceDoc =
-            "{\"image_vector\": [42, 8, -15], \"title_vector\": [25, 1, 4, -12, 2], \"title\": \"alpine lake\", \"file_type\": \"png\"}";
-        BytesReference source = new BytesArray(sourceDoc);
-        ParsedDocument parsedDocument = testParsedDocument("id", "routing", new ParseContext.Document(), source, null);
-        String res = HavenaskEngine.buildHaDocMessage(source, parsedDocument, Operation.TYPE.INDEX);
+        String basicSourceDoc = "{\n"
+            + "  \"my_string\":\"string_test\",\n"
+            + "  \"my_int\":1,\n"
+            + "  \"my_long\":3000000000,\n"
+            + "  \"my_double\":13.5,\n"
+            + "  \"my_float\":12.3,\n"
+            + "  \"my_boolean\":true,\n"
+            + "  \"my_int_array\":[1,2,3,4],\n"
+            + "  \"my_string_array\":[\"aaa\",\"bbb\",\"ccc\"],\n"
+            + "  \"my_boolean_array\":[true,true,false,true,false],\n"
+            + "  \"my_object\":{\n"
+            + "    \"first\":\"first\",\n"
+            + "    \"last\":\"last\"\n"
+            + "  }\n"
+            + "}";
+        BytesReference basicSource = new BytesArray(basicSourceDoc);
+        ParsedDocument parsedDocument = testParsedDocument("id", "routing", new ParseContext.Document(), basicSource, null);
+        String basicRes = HavenaskEngine.buildHaDocMessage(basicSource, parsedDocument, Operation.TYPE.INDEX);
 
-        String expectedRes = "CMD=add\u001F\n"
+        String expectedBasicRes = "CMD=add\u001F\n"
+            + "my_string=string_test\u001F\n"
+            + "my_int=1\u001F\n"
+            + "my_long=3000000000\u001F\n"
+            + "my_double=13.5\u001F\n"
+            + "my_float=12.3\u001F\n"
+            + "my_boolean=true\u001F\n"
+            + "my_int_array=1\u001D2\u001D3\u001D4\u001F\n"
+            + "my_string_array=aaa\u001Dbbb\u001Dccc\u001F\n"
+            + "my_boolean_array=true\u001Dtrue\u001Dfalse\u001Dtrue\u001Dfalse\u001F\n"
+            + "my_object_first=first\u001F\n"
+            + "my_object_last=last\u001F\n"
+            + "_id=id\u001F\n"
+            + "_routing=routing\u001F\n"
+            + "_version=0\u001F\n"
+            + "_seq_no=-2\u001F\n"
+            + "_primary_term=0\u001F\n"
+            + "_source={\n"
+            + "  \"my_string\":\"string_test\",\n"
+            + "  \"my_int\":1,\n"
+            + "  \"my_long\":3000000000,\n"
+            + "  \"my_double\":13.5,\n"
+            + "  \"my_float\":12.3,\n"
+            + "  \"my_boolean\":true,\n"
+            + "  \"my_int_array\":[1,2,3,4],\n"
+            + "  \"my_string_array\":[\"aaa\",\"bbb\",\"ccc\"],\n"
+            + "  \"my_boolean_array\":[true,true,false,true,false],\n"
+            + "  \"my_object\":{\n"
+            + "    \"first\":\"first\",\n"
+            + "    \"last\":\"last\"\n"
+            + "  }\n"
+            + "}\u001F\n"
+            + "\u001E\n";
+        assertEquals(expectedBasicRes, basicRes);
+
+        String vectorSourceDoc =
+            "{\"image_vector\": [42, 8, -15], \"title_vector\": [25, 1, 4, -12, 2], \"title\": \"alpine lake\", \"file_type\": \"png\"}";
+        BytesReference vectorSource = new BytesArray(vectorSourceDoc);
+        parsedDocument = testParsedDocument("id", "routing", new ParseContext.Document(), vectorSource, null);
+        String vectorRes = HavenaskEngine.buildHaDocMessage(vectorSource, parsedDocument, Operation.TYPE.INDEX);
+
+        String vectorExpectedRes = "CMD=add\u001F\n"
             + "image_vector=42\u001D8\u001D-15\u001F\n"
             + "title_vector=25\u001D1\u001D4\u001D-12\u001D2\u001F\n"
             + "title=alpine lake\u001F\n"
@@ -285,7 +339,53 @@ public class HavenaskEngineTests extends EngineTestCase {
             + "_source={\"image_vector\": [42, 8, -15], \"title_vector\": [25, 1, 4, -12, 2], "
             + "\"title\": \"alpine lake\", \"file_type\": \"png\"}\u001F\n"
             + "\u001E\n";
+        assertEquals(vectorExpectedRes, vectorRes);
 
-        assertEquals(expectedRes, res);
+        String objectSourceDoc = "{\n"
+            + "  \"user\":{\n"
+            + "    \"first_name\":\"first\",\n"
+            + "    \"last_name\":\"last\"\n"
+            + "  }\n"
+            + "}";
+        BytesReference objectSource = new BytesArray(objectSourceDoc);
+        parsedDocument = testParsedDocument("id", "routing", new ParseContext.Document(), objectSource, null);
+        String objectRes = HavenaskEngine.buildHaDocMessage(objectSource, parsedDocument, Operation.TYPE.INDEX);
+
+        String expectedObjectRes = "CMD=add\u001F\n"
+            + "user_first_name=first\u001F\n"
+            + "user_last_name=last\u001F\n"
+            + "_id=id\u001F\n"
+            + "_routing=routing\u001F\n"
+            + "_version=0\u001F\n"
+            + "_seq_no=-2\u001F\n"
+            + "_primary_term=0\u001F\n"
+            + "_source={\n"
+            + "  \"user\":{\n"
+            + "    \"first_name\":\"first\",\n"
+            + "    \"last_name\":\"last\"\n"
+            + "  }\n"
+            + "}\u001F\n"
+            + "\u001E\n";
+        assertEquals(expectedObjectRes, objectRes);
+
+        String SourceDocWithDot = "{\n" + "  \"user.first_name\":\"first\",\n" + "  \"user.last_name\":\"last\"\n" + "}";
+        BytesReference SourceWithDot = new BytesArray(SourceDocWithDot);
+        parsedDocument = testParsedDocument("id", "routing", new ParseContext.Document(), SourceWithDot, null);
+        String SourceWithDotRes = HavenaskEngine.buildHaDocMessage(SourceWithDot, parsedDocument, Operation.TYPE.INDEX);
+        String expectedSourceWithDotRes = "CMD=add\u001F\n"
+            + "user_first_name=first\u001F\n"
+            + "user_last_name=last\u001F\n"
+            + "_id=id\u001F\n"
+            + "_routing=routing\u001F\n"
+            + "_version=0\u001F\n"
+            + "_seq_no=-2\u001F\n"
+            + "_primary_term=0\u001F\n"
+            + "_source={\n"
+            + "  \"user.first_name\":\"first\",\n"
+            + "  \"user.last_name\":\"last\"\n"
+            + "}\u001F\n"
+            + "\u001E\n";
+        ;
+        assertEquals(expectedSourceWithDotRes, SourceWithDotRes);
     }
 }
