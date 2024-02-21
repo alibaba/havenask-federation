@@ -66,6 +66,7 @@ public class TransportHavenaskSearchAction extends HandledTransportAction<Search
     }
 
     @Override
+    @SuppressWarnings("unchecked")
     protected void doExecute(Task task, SearchRequest request, ActionListener<SearchResponse> listener) {
         if (false == clusterService.localNode().isIngestNode()) {
             ingestForwarder.forwardIngestRequest(HavenaskSearchAction.INSTANCE, request, listener);
@@ -91,12 +92,21 @@ public class TransportHavenaskSearchAction extends HandledTransportAction<Search
             long startTime = System.nanoTime();
 
             Map<String, Object> indexMapping = indexMetadata.mapping() != null ? indexMetadata.mapping().getSourceAsMap() : null;
+            Boolean sourceEnabled = true;
+            if (indexMapping != null && indexMapping.containsKey("_source")) {
+                Map<String, Object> source = (Map<String, Object>) indexMapping.get("_source");
+                if (source.containsKey("enabled")) {
+                    sourceEnabled = Boolean.parseBoolean((String) source.get("enabled"));
+                }
+            }
+
             SqlResponse havenaskSearchQueryPhaseSqlResponse = havenaskSearchQueryProcessor.executeQuery(request, tableName, indexMapping);
 
             InternalSearchResponse internalSearchResponse = havenaskSearchFetchProcessor.executeFetch(
                 havenaskSearchQueryPhaseSqlResponse,
                 tableName,
-                request.source()
+                request.source(),
+                sourceEnabled
             );
 
             SearchResponse searchResponse = buildSearchResponse(

@@ -119,6 +119,30 @@ public class HavenaskSearchFetchProcessorTests extends HavenaskTestCase {
         }
     }
 
+    public void testExecuteFetch() throws IOException {
+        String indexName = "table";
+        int docsNum = 3;
+        String[] resStr = new String[] {
+            "{\n" + "  \"_index\" : \"table\",\n" + "  \"_type\" : \"_doc\",\n" + "  \"_id\" : \"1\",\n" + "  \"_score\" : 1.0\n" + "}",
+            "{\n" + "  \"_index\" : \"table\",\n" + "  \"_type\" : \"_doc\",\n" + "  \"_id\" : \"2\",\n" + "  \"_score\" : 1.0\n" + "}",
+            "{\n" + "  \"_index\" : \"table\",\n" + "  \"_type\" : \"_doc\",\n" + "  \"_id\" : \"4\",\n" + "  \"_score\" : 1.0\n" + "}" };
+
+        // mock SqlResponse
+        Object[][] data = { { "1" }, { "2" }, { "4" } };
+        SqlResponse sqlResponse = mock(SqlResponse.class);
+        when(sqlResponse.getRowCount()).thenReturn(data.length);
+        SqlResponse.SqlResult sqlResult = mock(SqlResponse.SqlResult.class);
+        when(sqlResponse.getSqlResult()).thenReturn(sqlResult);
+        when(sqlResult.getData()).thenReturn(data);
+
+        SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+        HavenaskSearchFetchProcessor havenaskSearchFetchProcessor = new HavenaskSearchFetchProcessor(qrsClient);
+        InternalSearchResponse res = havenaskSearchFetchProcessor.executeFetch(sqlResponse, indexName, searchSourceBuilder, false);
+        for (int i = 0; i < docsNum; i++) {
+            assertEquals(resStr[i], res.hits().getHits()[i].toString());
+        }
+    }
+
     public void testTransferSqlResponse2FetchResult() throws IOException {
         String indexName = "table";
         int docsNum = 4;
@@ -171,15 +195,15 @@ public class HavenaskSearchFetchProcessorTests extends HavenaskTestCase {
                 + "}" };
 
         // mock SqlResponse
-        Object[][] Data = {
+        Object[][] data = {
             { "1", "{\n" + "  \"image\":[1.1, 1.1]\n" + "}\n" },
             { "2", "{\n" + "  \"image\":[2.1, 2.1]\n" + "}" },
             { "4", "{\n" + "  \"image\":[4.1, 4.1]\n" + "}\n" } };
         SqlResponse sqlResponse = mock(SqlResponse.class);
-        when(sqlResponse.getRowCount()).thenReturn(Data.length);
+        when(sqlResponse.getRowCount()).thenReturn(data.length);
         SqlResponse.SqlResult sqlResult = mock(SqlResponse.SqlResult.class);
         when(sqlResponse.getSqlResult()).thenReturn(sqlResult);
-        when(sqlResult.getData()).thenReturn(Data);
+        when(sqlResult.getData()).thenReturn(data);
 
         SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
 
@@ -201,7 +225,8 @@ public class HavenaskSearchFetchProcessorTests extends HavenaskTestCase {
             idList,
             sqlResponse,
             topDocsAndMaxScore,
-            searchSourceBuilder
+            searchSourceBuilder,
+            true
         );
         for (int i = 0; i < loadSize; i++) {
             assertEquals(resStr[i], internalSearchResponse.hits().getHits()[i].toString());
