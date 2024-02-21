@@ -96,7 +96,7 @@ public class TransportHavenaskSearchAction extends HandledTransportAction<Search
             if (indexMapping != null && indexMapping.containsKey("_source")) {
                 Map<String, Object> source = (Map<String, Object>) indexMapping.get("_source");
                 if (source.containsKey("enabled")) {
-                    sourceEnabled = Boolean.parseBoolean((String) source.get("enabled"));
+                    sourceEnabled = (Boolean) source.get("enabled");
                 }
             }
 
