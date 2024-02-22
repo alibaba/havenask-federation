@@ -506,30 +506,22 @@ public class TableConfigGeneratorTests extends MapperServiceTestCase {
             + "}";
 
         String schemaJson = "{\n"
-            + "    \"columns\": [\n"
-            + "        {\n"
-            + "            \"name\": \"title\",\n"
-            + "            \"type\": \"TEXT\",\n"
-            + "            \"analyzer\": \"simple_analyzer\"\n"
-            + "        },\n"
-            + "        {\n"
-            + "            \"name\": \"subject\",\n"
-            + "            \"type\": \"TEXT\",\n"
-            + "            \"analyzer\": \"simple_analyzer\"\n"
-            + "        },\n"
-            + "        {\n"
-            + "            \"name\": \"id\",\n"
-            + "            \"type\": \"UINT32\"\n"
-            + "        },\n"
-            + "        {\n"
-            + "            \"name\": \"hits\",\n"
-            + "            \"type\": \"UINT32\"\n"
-            + "        },\n"
-            + "        {\n"
-            + "            \"name\": \"createtime\",\n"
-            + "            \"type\": \"UINT64\"\n"
-            + "        }\n"
-            + "    ]"
+            + "\t\"attributes\":[\"_seq_no\",\"_id\",\"_version\",\"_primary_term\"],\n"
+            + "\t\"fields\":[{\n"
+            + "\t\t\"analyzer\":\"simple_analyzer\",\n"
+            + "\t\t\"binary_field\":false,\n"
+            + "\t\t\"field_name\":\"foo\",\n"
+            + "\t\t\"field_type\":\"TEXT\"\n"
+            + "\t}],\n"
+            + "\t\"indexs\":[{\n"
+            + "\t\t\"doc_payload_flag\":1,\n"
+            + "\t\t\"index_fields\":\"foo\",\n"
+            + "\t\t\"index_name\":\"foo\",\n"
+            + "\t\t\"index_type\":\"TEXT\",\n"
+            + "\t\t\"position_list_flag\":1,\n"
+            + "\t\t\"position_payload_flag\":1,\n"
+            + "\t\t\"term_frequency_flag\":1\n"
+            + "\t}]\n"
             + "}";
 
         String data_tableJson = "{\n"
@@ -636,13 +628,85 @@ public class TableConfigGeneratorTests extends MapperServiceTestCase {
         }
 
         {
+            String expectedSchemaJsonStr = String.format(
+                Locale.ROOT,
+                "{\n"
+                    + "\t\"attributes\":[\"_seq_no\",\"_id\",\"_version\",\"_primary_term\"],\n"
+                    + "\t\"fields\":[{\n"
+                    + "\t\t\"binary_field\":false,\n"
+                    + "\t\t\"field_name\":\"_routing\",\n"
+                    + "\t\t\"field_type\":\"STRING\"\n"
+                    + "\t},{\n"
+                    + "\t\t\"binary_field\":false,\n"
+                    + "\t\t\"field_name\":\"_seq_no\",\n"
+                    + "\t\t\"field_type\":\"INT64\"\n"
+                    + "\t},{\n"
+                    + "\t\t\"analyzer\":\"simple_analyzer\",\n"
+                    + "\t\t\"binary_field\":false,\n"
+                    + "\t\t\"field_name\":\"foo\",\n"
+                    + "\t\t\"field_type\":\"TEXT\"\n"
+                    + "\t},{\n"
+                    + "\t\t\"binary_field\":false,\n"
+                    + "\t\t\"field_name\":\"_source\",\n"
+                    + "\t\t\"field_type\":\"STRING\"\n"
+                    + "\t},{\n"
+                    + "\t\t\"binary_field\":false,\n"
+                    + "\t\t\"field_name\":\"_id\",\n"
+                    + "\t\t\"field_type\":\"STRING\"\n"
+                    + "\t},{\n"
+                    + "\t\t\"binary_field\":false,\n"
+                    + "\t\t\"field_name\":\"_version\",\n"
+                    + "\t\t\"field_type\":\"INT64\"\n"
+                    + "\t},{\n"
+                    + "\t\t\"binary_field\":false,\n"
+                    + "\t\t\"field_name\":\"_primary_term\",\n"
+                    + "\t\t\"field_type\":\"INT64\"\n"
+                    + "\t}],\n"
+                    + "\t\"indexs\":[{\n"
+                    + "\t\t\"has_primary_key_attribute\":true,\n"
+                    + "\t\t\"index_fields\":\"_id\",\n"
+                    + "\t\t\"index_name\":\"_id\",\n"
+                    + "\t\t\"index_type\":\"PRIMARYKEY64\",\n"
+                    + "\t\t\"is_primary_key_sorted\":false\n"
+                    + "\t},{\n"
+                    + "\t\t\"index_fields\":\"_routing\",\n"
+                    + "\t\t\"index_name\":\"_routing\",\n"
+                    + "\t\t\"index_type\":\"STRING\"\n"
+                    + "\t},{\n"
+                    + "\t\t\"index_fields\":\"_seq_no\",\n"
+                    + "\t\t\"index_name\":\"_seq_no\",\n"
+                    + "\t\t\"index_type\":\"NUMBER\"\n"
+                    + "\t},{\n"
+                    + "\t\t\"doc_payload_flag\":1,\n"
+                    + "\t\t\"index_fields\":\"foo\",\n"
+                    + "\t\t\"index_name\":\"foo\",\n"
+                    + "\t\t\"index_type\":\"TEXT\",\n"
+                    + "\t\t\"position_list_flag\":1,\n"
+                    + "\t\t\"position_payload_flag\":1,\n"
+                    + "\t\t\"term_frequency_flag\":1\n"
+                    + "\t}],\n"
+                    + "\t\"settings\":{\n"
+                    + "\t\t\"enable_all_text_field_meta\":true\n"
+                    + "\t},\n"
+                    + "\t\"summarys\":{\n"
+                    + "\t\t\"compress\":true,\n"
+                    + "\t\t\"summary_fields\":[\"_routing\",\"_source\",\"_id\"]\n"
+                    + "\t},\n"
+                    + "\t\"table_name\":\"%s\",\n"
+                    + "\t\"table_type\":\"normal\"\n"
+                    + "}",
+                indexName
+            );
             Path schemaConfigPath = configPath.resolve(TABLE_DIR)
                 .resolve("0")
                 .resolve(SCHEMAS_DIR)
                 .resolve(indexName + SCHEMAS_FILE_SUFFIX);
             assertTrue(Files.exists(schemaConfigPath));
             String content = Files.readString(schemaConfigPath);
-            assertEquals(schemaJson, content);
+
+            assertTrue(
+                BizConfigGeneratorTests.compareJsonObjects(JSONObject.parseObject(expectedSchemaJsonStr), JSONObject.parseObject(content))
+            );
         }
 
         {

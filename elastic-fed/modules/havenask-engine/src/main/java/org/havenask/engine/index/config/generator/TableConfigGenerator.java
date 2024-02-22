@@ -27,15 +27,16 @@ import org.havenask.cluster.metadata.IndexMetadata;
 import org.havenask.common.Nullable;
 import org.havenask.common.settings.Settings;
 import org.havenask.engine.index.config.BizConfig;
-import org.havenask.engine.index.config.ClusterJsonMinMustParams;
 import org.havenask.engine.index.config.DataTable;
 import org.havenask.engine.index.config.Processor.ProcessChain;
 import org.havenask.engine.index.config.Processor.ProcessorChainConfig;
 import org.havenask.engine.index.config.Schema;
 import org.havenask.engine.index.engine.EngineSettings;
-import org.havenask.engine.util.JsonPrettyFormatter;
 import org.havenask.engine.util.VersionUtils;
 import org.havenask.index.mapper.MapperService;
+
+import static org.havenask.engine.index.config.generator.HavenaskEngineConfigGenerator.generateClusterJsonStr;
+import static org.havenask.engine.index.config.generator.HavenaskEngineConfigGenerator.generateSchemaJsonStr;
 
 public class TableConfigGenerator {
     public static final String TABLE_DIR = "table";
@@ -93,28 +94,7 @@ public class TableConfigGenerator {
         String clusterJson = EngineSettings.HAVENASK_CLUSTER_JSON.get(indexSettings);
         Path clusterConfigPath = configPath.resolve(version).resolve(CLUSTER_DIR).resolve(indexName + CLUSTER_FILE_SUFFIX);
         if (clusterJson != null && !clusterJson.equals("")) {
-            ClusterJsonMinMustParams clusterJsonMinMustParams = new ClusterJsonMinMustParams();
-            clusterJsonMinMustParams.cluster_config.builder_rule_config.partition_count = indexSettings.getAsInt(
-                IndexMetadata.SETTING_NUMBER_OF_SHARDS,
-                1
-            );
-            clusterJsonMinMustParams.online_index_config.build_config.max_doc_count = EngineSettings.HAVENASK_BUILD_CONFIG_MAX_DOC_COUNT
-                .get(indexSettings);
-            clusterJsonMinMustParams.cluster_config.cluster_name = indexName;
-            clusterJsonMinMustParams.cluster_config.table_name = indexName;
-            clusterJsonMinMustParams.wal_config.sink.queue_name = indexName;
-            clusterJsonMinMustParams.wal_config.sink.queue_size = String.valueOf(
-                EngineSettings.HAVENASK_WAL_CONFIG_SINK_QUEUE_SIZE.get(indexSettings)
-            );
-            if (EngineSettings.HAVENASK_HASH_MODE_HASH_FIELD.exists(indexSettings)) {
-                clusterJsonMinMustParams.cluster_config.hash_mode.hash_field = EngineSettings.HAVENASK_HASH_MODE_HASH_FIELD.get(
-                    indexSettings
-                );
-            }
-            String defaultClusterJson = clusterJsonMinMustParams.toString();
-            String clusterJsonStr = JsonPrettyFormatter.toJsonString(
-                mergeClusterJson(JSONObject.parseObject(clusterJson), JSONObject.parseObject(defaultClusterJson))
-            );
+            String clusterJsonStr = generateClusterJsonStr(indexName, indexSettings, clusterJson);
 
             Files.write(
                 clusterConfigPath,
@@ -156,9 +136,11 @@ public class TableConfigGenerator {
 
         String schemaJson = EngineSettings.HAVENASK_SCHEMA_JSON.get(indexSettings);
         if (schemaJson != null && !schemaJson.equals("")) {
+            String schemaJsonStr = generateSchemaJsonStr(indexName, schemaJson);
+
             Files.write(
                 schemaPath,
-                schemaJson.getBytes(StandardCharsets.UTF_8),
+                schemaJsonStr.getBytes(StandardCharsets.UTF_8),
                 StandardOpenOption.CREATE,
                 StandardOpenOption.TRUNCATE_EXISTING
             );

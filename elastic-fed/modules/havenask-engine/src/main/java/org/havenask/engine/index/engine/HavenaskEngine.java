@@ -49,6 +49,7 @@ import org.apache.kafka.common.serialization.StringSerializer;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.message.ParameterizedMessage;
+import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexableField;
 import org.apache.lucene.search.QueryCache;
@@ -71,7 +72,10 @@ import org.havenask.common.metrics.CounterMetric;
 import org.havenask.common.settings.Settings;
 import org.havenask.common.unit.TimeValue;
 import org.havenask.common.util.SingleObjectCache;
+import org.havenask.common.xcontent.XContentFactory;
 import org.havenask.common.xcontent.XContentHelper;
+import org.havenask.common.xcontent.XContentParser;
+import org.havenask.common.xcontent.XContentType;
 import org.havenask.engine.HavenaskEngineEnvironment;
 import org.havenask.engine.MetaDataSyncer;
 import org.havenask.engine.NativeProcessControlService;
@@ -141,6 +145,7 @@ public class HavenaskEngine extends InternalEngine {
     private final CounterMetric numDocDeletes = new CounterMetric();
     private final CounterMetric numDocIndexes = new CounterMetric();
     private volatile boolean running;
+    private final boolean setUpBySchemaJson;
 
     public HavenaskEngine(
         EngineConfig engineConfig,
@@ -176,6 +181,10 @@ public class HavenaskEngine extends InternalEngine {
             throw new EngineException(shardId, "init kafka producer failed", e);
         }
         running = true;
+        {
+            String schemaJsonStr = EngineSettings.HAVENASK_SCHEMA_JSON.get(engineConfig.getIndexSettings().getSettings());
+            setUpBySchemaJson = schemaJsonStr != null && !schemaJsonStr.isEmpty();
+        }
 
         long commitTimestamp = getLastCommittedSegmentInfos().userData.containsKey(HavenaskCommitInfo.COMMIT_TIMESTAMP_KEY)
             ? Long.valueOf(getLastCommittedSegmentInfos().userData.get(HavenaskCommitInfo.COMMIT_TIMESTAMP_KEY))
@@ -541,6 +550,177 @@ public class HavenaskEngine extends InternalEngine {
         return new WriteRequest(table, hashId, message.toString());
     }
 
+    static String buildHaDocMessage(BytesReference source, ParsedDocument parsedDocument, Operation.TYPE type) throws IOException {
+        StringBuilder message = new StringBuilder();
+        switch (type) {
+            case INDEX:
+                message.append("CMD=add\u001F\n");
+                break;
+            case DELETE:
+                message.append("CMD=delete\u001F\n");
+                break;
+            default:
+                throw new IllegalArgumentException("invalid operation type!");
+        }
+        addSource2DocMessage(source, message);
+        addMetaInfo2DocMessage(parsedDocument, message);
+        message.append("\u001E\n");
+        return message.toString();
+    }
+
+    static void addSource2DocMessage(BytesReference source, StringBuilder message) throws IOException {
+        XContentType contentType = XContentFactory.xContentType(source.streamInput());
+        if (contentType == null) {
+            throw new IllegalArgumentException("source has illegal XContentType");
+        }
+
+        try (XContentParser parser = XContentFactory.xContent(contentType).createParser(null, null, source.streamInput())) {
+            parser.nextToken();
+            parseSource2HaDoc(parser, "", message);
+        }
+    }
+
+    static void parseSource2HaDoc(XContentParser parser, String currentPath, StringBuilder message) throws IOException {
+        String fieldName = null;
+
+        while (parser.nextToken() != XContentParser.Token.END_OBJECT) {
+            switch (parser.currentToken()) {
+                case FIELD_NAME:
+                    fieldName = parser.currentName();
+                    if (fieldName.contains(".") || fieldName.contains("@")) {
+                        fieldName = Schema.encodeFieldWithDot(fieldName);
+                    }
+                    break;
+                case START_OBJECT:
+                    parseSource2HaDoc(parser, extendPath(currentPath, fieldName), message);
+                    break;
+                case START_ARRAY:
+                    message.append(extendPath(currentPath, fieldName)).append("=");
+                    while (parser.nextToken() != XContentParser.Token.END_ARRAY) {
+                        switch (parser.currentToken()) {
+                            case VALUE_NUMBER:
+                                XContentParser.NumberType numberType = parser.numberType();
+                                switch (numberType) {
+                                    case INT:
+                                        message.append(parser.intValue());
+                                        break;
+                                    case LONG:
+                                        message.append(parser.longValue());
+                                        break;
+                                    case DOUBLE:
+                                        message.append(parser.doubleValue());
+                                        break;
+                                    case FLOAT:
+                                        message.append(parser.floatValue());
+                                        break;
+                                }
+                                break;
+                            case VALUE_STRING:
+                                message.append(parser.text());
+                                break;
+                            case VALUE_BOOLEAN:
+                                message.append(parser.booleanValue());
+                                break;
+                            default:
+                                // TODO
+                        }
+                        message.append("\u001D");
+                    }
+                    // 删掉最后一个多余的分隔符
+                    message.delete(message.length() - 1, message.length());
+                    message.append("\u001F\n");
+                    break;
+                case VALUE_STRING:
+                    message.append(extendPath(currentPath, fieldName)).append("=").append(parser.text()).append("\u001F\n");
+                    break;
+                case VALUE_NUMBER:
+                    XContentParser.NumberType numberType = parser.numberType();
+                    switch (numberType) {
+                        case INT:
+                            message.append(extendPath(currentPath, fieldName)).append("=").append(parser.intValue()).append("\u001F\n");
+                            break;
+                        case LONG:
+                            message.append(extendPath(currentPath, fieldName)).append("=").append(parser.longValue()).append("\u001F\n");
+                            break;
+                        case DOUBLE:
+                            message.append(extendPath(currentPath, fieldName)).append("=").append(parser.doubleValue()).append("\u001F\n");
+                            break;
+                        case FLOAT:
+                            message.append(extendPath(currentPath, fieldName)).append("=").append(parser.floatValue()).append("\u001F\n");
+                            break;
+                    }
+                    break;
+                case VALUE_BOOLEAN:
+                    message.append(extendPath(currentPath, fieldName)).append("=").append(parser.booleanValue()).append("\u001F\n");
+                    break;
+                default:
+                    // TODO: we do not parse VALUE_EMBEDDED_OBJECT and VALUE_NULL now, maybe need to parse them later.
+            }
+        }
+    }
+
+    private static String extendPath(String currentPath, String fieldName) {
+        return currentPath.isEmpty() ? fieldName : currentPath + "_" + fieldName;
+    }
+
+    static void addMetaInfo2DocMessage(ParsedDocument parsedDocument, StringBuilder message) throws IOException {
+        if (parsedDocument == null) {
+            return;
+        }
+
+        message.append("_id").append("=").append(parsedDocument.id()).append("\u001F\n");
+        if (parsedDocument.routing() != null) {
+            message.append("_routing").append("=").append(parsedDocument.routing()).append("\u001F\n");
+        }
+        if (parsedDocument.rootDoc() == null) {
+            return;
+        }
+
+        ParseContext.Document rootDoc = parsedDocument.rootDoc();
+        for (IndexableField field : rootDoc.getFields()) {
+            switch (field.name()) {
+                case "_id":
+                    // ignore
+                    break;
+                case "_seq_no":
+                    if (field.fieldType().docValuesType() == DocValuesType.NONE) {
+                        appendFieldStringValueToMessage(field, message);
+                    }
+                    break;
+                case "_primary_term":
+                    appendFieldStringValueToMessage(field, message);
+                    break;
+                case "_source":
+                    BytesRef binaryVal = field.binaryValue();
+                    if (binaryVal == null) {
+                        throw new IOException("invalid field value!");
+                    }
+                    BytesReference bytes = new BytesArray(binaryVal);
+                    String src = XContentHelper.convertToJson(bytes, false, parsedDocument.getXContentType());
+                    message.append(field.name()).append("=").append(src).append("\u001F\n");
+                    break;
+                case "_version":
+                    appendFieldStringValueToMessage(field, message);
+                    break;
+                default:
+                    // ignore other field;
+                    break;
+            }
+        }
+    }
+
+    private static void appendFieldStringValueToMessage(IndexableField field, StringBuilder message) {
+        String fieldName = field.name();
+        String stringVal = field.stringValue();
+        if (Objects.isNull(stringVal)) {
+            stringVal = Optional.ofNullable(field.numericValue()).map(Number::toString).orElse(null);
+        }
+
+        if (Objects.nonNull(stringVal)) {
+            message.append(fieldName).append("=").append(stringVal).append("\u001F\n");
+        }
+    }
+
     @Override
     protected boolean assertSearcherIsWarmedUp(String source, SearcherScope scope) {
         // for havenask we don't need to care about "externalReaderManager.isWarmedup"
@@ -552,6 +732,9 @@ public class HavenaskEngine extends InternalEngine {
         long start = System.nanoTime();
         index.parsedDoc().updateSeqID(index.seqNo(), index.primaryTerm());
         index.parsedDoc().version().setLongValue(plan.versionForIndexing);
+        if (setUpBySchemaJson) {
+            return getIndexResult(index.source(), index.parsedDoc(), index.operationType(), index, start);
+        }
         Map<String, String> haDoc = toHaIndex(index.parsedDoc());
         if (realTimeEnable) {
             ProducerRecord<String, String> record = buildProducerRecord(
@@ -570,6 +753,59 @@ public class HavenaskEngine extends InternalEngine {
         } else {
             try {
                 WriteRequest writeRequest = buildWriteRequest(tableName, partitionRange.first, index.operationType(), haDoc);
+                WriteResponse writeResponse = retryWrite(shardId, searcherClient, writeRequest);
+                if (writeResponse.getErrorCode() != null) {
+                    throw new IOException(
+                        "havenask index exception, error code: "
+                            + writeResponse.getErrorCode()
+                            + ", error message:"
+                            + writeResponse.getErrorMessage()
+                    );
+                }
+                if (logger.isTraceEnabled()) {
+                    logger.trace(
+                        "[{}] index into lucene, id: {}, version: {}, primaryTerm: {}, seqNo: {}, cost: {} us",
+                        shardId,
+                        index.id(),
+                        index.version(),
+                        index.primaryTerm(),
+                        index.seqNo(),
+                        (System.nanoTime() - start) / 1000
+                    );
+                }
+
+                numDocIndexes.inc();
+                return new IndexResult(index.version(), index.primaryTerm(), index.seqNo(), true);
+            } catch (IOException e) {
+                logger.warn("havenask index exception", e);
+                failEngine(e.getMessage(), e);
+                throw e;
+            }
+        }
+    }
+
+    /**
+     * use this method to convert the input source into a haDoc format if the user provides schema.json
+     * instead of mappings when creating the index.
+     */
+    protected IndexResult getIndexResult(BytesReference source, ParsedDocument parsedDocument, Operation.TYPE type, Index index, long start)
+        throws IOException {
+        String message = buildHaDocMessage(source, parsedDocument, type);
+
+        if (realTimeEnable) {
+            long hashId = HashAlgorithm.getHashId(parsedDocument.id());
+            long partition = HashAlgorithm.getPartitionId(hashId, kafkaPartition);
+            ProducerRecord<String, String> record = new ProducerRecord<>(kafkaTopic, (int) partition, parsedDocument.id(), message);
+            try {
+                producer.send(record).get();
+            } catch (Exception e) {
+                throw new HavenaskException("havenask realtime index exception", e);
+            }
+            return new IndexResult(index.version(), index.primaryTerm(), index.seqNo(), true);
+        } else {
+            try {
+                WriteRequest writeRequest = new WriteRequest(tableName, partitionRange.first, message.toString());
+
                 WriteResponse writeResponse = retryWrite(shardId, searcherClient, writeRequest);
                 if (writeResponse.getErrorCode() != null) {
                     throw new IOException(
