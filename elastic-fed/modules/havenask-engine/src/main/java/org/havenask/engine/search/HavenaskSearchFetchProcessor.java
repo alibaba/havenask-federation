@@ -63,19 +63,30 @@ public class HavenaskSearchFetchProcessor {
         this.havenaskFetchSubPhases.add(new HavenaskFetchSourcePhase());
     }
 
-    public InternalSearchResponse executeFetch(SqlResponse queryPhaseSqlResponse, String tableName, SearchSourceBuilder searchSourceBuilder)
-        throws IOException {
+    public InternalSearchResponse executeFetch(
+        SqlResponse queryPhaseSqlResponse,
+        String tableName,
+        SearchSourceBuilder searchSourceBuilder,
+        Boolean sourceEnabled
+    ) throws IOException {
         if (searchSourceBuilder == null) {
             throw new IllegalArgumentException("request source can not be null!");
         }
         List<String> idList = new ArrayList<>(queryPhaseSqlResponse.getRowCount());
         TopDocsAndMaxScore topDocsAndMaxScore = buildQuerySearchResult(queryPhaseSqlResponse, idList, searchSourceBuilder.from());
-        SqlResponse fetchPhaseSqlResponse = searchSourceBuilder.fetchSource() == null
-            || true == searchSourceBuilder.fetchSource().fetchSource()
+        SqlResponse fetchPhaseSqlResponse = (true == sourceEnabled
+            && (searchSourceBuilder.fetchSource() == null || true == searchSourceBuilder.fetchSource().fetchSource()))
                 ? havenaskFetchWithSql(idList, tableName, searchSourceBuilder.fetchSource(), qrsClient)
                 : null;
 
-        return transferSqlResponse2FetchResult(tableName, idList, fetchPhaseSqlResponse, topDocsAndMaxScore, searchSourceBuilder);
+        return transferSqlResponse2FetchResult(
+            tableName,
+            idList,
+            fetchPhaseSqlResponse,
+            topDocsAndMaxScore,
+            searchSourceBuilder,
+            sourceEnabled
+        );
     }
 
     public TopDocsAndMaxScore buildQuerySearchResult(SqlResponse queryPhaseSqlResponse, List<String> idList, int from) throws IOException {
@@ -137,7 +148,8 @@ public class HavenaskSearchFetchProcessor {
         List<String> idList,
         SqlResponse fetchPhaseSqlResponse,
         TopDocsAndMaxScore topDocsAndMaxScore,
-        SearchSourceBuilder searchSourceBuilder
+        SearchSourceBuilder searchSourceBuilder,
+        Boolean sourceEnabled
     ) throws IOException {
         int loadSize = idList.size();
         TotalHits totalHits = topDocsAndMaxScore.topDocs.totalHits;
@@ -166,7 +178,7 @@ public class HavenaskSearchFetchProcessor {
 
             // 根据idList的顺序从fetch结果获取相对应的_source, 如果数据丢失则返回_source not found
             Object source = null;
-            if (fetchSourceContext == null || true == fetchSourceContext.fetchSource()) {
+            if (true == sourceEnabled && (fetchSourceContext == null || true == fetchSourceContext.fetchSource())) {
                 Integer fetchResIndex = fetchResIdListMap.get(idList.get(i));
                 source = fetchResIndex != null
                     ? fetchPhaseSqlResponse.getSqlResult().getData()[fetchResIndex][SOURCE_POS]
@@ -174,7 +186,7 @@ public class HavenaskSearchFetchProcessor {
             }
             HavenaskFetchSubPhase.HitContent hit = new HavenaskFetchSubPhase.HitContent(searchHit, source);
             hit.getHit().score(topDocsAndMaxScore.topDocs.scoreDocs[i].score);
-            if (fetchSourceContext != null && false == fetchSourceContext.fetchSource()) {
+            if (false == sourceEnabled || (fetchSourceContext != null && false == fetchSourceContext.fetchSource())) {
                 hits[i] = hit.getHit();
             } else if (processors != null && !processors.isEmpty()) {
                 for (HavenaskFetchSubPhaseProcessor processor : processors) {

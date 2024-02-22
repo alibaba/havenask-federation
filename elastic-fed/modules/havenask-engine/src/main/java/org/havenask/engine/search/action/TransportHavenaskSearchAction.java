@@ -91,12 +91,25 @@ public class TransportHavenaskSearchAction extends HandledTransportAction<Search
             long startTime = System.nanoTime();
 
             Map<String, Object> indexMapping = indexMetadata.mapping() != null ? indexMetadata.mapping().getSourceAsMap() : null;
+            Boolean sourceEnabled = true;
+            if (indexMapping != null && indexMapping.containsKey("_source")) {
+                Object sourceValue = indexMapping.get("_source");
+                if (sourceValue instanceof Map) {
+                    @SuppressWarnings("unchecked")
+                    Object sourceEnabledValue = ((Map<String, Object>) sourceValue).get("enabled");
+                    if (sourceEnabledValue instanceof Boolean) {
+                        sourceEnabled = (Boolean) sourceEnabledValue;
+                    }
+                }
+            }
+
             SqlResponse havenaskSearchQueryPhaseSqlResponse = havenaskSearchQueryProcessor.executeQuery(request, tableName, indexMapping);
 
             InternalSearchResponse internalSearchResponse = havenaskSearchFetchProcessor.executeFetch(
                 havenaskSearchQueryPhaseSqlResponse,
                 tableName,
-                request.source()
+                request.source(),
+                sourceEnabled
             );
 
             SearchResponse searchResponse = buildSearchResponse(
