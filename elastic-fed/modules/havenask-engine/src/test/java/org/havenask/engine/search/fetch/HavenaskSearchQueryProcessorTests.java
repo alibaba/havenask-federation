@@ -155,6 +155,13 @@ public class HavenaskSearchQueryProcessorTests extends HavenaskTestCase {
         );
     }
 
+    public void testTermQuery() throws IOException {
+        SearchSourceBuilder builder = new SearchSourceBuilder();
+        builder.query(QueryBuilders.termQuery("field", "value"));
+        String sql = havenaskSearchQueryProcessor.transferSearchRequest2HavenaskSql("table", builder, null);
+        assertEquals("select _id from `table` where `field`='value' limit 10 offset 0", sql);
+    }
+
     public void testLimit() throws IOException {
         SearchSourceBuilder builder = new SearchSourceBuilder();
         builder.query(QueryBuilders.matchAllQuery());
@@ -340,7 +347,7 @@ public class HavenaskSearchQueryProcessorTests extends HavenaskTestCase {
             String sql = havenaskSearchQueryProcessor.transferSearchRequest2HavenaskSql("table", builder, null);
             assertEquals(
                 "select _id, bm25_score() as _score from `table`"
-                    + " where MATCHINDEX('field', 'value', 'default_op:OR') and field2='value2'"
+                    + " where MATCHINDEX('field', 'value', 'default_op:OR') and `field2`='value2'"
                     + " and QUERY('', 'field3:[1,2]') order by _score desc limit 10 offset 0",
                 sql
             );

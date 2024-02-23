@@ -168,7 +168,9 @@ public class HavenaskSearchQueryProcessor {
             } else if (queryBuilder instanceof TermQueryBuilder) {
                 TermQueryBuilder termQueryBuilder = (TermQueryBuilder) queryBuilder;
                 where.append(" where ")
+                    .append("`")
                     .append(Schema.encodeFieldWithDot(termQueryBuilder.fieldName()))
+                    .append("`")
                     .append("='")
                     .append(termQueryBuilder.value())
                     .append("'");
@@ -219,7 +221,9 @@ public class HavenaskSearchQueryProcessor {
                     }
                     if (subQueryBuilder instanceof TermQueryBuilder) {
                         TermQueryBuilder termQueryBuilder = (TermQueryBuilder) subQueryBuilder;
-                        where.append(Schema.encodeFieldWithDot(termQueryBuilder.fieldName()))
+                        where.append("`")
+                            .append(Schema.encodeFieldWithDot(termQueryBuilder.fieldName()))
+                            .append("`")
                             .append("='")
                             .append(termQueryBuilder.value())
                             .append("'");
