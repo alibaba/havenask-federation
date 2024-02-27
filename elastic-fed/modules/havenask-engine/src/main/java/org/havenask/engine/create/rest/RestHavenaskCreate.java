@@ -112,11 +112,11 @@ public class RestHavenaskCreate extends BaseRestHandler {
             "cluster_config.builder_rule_config.partition_count",
             String.valueOf(settings.getAsInt("index.number_of_shards", 1))
         );
-        validateValueAtPath(clusterJsonObject, "cluster_config.cluster_name", index);
-        validateValueAtPath(clusterJsonObject, "cluster_config.table_name", index);
-        validateValueAtPath(clusterJsonObject, "wal_config.sink.queue_name", index);
-        validateValueAtPath(clusterJsonObject, "wal_config.strategy", "queue");
-        validateValueAtPath(clusterJsonObject, "direct_write", "true");
+        validateValueAtPath(clusterJsonObject, "cluster_config.cluster_name", index, "cluster");
+        validateValueAtPath(clusterJsonObject, "cluster_config.table_name", index, "cluster");
+        validateValueAtPath(clusterJsonObject, "wal_config.sink.queue_name", index, "cluster");
+        validateValueAtPath(clusterJsonObject, "wal_config.strategy", "queue", "cluster");
+        validateValueAtPath(clusterJsonObject, "direct_write", "true", "cluster");
         if (settings.hasValue("index.havenask.hash_mode.hash_field")) {
             validateValueAtPathWithSettingsValue(
                 clusterJsonObject,
@@ -124,7 +124,7 @@ public class RestHavenaskCreate extends BaseRestHandler {
                 settings.get("index.havenask.hash_mode.hash_field")
             );
         }
-        validateValueAtPath(clusterJsonObject, "cluster_config.hash_mode.hash_function", "HASH");
+        validateValueAtPath(clusterJsonObject, "cluster_config.hash_mode.hash_function", "HASH", "cluster");
 
         if (settings.hasValue("index.havenask.build_config.max_doc_count")) {
             validateValueAtPathWithSettingsValue(
@@ -145,21 +145,23 @@ public class RestHavenaskCreate extends BaseRestHandler {
     protected void schemaJsonValidate(String index, String schemaJsonInput) {
         JSONObject schemaJsonObject = JSONObject.parseObject(schemaJsonInput);
 
-        validateValueAtPath(schemaJsonObject, "table_name", index);
-        validateValueAtPath(schemaJsonObject, "table_type", "normal");
+        validateValueAtPath(schemaJsonObject, "table_name", index, "schema");
+        validateValueAtPath(schemaJsonObject, "table_type", "normal", "schema");
     }
 
     protected void dataTableJsonValidate(String index, String dataTableJsonInput) {
         JSONObject dataTableJsonObject = JSONObject.parseObject(dataTableJsonInput);
 
-        validateValueAtPath(dataTableJsonObject, "processor_chain_config.clusters", "[\"" + index + "\"]");
+        validateValueAtPath(dataTableJsonObject, "processor_chain_config[0].clusters[0]", index, "data_table");
     }
 
-    private void validateValueAtPath(JSONObject jsonObject, String path, String expectedValue) {
+    private void validateValueAtPath(JSONObject jsonObject, String path, String expectedValue, String configName) {
         Object value = JSONPath.eval(jsonObject, "$." + path);
 
         if (value != null && !String.valueOf(value).equals(expectedValue)) {
-            throw new IllegalArgumentException("Value '" + path + "' is expected to be '" + expectedValue + "', but found '" + value + "'");
+            throw new IllegalArgumentException(
+                "\"" + configName + "\"" + " Value:'" + path + "' is expected to be '" + expectedValue + "', but found '" + value + "'"
+            );
         }
     }
 
