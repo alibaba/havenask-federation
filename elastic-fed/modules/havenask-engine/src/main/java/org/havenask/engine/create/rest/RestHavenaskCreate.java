@@ -110,7 +110,8 @@ public class RestHavenaskCreate extends BaseRestHandler {
         validateValueAtPathWithSettingsValue(
             clusterJsonObject,
             "cluster_config.builder_rule_config.partition_count",
-            String.valueOf(settings.getAsInt("index.number_of_shards", 1))
+            String.valueOf(settings.getAsInt("index.number_of_shards", 1)),
+            "cluster"
         );
         validateValueAtPath(clusterJsonObject, "cluster_config.cluster_name", index, "cluster");
         validateValueAtPath(clusterJsonObject, "cluster_config.table_name", index, "cluster");
@@ -121,7 +122,8 @@ public class RestHavenaskCreate extends BaseRestHandler {
             validateValueAtPathWithSettingsValue(
                 clusterJsonObject,
                 "cluster_config.hash_mode.hash_field",
-                settings.get("index.havenask.hash_mode.hash_field")
+                settings.get("index.havenask.hash_mode.hash_field"),
+                "cluster"
             );
         }
         validateValueAtPath(clusterJsonObject, "cluster_config.hash_mode.hash_function", "HASH", "cluster");
@@ -130,14 +132,16 @@ public class RestHavenaskCreate extends BaseRestHandler {
             validateValueAtPathWithSettingsValue(
                 clusterJsonObject,
                 "online_index_config.build_config.max_doc_count",
-                String.valueOf(settings.getAsInt("index.havenask.build_config.max_doc_count", 10000))
+                String.valueOf(settings.getAsInt("index.havenask.build_config.max_doc_count", 10000)),
+                "cluster"
             );
         }
         if (settings.hasValue("index.havenask.wal_config.sink.queue_size")) {
             validateValueAtPathWithSettingsValue(
                 clusterJsonObject,
                 "wal_config.sink.queue_size",
-                String.valueOf(settings.getAsInt("index.havenask.wal_config.sink.queue_size", 5000))
+                String.valueOf(settings.getAsInt("index.havenask.wal_config.sink.queue_size", 5000)),
+                "cluster"
             );
         }
     }
@@ -159,18 +163,34 @@ public class RestHavenaskCreate extends BaseRestHandler {
         Object value = JSONPath.eval(jsonObject, "$." + path);
 
         if (value != null && !String.valueOf(value).equals(expectedValue)) {
-            throw new IllegalArgumentException(
-                "\"" + configName + "\"" + " Value:'" + path + "' is expected to be '" + expectedValue + "', but found '" + value + "'"
-            );
+            String errorMessage = "'"
+                + configName
+                + "'"
+                + " Value:'"
+                + path
+                + "' is expected to be '"
+                + expectedValue
+                + "', but found '"
+                + value
+                + "'";
+            throw new IllegalArgumentException(errorMessage);
         }
     }
 
-    private void validateValueAtPathWithSettingsValue(JSONObject jsonObject, String path, String settingsValue) {
+    private void validateValueAtPathWithSettingsValue(JSONObject jsonObject, String path, String settingsValue, String configName) {
         Object value = JSONPath.eval(jsonObject, "$." + path);
         if (value != null && !String.valueOf(value).equals(settingsValue)) {
-            throw new IllegalArgumentException(
-                "Value '" + path + "' is '" + settingsValue + "' set by settings" + ", but found '" + value + "' in params json"
-            );
+            String errorMessage = "'"
+                + configName
+                + "'"
+                + " Value:'"
+                + path
+                + "' is expected to be '"
+                + settingsValue
+                + "', but found '"
+                + value
+                + "'";
+            throw new IllegalArgumentException(errorMessage);
         }
     }
 }
