@@ -50,7 +50,10 @@ public class RestHavenaskCreate extends BaseRestHandler {
         XContentParser parser = request.contentParser();
         Map<String, Object> source = parser.map();
 
-        Map<String, Object> settings = source.containsKey("settings") ? (Map<String, Object>) source.remove("settings") : new HashMap<>();
+        Map<String, Object> settingsMap = source.containsKey("settings")
+            ? (Map<String, Object>) source.remove("settings")
+            : new HashMap<>();
+        Settings settings = Settings.builder().loadFromMap(settingsMap).build();
 
         Map<String, Object> clusters = (Map<String, Object>) source.remove("cluster");
         String clustersJsonStr = JsonPrettyFormatter.toJsonString(clusters);
@@ -58,25 +61,27 @@ public class RestHavenaskCreate extends BaseRestHandler {
 
         Map<String, Object> dataTables = (Map<String, Object>) source.remove("data_table");
         String dataTablesJsonStr = JsonPrettyFormatter.toJsonString(dataTables);
+        dataTableJsonValidate(index, dataTablesJsonStr);
 
         Map<String, Object> schemas = (Map<String, Object>) source.remove("schema");
         String schemasJsonStr = JsonPrettyFormatter.toJsonString(schemas);
+        schemaJsonValidate(index, schemasJsonStr);
 
-        if (!settings.containsKey(EngineSettings.ENGINE_TYPE_SETTING.getKey())) {
-            settings.put(EngineSettings.ENGINE_TYPE_SETTING.getKey(), EngineSettings.ENGINE_HAVENASK);
+        if (!settingsMap.containsKey(EngineSettings.ENGINE_TYPE_SETTING.getKey())) {
+            settingsMap.put(EngineSettings.ENGINE_TYPE_SETTING.getKey(), EngineSettings.ENGINE_HAVENASK);
         }
         if (clusters != null) {
-            settings.put("index.havenask.cluster_json", JsonPrettyFormatter.toJsonString(clusters));
+            settingsMap.put("index.havenask.cluster_json", JsonPrettyFormatter.toJsonString(clusters));
         }
         if (dataTables != null) {
-            settings.put("index.havenask.data_table_json", JsonPrettyFormatter.toJsonString(dataTables));
+            settingsMap.put("index.havenask.data_table_json", JsonPrettyFormatter.toJsonString(dataTables));
         }
         if (schemas != null) {
-            settings.put("index.havenask.schema_json", JsonPrettyFormatter.toJsonString(schemas));
+            settingsMap.put("index.havenask.schema_json", JsonPrettyFormatter.toJsonString(schemas));
         }
 
         CreateIndexRequest createIndexRequest = new CreateIndexRequest(index);
-        createIndexRequest.settings(settings);
+        createIndexRequest.settings(settingsMap);
         if (source.containsKey("mappings")) {
             Map<String, Object> mappings = (Map<String, Object>) source.remove("mappings");
             createIndexRequest.mapping("_doc", mappings);
@@ -86,9 +91,7 @@ public class RestHavenaskCreate extends BaseRestHandler {
         return channel -> client.admin().indices().create(createIndexRequest, new RestToXContentListener<>(channel));
     }
 
-    protected void clusterJsonValidate(String index, String clusterJsonInput, Map<String, Object> sourceSettings) {
-        Settings settings = Settings.builder().loadFromMap(sourceSettings).build();
-
+    protected void clusterJsonValidate(String index, String clusterJsonInput, Settings settings) {
         JSONObject clusterJsonObject = JSONObject.parseObject(clusterJsonInput);
 
         if (settings.hasValue(EngineSettings.ENGINE_TYPE_SETTING.getKey())) {
@@ -137,7 +140,19 @@ public class RestHavenaskCreate extends BaseRestHandler {
                 String.valueOf(settings.getAsInt("index.havenask.wal_config.sink.queue_size", 5000))
             );
         }
+    }
 
+    protected void schemaJsonValidate(String index, String schemaJsonInput) {
+        JSONObject schemaJsonObject = JSONObject.parseObject(schemaJsonInput);
+
+        validateValueAtPath(schemaJsonObject, "table_name", index);
+        validateValueAtPath(schemaJsonObject, "table_type", "normal");
+    }
+
+    protected void dataTableJsonValidate(String index, String dataTableJsonInput) {
+        JSONObject dataTableJsonObject = JSONObject.parseObject(dataTableJsonInput);
+
+        validateValueAtPath(dataTableJsonObject, "processor_chain_config.clusters", "[\"" + index + "\"]");
     }
 
     private void validateValueAtPath(JSONObject jsonObject, String path, String expectedValue) {
