@@ -14,8 +14,6 @@
 
 package org.havenask.engine.search.action;
 
-import java.io.IOException;
-
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.havenask.action.ActionListener;
@@ -29,7 +27,6 @@ import org.havenask.engine.rpc.QrsClient;
 import org.havenask.engine.rpc.QrsSqlRequest;
 import org.havenask.engine.rpc.QrsSqlResponse;
 import org.havenask.engine.rpc.http.QrsHttpClient;
-import org.havenask.rest.RestStatus;
 import org.havenask.tasks.Task;
 import org.havenask.threadpool.ThreadPool;
 import org.havenask.threadpool.ThreadPool.Names;
@@ -69,9 +66,8 @@ public class TransportHavenaskSqlAction extends HandledTransportAction<HavenaskS
             try {
                 QrsSqlResponse result = qrsClient.executeSql(qrsSqlRequest);
                 listener.onResponse(new HavenaskSqlResponse(result.getResult(), result.getResultCode()));
-            } catch (IOException e) {
-                logger.warn("execute sql failed", e);
-                listener.onResponse(new HavenaskSqlResponse("execute sql failed:" + e, RestStatus.INTERNAL_SERVER_ERROR.getStatus()));
+            } catch (Exception e) {
+                listener.onFailure(e);
             }
         });
     }
