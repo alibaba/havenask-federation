@@ -31,13 +31,14 @@ import org.havenask.engine.rpc.QrsSqlResponse;
 import org.havenask.engine.rpc.http.QrsHttpClient;
 import org.havenask.rest.RestStatus;
 import org.havenask.tasks.Task;
+import org.havenask.threadpool.ThreadPool;
 import org.havenask.threadpool.ThreadPool.Names;
 import org.havenask.transport.TransportService;
 
 public class TransportHavenaskSqlAction extends HandledTransportAction<HavenaskSqlRequest, HavenaskSqlResponse> {
     private static final Logger logger = LogManager.getLogger(TransportHavenaskSqlAction.class);
-
     private ClusterService clusterService;
+    private ThreadPool threadPool;
     private final IngestActionForwarder ingestForwarder;
     private QrsClient qrsClient;
 
@@ -45,11 +46,13 @@ public class TransportHavenaskSqlAction extends HandledTransportAction<HavenaskS
     public TransportHavenaskSqlAction(
         ClusterService clusterService,
         TransportService transportService,
+        ThreadPool threadPool,
         NativeProcessControlService nativeProcessControlService,
         ActionFilters actionFilters
     ) {
-        super(HavenaskSqlAction.NAME, transportService, actionFilters, HavenaskSqlRequest::new, Names.SEARCH);
+        super(HavenaskSqlAction.NAME, transportService, actionFilters, HavenaskSqlRequest::new, Names.SAME);
         this.clusterService = clusterService;
+        this.threadPool = threadPool;
         this.ingestForwarder = new IngestActionForwarder(transportService);
         clusterService.addStateApplier(this.ingestForwarder);
         this.qrsClient = new QrsHttpClient(nativeProcessControlService.getQrsHttpPort());
@@ -61,14 +64,15 @@ public class TransportHavenaskSqlAction extends HandledTransportAction<HavenaskS
             ingestForwarder.forwardIngestRequest(HavenaskSqlAction.INSTANCE, request, listener);
             return;
         }
-
-        QrsSqlRequest qrsSqlRequest = new QrsSqlRequest(request.getSql(), request.getKvpair());
-        try {
-            QrsSqlResponse result = qrsClient.executeSql(qrsSqlRequest);
-            listener.onResponse(new HavenaskSqlResponse(result.getResult(), result.getResultCode()));
-        } catch (IOException e) {
-            logger.warn("execute sql failed", e);
-            listener.onResponse(new HavenaskSqlResponse("execute sql failed:" + e, RestStatus.INTERNAL_SERVER_ERROR.getStatus()));
-        }
+        threadPool.executor(ThreadPool.Names.SEARCH).execute(() -> {
+            QrsSqlRequest qrsSqlRequest = new QrsSqlRequest(request.getSql(), request.getKvpair());
+            try {
+                QrsSqlResponse result = qrsClient.executeSql(qrsSqlRequest);
+                listener.onResponse(new HavenaskSqlResponse(result.getResult(), result.getResultCode()));
+            } catch (IOException e) {
+                logger.warn("execute sql failed", e);
+                listener.onResponse(new HavenaskSqlResponse("execute sql failed:" + e, RestStatus.INTERNAL_SERVER_ERROR.getStatus()));
+            }
+        });
     }
 }
