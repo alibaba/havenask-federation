@@ -16,14 +16,19 @@ package org.havenask.engine.index.config.generator;
 
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
+import com.alibaba.fastjson.JSONPath;
 import org.havenask.cluster.metadata.IndexMetadata;
 import org.havenask.common.settings.Settings;
 import org.havenask.engine.index.config.ClusterJsonMinMustParams;
+import org.havenask.engine.index.config.DataTable;
+import org.havenask.engine.index.config.Processor;
 import org.havenask.engine.index.engine.EngineSettings;
 import org.havenask.engine.util.JsonPrettyFormatter;
 
+import java.util.List;
+
 public class HavenaskEngineConfigGenerator {
-    public static String generateClusterJsonStr(String indexName, Settings indexSettings, String clusterJson) {
+    public static String generateClusterJsonStr(String indexName, Settings indexSettings, String inputClusterJsonStr) {
         ClusterJsonMinMustParams clusterJsonMinMustParams = new ClusterJsonMinMustParams();
         clusterJsonMinMustParams.cluster_config.builder_rule_config.partition_count = indexSettings.getAsInt(
             IndexMetadata.SETTING_NUMBER_OF_SHARDS,
@@ -42,20 +47,39 @@ public class HavenaskEngineConfigGenerator {
             clusterJsonMinMustParams.cluster_config.hash_mode.hash_field = EngineSettings.HAVENASK_HASH_MODE_HASH_FIELD.get(indexSettings);
         }
         String defaultClusterJson = clusterJsonMinMustParams.toString();
-        String clusterJsonStr = JsonPrettyFormatter.toJsonString(
-            mergeClusterJson(JSONObject.parseObject(clusterJson), JSONObject.parseObject(defaultClusterJson))
+        String mergedClusterJsonStr = JsonPrettyFormatter.toJsonString(
+            mergeClusterJson(JSONObject.parseObject(inputClusterJsonStr), JSONObject.parseObject(defaultClusterJson))
         );
 
-        return clusterJsonStr;
+        return mergedClusterJsonStr;
     }
 
-    public static String generateSchemaJsonStr(String indexName, String schemaJson) {
+    public static String generateSchemaJsonStr(String indexName, String inputSchemaJsonStr) {
         SchemaGenerator schemaGenerator = new SchemaGenerator();
         String defaultSchemaJsonStr = schemaGenerator.defaultSchema(indexName).toString();
-        String schemaJsonStr = JsonPrettyFormatter.toJsonString(
-            mergeSchemaJson(JSONObject.parseObject(schemaJson), JSONObject.parseObject(defaultSchemaJsonStr))
+        String mergedSchemaJsonStr = JsonPrettyFormatter.toJsonString(
+            mergeSchemaJson(JSONObject.parseObject(inputSchemaJsonStr), JSONObject.parseObject(defaultSchemaJsonStr))
         );
-        return schemaJsonStr;
+        return mergedSchemaJsonStr;
+    }
+
+    public static String generateDataTableJsonStr(String indexName, String inputDataTableJsonStr) {
+        DataTable defaultDataTable = new DataTable();
+
+        // If the user does not configure processor_chain_config, then configure a default value
+        JSONObject dataTableJson = JSONObject.parseObject(inputDataTableJsonStr);
+        Object value = JSONPath.eval(dataTableJson, "$." + "processor_chain_config");
+        if (value == null) {
+            Processor.ProcessorChainConfig processorChainConfig = new Processor.ProcessorChainConfig();
+            processorChainConfig.clusters = List.of(indexName);
+            defaultDataTable.processor_chain_config = List.of(processorChainConfig);
+        }
+
+        String defaultDataTableJsonStr = defaultDataTable.toString();
+        String mergedDataTableJsonStr = JsonPrettyFormatter.toJsonString(
+            mergeDataTableJson(dataTableJson, JSONObject.parseObject(defaultDataTableJsonStr))
+        );
+        return mergedDataTableJsonStr;
     }
 
     private static JSONObject mergeClusterJson(JSONObject clusterJson, JSONObject defaultClusterJson) {
@@ -95,5 +119,21 @@ public class HavenaskEngineConfigGenerator {
             }
         }
         return schemaJson;
+    }
+
+    private static JSONObject mergeDataTableJson(JSONObject dataTableJson, JSONObject defaultDataTableJson) {
+        for (String key : defaultDataTableJson.keySet()) {
+            Object valueB = defaultDataTableJson.get(key);
+            if (dataTableJson.containsKey(key)) {
+                Object valueA = dataTableJson.get(key);
+                if (valueA instanceof JSONObject && valueB instanceof JSONObject) {
+                    dataTableJson.put(key, mergeClusterJson((JSONObject) valueA, (JSONObject) valueB));
+                }
+            } else {
+                dataTableJson.put(key, valueB);
+            }
+        }
+
+        return dataTableJson;
     }
 }

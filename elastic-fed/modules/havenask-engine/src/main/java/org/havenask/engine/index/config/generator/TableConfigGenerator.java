@@ -22,7 +22,6 @@ import java.nio.file.StandardOpenOption;
 import java.util.HashMap;
 import java.util.List;
 
-import com.alibaba.fastjson.JSONObject;
 import org.havenask.cluster.metadata.IndexMetadata;
 import org.havenask.common.Nullable;
 import org.havenask.common.settings.Settings;
@@ -36,6 +35,7 @@ import org.havenask.engine.util.VersionUtils;
 import org.havenask.index.mapper.MapperService;
 
 import static org.havenask.engine.index.config.generator.HavenaskEngineConfigGenerator.generateClusterJsonStr;
+import static org.havenask.engine.index.config.generator.HavenaskEngineConfigGenerator.generateDataTableJsonStr;
 import static org.havenask.engine.index.config.generator.HavenaskEngineConfigGenerator.generateSchemaJsonStr;
 
 public class TableConfigGenerator {
@@ -160,9 +160,11 @@ public class TableConfigGenerator {
         String dataTableJson = EngineSettings.HAVENASK_DATA_TABLE_JSON.get(indexSettings);
         Path dataTablePath = configPath.resolve(version).resolve(DATA_TABLES_DIR).resolve(indexName + DATA_TABLES_FILE_SUFFIX);
         if (dataTableJson != null && !dataTableJson.equals("")) {
+            String dataTableJsonStr = generateDataTableJsonStr(indexName, dataTableJson);
+
             Files.write(
                 dataTablePath,
-                dataTableJson.getBytes(StandardCharsets.UTF_8),
+                dataTableJsonStr.getBytes(StandardCharsets.UTF_8),
                 StandardOpenOption.CREATE,
                 StandardOpenOption.TRUNCATE_EXISTING
             );
@@ -186,21 +188,5 @@ public class TableConfigGenerator {
                 StandardOpenOption.TRUNCATE_EXISTING
             );
         }
-    }
-
-    private JSONObject mergeClusterJson(JSONObject clusterJson, JSONObject defaultClusterJson) {
-        for (String key : defaultClusterJson.keySet()) {
-            Object valueB = defaultClusterJson.get(key);
-            if (clusterJson.containsKey(key)) {
-                Object valueA = clusterJson.get(key);
-                if (valueA instanceof JSONObject && valueB instanceof JSONObject) {
-                    clusterJson.put(key, mergeClusterJson((JSONObject) valueA, (JSONObject) valueB));
-                }
-            } else {
-                clusterJson.put(key, valueB);
-            }
-        }
-
-        return clusterJson;
     }
 }

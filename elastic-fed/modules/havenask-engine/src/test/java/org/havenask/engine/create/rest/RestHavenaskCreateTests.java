@@ -14,6 +14,7 @@
 
 package org.havenask.engine.create.rest;
 
+import org.havenask.common.settings.Settings;
 import org.havenask.index.mapper.MapperServiceTestCase;
 
 import java.util.Locale;
@@ -70,7 +71,8 @@ public class RestHavenaskCreateTests extends MapperServiceTestCase {
             indexName
         );
 
-        restHandler.clusterJsonValidate(indexName, clustersJsonStr, sourceSettings);
+        Settings settings = Settings.builder().loadFromMap(sourceSettings).build();
+        restHandler.clusterJsonValidate(indexName, clustersJsonStr, settings);
     }
 
     public void testIllegalClusterJsonParams() {
@@ -91,14 +93,14 @@ public class RestHavenaskCreateTests extends MapperServiceTestCase {
             + "        \"cluster_name\" : \"errorIndexName\"\n"
             + "    }\n"
             + "}";
-        testIllegalParams(indexName, illegalClusterName, sourceSettings);
+        validateIllegalClusterJsonParams(indexName, illegalClusterName, sourceSettings);
 
         String illegalTableName = "{\n"
             + "    \"cluster_config\" : {\n"
             + "        \"table_name\" : \"errorIndexName\"\n"
             + "    }\n"
             + "}";
-        testIllegalParams(indexName, illegalTableName, sourceSettings);
+        validateIllegalClusterJsonParams(indexName, illegalTableName, sourceSettings);
 
         String illegalQueueName = "{\n"
             + "    \"wal_config\": { \n"
@@ -107,7 +109,7 @@ public class RestHavenaskCreateTests extends MapperServiceTestCase {
             + "        }\n"
             + "    }\n"
             + "}";
-        testIllegalParams(indexName, illegalQueueName, sourceSettings);
+        validateIllegalClusterJsonParams(indexName, illegalQueueName, sourceSettings);
 
         String illegalPartitionCount = "{\n"
             + "    \"cluster_config\" : {\n"
@@ -116,13 +118,13 @@ public class RestHavenaskCreateTests extends MapperServiceTestCase {
             + "        }\n"
             + "    }\n"
             + "}";
-        testIllegalParams(indexName, illegalPartitionCount, sourceSettings);
+        validateIllegalClusterJsonParams(indexName, illegalPartitionCount, sourceSettings);
 
         String illegalDirectWrite = "{\n" + "    \"direct_write\" : false, \n" + "}";
-        testIllegalParams(indexName, illegalDirectWrite, sourceSettings);
+        validateIllegalClusterJsonParams(indexName, illegalDirectWrite, sourceSettings);
 
         String illegalStrategy = "{\n" + "    \"wal_config\": { \n" + "        \"strategy\": \"errorStrategy\"\n" + "    }\n" + "}";
-        testIllegalParams(indexName, illegalStrategy, sourceSettings);
+        validateIllegalClusterJsonParams(indexName, illegalStrategy, sourceSettings);
 
         String illegalHashField = "{\n"
             + "    \"cluster_config\" : {\n"
@@ -131,7 +133,7 @@ public class RestHavenaskCreateTests extends MapperServiceTestCase {
             + "        }\n"
             + "    }\n"
             + "}";
-        testIllegalParams(indexName, illegalHashField, sourceSettings);
+        validateIllegalClusterJsonParams(indexName, illegalHashField, sourceSettings);
 
         String illegalHashFunction = "{\n"
             + "    \"cluster_config\" : {\n"
@@ -140,7 +142,7 @@ public class RestHavenaskCreateTests extends MapperServiceTestCase {
             + "        }\n"
             + "    }\n"
             + "}";
-        testIllegalParams(indexName, illegalHashFunction, sourceSettings);
+        validateIllegalClusterJsonParams(indexName, illegalHashFunction, sourceSettings);
 
         String illegalSize = "{\n"
             + "    \"wal_config\": { \n"
@@ -149,7 +151,7 @@ public class RestHavenaskCreateTests extends MapperServiceTestCase {
             + "        }\n"
             + "    }\n"
             + "}";
-        testIllegalParams(indexName, illegalSize, sourceSettings);
+        validateIllegalClusterJsonParams(indexName, illegalSize, sourceSettings);
 
         String illegalMaxDocCount = "{\n"
             + "    \"online_index_config\": {\n"
@@ -158,10 +160,10 @@ public class RestHavenaskCreateTests extends MapperServiceTestCase {
             + "        }\n"
             + "    }\n"
             + "}";
-        testIllegalParams(indexName, illegalMaxDocCount, sourceSettings);
+        validateIllegalClusterJsonParams(indexName, illegalMaxDocCount, sourceSettings);
 
         Map<String, Object> errorSourceSettings = Map.of("index.engine", "lucene");
-        testIllegalParams(indexName, null, errorSourceSettings);
+        validateIllegalClusterJsonParams(indexName, null, errorSourceSettings);
 
         Map<String, Object> defaultNumberOfShardsSourceSettings = Map.of(
             "index.havenask.hash_mode.hash_field",
@@ -171,13 +173,105 @@ public class RestHavenaskCreateTests extends MapperServiceTestCase {
             "index.havenask.wal_config.sink.queue_size",
             "5000"
         );
-        testIllegalParams(indexName, illegalPartitionCount, defaultNumberOfShardsSourceSettings);
+        validateIllegalClusterJsonParams(indexName, illegalPartitionCount, defaultNumberOfShardsSourceSettings);
     }
 
-    private void testIllegalParams(String indexName, String illegalClusterJsonStr, Map<String, Object> sourceSettings) {
-        expectThrows(
-            IllegalArgumentException.class,
-            () -> restHandler.clusterJsonValidate(indexName, illegalClusterJsonStr, sourceSettings)
+    private void validateIllegalClusterJsonParams(String indexName, String illegalClusterJsonStr, Map<String, Object> sourceSettings) {
+        Settings settings = Settings.builder().loadFromMap(sourceSettings).build();
+        expectThrows(IllegalArgumentException.class, () -> restHandler.clusterJsonValidate(indexName, illegalClusterJsonStr, settings));
+    }
+
+    public void testSchemaJsonValidate() {
+        String indexName = randomAlphaOfLength(5);
+        String schemaJsonStr = String.format(
+            Locale.ROOT,
+            "{\n"
+                + "    \"attributes\":[\"_seq_no\",\"_id\",\"_version\",\"_primary_term\"],\n"
+                + "    \"fields\":[{\n"
+                + "        \"analyzer\":\"simple_analyzer\",\n"
+                + "        \"binary_field\":false,\n"
+                + "        \"field_name\":\"foo\",\n"
+                + "        \"field_type\":\"TEXT\"\n"
+                + "    }],\n"
+                + "    \"indexs\":[{\n"
+                + "        \"doc_payload_flag\":1,\n"
+                + "        \"index_fields\":\"foo\",\n"
+                + "        \"index_name\":\"foo\",\n"
+                + "        \"index_type\":\"TEXT\",\n"
+                + "        \"position_list_flag\":1,\n"
+                + "        \"position_payload_flag\":1,\n"
+                + "        \"term_frequency_flag\":1\n"
+                + "    }],\n"
+                + "    \"table_name\":\"%s\",\n"
+                + "    \"table_type\":\"normal\"\n"
+                + "}",
+            indexName
         );
+
+        restHandler.schemaJsonValidate(indexName, schemaJsonStr);
+    }
+
+    public void testIllegalSchemaJsonParams() {
+        String indexName = randomAlphaOfLength(5);
+
+        String wrongIndexNameSchemaJsonStr = "{\n" + "    \"table_name\":\"wrong_index_name\",\n" + "    \"table_type\":\"normal\"\n" + "}";
+        validateIllegalSchemaJsonParams(indexName, wrongIndexNameSchemaJsonStr);
+    }
+
+    private void validateIllegalSchemaJsonParams(String indexName, String illegalSchemaJsonStr) {
+        expectThrows(IllegalArgumentException.class, () -> restHandler.schemaJsonValidate(indexName, illegalSchemaJsonStr));
+    }
+
+    public void testDataTableJsonValidate() {
+        String indexName = randomAlphaOfLength(5);
+        String dataTableJson = String.format(
+            Locale.ROOT,
+            "{\n"
+                + "    \"processor_chain_config\" : [\n"
+                + "        {\n"
+                + "            \"clusters\" : [\n"
+                + "                \"%s\"\n"
+                + "            ],\n"
+                + "            \"document_processor_chain\" : [\n"
+                + "                {\n"
+                + "                    \"class_name\" : \"TokenizeDocumentProcessor\",\n"
+                + "                    \"module_name\" : \"\",\n"
+                + "                    \"parameters\" : {\n"
+                + "                    }\n"
+                + "                }\n"
+                + "            ],\n"
+                + "            \"modules\" : [\n"
+                + "            ]\n"
+                + "        }\n"
+                + "    ]\n"
+                + "}",
+            indexName
+        );
+
+        restHandler.dataTableJsonValidate(indexName, dataTableJson);
+    }
+
+    public void validateIllegalDataTableJsonParams() {
+        String indexName = randomAlphaOfLength(5);
+        String wrongDataTableJson = "{\n"
+            + "    \"processor_chain_config\" : [\n"
+            + "        {\n"
+            + "            \"clusters\" : [\n"
+            + "                \"wrong_index_name\"\n"
+            + "            ],\n"
+            + "            \"document_processor_chain\" : [\n"
+            + "                {\n"
+            + "                    \"class_name\" : \"TokenizeDocumentProcessor\",\n"
+            + "                    \"module_name\" : \"\",\n"
+            + "                    \"parameters\" : {\n"
+            + "                    }\n"
+            + "                }\n"
+            + "            ],\n"
+            + "            \"modules\" : [\n"
+            + "            ]\n"
+            + "        }\n"
+            + "    ]\n"
+            + "}";
+        expectThrows(IllegalArgumentException.class, () -> restHandler.schemaJsonValidate(indexName, wrongDataTableJson));
     }
 }
