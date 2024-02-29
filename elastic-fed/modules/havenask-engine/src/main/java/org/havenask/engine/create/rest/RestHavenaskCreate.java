@@ -14,6 +14,7 @@
 
 package org.havenask.engine.create.rest;
 
+import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import com.alibaba.fastjson.JSONPath;
 import org.havenask.action.admin.indices.create.CreateIndexRequest;
@@ -156,13 +157,33 @@ public class RestHavenaskCreate extends BaseRestHandler {
         JSONObject schemaJsonObject = JSONObject.parseObject(schemaJsonInput);
 
         validateValueAtPath(schemaJsonObject, "table_name", index, "schema");
-        validateValueAtPath(schemaJsonObject, "table_type", "normal", "schema");
     }
 
     protected void dataTableJsonValidate(String index, String dataTableJsonInput) {
         JSONObject dataTableJsonObject = JSONObject.parseObject(dataTableJsonInput);
 
-        validateValueAtPath(dataTableJsonObject, "processor_chain_config[0].clusters[0]", index, "data_table");
+        if (dataTableJsonObject.containsKey("processor_chain_config")) {
+            JSONArray processorChainConfig = dataTableJsonObject.getJSONArray("processor_chain_config");
+            for (int i = 0; i < processorChainConfig.size(); i++) {
+                JSONObject processor = processorChainConfig.getJSONObject(i);
+
+                if (processor.containsKey("clusters")) {
+                    JSONArray clusters = processor.getJSONArray("clusters");
+                    if (!clusters.contains(index)) {
+                        throw new IllegalArgumentException(
+                            "'"
+                                + "data_table"
+                                + "'"
+                                + " Value:'"
+                                + "processor_chain_config.clusters"
+                                + "' is expected to contain '"
+                                + index
+                                + "'"
+                        );
+                    }
+                }
+            }
+        }
     }
 
     private void validateValueAtPath(JSONObject jsonObject, String path, String expectedValue, String configName) {

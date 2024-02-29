@@ -216,13 +216,6 @@ public class RestHavenaskCreateTests extends MapperServiceTestCase {
 
         String wrongIndexNameSchemaJsonStr = "{\n" + "    \"table_name\":\"wrong_index_name\",\n" + "    \"table_type\":\"normal\"\n" + "}";
         validateIllegalSchemaJsonParams(indexName, wrongIndexNameSchemaJsonStr);
-
-        String wrongTableTypeSchemaJsonStr = String.format(
-            Locale.ROOT,
-            "{\n" + "    \"table_name\":\"%s\",\n" + "    \"table_type\":\"wrong_table_type\"\n" + "}",
-            indexName
-        );
-        validateIllegalSchemaJsonParams(indexName, wrongTableTypeSchemaJsonStr);
     }
 
     private void validateIllegalSchemaJsonParams(String indexName, String illegalSchemaJsonStr) {
