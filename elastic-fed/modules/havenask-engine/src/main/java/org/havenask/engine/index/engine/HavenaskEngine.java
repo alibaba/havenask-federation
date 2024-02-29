@@ -20,6 +20,7 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
@@ -30,6 +31,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.LongConsumer;
@@ -63,6 +65,7 @@ import org.havenask.action.bulk.BackoffPolicy;
 import org.havenask.client.Client;
 import org.havenask.client.OriginSettingClient;
 import org.havenask.common.Nullable;
+import org.havenask.common.Strings;
 import org.havenask.common.bytes.BytesArray;
 import org.havenask.common.bytes.BytesReference;
 import org.havenask.common.collect.Tuple;
@@ -79,6 +82,7 @@ import org.havenask.common.xcontent.XContentType;
 import org.havenask.engine.HavenaskEngineEnvironment;
 import org.havenask.engine.MetaDataSyncer;
 import org.havenask.engine.NativeProcessControlService;
+import org.havenask.engine.index.config.EntryTable;
 import org.havenask.engine.index.config.Schema;
 import org.havenask.engine.index.mapper.VectorField;
 import org.havenask.engine.rpc.ArpcResponse;
@@ -125,6 +129,8 @@ import suez.service.proto.SummaryValue;
 public class HavenaskEngine extends InternalEngine {
 
     public static final String STACK_ORIGIN = "stack";
+    private static final String HAVENASK_VERSION_FILE_PREFIX = "version.";
+    private static final String HAVENASK_ENTRY_TABLE_FILE_PREFIX = "entry_table.";
 
     private final Client client;
     private final SearcherArpcClient searcherClient;
@@ -241,8 +247,8 @@ public class HavenaskEngine extends InternalEngine {
                     lastDocCount = newDocCount;
                 }
 
-                // get total size from du command
-                long totalSize = nativeProcessControlService.getTableSize(env.getRuntimedataPath().resolve(tableName).toAbsolutePath());
+                // get total size from entry table
+                long totalSize = getTableVersionSize();
                 return new DocsStats(lastDocCount, 0, totalSize);
             }
 
@@ -1268,9 +1274,50 @@ public class HavenaskEngine extends InternalEngine {
                 docCount = 0;
             }
         } catch (Exception e) {
-            logger.debug("havenask engine get doc stats error", e);
+            logger.debug("havenask engine get doc stats count error", e);
         }
         return docCount;
+    }
+
+    long getTableVersionSize() {
+        Path shardPath = env.getRuntimedataPath().resolve(tableName).resolve("generation_0").resolve(partitionName);
+        return getTableVersionSize(shardPath);
+    }
+
+    static long getTableVersionSize(Path shardPath) {
+        AtomicLong size = new AtomicLong();
+        try {
+            Long maxIndexVersionFileNum = Utils.getIndexMaxVersionNum(shardPath);
+            String versionFile = HAVENASK_VERSION_FILE_PREFIX + maxIndexVersionFileNum;
+            String content = Files.readString(shardPath.resolve(versionFile));
+            JSONObject jsonObject = JsonPrettyFormatter.fromString(content);
+            String fenceName = jsonObject.getString("fence_name");
+            String entryTableFile = HAVENASK_ENTRY_TABLE_FILE_PREFIX + maxIndexVersionFileNum;
+            Path entryTablePath = shardPath.resolve(entryTableFile);
+            if (false == Strings.isEmpty(fenceName)) {
+                entryTablePath = shardPath.resolve(fenceName).resolve(entryTableFile);
+            }
+            String entryTableContent = Files.readString(entryTablePath);
+            EntryTable entryTable = EntryTable.parse(entryTableContent);
+            entryTable.files.forEach((name, fileMap) -> {
+                fileMap.forEach((fileName, file) -> {
+                    if (file.type == EntryTable.Type.FILE) {
+                        size.addAndGet(file.length);
+                    }
+                });
+            });
+            entryTable.packageFiles.forEach((name, fileMap) -> {
+                fileMap.forEach((fileName, file) -> {
+                    if (file.type == EntryTable.Type.FILE) {
+                        size.addAndGet(file.length);
+                    }
+                });
+            });
+
+        } catch (Exception e) {
+            // pass
+        }
+        return size.get();
     }
 
     @Override

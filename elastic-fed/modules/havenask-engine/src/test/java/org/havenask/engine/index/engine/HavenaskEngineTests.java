@@ -38,6 +38,10 @@ import org.havenask.index.shard.ShardId;
 import suez.service.proto.ErrorCode;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.util.Iterator;
 import java.util.Map;
 
@@ -389,5 +393,40 @@ public class HavenaskEngineTests extends EngineTestCase {
             + "\u001E\n";
         ;
         assertEquals(expectedSourceWithDotRes, SourceWithDotRes);
+    }
+
+    public void testGetTableVersionSize() throws IOException {
+        Path workDir = createTempDir();
+        String content = "{\"files\":{\"\":{\"index_format_version\":{\"length\":82},"
+            + "\"index_partition_meta\":{\"length\":28},\"schema.json\":{\"length\":2335},"
+            + "\"segment_0_level_0\":{\"length\":-2},\"segment_0_level_0/attribute\":{\"length\":-2},"
+            + "\"segment_0_level_0/attribute/_id\":{\"length\":-2},"
+            + "\"segment_0_level_0/attribute/_id/data\":{\"length\":1050},"
+            + "\"segment_0_level_0/counter\":{\"length\":0},\"segment_0_level_0/deletionmap\":{\"length\":-2},"
+            + "\"segment_0_level_0/segment_info\":{\"length\":347},"
+            + "\"segment_0_level_0/segment_metrics\":{\"length\":52},"
+            + "\"segment_0_level_0/summary\":{\"length\":-2},"
+            + "\"segment_0_level_0/summary/data\":{\"length\":1400},"
+            + "\"segment_0_level_0/summary/offset\":{\"length\":400},\"truncate_meta\":{\"length\":-2},"
+            + "\"truncate_meta/index.mapper\":{\"length\":41},\"version.1\":{\"length\":1371}}},\"package_files\":{}}";
+
+        String version = "{\"commit_time\":1709178447985930,\"description\":{\"generation\":\"0\"},\"fence_name\":\"\","
+            + "\"format_version\":3,\"hostname\":\"11.167.164.104\",\"index_task_history\":{\"merge@_default_\""
+            + ":[{\"base_version\":536870952,\"target_version\":2,\"task_description\":{\"_branch_id_\":\"0\"},"
+            + "\"task_id\":\"version_536870952_to_2\",\"trigger_timestamp\":1709178447},{\"base_version\":536870950,"
+            + "\"target_version\":1,\"task_description\":{\"_branch_id_\":\"0\"},\"task_id\":\"version_536870950_to_1\","
+            + "\"trigger_timestamp\":1709177788}]},\"last_segmentid\":536870976,"
+            + "\"locator\":\"00000000000000008eb967f47c12060001000000000000008eb967f47c12060000000000ffff0000\","
+            + "\"read_schema_version\":0,\"schema_version\":0,\"schema_version_road_map\":[0],\"sealed\":false,"
+            + "\"segment_descriptions\":{\"level_info\":{\"level_metas\":[{\"cursor\":0,\"level_idx\":0,\"segments\":[],"
+            + "\"topology\":\"sequence\"}]}},\"segment_schema_versions\":[0,0],\"segments\":[0,1],"
+            + "\"timestamp\":1709177745947021,\"version_line\":{\"key_versions\":[[\"__FENCE__f2GIb6trVe2GuaR9nJzq\""
+            + ",536870952]],\"parent_version\":{\"version_fence_name\":\"__FENCE__f2GIb6trVe2GuaR9nJzq\","
+            + "\"version_id\":536870951}},\"versionid\":2}";
+        Files.write(workDir.resolve("entry_table.2"), content.getBytes(StandardCharsets.UTF_8), StandardOpenOption.CREATE);
+        Files.write(workDir.resolve("version.2"), version.getBytes(StandardCharsets.UTF_8), StandardOpenOption.CREATE);
+
+        long tableSize = HavenaskEngine.getTableVersionSize(workDir);
+        assertEquals(tableSize, 82 + 28 + 2335 + 1050 + 1400 + 1371 + 347 + 52 + 400 + 41);
     }
 }
