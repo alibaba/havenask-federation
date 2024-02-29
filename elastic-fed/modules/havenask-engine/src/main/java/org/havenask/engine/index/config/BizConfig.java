@@ -83,7 +83,8 @@ public class BizConfig {
     public static class BuildConfig {
         public int max_doc_count = 10000;
         public int building_memory_limit_mb = 128;
-        public int keep_version_count = 40;
+        public int keep_version_count = 2;
+        public int keep_version_hour = 1;
     }
 
     public static class BackgroundTaskConfig {
