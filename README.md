@@ -9,7 +9,7 @@
 
 # Havenask-federation架构
 
-Havenask-federation承担三种角色：master、data、coordinate，其中data角色负责管理Havenask的Searcher\Qrs进程，Havenask-federation进程可以同时承担master、data、coordinate角色。
+Havenask-federation承担三种角色：master、data、coordinate，其中data角色负责管理Havenask的Searcher进程，coordinate角色负责管理Havenask的Qrs进程，Havenask-federation单个进程可以同时承担master、data、coordinate角色。
 
 ## 分布式架构
 
@@ -41,7 +41,7 @@ Havenask-federation承担三种角色：master、data、coordinate，其中data�
     ./create_container.sh <CONTAINER_NAME> <IMAGE_NAME>
 
     #示例命令：
-    ./create_container.sh test registry.cn-hangzhou.aliyuncs.com/havenask/fed:1.0.0.beta1
+    ./create_container.sh test registry.cn-hangzhou.aliyuncs.com/havenask/fed:1.0.0
 
 ### 方式二
 直接拷贝启动脚本[elastic-fed/script/create_container.sh](https://github.com/alibaba/havenask-federation/blob/main/elastic-fed/script/create_container.sh)到本地，执行启动命令：
@@ -49,7 +49,7 @@ Havenask-federation承担三种角色：master、data、coordinate，其中data�
     sh create_container.sh <CONTAINER_NAME> <IMAGE_NAME>
 
     #示例命令：
-    sh create_container.sh test registry.cn-hangzhou.aliyuncs.com/havenask/fed:1.0.0.beta1
+    sh create_container.sh test registry.cn-hangzhou.aliyuncs.com/havenask/fed:1.0.0
 
 ## 进入容器
 
