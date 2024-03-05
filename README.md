@@ -1,11 +1,19 @@
 # 项目介绍
 [Havenask](https://github.com/alibaba/havenask) 是阿里巴巴集团自主研发的搜索引擎，也是阿里巴巴内部广泛使用的大规模分布式检索系统，为淘宝、天猫、菜鸟、高德、饿了么、全球化等全集团的搜索业务提供高性能、低成本、易用的搜索服务。同时，Havenask具有灵活的定制和开发能力，支持算法快速迭代，帮助客户和开发者量身定做适合自身业务的智能搜索服务，助力业务增长。
 
-基于Havenask，我们推出了分布式联邦集群解决方案——Havenask-federation。它在保留Havenask引擎强大功能的同时，还具备以下特点：
+基于Havenask，我们推出了分布式联邦集群解决方案——Havenask-federation。方案的设计初衷在于：
 
 * 提升Havenask易用性：Havenask-federation继承了Elasticsearch简单上手，使用方便的优势，通过Havenask-federation来使用Havenask，可以降低Havenask的使用门槛，方便开发者更好的使用Havenask引擎。
 
 * 兼容Elasticsearch生态：Havenask-federation可以支持绝大多数Elasticsearch API，方便使用Elasticsearch的SDK和相关工具访问Havenask-federation，实现快速迁移和扩展。
+
+# Havenask-federation特色
+
+* 无外部依赖：Havenask-federation不依赖任何外部组件，能够直接在容器环境中快速启动服务，提供Havenask引擎完整的分布式、高可用能力。
+* 高度兼容 Elasticsearch：Havenask-federation兼容超过90%的Elasticsearch API，让开发者可以便捷地通过现有的Elasticsearch API和SDK直接对接Havenask引擎。
+* SQL 语法完全兼容：完整支持Havenask SQL，实现了100%的语法兼容性，支持Join和子查询SQL语法，使得用户能够执行跨多个索引表的复杂联合查询。
+* 强大的向量引擎：全面支持Havenask的向量引擎功能，深度集成阿里巴巴达摩院自研向量检索引擎，支持百亿甚至千亿级别的高维度向量的低延迟计算。
+* 索引分片与副本自定义：创建索引时，用户可自定义分片和副本的数量。Havenask-federation会智能地规划集群内所有分片的布局，确保分片分布的均衡性。
 
 # Havenask-federation架构
 
