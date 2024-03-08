@@ -2,3 +2,4 @@ cluster.name: "docker-cluster"
 network.host: 0.0.0.0
 discovery.type: single-node
 havenask.engine.enabled: true
+http.max_initial_line_length: 100mb
