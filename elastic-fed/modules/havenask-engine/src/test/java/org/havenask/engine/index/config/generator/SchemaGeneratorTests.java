@@ -848,7 +848,7 @@ public class SchemaGeneratorTests extends MapperServiceTestCase {
 
     // test havenask analyzer: simple_analyzer, singlews_analyzer and jieba_analyzer
     public void testHavenaskAnalyzer() throws IOException {
-        MapperService mapperService = createMapperServiceIncludingJiebaAnalyzer(Version.CURRENT, mapping(b -> {
+        MapperService mapperService = createMapperServiceIncludingHavenaskAnalyzer(Version.CURRENT, mapping(b -> {
             {
                 b.startObject("simple_text");
                 {
@@ -971,7 +971,8 @@ public class SchemaGeneratorTests extends MapperServiceTestCase {
         assertEquals(expect, actual);
     }
 
-    protected final MapperService createMapperServiceIncludingJiebaAnalyzer(Version version, XContentBuilder mapping) throws IOException {
+    protected final MapperService createMapperServiceIncludingHavenaskAnalyzer(Version version, XContentBuilder mapping)
+        throws IOException {
         IndexMetadata meta = IndexMetadata.builder("index")
             .settings(Settings.builder().put("index.version.created", version))
             .numberOfReplicas(0)
