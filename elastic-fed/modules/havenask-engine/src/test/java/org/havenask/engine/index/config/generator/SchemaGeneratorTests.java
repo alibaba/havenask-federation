@@ -28,19 +28,40 @@
 
 package org.havenask.engine.index.config.generator;
 
+import org.apache.lucene.analysis.standard.StandardAnalyzer;
+import org.havenask.Version;
+import org.havenask.cluster.metadata.IndexMetadata;
 import org.havenask.common.settings.Settings;
+import org.havenask.common.xcontent.XContentBuilder;
 import org.havenask.engine.HavenaskEnginePlugin;
 import org.havenask.engine.index.config.Schema;
 import org.havenask.engine.index.mapper.DenseVectorFieldMapper;
+import org.havenask.index.IndexSettings;
+import org.havenask.index.analysis.AnalyzerScope;
+import org.havenask.index.analysis.HavenaskJiebaAnalyzer;
+import org.havenask.index.analysis.HavenaskSimpleAnalyzer;
+import org.havenask.index.analysis.HavenaskSinglewsAnalyzer;
+import org.havenask.index.analysis.IndexAnalyzers;
+import org.havenask.index.analysis.NamedAnalyzer;
 import org.havenask.index.mapper.MapperService;
 import org.havenask.index.mapper.MapperServiceTestCase;
+import org.havenask.index.similarity.SimilarityService;
+import org.havenask.indices.IndicesModule;
+import org.havenask.indices.mapper.MapperRegistry;
+import org.havenask.plugins.MapperPlugin;
 import org.havenask.plugins.Plugin;
+import org.havenask.plugins.ScriptPlugin;
+import org.havenask.script.ScriptModule;
+import org.havenask.script.ScriptService;
 
 import java.io.IOException;
 import java.util.Collection;
 import java.util.Locale;
+import java.util.Map;
 
+import static java.util.Collections.emptyMap;
 import static java.util.Collections.singletonList;
+import static java.util.stream.Collectors.toList;
 
 public class SchemaGeneratorTests extends MapperServiceTestCase {
 
@@ -825,4 +846,176 @@ public class SchemaGeneratorTests extends MapperServiceTestCase {
         assertEquals(expected, actual);
     }
 
+    // test havenask analyzer: simple_analyzer, singlews_analyzer and jieba_analyzer
+    public void testHavenaskAnalyzer() throws IOException {
+        MapperService mapperService = createMapperServiceIncludingHavenaskAnalyzer(Version.CURRENT, mapping(b -> {
+            {
+                b.startObject("simple_text");
+                {
+                    b.field("type", "text");
+                    b.field("analyzer", "simple_analyzer");
+                }
+                b.endObject();
+                b.startObject("singlews_text");
+                {
+                    b.field("type", "text");
+                    b.field("analyzer", "singlews_analyzer");
+                }
+                b.endObject();
+                b.startObject("jieba_text");
+                {
+                    b.field("type", "text");
+                    b.field("analyzer", "jieba_analyzer");
+                }
+                b.endObject();
+            }
+        }));
+        SchemaGenerator schemaGenerator = new SchemaGenerator();
+        Schema schema = schemaGenerator.getSchema(indexName, Settings.EMPTY, mapperService);
+        String actual = schema.toString();
+        String expect = String.format(
+            Locale.ROOT,
+            "{\n"
+                + "\t\"attributes\":[\"_seq_no\",\"_id\",\"_version\",\"_primary_term\"],\n"
+                + "\t\"fields\":[{\n"
+                + "\t\t\"binary_field\":false,\n"
+                + "\t\t\"field_name\":\"_routing\",\n"
+                + "\t\t\"field_type\":\"STRING\"\n"
+                + "\t},{\n"
+                + "\t\t\"analyzer\":\"jieba_analyzer\",\n"
+                + "\t\t\"binary_field\":false,\n"
+                + "\t\t\"field_name\":\"jieba_text\",\n"
+                + "\t\t\"field_type\":\"TEXT\"\n"
+                + "\t},{\n"
+                + "\t\t\"binary_field\":false,\n"
+                + "\t\t\"field_name\":\"_seq_no\",\n"
+                + "\t\t\"field_type\":\"INT64\"\n"
+                + "\t},{\n"
+                + "\t\t\"analyzer\":\"simple_analyzer\",\n"
+                + "\t\t\"binary_field\":false,\n"
+                + "\t\t\"field_name\":\"simple_text\",\n"
+                + "\t\t\"field_type\":\"TEXT\"\n"
+                + "\t},{\n"
+                + "\t\t\"binary_field\":false,\n"
+                + "\t\t\"field_name\":\"_source\",\n"
+                + "\t\t\"field_type\":\"STRING\"\n"
+                + "\t},{\n"
+                + "\t\t\"binary_field\":false,\n"
+                + "\t\t\"field_name\":\"_id\",\n"
+                + "\t\t\"field_type\":\"STRING\"\n"
+                + "\t},{\n"
+                + "\t\t\"analyzer\":\"singlews_analyzer\",\n"
+                + "\t\t\"binary_field\":false,\n"
+                + "\t\t\"field_name\":\"singlews_text\",\n"
+                + "\t\t\"field_type\":\"TEXT\"\n"
+                + "\t},{\n"
+                + "\t\t\"binary_field\":false,\n"
+                + "\t\t\"field_name\":\"_version\",\n"
+                + "\t\t\"field_type\":\"INT64\"\n"
+                + "\t},{\n"
+                + "\t\t\"binary_field\":false,\n"
+                + "\t\t\"field_name\":\"_primary_term\",\n"
+                + "\t\t\"field_type\":\"INT64\"\n"
+                + "\t}],\n"
+                + "\t\"indexs\":[{\n"
+                + "\t\t\"has_primary_key_attribute\":true,\n"
+                + "\t\t\"index_fields\":\"_id\",\n"
+                + "\t\t\"index_name\":\"_id\",\n"
+                + "\t\t\"index_type\":\"PRIMARYKEY64\",\n"
+                + "\t\t\"is_primary_key_sorted\":false\n"
+                + "\t},{\n"
+                + "\t\t\"index_fields\":\"_routing\",\n"
+                + "\t\t\"index_name\":\"_routing\",\n"
+                + "\t\t\"index_type\":\"STRING\"\n"
+                + "\t},{\n"
+                + "\t\t\"doc_payload_flag\":1,\n"
+                + "\t\t\"index_fields\":\"jieba_text\",\n"
+                + "\t\t\"index_name\":\"jieba_text\",\n"
+                + "\t\t\"index_type\":\"TEXT\",\n"
+                + "\t\t\"position_list_flag\":1,\n"
+                + "\t\t\"position_payload_flag\":1,\n"
+                + "\t\t\"term_frequency_flag\":1\n"
+                + "\t},{\n"
+                + "\t\t\"index_fields\":\"_seq_no\",\n"
+                + "\t\t\"index_name\":\"_seq_no\",\n"
+                + "\t\t\"index_type\":\"NUMBER\"\n"
+                + "\t},{\n"
+                + "\t\t\"doc_payload_flag\":1,\n"
+                + "\t\t\"index_fields\":\"simple_text\",\n"
+                + "\t\t\"index_name\":\"simple_text\",\n"
+                + "\t\t\"index_type\":\"TEXT\",\n"
+                + "\t\t\"position_list_flag\":1,\n"
+                + "\t\t\"position_payload_flag\":1,\n"
+                + "\t\t\"term_frequency_flag\":1\n"
+                + "\t},{\n"
+                + "\t\t\"doc_payload_flag\":1,\n"
+                + "\t\t\"index_fields\":\"singlews_text\",\n"
+                + "\t\t\"index_name\":\"singlews_text\",\n"
+                + "\t\t\"index_type\":\"TEXT\",\n"
+                + "\t\t\"position_list_flag\":1,\n"
+                + "\t\t\"position_payload_flag\":1,\n"
+                + "\t\t\"term_frequency_flag\":1\n"
+                + "\t}],\n"
+                + "\t\"settings\":{\n"
+                + "\t\t\"enable_all_text_field_meta\":true\n"
+                + "\t},\n"
+                + "\t\"summarys\":{\n"
+                + "\t\t\"compress\":true,\n"
+                + "\t\t\"summary_fields\":[\"_routing\",\"_source\",\"_id\"]\n"
+                + "\t},\n"
+                + "\t\"table_name\":\"%s\",\n"
+                + "\t\"table_type\":\"normal\"\n"
+                + "}",
+            indexName
+        );
+        assertEquals(expect, actual);
+    }
+
+    protected final MapperService createMapperServiceIncludingHavenaskAnalyzer(Version version, XContentBuilder mapping)
+        throws IOException {
+        IndexMetadata meta = IndexMetadata.builder("index")
+            .settings(Settings.builder().put("index.version.created", version))
+            .numberOfReplicas(0)
+            .numberOfShards(1)
+            .build();
+        IndexSettings indexSettings = new IndexSettings(meta, getIndexSettings());
+        MapperRegistry mapperRegistry = new IndicesModule(
+            getPlugins().stream().filter(p -> p instanceof MapperPlugin).map(p -> (MapperPlugin) p).collect(toList())
+        ).getMapperRegistry();
+        ScriptModule scriptModule = new ScriptModule(
+            Settings.EMPTY,
+            getPlugins().stream().filter(p -> p instanceof ScriptPlugin).map(p -> (ScriptPlugin) p).collect(toList())
+        );
+        ScriptService scriptService = new ScriptService(getIndexSettings(), scriptModule.engines, scriptModule.contexts);
+        SimilarityService similarityService = new SimilarityService(indexSettings, scriptService, emptyMap());
+        MapperService mapperService = new MapperService(
+            indexSettings,
+            createIndexAnalyzersIncludingHavenaskAnalyzer(indexSettings),
+            xContentRegistry(),
+            similarityService,
+            mapperRegistry,
+            () -> { throw new UnsupportedOperationException(); },
+            () -> true,
+            scriptService
+        );
+        merge(mapperService, mapping);
+        return mapperService;
+    }
+
+    protected IndexAnalyzers createIndexAnalyzersIncludingHavenaskAnalyzer(IndexSettings indexSettings) {
+        return new IndexAnalyzers(
+            Map.of(
+                "default",
+                new NamedAnalyzer("default", AnalyzerScope.INDEX, new StandardAnalyzer()),
+                "simple_analyzer",
+                new NamedAnalyzer("simple_analyzer", AnalyzerScope.INDEX, new HavenaskSimpleAnalyzer()),
+                "singlews_analyzer",
+                new NamedAnalyzer("singlews_analyzer", AnalyzerScope.INDEX, new HavenaskSinglewsAnalyzer()),
+                "jieba_analyzer",
+                new NamedAnalyzer("jieba_analyzer", AnalyzerScope.INDEX, new HavenaskJiebaAnalyzer())
+            ),
+            emptyMap(),
+            emptyMap()
+        );
+    }
 }

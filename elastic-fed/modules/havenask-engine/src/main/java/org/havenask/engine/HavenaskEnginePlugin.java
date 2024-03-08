@@ -31,6 +31,7 @@ import java.util.function.Supplier;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.LockFactory;
 import org.apache.lucene.store.NIOFSDirectory;
@@ -82,6 +83,10 @@ import org.havenask.env.NodeEnvironment;
 import org.havenask.env.ShardLock;
 import org.havenask.index.IndexModule;
 import org.havenask.index.IndexSettings;
+import org.havenask.index.analysis.AnalyzerProvider;
+import org.havenask.index.analysis.HavenaskJiebaAnalyzerProvider;
+import org.havenask.index.analysis.HavenaskSimpleAnalyzerProvider;
+import org.havenask.index.analysis.HavenaskSinglewsAnalyzerProvider;
 import org.havenask.index.engine.EngineFactory;
 import org.havenask.index.mapper.Mapper;
 import org.havenask.index.shard.IndexMappingProvider;
@@ -90,6 +95,7 @@ import org.havenask.index.shard.ShardId;
 import org.havenask.index.shard.ShardPath;
 import org.havenask.index.store.Store;
 import org.havenask.index.store.Store.OnClose;
+import org.havenask.indices.analysis.AnalysisModule;
 import org.havenask.plugins.ActionPlugin;
 import org.havenask.plugins.AnalysisPlugin;
 import org.havenask.plugins.ClusterPlugin;
@@ -341,6 +347,18 @@ public class HavenaskEnginePlugin extends Plugin
         QrsClient qrsClient = new QrsHttpClient(port);
         qrsClientSetOnce.set(qrsClient);
         return new HavenaskFetchPhase(qrsClientSetOnce.get(), fetchSubPhases);
+    }
+
+    @Override
+    public Map<String, AnalysisModule.AnalysisProvider<AnalyzerProvider<? extends Analyzer>>> getAnalyzers() {
+        return Map.of(
+            HavenaskSimpleAnalyzerProvider.NAME,
+            HavenaskSimpleAnalyzerProvider::new,
+            HavenaskSinglewsAnalyzerProvider.NAME,
+            HavenaskSinglewsAnalyzerProvider::new,
+            HavenaskJiebaAnalyzerProvider.NAME,
+            HavenaskJiebaAnalyzerProvider::new
+        );
     }
 
     @Override
