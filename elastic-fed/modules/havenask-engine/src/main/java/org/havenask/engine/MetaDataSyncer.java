@@ -31,6 +31,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Random;
 import java.util.Set;
 import java.util.TreeSet;
@@ -712,14 +713,14 @@ public class MetaDataSyncer extends AbstractLifecycleComponent implements Cluste
         List<String> indicesCreated = event.indicesCreated();
         for (Index index : indicesDeleted) {
             IndexMetadata indexMetadata = event.previousState().getMetadata().index(index);
-            if (EngineSettings.isHavenaskEngine(indexMetadata.getSettings())) {
+            if (Objects.isNull(indexMetadata) || EngineSettings.isHavenaskEngine(indexMetadata.getSettings())) {
                 return true;
             }
         }
 
         for (String index : indicesCreated) {
             IndexMetadata indexMetadata = event.state().metadata().index(index);
-            if (EngineSettings.isHavenaskEngine(indexMetadata.getSettings())) {
+            if (Objects.isNull(indexMetadata) || EngineSettings.isHavenaskEngine(indexMetadata.getSettings())) {
                 return true;
             }
         }
@@ -730,15 +731,17 @@ public class MetaDataSyncer extends AbstractLifecycleComponent implements Cluste
         for (ObjectCursor<String> indexNameCursor : prevClusterState.routingTable().indicesRouting().keys()) {
             String indexName = indexNameCursor.value;
             IndexMetadata indexMetadata = prevClusterState.metadata().index(indexName);
-            if (false == EngineSettings.isHavenaskEngine(indexMetadata.getSettings())) {
-                continue;
-            }
-            IndexRoutingTable prevIndexRoutingTable = prevClusterState.routingTable().indicesRouting().get(indexName);
-            IndexRoutingTable curIndexRoutingTable = curClusterState.routingTable().indicesRouting().get(indexName);
-
-            // TODO: shard级别的判断变更逻辑，目前使用IndexRoutingTable的equals方法，比较index以及shards是否相等，考虑后续优化
-            if (false == prevIndexRoutingTable.equals(curIndexRoutingTable)) {
+            if (Objects.isNull(indexMetadata)) {
                 return true;
+            }
+            if (EngineSettings.isHavenaskEngine(indexMetadata.getSettings())) {
+                IndexRoutingTable prevIndexRoutingTable = prevClusterState.routingTable().indicesRouting().get(indexName);
+                IndexRoutingTable curIndexRoutingTable = curClusterState.routingTable().indicesRouting().get(indexName);
+
+                // TODO: shard级别的判断变更逻辑，目前使用IndexRoutingTable的equals方法，比较index以及shards是否相等，考虑后续优化
+                if (!prevIndexRoutingTable.equals(curIndexRoutingTable)) {
+                    return true;
+                }
             }
         }
         return false;
