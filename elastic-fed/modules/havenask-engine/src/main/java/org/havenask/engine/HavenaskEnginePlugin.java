@@ -84,7 +84,9 @@ import org.havenask.env.ShardLock;
 import org.havenask.index.IndexModule;
 import org.havenask.index.IndexSettings;
 import org.havenask.index.analysis.AnalyzerProvider;
-import org.havenask.index.analysis.JiebaAnalyzerProvider;
+import org.havenask.index.analysis.HavenaskJiebaAnalyzerProvider;
+import org.havenask.index.analysis.HavenaskSimpleAnalyzerProvider;
+import org.havenask.index.analysis.HavenaskSinglewsAnalyzerProvider;
 import org.havenask.index.engine.EngineFactory;
 import org.havenask.index.mapper.Mapper;
 import org.havenask.index.shard.IndexMappingProvider;
@@ -349,7 +351,14 @@ public class HavenaskEnginePlugin extends Plugin
 
     @Override
     public Map<String, AnalysisModule.AnalysisProvider<AnalyzerProvider<? extends Analyzer>>> getAnalyzers() {
-        return Collections.singletonMap(JiebaAnalyzerProvider.NAME, JiebaAnalyzerProvider::new);
+        return Map.of(
+            HavenaskSimpleAnalyzerProvider.NAME,
+            HavenaskSimpleAnalyzerProvider::new,
+            HavenaskSinglewsAnalyzerProvider.NAME,
+            HavenaskSinglewsAnalyzerProvider::new,
+            HavenaskJiebaAnalyzerProvider.NAME,
+            HavenaskJiebaAnalyzerProvider::new
+        );
     }
 
     @Override

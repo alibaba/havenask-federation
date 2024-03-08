@@ -15,7 +15,6 @@
 package org.havenask.index.analysis;
 
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.core.KeywordTokenizer;
 
 /**
@@ -24,11 +23,9 @@ import org.apache.lucene.analysis.core.KeywordTokenizer;
  * Consequently, within this analyzer, we have encapsulated only a keyword tokenizer
  * and have refrained from performing any additional operations.
  */
-public class JiebaAnalyzer extends Analyzer {
+public class HavenaskJiebaAnalyzer extends Analyzer {
     @Override
     protected TokenStreamComponents createComponents(String fieldName) {
-        Tokenizer tokenizer = new KeywordTokenizer();
-
-        return new TokenStreamComponents(tokenizer);
+        return new TokenStreamComponents(new KeywordTokenizer());
     }
 }

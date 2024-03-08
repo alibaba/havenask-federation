@@ -18,17 +18,17 @@ import org.havenask.common.settings.Settings;
 import org.havenask.env.Environment;
 import org.havenask.index.IndexSettings;
 
-public class JiebaAnalyzerProvider extends AbstractIndexAnalyzerProvider<JiebaAnalyzer> {
+public class HavenaskJiebaAnalyzerProvider extends AbstractIndexAnalyzerProvider<HavenaskJiebaAnalyzer> {
     public static final String NAME = "jieba_analyzer";
-    private JiebaAnalyzer analyzer;
+    private HavenaskJiebaAnalyzer analyzer;
 
-    public JiebaAnalyzerProvider(IndexSettings indexSettings, Environment env, String name, Settings settings) {
+    public HavenaskJiebaAnalyzerProvider(IndexSettings indexSettings, Environment env, String name, Settings settings) {
         super(indexSettings, name, settings);
-        this.analyzer = new JiebaAnalyzer();
+        this.analyzer = new HavenaskJiebaAnalyzer();
     }
 
     @Override
-    public JiebaAnalyzer get() {
+    public HavenaskJiebaAnalyzer get() {
         return this.analyzer;
     }
 }
