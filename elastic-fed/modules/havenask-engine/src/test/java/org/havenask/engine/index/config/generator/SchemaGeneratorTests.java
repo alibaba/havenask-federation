@@ -28,19 +28,38 @@
 
 package org.havenask.engine.index.config.generator;
 
+import org.apache.lucene.analysis.standard.StandardAnalyzer;
+import org.havenask.Version;
+import org.havenask.cluster.metadata.IndexMetadata;
 import org.havenask.common.settings.Settings;
+import org.havenask.common.xcontent.XContentBuilder;
 import org.havenask.engine.HavenaskEnginePlugin;
 import org.havenask.engine.index.config.Schema;
 import org.havenask.engine.index.mapper.DenseVectorFieldMapper;
+import org.havenask.index.IndexSettings;
+import org.havenask.index.analysis.AnalyzerScope;
+import org.havenask.index.analysis.IndexAnalyzers;
+import org.havenask.index.analysis.JiebaAnalyzer;
+import org.havenask.index.analysis.NamedAnalyzer;
 import org.havenask.index.mapper.MapperService;
 import org.havenask.index.mapper.MapperServiceTestCase;
+import org.havenask.index.similarity.SimilarityService;
+import org.havenask.indices.IndicesModule;
+import org.havenask.indices.mapper.MapperRegistry;
+import org.havenask.plugins.MapperPlugin;
 import org.havenask.plugins.Plugin;
+import org.havenask.plugins.ScriptPlugin;
+import org.havenask.script.ScriptModule;
+import org.havenask.script.ScriptService;
 
 import java.io.IOException;
 import java.util.Collection;
 import java.util.Locale;
+import java.util.Map;
 
+import static java.util.Collections.emptyMap;
 import static java.util.Collections.singletonList;
+import static java.util.stream.Collectors.toList;
 
 public class SchemaGeneratorTests extends MapperServiceTestCase {
 
@@ -52,7 +71,7 @@ public class SchemaGeneratorTests extends MapperServiceTestCase {
     private String indexName = randomAlphaOfLength(5);
 
     public void testSchemaGenerate() throws IOException {
-        MapperService mapperService = createMapperService(mapping(b -> {
+        MapperService mapperService = createMapperServiceIncludingJiebaAnalyzer(Version.CURRENT, mapping(b -> {
             {
                 b.startObject("name");
                 {
@@ -107,6 +126,7 @@ public class SchemaGeneratorTests extends MapperServiceTestCase {
                 b.startObject("text");
                 {
                     b.field("type", "text");
+                    b.field("analyzer", "jieba_analyzer");
                 }
                 b.endObject();
                 // object type
@@ -198,7 +218,7 @@ public class SchemaGeneratorTests extends MapperServiceTestCase {
                 + "\t\t\"field_name\":\"_id\",\n"
                 + "\t\t\"field_type\":\"STRING\"\n"
                 + "\t},{\n"
-                + "\t\t\"analyzer\":\"simple_analyzer\",\n"
+                + "\t\t\"analyzer\":\"jieba_analyzer\",\n"
                 + "\t\t\"binary_field\":false,\n"
                 + "\t\t\"field_name\":\"text\",\n"
                 + "\t\t\"field_type\":\"TEXT\"\n"
@@ -825,4 +845,46 @@ public class SchemaGeneratorTests extends MapperServiceTestCase {
         assertEquals(expected, actual);
     }
 
+    protected final MapperService createMapperServiceIncludingJiebaAnalyzer(Version version, XContentBuilder mapping) throws IOException {
+        IndexMetadata meta = IndexMetadata.builder("index")
+            .settings(Settings.builder().put("index.version.created", version))
+            .numberOfReplicas(0)
+            .numberOfShards(1)
+            .build();
+        IndexSettings indexSettings = new IndexSettings(meta, getIndexSettings());
+        MapperRegistry mapperRegistry = new IndicesModule(
+            getPlugins().stream().filter(p -> p instanceof MapperPlugin).map(p -> (MapperPlugin) p).collect(toList())
+        ).getMapperRegistry();
+        ScriptModule scriptModule = new ScriptModule(
+            Settings.EMPTY,
+            getPlugins().stream().filter(p -> p instanceof ScriptPlugin).map(p -> (ScriptPlugin) p).collect(toList())
+        );
+        ScriptService scriptService = new ScriptService(getIndexSettings(), scriptModule.engines, scriptModule.contexts);
+        SimilarityService similarityService = new SimilarityService(indexSettings, scriptService, emptyMap());
+        MapperService mapperService = new MapperService(
+            indexSettings,
+            createIndexAnalyzersIncludingJiebaAnalyzer(indexSettings),
+            xContentRegistry(),
+            similarityService,
+            mapperRegistry,
+            () -> { throw new UnsupportedOperationException(); },
+            () -> true,
+            scriptService
+        );
+        merge(mapperService, mapping);
+        return mapperService;
+    }
+
+    protected IndexAnalyzers createIndexAnalyzersIncludingJiebaAnalyzer(IndexSettings indexSettings) {
+        return new IndexAnalyzers(
+            Map.of(
+                "default",
+                new NamedAnalyzer("default", AnalyzerScope.INDEX, new StandardAnalyzer()),
+                "jieba_analyzer",
+                new NamedAnalyzer("jieba_analyzer", AnalyzerScope.INDEX, new JiebaAnalyzer())
+            ),
+            emptyMap(),
+            emptyMap()
+        );
+    }
 }
