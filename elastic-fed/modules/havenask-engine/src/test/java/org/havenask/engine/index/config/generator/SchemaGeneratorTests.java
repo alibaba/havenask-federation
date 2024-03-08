@@ -73,7 +73,7 @@ public class SchemaGeneratorTests extends MapperServiceTestCase {
     private String indexName = randomAlphaOfLength(5);
 
     public void testSchemaGenerate() throws IOException {
-        MapperService mapperService = createMapperService(Version.CURRENT, mapping(b -> {
+        MapperService mapperService = createMapperService(mapping(b -> {
             {
                 b.startObject("name");
                 {
