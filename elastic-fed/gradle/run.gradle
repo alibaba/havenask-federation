@@ -44,6 +44,7 @@ testClusters {
     setting 'network.host', '0.0.0.0'
     setting 'discovery.type', 'single-node'
     setting 'havenask.engine.enabled', 'true'
+    setting 'bootstrap.system_call_filter', 'false'
   }
 }
 
