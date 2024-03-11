@@ -1064,7 +1064,7 @@ public class IndexShard extends AbstractIndexShardComponent implements IndicesCl
             // TODO how to get the havenask engine settings here?
             // TODO how to reuse the doc stats from the havenask engine?
             // TODO 重点关注性能问题,每次获取都要实时查count和size
-            if ("havenask".equals(indexSettings.getSettings().get("index.engine"))){
+            if (isHavenaskIndex(indexSettings.getSettings())){
                 return new StoreStats(getEngine().docStats().getTotalSizeInBytes(), reservedBytes);
             } else {
                 return store.stats(reservedBytes);
@@ -3596,5 +3596,9 @@ public class IndexShard extends AbstractIndexShardComponent implements IndicesCl
 
     RetentionLeaseSyncer getRetentionLeaseSyncer() {
         return retentionLeaseSyncer;
+    }
+
+    public static boolean isHavenaskIndex(Settings settings) {
+        return "havenask".equals(settings.get("index.engine"));
     }
 }

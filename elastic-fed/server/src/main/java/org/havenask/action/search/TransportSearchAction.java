@@ -78,6 +78,7 @@ import org.havenask.common.util.concurrent.AtomicArray;
 import org.havenask.common.util.concurrent.CountDown;
 import org.havenask.index.Index;
 import org.havenask.index.query.Rewriteable;
+import org.havenask.index.shard.IndexShard;
 import org.havenask.index.shard.ShardId;
 import org.havenask.indices.breaker.CircuitBreakerService;
 import org.havenask.search.SearchPhaseResult;
@@ -271,7 +272,7 @@ public class TransportSearchAction extends HandledTransportAction<SearchRequest,
 
         if (indexAbstraction instanceof IndexAbstraction.Index) {
             IndexMetadata indexMetadata = indexAbstraction.getWriteIndex();
-            if ("havenask".equals(indexMetadata.getSettings().get("index.engine"))) {
+            if (IndexShard.isHavenaskIndex(indexMetadata.getSettings())) {
                 // havenask索引
                 return true;
             } else {
@@ -286,7 +287,7 @@ public class TransportSearchAction extends HandledTransportAction<SearchRequest,
             }
 
             IndexMetadata indexMetadata = indexAbstraction.getWriteIndex();
-            if ("havenask".equals(indexMetadata.getSettings().get("index.engine"))) {
+            if (IndexShard.isHavenaskIndex(indexMetadata.getSettings())) {
                 // havenask索引
                 return true;
             } else {
