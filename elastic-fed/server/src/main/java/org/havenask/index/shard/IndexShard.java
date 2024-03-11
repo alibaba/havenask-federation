@@ -3599,6 +3599,6 @@ public class IndexShard extends AbstractIndexShardComponent implements IndicesCl
     }
 
     public static boolean isHavenaskIndex(Settings settings) {
-        return "havenask".equals(settings.get("index.engine"));
+        return settings != null && "havenask".equals(settings.get("index.engine"));
     }
 }
