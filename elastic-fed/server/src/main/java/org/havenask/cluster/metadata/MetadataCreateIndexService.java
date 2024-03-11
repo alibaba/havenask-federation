@@ -114,6 +114,7 @@ import org.havenask.index.mapper.MapperService.MergeReason;
 import org.havenask.index.query.QueryShardContext;
 import org.havenask.index.shard.IndexMappingProvider;
 import org.havenask.index.shard.IndexSettingProvider;
+import org.havenask.index.shard.IndexShard;
 import org.havenask.indices.IndexCreationException;
 import org.havenask.indices.IndicesService;
 import org.havenask.indices.InvalidIndexNameException;
@@ -808,7 +809,7 @@ public class MetadataCreateIndexService {
          */
         shardLimitValidator.validateShardLimit(indexSettings, currentState);
         if (indexSettings.getAsBoolean(IndexSettings.INDEX_SOFT_DELETES_SETTING.getKey(), true) == false &&
-            false == "havenask".equals(indexSettings.get("index.engine"))) {
+            false == IndexShard.isHavenaskIndex(indexSettings)) {
             DEPRECATION_LOGGER.deprecate("soft_deletes_disabled",
                 "Creating indices with soft-deletes disabled is deprecated and will be removed in future Havenask versions. " +
                     "Please do not specify value for setting [index.soft_deletes.enabled] of index [" + request.index() + "].");

@@ -46,6 +46,7 @@ import org.havenask.index.engine.Engine;
 import org.havenask.index.seqno.ReplicationTracker;
 import org.havenask.index.seqno.RetentionLeases;
 import org.havenask.index.seqno.SequenceNumbers;
+import org.havenask.index.shard.IndexShard;
 import org.havenask.index.shard.ShardId;
 import org.havenask.index.store.Store;
 import org.havenask.index.store.Store.OnClose;
@@ -70,6 +71,7 @@ import org.junit.Before;
 import static java.util.Collections.emptyMap;
 import static java.util.Collections.emptySet;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 @LuceneTestCase.SuppressFileSystems("ExtrasFS")
 public class RecoverySourceHandlerTests extends HavenaskTestCase {
@@ -153,8 +155,12 @@ public class RecoverySourceHandlerTests extends HavenaskTestCase {
                 });
             }
         };
+
+        final IndexShard shard = mock(IndexShard.class);
+        when(shard.indexSettings()).thenReturn(INDEX_SETTINGS);
+
         RecoverySourceHandler handler = new RecoverySourceHandler(
-            null,
+            shard,
             new AsyncRecoveryTarget(target, recoveryExecutor),
             threadPool,
             request,

@@ -917,10 +917,14 @@ public class RecoverySourceHandler {
     }
 
     public void sendFiles(Store store, StoreFileMetadata[] files, IntSupplier translogOps, ActionListener<Void> listener) {
-        // 过滤files中文件长度大于0的文件
-        files = Arrays.stream(files).filter(f -> f.length() > 0).sorted(
-            Comparator.comparingLong(StoreFileMetadata::length)).toArray(
-            StoreFileMetadata[]::new); // send smallest first
+        if (shard != null && shard.indexSettings() != null && IndexShard.isHavenaskIndex(shard.indexSettings().getSettings())) {
+            // 过滤files中文件长度大于0的文件
+            files = Arrays.stream(files).filter(f -> f.length() > 0).sorted(
+                    Comparator.comparingLong(StoreFileMetadata::length)).toArray(
+                    StoreFileMetadata[]::new); // send smallest first
+        } else {
+            ArrayUtil.timSort(files, Comparator.comparingLong(StoreFileMetadata::length)); // send smallest first
+        }
 
         final MultiChunkTransfer<StoreFileMetadata, FileChunk>multiFileSender = new MultiChunkTransfer<StoreFileMetadata, FileChunk>(
             logger, threadPool.getThreadContext(), listener, maxConcurrentFileChunks, Arrays.asList(files)) {
