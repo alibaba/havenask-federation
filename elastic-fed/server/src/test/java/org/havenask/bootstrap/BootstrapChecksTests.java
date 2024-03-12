@@ -467,9 +467,8 @@ public class BootstrapChecksTests extends AbstractBootstrapCheckTestCase {
 
         isSystemCallFilterInstalled.set(true);
         BootstrapChecks.check(context, true, Collections.singletonList(systemCallFilterEnabledCheck));
-        BootstrapContext context_1 = randomBoolean() ? createTestContext(
-            Settings.builder().put("bootstrap.system_call_filter", false).build(), null) :
-            emptyContext;
+        BootstrapContext context_1 = createTestContext(
+            Settings.builder().put("bootstrap.system_call_filter", false).build(), null);
         final BootstrapChecks.SystemCallFilterCheck systemCallFilterNotEnabledCheck
             = new BootstrapChecks.SystemCallFilterCheck() {
             @Override
