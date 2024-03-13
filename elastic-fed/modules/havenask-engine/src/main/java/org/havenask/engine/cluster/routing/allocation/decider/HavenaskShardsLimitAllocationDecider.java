@@ -12,12 +12,14 @@
  *
  */
 
-package org.havenask.cluster.routing.allocation.decider;
+package org.havenask.engine.cluster.routing.allocation.decider;
 
 import org.havenask.cluster.metadata.IndexMetadata;
 import org.havenask.cluster.routing.RoutingNode;
 import org.havenask.cluster.routing.ShardRouting;
 import org.havenask.cluster.routing.allocation.RoutingAllocation;
+import org.havenask.cluster.routing.allocation.decider.AllocationDecider;
+import org.havenask.cluster.routing.allocation.decider.Decision;
 import org.havenask.common.settings.ClusterSettings;
 import org.havenask.common.settings.Setting;
 import org.havenask.common.settings.Setting.Property;

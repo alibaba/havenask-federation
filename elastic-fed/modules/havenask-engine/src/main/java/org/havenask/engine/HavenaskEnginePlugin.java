@@ -43,7 +43,7 @@ import org.havenask.cluster.metadata.IndexNameExpressionResolver;
 import org.havenask.cluster.node.DiscoveryNodes;
 import org.havenask.cluster.routing.OperationRouting;
 import org.havenask.cluster.routing.allocation.decider.AllocationDecider;
-import org.havenask.cluster.routing.allocation.decider.HavenaskShardsLimitAllocationDecider;
+import org.havenask.engine.cluster.routing.allocation.decider.HavenaskShardsLimitAllocationDecider;
 import org.havenask.cluster.service.ClusterService;
 import org.havenask.common.io.stream.NamedWriteableRegistry;
 import org.havenask.common.settings.ClusterSettings;
