@@ -12,7 +12,7 @@
  *
  */
 
-package org.havenask.cluster.routing.allocation.decider;
+package org.havenask.engine.cluster.routing.allocation.decider;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -28,6 +28,8 @@ import org.havenask.cluster.routing.RoutingTable;
 import org.havenask.cluster.routing.ShardRoutingState;
 import org.havenask.cluster.routing.allocation.AllocationService;
 import org.havenask.cluster.routing.allocation.allocator.BalancedShardsAllocator;
+import org.havenask.cluster.routing.allocation.decider.AllocationDecider;
+import org.havenask.cluster.routing.allocation.decider.AllocationDeciders;
 import org.havenask.common.settings.ClusterSettings;
 import org.havenask.common.settings.Setting;
 import org.havenask.common.settings.Settings;

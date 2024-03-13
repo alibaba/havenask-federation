@@ -41,7 +41,7 @@ import org.havenask.cluster.routing.allocation.AllocationService;
 import org.havenask.cluster.routing.allocation.allocator.BalancedShardsAllocator;
 import org.havenask.cluster.routing.allocation.decider.AllocationDecider;
 import org.havenask.cluster.routing.allocation.decider.AllocationDeciders;
-import org.havenask.cluster.routing.allocation.decider.HavenaskShardsLimitAllocationDecider;
+import org.havenask.engine.cluster.routing.allocation.decider.HavenaskShardsLimitAllocationDecider;
 import org.havenask.cluster.service.ClusterService;
 import org.havenask.common.settings.ClusterSettings;
 import org.havenask.common.settings.Setting;

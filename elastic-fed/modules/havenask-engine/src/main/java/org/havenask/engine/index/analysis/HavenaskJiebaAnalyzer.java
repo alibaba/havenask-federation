@@ -12,18 +12,18 @@
  *
  */
 
-package org.havenask.index.analysis;
+package org.havenask.engine.index.analysis;
 
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.core.KeywordTokenizer;
 
 /**
- * The simple analyzer is an integrated analyzer within Havenask,
+ * The Jieba analyzer is an integrated analyzer within Havenask,
  * we define this tokenizer as a plugin solely for the purpose of passing the analyzer verification during index creation.
  * Consequently, within this analyzer, we have encapsulated only a keyword tokenizer
  * and have refrained from performing any additional operations.
  */
-public class HavenaskSimpleAnalyzer extends Analyzer {
+public class HavenaskJiebaAnalyzer extends Analyzer {
     @Override
     protected TokenStreamComponents createComponents(String fieldName) {
         return new TokenStreamComponents(new KeywordTokenizer());
