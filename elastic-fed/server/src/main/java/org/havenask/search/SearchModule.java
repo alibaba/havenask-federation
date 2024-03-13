@@ -272,7 +272,6 @@ import org.havenask.search.aggregations.pipeline.SumBucketPipelineAggregationBui
 import org.havenask.search.aggregations.pipeline.SumBucketPipelineAggregator;
 import org.havenask.search.aggregations.support.ValuesSourceRegistry;
 import org.havenask.search.builder.KnnSearchBuilder;
-import org.havenask.search.fetch.DefaultFetchPhase;
 import org.havenask.search.fetch.FetchPhase;
 import org.havenask.search.fetch.FetchSubPhase;
 import org.havenask.search.fetch.subphase.ExplainPhase;
@@ -862,7 +861,7 @@ public class SearchModule {
         if (fetchPhase != null) {
             return fetchPhase;
         } else {
-            return new DefaultFetchPhase(fetchSubPhases);
+            return new FetchPhase(fetchSubPhases);
         }
     }
 

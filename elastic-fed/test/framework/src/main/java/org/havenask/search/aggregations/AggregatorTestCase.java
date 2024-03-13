@@ -147,7 +147,7 @@ import org.havenask.search.aggregations.pipeline.PipelineAggregator.PipelineTree
 import org.havenask.search.aggregations.support.CoreValuesSourceType;
 import org.havenask.search.aggregations.support.ValuesSourceRegistry;
 import org.havenask.search.aggregations.support.ValuesSourceType;
-import org.havenask.search.fetch.DefaultFetchPhase;
+import org.havenask.search.fetch.FetchPhase;
 import org.havenask.search.fetch.subphase.FetchDocValuesPhase;
 import org.havenask.search.fetch.subphase.FetchSourcePhase;
 import org.havenask.search.internal.ContextIndexSearcher;
@@ -315,7 +315,7 @@ public abstract class AggregatorTestCase extends HavenaskTestCase {
         when(searchContext.numberOfShards()).thenReturn(1);
         when(searchContext.searcher()).thenReturn(contextIndexSearcher);
         when(searchContext.fetchPhase())
-                .thenReturn(new DefaultFetchPhase(Arrays.asList(new FetchSourcePhase(), new FetchDocValuesPhase())));
+                .thenReturn(new FetchPhase(Arrays.asList(new FetchSourcePhase(), new FetchDocValuesPhase())));
         when(searchContext.bitsetFilterCache()).thenReturn(new BitsetFilterCache(indexSettings, mock(Listener.class)));
         IndexShard indexShard = mock(IndexShard.class);
         when(indexShard.shardId()).thenReturn(new ShardId("test", "test", 0));

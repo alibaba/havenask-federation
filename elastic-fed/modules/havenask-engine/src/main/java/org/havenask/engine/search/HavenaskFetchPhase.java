@@ -34,7 +34,6 @@ import org.havenask.search.SearchContextSourcePrinter;
 import org.havenask.search.SearchHit;
 import org.havenask.search.SearchHits;
 import org.havenask.search.SearchShardTarget;
-import org.havenask.search.fetch.DefaultFetchPhase;
 import org.havenask.search.fetch.FetchPhase;
 import org.havenask.search.fetch.FetchPhaseExecutionException;
 import org.havenask.search.fetch.FetchSubPhase;
@@ -51,7 +50,7 @@ import java.util.Map;
 
 import static org.havenask.engine.search.rest.RestHavenaskSqlAction.SQL_DATABASE;
 
-public class HavenaskFetchPhase implements FetchPhase {
+public class HavenaskFetchPhase extends FetchPhase {
     private static final Logger logger = LogManager.getLogger(HavenaskFetchPhase.class);
     private final QrsClient qrsHttpClient;
     private static final int SOURCE_POS = 0;
@@ -61,13 +60,14 @@ public class HavenaskFetchPhase implements FetchPhase {
 
     // TODO fetchSubPhases
     private final List<FetchSubPhase> fetchSubPhases;
-    private final DefaultFetchPhase defaultFetchPhase;
+    private final FetchPhase defaultFetchPhase;
     private final List<org.havenask.engine.search.fetch.FetchSubPhase> HavenaskFetchSubPhases;
 
     public HavenaskFetchPhase(QrsClient qrsHttpClient, List<FetchSubPhase> fetchSubPhases) {
+        super(fetchSubPhases);
         this.qrsHttpClient = qrsHttpClient;
         this.fetchSubPhases = fetchSubPhases;
-        this.defaultFetchPhase = new DefaultFetchPhase(fetchSubPhases);
+        this.defaultFetchPhase = new FetchPhase(fetchSubPhases);
 
         // TODO 目前仅支持source过滤，未来增加更多的subPhase并考虑以plugin形式去支持
         this.HavenaskFetchSubPhases = new ArrayList<>();
