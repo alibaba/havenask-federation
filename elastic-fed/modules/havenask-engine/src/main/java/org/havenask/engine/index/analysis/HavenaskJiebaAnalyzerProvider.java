@@ -12,23 +12,24 @@
  *
  */
 
-package org.havenask.index.analysis;
+package org.havenask.engine.index.analysis;
 
 import org.havenask.common.settings.Settings;
 import org.havenask.env.Environment;
 import org.havenask.index.IndexSettings;
+import org.havenask.index.analysis.AbstractIndexAnalyzerProvider;
 
-public class HavenaskSimpleAnalyzerProvider extends AbstractIndexAnalyzerProvider<HavenaskSimpleAnalyzer> {
-    public static final String NAME = "simple_analyzer";
-    private HavenaskSimpleAnalyzer analyzer;
+public class HavenaskJiebaAnalyzerProvider extends AbstractIndexAnalyzerProvider<HavenaskJiebaAnalyzer> {
+    public static final String NAME = "jieba_analyzer";
+    private HavenaskJiebaAnalyzer analyzer;
 
-    public HavenaskSimpleAnalyzerProvider(IndexSettings indexSettings, Environment env, String name, Settings settings) {
+    public HavenaskJiebaAnalyzerProvider(IndexSettings indexSettings, Environment env, String name, Settings settings) {
         super(indexSettings, name, settings);
-        this.analyzer = new HavenaskSimpleAnalyzer();
+        this.analyzer = new HavenaskJiebaAnalyzer();
     }
 
     @Override
-    public HavenaskSimpleAnalyzer get() {
+    public HavenaskJiebaAnalyzer get() {
         return this.analyzer;
     }
 }

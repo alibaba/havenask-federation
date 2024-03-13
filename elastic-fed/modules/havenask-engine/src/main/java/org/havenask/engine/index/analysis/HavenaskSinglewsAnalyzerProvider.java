@@ -12,11 +12,12 @@
  *
  */
 
-package org.havenask.index.analysis;
+package org.havenask.engine.index.analysis;
 
 import org.havenask.common.settings.Settings;
 import org.havenask.env.Environment;
 import org.havenask.index.IndexSettings;
+import org.havenask.index.analysis.AbstractIndexAnalyzerProvider;
 
 public class HavenaskSinglewsAnalyzerProvider extends AbstractIndexAnalyzerProvider<HavenaskSinglewsAnalyzer> {
     public static final String NAME = "singlews_analyzer";
