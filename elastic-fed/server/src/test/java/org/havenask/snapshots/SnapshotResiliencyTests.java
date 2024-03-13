@@ -225,7 +225,7 @@ import org.havenask.repositories.fs.FsRepository;
 import org.havenask.script.ScriptService;
 import org.havenask.search.SearchService;
 import org.havenask.search.builder.SearchSourceBuilder;
-import org.havenask.search.fetch.DefaultFetchPhase;
+import org.havenask.search.fetch.FetchPhase;
 import org.havenask.snapshots.mockstore.MockEventuallyConsistentRepository;
 import org.havenask.test.HavenaskTestCase;
 import org.havenask.test.disruption.DisruptableMockTransport;
@@ -1641,7 +1641,7 @@ public class SnapshotResiliencyTests extends HavenaskTestCase {
                 final SearchTransportService searchTransportService = new SearchTransportService(transportService,
                     SearchExecutionStatsCollector.makeWrapper(responseCollectorService));
                 final SearchService searchService = new SearchService(clusterService, indicesService, threadPool, scriptService,
-                    bigArrays, new DefaultFetchPhase(Collections.emptyList()), responseCollectorService, new NoneCircuitBreakerService());
+                    bigArrays, new FetchPhase(Collections.emptyList()), responseCollectorService, new NoneCircuitBreakerService());
                 SearchPhaseController searchPhaseController = new SearchPhaseController(
                     writableRegistry(), searchService::aggReduceContextBuilder);
                 actions.put(SearchAction.INSTANCE,

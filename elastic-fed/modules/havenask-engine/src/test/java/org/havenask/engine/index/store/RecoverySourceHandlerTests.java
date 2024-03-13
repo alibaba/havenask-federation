@@ -169,7 +169,7 @@ public class RecoverySourceHandlerTests extends HavenaskTestCase {
             between(1, 5)
         );
         PlainActionFuture<Void> sendFilesFuture = new PlainActionFuture<>();
-        handler.sendFiles(store, metas.toArray(new StoreFileMetadata[0]), () -> 0, sendFilesFuture);
+        handler.sendFilesPublic(store, metas.toArray(new StoreFileMetadata[0]), () -> 0, sendFilesFuture);
         sendFilesFuture.actionGet();
         Store.MetadataSnapshot targetStoreMetadata = targetStore.getMetadata(commit);
         Store.RecoveryDiff recoveryDiff = targetStoreMetadata.recoveryDiff(metadata);

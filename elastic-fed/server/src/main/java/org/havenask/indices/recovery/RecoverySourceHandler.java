@@ -916,7 +916,12 @@ public class RecoverySourceHandler {
         }
     }
 
-    public void sendFiles(Store store, StoreFileMetadata[] files, IntSupplier translogOps, ActionListener<Void> listener) {
+    // for testing
+    public void sendFilesPublic(Store store, StoreFileMetadata[] files, IntSupplier translogOps, ActionListener<Void> listener) {
+        sendFiles(store, files, translogOps, listener);
+    }
+
+    void sendFiles(Store store, StoreFileMetadata[] files, IntSupplier translogOps, ActionListener<Void> listener) {
         if (shard != null && shard.indexSettings() != null && IndexShard.isHavenaskIndex(shard.indexSettings().getSettings())) {
             // 过滤files中文件长度大于0的文件
             files = Arrays.stream(files).filter(f -> f.length() > 0).sorted(
