@@ -133,7 +133,7 @@ public class SchemaGenerator {
         List<VectorIndex> vectorIndices = new ArrayList<>();
 
         // to support vector with category, we need to ensure the order of _id, category and vectors;
-        // so we generate _id field first and parse vectors field last;
+        // so we generate _id field first and generate vectors field last;
         schema.indexs.add(new Schema.PRIMARYKEYIndex(IdFieldMapper.NAME, IdFieldMapper.NAME));
         MappedFieldType idField = mapperService.fieldType(IdFieldMapper.NAME);
         if (idField != null) {
