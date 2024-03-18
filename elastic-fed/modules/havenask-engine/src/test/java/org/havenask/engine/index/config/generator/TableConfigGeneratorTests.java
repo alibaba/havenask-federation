@@ -211,6 +211,7 @@ public class TableConfigGeneratorTests extends MapperServiceTestCase {
                 {
                     b.field("type", DenseVectorFieldMapper.CONTENT_TYPE);
                     b.field("dims", 128);
+                    b.field("category", "category_example");
                 }
                 b.endObject();
                 b.startObject("field2");
@@ -314,6 +315,10 @@ public class TableConfigGeneratorTests extends MapperServiceTestCase {
                     + "\t\t\t{\n"
                     + "\t\t\t\t\"boost\":1,\n"
                     + "\t\t\t\t\"field_name\":\"_id\"\n"
+                    + "\t\t\t},\n"
+                    + "\t\t\t{\n"
+                    + "\t\t\t\t\"boost\":1,\n"
+                    + "\t\t\t\t\"field_name\":\"category_example\"\n"
                     + "\t\t\t},\n"
                     + "\t\t\t{\n"
                     + "\t\t\t\t\"boost\":1,\n"

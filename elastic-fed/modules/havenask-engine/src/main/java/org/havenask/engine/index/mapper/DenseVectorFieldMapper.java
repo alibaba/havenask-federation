@@ -85,6 +85,8 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
             "l2_norm"
         );
 
+        private final Parameter<String> category = Parameter.stringParam("category", false, m -> toType(m).category, "");
+
         private final Parameter<IndexOptions> indexOptions = new Parameter<>(
             "index_options",
             false,
@@ -106,7 +108,7 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
 
         @Override
         protected List<Parameter<?>> getParameters() {
-            return Arrays.asList(dimension, similarity, indexOptions, meta);
+            return Arrays.asList(dimension, similarity, category, indexOptions, meta);
         }
 
         @Override
@@ -116,6 +118,7 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
                 meta.getValue(),
                 dimension.get(),
                 Similarity.fromString(similarity.get()),
+                category.get(),
                 indexOptions.get()
             );
             return new DenseVectorFieldMapper(
@@ -928,6 +931,8 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
 
     private final int dims;
     private final Similarity similarity;
+
+    private final String category;
     private final IndexOptions indexOptions;
 
     private DenseVectorFieldMapper(
@@ -940,6 +945,7 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
         super(simpleName, mappedFieldType, multiFields, copyTo);
         this.dims = mappedFieldType.dims;
         this.similarity = mappedFieldType.similarity;
+        this.category = mappedFieldType.category;
         this.indexOptions = mappedFieldType.indexOptions;
     }
 
@@ -1018,12 +1024,21 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
 
         private final int dims;
         private final Similarity similarity;
+        private final String category;
         private final IndexOptions indexOptions;
 
-        public DenseVectorFieldType(String name, Map<String, String> meta, int dims, Similarity similarity, IndexOptions indexOptions) {
+        public DenseVectorFieldType(
+            String name,
+            Map<String, String> meta,
+            int dims,
+            Similarity similarity,
+            String category,
+            IndexOptions indexOptions
+        ) {
             super(name, false, false, false, TextSearchInfo.NONE, meta);
             this.dims = dims;
             this.similarity = similarity;
+            this.category = category;
             this.indexOptions = indexOptions;
         }
 
@@ -1033,6 +1048,10 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
 
         public Similarity getSimilarity() {
             return similarity;
+        }
+
+        public String getCategory() {
+            return category;
         }
 
         public IndexOptions getIndexOptions() {
