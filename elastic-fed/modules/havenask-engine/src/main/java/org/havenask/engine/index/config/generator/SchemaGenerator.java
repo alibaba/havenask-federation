@@ -33,12 +33,12 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 import org.apache.logging.log4j.LogManager;
@@ -263,8 +263,16 @@ public class SchemaGenerator {
     private VectorIndex indexVectorField(DenseVectorFieldType vectorField, String fieldName, Schema schema, String haFieldType) {
         schema.fields.add(new Schema.FieldInfo(fieldName, haFieldType));
         String dupFieldName = DUP_PREFIX + fieldName;
+        String categoryName = vectorField.getCategory();
         schema.getDupFields().add(fieldName);
-        List<Schema.Field> indexFields = Arrays.asList(new Schema.Field(IdFieldMapper.NAME), new Schema.Field(dupFieldName));
+
+        List<Schema.Field> indexFields = new ArrayList<>();
+        indexFields.add(new Schema.Field(IdFieldMapper.NAME));
+        if (!Objects.isNull(categoryName) && !categoryName.isEmpty()) {
+            indexFields.add(new Schema.Field(categoryName));
+        }
+        indexFields.add(new Schema.Field(dupFieldName));
+
         Map<String, String> parameter = new LinkedHashMap<>();
         parameter.put("dimension", String.valueOf(vectorField.getDims()));
         parameter.put("enable_rt_build", String.valueOf(true));

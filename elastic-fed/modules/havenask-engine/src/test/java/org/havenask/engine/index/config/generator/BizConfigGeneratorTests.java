@@ -223,6 +223,13 @@ public class BizConfigGeneratorTests extends MapperServiceTestCase {
                 {
                     b.field("type", DenseVectorFieldMapper.CONTENT_TYPE);
                     b.field("dims", 128);
+                    b.field("category", "category_example");
+                }
+                b.endObject();
+                b.startObject("field2");
+                {
+                    b.field("type", DenseVectorFieldMapper.CONTENT_TYPE);
+                    b.field("dims", 128);
                 }
                 b.endObject();
             }
@@ -290,7 +297,15 @@ public class BizConfigGeneratorTests extends MapperServiceTestCase {
                     + "\t\t\"field_type\":\"INT64\"\n"
                     + "\t},{\n"
                     + "\t\t\"binary_field\":false,\n"
+                    + "\t\t\"field_name\":\"field2\",\n"
+                    + "\t\t\"field_type\":\"STRING\"\n"
+                    + "\t},{\n"
+                    + "\t\t\"binary_field\":false,\n"
                     + "\t\t\"field_name\":\"DUP_field\",\n"
+                    + "\t\t\"field_type\":\"RAW\"\n"
+                    + "\t},{\n"
+                    + "\t\t\"binary_field\":false,\n"
+                    + "\t\t\"field_name\":\"DUP_field2\",\n"
                     + "\t\t\"field_type\":\"RAW\"\n"
                     + "\t},{\n"
                     + "\t\t\"binary_field\":false,\n"
@@ -319,10 +334,36 @@ public class BizConfigGeneratorTests extends MapperServiceTestCase {
                     + "\t\t\t},\n"
                     + "\t\t\t{\n"
                     + "\t\t\t\t\"boost\":1,\n"
+                    + "\t\t\t\t\"field_name\":\"category_example\"\n"
+                    + "\t\t\t},\n"
+                    + "\t\t\t{\n"
+                    + "\t\t\t\t\"boost\":1,\n"
                     + "\t\t\t\t\"field_name\":\"DUP_field\"\n"
                     + "\t\t\t}\n"
                     + "\t\t],\n"
                     + "\t\t\"index_name\":\"field\",\n"
+                    + "\t\t\"index_type\":\"CUSTOMIZED\",\n"
+                    + "\t\t\"indexer\":\"aitheta2_indexer\",\n"
+                    + "\t\t\"parameters\":{\n"
+                    + "\t\t\t\"dimension\":\"128\",\n"
+                    + "\t\t\t\"enable_rt_build\":\"true\",\n"
+                    + "\t\t\t\"distance_type\":\"SquaredEuclidean\",\n"
+                    + "\t\t\t\"ignore_invalid_doc\":\"true\",\n"
+                    + "\t\t\t\"builder_name\":\"HnswBuilder\",\n"
+                    + "\t\t\t\"searcher_name\":\"HnswSearcher\"\n"
+                    + "\t\t}\n"
+                    + "\t},{\n"
+                    + "\t\t\"index_fields\":[\n"
+                    + "\t\t\t{\n"
+                    + "\t\t\t\t\"boost\":1,\n"
+                    + "\t\t\t\t\"field_name\":\"_id\"\n"
+                    + "\t\t\t},\n"
+                    + "\t\t\t{\n"
+                    + "\t\t\t\t\"boost\":1,\n"
+                    + "\t\t\t\t\"field_name\":\"DUP_field2\"\n"
+                    + "\t\t\t}\n"
+                    + "\t\t],\n"
+                    + "\t\t\"index_name\":\"field2\",\n"
                     + "\t\t\"index_type\":\"CUSTOMIZED\",\n"
                     + "\t\t\"indexer\":\"aitheta2_indexer\",\n"
                     + "\t\t\"parameters\":{\n"
@@ -376,7 +417,8 @@ public class BizConfigGeneratorTests extends MapperServiceTestCase {
                     + "\t\t\t\t\t\"class_name\":\"DupFieldProcessor\",\n"
                     + "\t\t\t\t\t\"module_name\":\"\",\n"
                     + "\t\t\t\t\t\"parameters\":{\n"
-                    + "\t\t\t\t\t\t\"DUP_field\":\"field\"\n"
+                    + "\t\t\t\t\t\t\"DUP_field\":\"field\",\n"
+                    + "\t\t\t\t\t\t\"DUP_field2\":\"field2\"\n"
                     + "\t\t\t\t\t}\n"
                     + "\t\t\t\t}\n"
                     + "\t\t\t],\n"
