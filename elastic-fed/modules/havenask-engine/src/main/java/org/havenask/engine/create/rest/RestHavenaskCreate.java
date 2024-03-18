@@ -57,35 +57,35 @@ public class RestHavenaskCreate extends BaseRestHandler {
         Settings settings = Settings.builder().loadFromMap(settingsMap).build();
 
         Map<String, Object> clusters = (Map<String, Object>) source.remove("cluster");
-        String clustersJsonStr = JsonPrettyFormatter.toJsonString(clusters);
-        clusterJsonValidate(index, clustersJsonStr, settings);
+        if (clusters != null) {
+            String clustersJsonStr = JsonPrettyFormatter.toJsonString(clusters);
+            clusterJsonValidate(index, clustersJsonStr, settings);
+            settingsMap.put("index.havenask.cluster_json", JsonPrettyFormatter.toJsonString(clusters));
+        }
 
         Map<String, Object> dataTables = (Map<String, Object>) source.remove("data_table");
-        String dataTablesJsonStr = JsonPrettyFormatter.toJsonString(dataTables);
-        dataTableJsonValidate(index, dataTablesJsonStr);
+        if (dataTables != null) {
+            String dataTablesJsonStr = JsonPrettyFormatter.toJsonString(dataTables);
+            dataTableJsonValidate(index, dataTablesJsonStr);
+            settingsMap.put("index.havenask.data_table_json", JsonPrettyFormatter.toJsonString(dataTables));
+        }
 
         Map<String, Object> schemas = (Map<String, Object>) source.remove("schema");
-        String schemasJsonStr = JsonPrettyFormatter.toJsonString(schemas);
-        schemaJsonValidate(index, schemasJsonStr);
+        if (schemas != null) {
+            String schemasJsonStr = JsonPrettyFormatter.toJsonString(schemas);
+            schemaJsonValidate(index, schemasJsonStr);
+            settingsMap.put("index.havenask.schema_json", JsonPrettyFormatter.toJsonString(schemas));
+        }
 
         if (!settingsMap.containsKey(EngineSettings.ENGINE_TYPE_SETTING.getKey())) {
             settingsMap.put(EngineSettings.ENGINE_TYPE_SETTING.getKey(), EngineSettings.ENGINE_HAVENASK);
-        }
-        if (clusters != null) {
-            settingsMap.put("index.havenask.cluster_json", JsonPrettyFormatter.toJsonString(clusters));
-        }
-        if (dataTables != null) {
-            settingsMap.put("index.havenask.data_table_json", JsonPrettyFormatter.toJsonString(dataTables));
-        }
-        if (schemas != null) {
-            settingsMap.put("index.havenask.schema_json", JsonPrettyFormatter.toJsonString(schemas));
         }
 
         CreateIndexRequest createIndexRequest = new CreateIndexRequest(index);
         createIndexRequest.settings(settingsMap);
         if (source.containsKey("mappings")) {
             Map<String, Object> mappings = (Map<String, Object>) source.remove("mappings");
-            if (mappings.containsKey("properties")) {
+            if (mappings.containsKey("properties") && schemas != null) {
                 throw new IllegalArgumentException(
                     "Configuring both 'mappings' and 'schema' simultaneously is not supported. "
                         + "Please check your configuration and ensure that only one of these settings is specified."
