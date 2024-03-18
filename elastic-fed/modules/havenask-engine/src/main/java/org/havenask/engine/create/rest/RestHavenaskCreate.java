@@ -57,16 +57,22 @@ public class RestHavenaskCreate extends BaseRestHandler {
         Settings settings = Settings.builder().loadFromMap(settingsMap).build();
 
         Map<String, Object> clusters = (Map<String, Object>) source.remove("cluster");
-        String clustersJsonStr = JsonPrettyFormatter.toJsonString(clusters);
-        clusterJsonValidate(index, clustersJsonStr, settings);
+        if (clusters != null) {
+            String clustersJsonStr = JsonPrettyFormatter.toJsonString(clusters);
+            clusterJsonValidate(index, clustersJsonStr, settings);
+        }
 
         Map<String, Object> dataTables = (Map<String, Object>) source.remove("data_table");
-        String dataTablesJsonStr = JsonPrettyFormatter.toJsonString(dataTables);
-        dataTableJsonValidate(index, dataTablesJsonStr);
+        if (dataTables != null) {
+            String dataTablesJsonStr = JsonPrettyFormatter.toJsonString(dataTables);
+            dataTableJsonValidate(index, dataTablesJsonStr);
+        }
 
         Map<String, Object> schemas = (Map<String, Object>) source.remove("schema");
-        String schemasJsonStr = JsonPrettyFormatter.toJsonString(schemas);
-        schemaJsonValidate(index, schemasJsonStr);
+        if (schemas != null) {
+            String schemasJsonStr = JsonPrettyFormatter.toJsonString(schemas);
+            schemaJsonValidate(index, schemasJsonStr);
+        }
 
         if (!settingsMap.containsKey(EngineSettings.ENGINE_TYPE_SETTING.getKey())) {
             settingsMap.put(EngineSettings.ENGINE_TYPE_SETTING.getKey(), EngineSettings.ENGINE_HAVENASK);
