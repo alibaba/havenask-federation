@@ -60,31 +60,25 @@ public class RestHavenaskCreate extends BaseRestHandler {
         if (clusters != null) {
             String clustersJsonStr = JsonPrettyFormatter.toJsonString(clusters);
             clusterJsonValidate(index, clustersJsonStr, settings);
+            settingsMap.put("index.havenask.cluster_json", JsonPrettyFormatter.toJsonString(clusters));
         }
 
         Map<String, Object> dataTables = (Map<String, Object>) source.remove("data_table");
         if (dataTables != null) {
             String dataTablesJsonStr = JsonPrettyFormatter.toJsonString(dataTables);
             dataTableJsonValidate(index, dataTablesJsonStr);
+            settingsMap.put("index.havenask.data_table_json", JsonPrettyFormatter.toJsonString(dataTables));
         }
 
         Map<String, Object> schemas = (Map<String, Object>) source.remove("schema");
         if (schemas != null) {
             String schemasJsonStr = JsonPrettyFormatter.toJsonString(schemas);
             schemaJsonValidate(index, schemasJsonStr);
+            settingsMap.put("index.havenask.schema_json", JsonPrettyFormatter.toJsonString(schemas));
         }
 
         if (!settingsMap.containsKey(EngineSettings.ENGINE_TYPE_SETTING.getKey())) {
             settingsMap.put(EngineSettings.ENGINE_TYPE_SETTING.getKey(), EngineSettings.ENGINE_HAVENASK);
-        }
-        if (clusters != null) {
-            settingsMap.put("index.havenask.cluster_json", JsonPrettyFormatter.toJsonString(clusters));
-        }
-        if (dataTables != null) {
-            settingsMap.put("index.havenask.data_table_json", JsonPrettyFormatter.toJsonString(dataTables));
-        }
-        if (schemas != null) {
-            settingsMap.put("index.havenask.schema_json", JsonPrettyFormatter.toJsonString(schemas));
         }
 
         CreateIndexRequest createIndexRequest = new CreateIndexRequest(index);
