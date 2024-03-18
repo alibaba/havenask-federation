@@ -91,7 +91,7 @@ public class RestHavenaskCreate extends BaseRestHandler {
         createIndexRequest.settings(settingsMap);
         if (source.containsKey("mappings")) {
             Map<String, Object> mappings = (Map<String, Object>) source.remove("mappings");
-            if (mappings.containsKey("properties")) {
+            if (mappings.containsKey("properties") && schemas != null) {
                 throw new IllegalArgumentException(
                     "Configuring both 'mappings' and 'schema' simultaneously is not supported. "
                         + "Please check your configuration and ensure that only one of these settings is specified."
