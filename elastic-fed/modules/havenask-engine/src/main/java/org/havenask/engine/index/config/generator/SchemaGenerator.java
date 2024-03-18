@@ -130,92 +130,20 @@ public class SchemaGenerator {
         Set<String> addedFields = new HashSet<>();
         Set<String> analyzers = getAnalyzers();
 
-        schema.indexs.add(new Schema.PRIMARYKEYIndex(IdFieldMapper.NAME, IdFieldMapper.NAME));
-
         List<VectorIndex> vectorIndices = new ArrayList<>();
+
+        // to support vector with category, we need to ensure the order of _id, category and vectors;
+        // so we generate _id field first and generate vectors field last;
+        schema.indexs.add(new Schema.PRIMARYKEYIndex(IdFieldMapper.NAME, IdFieldMapper.NAME));
+        MappedFieldType idField = mapperService.fieldType(IdFieldMapper.NAME);
+        if (idField != null) {
+            generateSchemaField(table, idField, schema, addedFields, vectorIndices);
+        }
         for (MappedFieldType field : mapperService.fieldTypes()) {
-            String haFieldType = Ha3FieldType.get(field.typeName());
-            String fieldName = field.name();
-            if (haFieldType == null || fieldName.equals("CMD")) {
-                if (fieldName.startsWith("_")) {
-                    logger.debug("{}: no support meta mapping type/name for field {}", table, field.name());
-                    continue;
-                } else {
-                    // logger.warn("{}: no support mapping type/name for field {}", table, field.name());
-                    throw new UnsupportedOperationException("no support mapping type (" + field.typeName() + ") for field " + field.name());
-                }
-            }
-
-            // multi field index
-            if (fieldName.contains(".") || fieldName.contains("@")) {
-                fieldName = Schema.encodeFieldWithDot(fieldName);
-            }
-
-            // deal vector index
-            if (field instanceof DenseVectorFieldType) {
-                DenseVectorFieldType vectorField = (DenseVectorFieldType) field;
-                VectorIndex vectorIndex = indexVectorField(vectorField, fieldName, schema, haFieldType);
-                vectorIndices.add(vectorIndex);
+            if (field.name().equals(IdFieldMapper.NAME)) {
                 continue;
             }
-
-            addedFields.add(fieldName);
-            if (ExcludeFields.contains(fieldName)) {
-                continue;
-            }
-            if (field.isStored()) {
-                schema.summarys.summary_fields.add(fieldName);
-            }
-            // pkey stored as attribute
-            if (field.hasDocValues() || fieldName.equals(IdFieldMapper.NAME)) {
-                schema.attributes.add(fieldName);
-            }
-            // field info
-            if (field.isStored() || field.hasDocValues() || field.isSearchable()) {
-                Schema.FieldInfo fieldInfo = new Schema.FieldInfo(fieldName, haFieldType);
-                // should configured in analyzer.json
-                if (haFieldType.equals("TEXT") && field.indexAnalyzer() != null) {
-                    if (analyzers.contains(field.indexAnalyzer().name())) {
-                        fieldInfo.analyzer = field.indexAnalyzer().name();
-                    } else {
-                        logger.warn("analyzer " + field.indexAnalyzer().name() + ", use default");
-                        // TODO support es analyzers
-                        fieldInfo.analyzer = "simple_analyzer";
-                    }
-                }
-                schema.fields.add(fieldInfo);
-            }
-            // index
-            if (field.isSearchable()) {
-                Schema.Index index = null;
-                String indexName = fieldName;
-                if (fieldName.equals(IdFieldMapper.NAME)) {
-                    // index = new Schema.PRIMARYKEYIndex(indexName, fieldName);
-                    continue;
-                } else if (field.typeName().equals("date")) {
-                    index = new Schema.NormalIndex(indexName, "DATE", fieldName);
-                } else if (haFieldType.equals("TEXT")) { // TODO defualt pack index
-                    index = new Schema.NormalIndex(indexName, "TEXT", fieldName);
-                    indexOptions(index, field.getTextSearchInfo());
-                } else if (haFieldType.equals("STRING")) {
-                    index = new Schema.NormalIndex(indexName, "STRING", fieldName);
-                    indexOptions(index, field.getTextSearchInfo());
-                } else if (haFieldType.equals("INT8")
-                    || haFieldType.equals("INT16")
-                    || haFieldType.equals("INTEGER")
-                    || haFieldType.equals("INT64")) {
-                        index = new Schema.NormalIndex(indexName, "NUMBER", fieldName);
-                        indexOptions(index, field.getTextSearchInfo());
-                    } else if (haFieldType.equals("DOUBLE") || haFieldType.equals("FLOAT")) {
-                        // not support
-                        continue;
-                        // float index will re-mapped to int64 range index
-                    } else {
-                        throw new RuntimeException("index type not supported, field:" + field.name());
-                    }
-
-                schema.indexs.add(index);
-            }
+            generateSchemaField(table, field, schema, addedFields, vectorIndices);
         }
 
         if (schema.getDupFields().size() > 0) {
@@ -239,6 +167,97 @@ public class SchemaGenerator {
         vectorIndices.forEach(vectorIndex -> { schema.indexs.add(vectorIndex); });
 
         return schema;
+    }
+
+    private void generateSchemaField(
+        String table,
+        MappedFieldType field,
+        Schema schema,
+        Set<String> addedFields,
+        List<VectorIndex> vectorIndices
+    ) {
+        String haFieldType = Ha3FieldType.get(field.typeName());
+        String fieldName = field.name();
+        if (haFieldType == null || fieldName.equals("CMD")) {
+            if (fieldName.startsWith("_")) {
+                logger.debug("{}: no support meta mapping type/name for field {}", table, field.name());
+                return;
+            } else {
+                // logger.warn("{}: no support mapping type/name for field {}", table, field.name());
+                throw new UnsupportedOperationException("no support mapping type (" + field.typeName() + ") for field " + field.name());
+            }
+        }
+
+        // multi field index
+        if (fieldName.contains(".") || fieldName.contains("@")) {
+            fieldName = Schema.encodeFieldWithDot(fieldName);
+        }
+
+        // deal vector index
+        if (field instanceof DenseVectorFieldType) {
+            DenseVectorFieldType vectorField = (DenseVectorFieldType) field;
+            VectorIndex vectorIndex = indexVectorField(vectorField, fieldName, schema, haFieldType);
+            vectorIndices.add(vectorIndex);
+            return;
+        }
+
+        addedFields.add(fieldName);
+        if (ExcludeFields.contains(fieldName)) {
+            return;
+        }
+        if (field.isStored()) {
+            schema.summarys.summary_fields.add(fieldName);
+        }
+        // pkey stored as attribute
+        if (field.hasDocValues() || fieldName.equals(IdFieldMapper.NAME)) {
+            schema.attributes.add(fieldName);
+        }
+        // field info
+        if (field.isStored() || field.hasDocValues() || field.isSearchable()) {
+            Schema.FieldInfo fieldInfo = new Schema.FieldInfo(fieldName, haFieldType);
+            // should configured in analyzer.json
+            if (haFieldType.equals("TEXT") && field.indexAnalyzer() != null) {
+                if (analyzers.contains(field.indexAnalyzer().name())) {
+                    fieldInfo.analyzer = field.indexAnalyzer().name();
+                } else {
+                    logger.warn("analyzer " + field.indexAnalyzer().name() + ", use default");
+                    // TODO support es analyzers
+                    fieldInfo.analyzer = "simple_analyzer";
+                }
+            }
+            schema.fields.add(fieldInfo);
+        }
+        // index
+        if (field.isSearchable()) {
+            Schema.Index index = null;
+            String indexName = fieldName;
+            if (fieldName.equals(IdFieldMapper.NAME)) {
+                // index = new Schema.PRIMARYKEYIndex(indexName, fieldName);
+                return;
+            } else if (field.typeName().equals("date")) {
+                index = new Schema.NormalIndex(indexName, "DATE", fieldName);
+            } else if (haFieldType.equals("TEXT")) { // TODO defualt pack index
+                index = new Schema.NormalIndex(indexName, "TEXT", fieldName);
+                indexOptions(index, field.getTextSearchInfo());
+            } else if (haFieldType.equals("STRING")) {
+                index = new Schema.NormalIndex(indexName, "STRING", fieldName);
+                indexOptions(index, field.getTextSearchInfo());
+            } else if (haFieldType.equals("INT8")
+                || haFieldType.equals("INT16")
+                || haFieldType.equals("INTEGER")
+                || haFieldType.equals("INT64")) {
+                    index = new Schema.NormalIndex(indexName, "NUMBER", fieldName);
+                    indexOptions(index, field.getTextSearchInfo());
+                } else if (haFieldType.equals("DOUBLE") || haFieldType.equals("FLOAT")) {
+                    // not support
+                    return;
+                    // float index will re-mapped to int64 range index
+                } else {
+                    throw new RuntimeException("index type not supported, field:" + field.name());
+                }
+
+            schema.indexs.add(index);
+        }
     }
 
     private VectorIndex indexVectorField(DenseVectorFieldType vectorField, String fieldName, Schema schema, String haFieldType) {
