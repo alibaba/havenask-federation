@@ -219,6 +219,11 @@ public class BizConfigGeneratorTests extends MapperServiceTestCase {
         String indexName = randomAlphaOfLength(5);
         MapperService mapperService = createMapperService(mapping(b -> {
             {
+                b.startObject("category_example");
+                {
+                    b.field("type", "keyword");
+                }
+                b.endObject();
                 b.startObject("field");
                 {
                     b.field("type", DenseVectorFieldMapper.CONTENT_TYPE);
@@ -270,7 +275,7 @@ public class BizConfigGeneratorTests extends MapperServiceTestCase {
             String expect = String.format(
                 Locale.ROOT,
                 "{\n"
-                    + "\t\"attributes\":[\"_id\",\"_seq_no\",\"_version\",\"_primary_term\"],\n"
+                    + "\t\"attributes\":[\"_id\",\"category_example\",\"_seq_no\",\"_version\",\"_primary_term\"],\n"
                     + "\t\"fields\":[{\n"
                     + "\t\t\"binary_field\":false,\n"
                     + "\t\t\"field_name\":\"_id\",\n"
@@ -278,6 +283,10 @@ public class BizConfigGeneratorTests extends MapperServiceTestCase {
                     + "\t},{\n"
                     + "\t\t\"binary_field\":false,\n"
                     + "\t\t\"field_name\":\"_routing\",\n"
+                    + "\t\t\"field_type\":\"STRING\"\n"
+                    + "\t},{\n"
+                    + "\t\t\"binary_field\":false,\n"
+                    + "\t\t\"field_name\":\"category_example\",\n"
                     + "\t\t\"field_type\":\"STRING\"\n"
                     + "\t},{\n"
                     + "\t\t\"binary_field\":false,\n"
@@ -321,6 +330,10 @@ public class BizConfigGeneratorTests extends MapperServiceTestCase {
                     + "\t},{\n"
                     + "\t\t\"index_fields\":\"_routing\",\n"
                     + "\t\t\"index_name\":\"_routing\",\n"
+                    + "\t\t\"index_type\":\"STRING\"\n"
+                    + "\t},{\n"
+                    + "\t\t\"index_fields\":\"category_example\",\n"
+                    + "\t\t\"index_name\":\"category_example\",\n"
                     + "\t\t\"index_type\":\"STRING\"\n"
                     + "\t},{\n"
                     + "\t\t\"index_fields\":\"_seq_no\",\n"

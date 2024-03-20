@@ -12,20 +12,6 @@
  *
  */
 
-/*
- * Copyright (c) 2021, Alibaba Group;
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *    http://www.apache.org/licenses/LICENSE-2.0
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- *
- */
-
 package org.havenask.engine.index.config.generator;
 
 import java.io.IOException;
@@ -34,15 +20,18 @@ import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.havenask.common.Strings;
 import org.havenask.common.io.Streams;
 import org.havenask.common.settings.Settings;
 import org.havenask.engine.index.config.Analyzers;
@@ -58,8 +47,11 @@ import org.havenask.engine.index.mapper.DenseVectorFieldMapper.LinearIndexOption
 import org.havenask.engine.index.mapper.DenseVectorFieldMapper.QCIndexOptions;
 import org.havenask.engine.util.JsonPrettyFormatter;
 import org.havenask.index.mapper.IdFieldMapper;
+import org.havenask.index.mapper.KeywordFieldMapper;
 import org.havenask.index.mapper.MappedFieldType;
+import org.havenask.index.mapper.Mapper;
 import org.havenask.index.mapper.MapperService;
+import org.havenask.index.mapper.NumberFieldMapper;
 import org.havenask.index.mapper.TextSearchInfo;
 
 public class SchemaGenerator {
@@ -137,13 +129,13 @@ public class SchemaGenerator {
         schema.indexs.add(new Schema.PRIMARYKEYIndex(IdFieldMapper.NAME, IdFieldMapper.NAME));
         MappedFieldType idField = mapperService.fieldType(IdFieldMapper.NAME);
         if (idField != null) {
-            generateSchemaField(table, idField, schema, addedFields, vectorIndices);
+            generateSchemaField(table, idField, schema, addedFields, vectorIndices, mapperService);
         }
         for (MappedFieldType field : mapperService.fieldTypes()) {
             if (field.name().equals(IdFieldMapper.NAME)) {
                 continue;
             }
-            generateSchemaField(table, field, schema, addedFields, vectorIndices);
+            generateSchemaField(table, field, schema, addedFields, vectorIndices, mapperService);
         }
 
         if (schema.getDupFields().size() > 0) {
@@ -174,7 +166,8 @@ public class SchemaGenerator {
         MappedFieldType field,
         Schema schema,
         Set<String> addedFields,
-        List<VectorIndex> vectorIndices
+        List<VectorIndex> vectorIndices,
+        MapperService mapperService
     ) {
         String haFieldType = Ha3FieldType.get(field.typeName());
         String fieldName = field.name();
@@ -196,6 +189,10 @@ public class SchemaGenerator {
         // deal vector index
         if (field instanceof DenseVectorFieldType) {
             DenseVectorFieldType vectorField = (DenseVectorFieldType) field;
+            if (!Strings.isNullOrEmpty(vectorField.getCategory())) {
+                String categoryField = vectorField.getCategory();
+                validateCategory(categoryField, mapperService);
+            }
             VectorIndex vectorIndex = indexVectorField(vectorField, fieldName, schema, haFieldType);
             vectorIndices.add(vectorIndex);
             return;
@@ -520,5 +517,55 @@ public class SchemaGenerator {
             }
         }
         return resStrs;
+    }
+
+    /**
+     * Validates that the vector's 'category' field exists and is of an appropriate type.
+     * The category must correspond to an existing field defined in the mapping.
+     * Its type should be one of the following: keyword, long, integer, short, or byte.
+     */
+    private void validateCategory(String categoryName, MapperService mapperService) {
+        Map<String, String> fieldTypeMap = new HashMap<>();
+        for (MappedFieldType fieldType : mapperService.fieldTypes()) {
+            if (fieldType.name().contains(".") || fieldType.name().contains("@")) {
+                fieldTypeMap.put(Schema.encodeFieldWithDot(fieldType.name()), fieldType.name());
+            } else {
+                fieldTypeMap.put(fieldType.name(), fieldType.name());
+            }
+        }
+
+        if (!fieldTypeMap.containsKey(categoryName)) {
+            throw new IllegalArgumentException(String.format(Locale.ROOT, "category [%s] not found", categoryName));
+        }
+
+        String categoryFieldName = fieldTypeMap.get(categoryName);
+        Mapper categoryMapper = mapperService.documentMapper().mappers().getMapper(categoryFieldName);
+        if (categoryMapper instanceof KeywordFieldMapper) {
+
+        } else if (categoryMapper instanceof NumberFieldMapper) {
+            NumberFieldMapper numberFieldMapper = (NumberFieldMapper) categoryMapper;
+            String fieldType = numberFieldMapper.fieldType().typeName();
+            if (!fieldType.equals("long") && !fieldType.equals("integer") && !fieldType.equals("short") && !fieldType.equals("byte")) {
+                throw new IllegalArgumentException(
+                    String.format(
+                        Locale.ROOT,
+                        "category [%s] is not a legal type, "
+                            + "category must be keyword or a integer value type"
+                            + "(long, integer, short, or byte)",
+                        categoryName
+                    )
+                );
+            }
+        } else {
+            throw new IllegalArgumentException(
+                String.format(
+                    Locale.ROOT,
+                    "category [%s] is not a legal type, "
+                        + "category must be keyword or a integer value type"
+                        + "(long, integer, short, or byte)",
+                    categoryName
+                )
+            );
+        }
     }
 }

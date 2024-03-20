@@ -21,6 +21,7 @@ import org.havenask.common.xcontent.ToXContent;
 import org.havenask.common.xcontent.XContentBuilder;
 import org.havenask.common.xcontent.XContentParser;
 import org.havenask.common.xcontent.support.XContentMapValues;
+import org.havenask.engine.index.config.Schema;
 import org.havenask.index.mapper.DocumentMapperParser;
 import org.havenask.index.mapper.FieldMapper;
 import org.havenask.index.mapper.MappedFieldType;
@@ -1038,7 +1039,11 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
             super(name, false, false, false, TextSearchInfo.NONE, meta);
             this.dims = dims;
             this.similarity = similarity;
-            this.category = category;
+            if (category.contains(".") || category.contains(("@"))) {
+                this.category = Schema.encodeFieldWithDot(category);
+            } else {
+                this.category = category;
+            }
             this.indexOptions = indexOptions;
         }
 
