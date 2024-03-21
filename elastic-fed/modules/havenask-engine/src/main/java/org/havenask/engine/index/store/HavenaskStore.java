@@ -184,7 +184,7 @@ public class HavenaskStore extends Store {
     @Override
     public IndexInput openVerifyingInput(String filename, IOContext context, StoreFileMetadata metadata) throws IOException {
         assert metadata.writtenBy() != null;
-        return new VerifyingIndexInput(openInput(metadata, context));
+        return openInput(metadata, context);
     }
 
     @Override
