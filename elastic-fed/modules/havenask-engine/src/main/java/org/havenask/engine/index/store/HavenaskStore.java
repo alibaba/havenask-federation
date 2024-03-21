@@ -182,6 +182,12 @@ public class HavenaskStore extends Store {
     }
 
     @Override
+    public IndexInput openVerifyingInput(String filename, IOContext context, StoreFileMetadata metadata) throws IOException {
+        assert metadata.writtenBy() != null;
+        return new VerifyingIndexInput(openInput(metadata, context));
+    }
+
+    @Override
     public IndexInput openInput(StoreFileMetadata metadata, IOContext context) throws IOException {
         if (isHavenaskFile(metadata.writtenBy())) {
             Path filePath = shardPath.resolve(metadata.name());
