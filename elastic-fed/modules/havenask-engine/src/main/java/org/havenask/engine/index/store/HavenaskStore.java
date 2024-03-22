@@ -18,6 +18,8 @@ import com.alibaba.fastjson.JSONObject;
 import org.apache.logging.log4j.message.ParameterizedMessage;
 import org.apache.lucene.index.IndexCommit;
 import org.apache.lucene.store.BufferedIndexInput;
+import org.apache.lucene.store.ByteBuffersDataOutput;
+import org.apache.lucene.store.ByteBuffersIndexOutput;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
@@ -164,18 +166,25 @@ public class HavenaskStore extends Store {
         throws IOException {
         if (isHavenaskFile(metadata.writtenBy())) {
             Path filePath = shardPath.resolve(fileName);
-            Path fileDir = filePath.getParent();
-            if (Files.notExists(fileDir)) {
-                Files.createDirectories(fileDir);
-            }
 
-            OutputStream os = Files.newOutputStream(shardPath.resolve(fileName), StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.CREATE);
-            return new OutputStreamIndexOutput(
-                "OutputStreamIndexOutput(path=\"" + shardPath.resolve(fileName) + "\")",
-                fileName,
-                os,
-                CHUNK_SIZE
-            );
+            if (metadata.length() == 0 && metadata.checksum().equals(EntryTable.Type.DIR.name())) {
+                Files.createDirectories(shardPath.resolve(fileName));
+                // return empty ByteBuffersIndexOutput
+                return new ByteBuffersIndexOutput(new ByteBuffersDataOutput(), "ByteBuffersIndexOutput(path=\"" + shardPath.resolve(fileName) + "\")", fileName);
+            } else {
+                Path fileDir = filePath.getParent();
+                if (Files.notExists(fileDir)) {
+                    Files.createDirectories(fileDir);
+                }
+
+                OutputStream os = Files.newOutputStream(shardPath.resolve(fileName), StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.CREATE);
+                return new OutputStreamIndexOutput(
+                        "OutputStreamIndexOutput(path=\"" + shardPath.resolve(fileName) + "\")",
+                        fileName,
+                        os,
+                        CHUNK_SIZE
+                );
+            }
         } else {
             return super.createVerifyingOutput(fileName, metadata, context);
         }
