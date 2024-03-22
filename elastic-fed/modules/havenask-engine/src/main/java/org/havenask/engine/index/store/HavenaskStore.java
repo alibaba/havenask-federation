@@ -169,7 +169,7 @@ public class HavenaskStore extends Store {
                 Files.createDirectories(fileDir);
             }
 
-            OutputStream os = Files.newOutputStream(shardPath.resolve(fileName), StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING);
+            OutputStream os = Files.newOutputStream(shardPath.resolve(fileName), StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.CREATE);
             return new OutputStreamIndexOutput(
                 "OutputStreamIndexOutput(path=\"" + shardPath.resolve(fileName) + "\")",
                 fileName,
