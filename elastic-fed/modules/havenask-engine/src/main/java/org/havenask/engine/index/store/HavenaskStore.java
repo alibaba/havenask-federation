@@ -177,13 +177,17 @@ public class HavenaskStore extends Store {
                     Files.createDirectories(fileDir);
                 }
 
-                OutputStream os = Files.newOutputStream(shardPath.resolve(fileName), StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.CREATE);
-                return new OutputStreamIndexOutput(
-                        "OutputStreamIndexOutput(path=\"" + shardPath.resolve(fileName) + "\")",
-                        fileName,
-                        os,
-                        CHUNK_SIZE
-                );
+                if (Files.exists(filePath)) {
+                    return new ByteBuffersIndexOutput(new ByteBuffersDataOutput(), "ByteBuffersIndexOutput(path=\"" + shardPath.resolve(fileName) + "\")", fileName);
+                } else {
+                    OutputStream os = Files.newOutputStream(shardPath.resolve(fileName), StandardOpenOption.WRITE, StandardOpenOption.CREATE_NEW);
+                    return new OutputStreamIndexOutput(
+                            "OutputStreamIndexOutput(path=\"" + shardPath.resolve(fileName) + "\")",
+                            fileName,
+                            os,
+                            CHUNK_SIZE
+                    );
+                }
             }
         } else {
             return super.createVerifyingOutput(fileName, metadata, context);
