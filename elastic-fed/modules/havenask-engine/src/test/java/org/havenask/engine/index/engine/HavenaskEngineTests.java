@@ -297,9 +297,9 @@ public class HavenaskEngineTests extends EngineTestCase {
             + "my_double=13.5\u001F\n"
             + "my_float=12.3\u001F\n"
             + "my_boolean=true\u001F\n"
-            + "my_int_array=1\u001D2\u001D3\u001D4\u001F\n"
-            + "my_string_array=aaa\u001Dbbb\u001Dccc\u001F\n"
-            + "my_boolean_array=true\u001Dtrue\u001Dfalse\u001Dtrue\u001Dfalse\u001F\n"
+            + "my_int_array=1,2,3,4\u001F\n"
+            + "my_string_array=aaa,bbb,ccc\u001F\n"
+            + "my_boolean_array=true,true,false,true,false\u001F\n"
             + "my_object_first=first\u001F\n"
             + "my_object_last=last\u001F\n"
             + "_id=id\u001F\n"
@@ -333,8 +333,8 @@ public class HavenaskEngineTests extends EngineTestCase {
         String vectorRes = HavenaskEngine.buildHaDocMessage(vectorSource, parsedDocument, Operation.TYPE.INDEX);
 
         String vectorExpectedRes = "CMD=add\u001F\n"
-            + "image_vector=42\u001D8\u001D-15\u001F\n"
-            + "title_vector=25\u001D1\u001D4\u001D-12\u001D2\u001F\n"
+            + "image_vector=42,8,-15\u001F\n"
+            + "title_vector=25,1,4,-12,2\u001F\n"
             + "title=alpine lake\u001F\n"
             + "file_type=png\u001F\n"
             + "_id=id\u001F\n"

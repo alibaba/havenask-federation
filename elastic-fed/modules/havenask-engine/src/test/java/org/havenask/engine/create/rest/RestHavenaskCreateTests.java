@@ -215,11 +215,76 @@ public class RestHavenaskCreateTests extends MapperServiceTestCase {
         String indexName = randomAlphaOfLength(5);
 
         String wrongIndexNameSchemaJsonStr = "{\n" + "    \"table_name\":\"wrong_index_name\",\n" + "    \"table_type\":\"normal\"\n" + "}";
-        validateIllegalSchemaJsonParams(indexName, wrongIndexNameSchemaJsonStr);
-    }
 
-    private void validateIllegalSchemaJsonParams(String indexName, String illegalSchemaJsonStr) {
-        expectThrows(IllegalArgumentException.class, () -> restHandler.schemaJsonValidate(indexName, illegalSchemaJsonStr));
+        IllegalArgumentException indexError = expectThrows(
+            IllegalArgumentException.class,
+            () -> restHandler.schemaJsonValidate(indexName, wrongIndexNameSchemaJsonStr)
+        );
+        assertEquals(
+            String.format(Locale.ROOT, "'schema' Value:'table_name' is expected to be '%s', but found 'wrong_index_name'", indexName),
+            indexError.getMessage()
+        );
+
+        String wrongIndexIdSchemaJsonStr = "{\n"
+            + "\t\"indexs\":[\n"
+            + "\t\t{\n"
+            + "\t\t\t\"index_fields\":\"_id\",\n"
+            + "\t\t\t\"index_name\":\"_id\",\n"
+            + "\t\t\t\"index_type\":\"STRING\"\n"
+            + "\t\t}\n"
+            + "\t]\n"
+            + "}";
+
+        IllegalArgumentException indexIdError = expectThrows(
+            IllegalArgumentException.class,
+            () -> restHandler.schemaJsonValidate(indexName, wrongIndexIdSchemaJsonStr)
+        );
+
+        assertEquals("[schema.indexs._id] is an internal parameter of fed, please do not configure it.", indexIdError.getMessage());
+
+        String wrongFieldSourceSchemaJsonStr = "{\n"
+            + "\t\"fields\":[\n"
+            + "\t\t{\n"
+            + "\t\t\t\"binary_field\":false,\n"
+            + "\t\t\t\"field_name\":\"_source\",\n"
+            + "\t\t\t\"field_type\":\"INT64\"\n"
+            + "\t\t}\n"
+            + "\t]\n"
+            + "}";
+
+        IllegalArgumentException fieldSourceError = expectThrows(
+            IllegalArgumentException.class,
+            () -> restHandler.schemaJsonValidate(indexName, wrongFieldSourceSchemaJsonStr)
+        );
+
+        assertEquals("[schema.fields._source] is an internal parameter of fed, please do not configure it.", fieldSourceError.getMessage());
+
+        String wrongIndexRoutingSchemaJsonStr = "{\n"
+            + "\t\"indexs\":[\n"
+            + "\t\t{\n"
+            + "\t\t\t\"has_primary_key_attribute\":true,\n"
+            + "\t\t\t\"index_fields\":\"_id\",\n"
+            + "\t\t\t\"index_name\":\"_id\",\n"
+            + "\t\t\t\"index_type\":\"PRIMARYKEY64\",\n"
+            + "\t\t\t\"is_primary_key_sorted\":false\n"
+            + "\t\t},\n"
+            + "\t\t{\n"
+            + "\t\t\t\"index_fields\":\"_routing\",\n"
+            + "\t\t\t\"index_name\":\"_routing\",\n"
+            + "\t\t\t\"index_type\":\"INT64\"\n"
+            + "\t\t}\n"
+            + "\t]\n"
+            + "}";
+
+        IllegalArgumentException indexRoutingError = expectThrows(
+            IllegalArgumentException.class,
+            () -> restHandler.schemaJsonValidate(indexName, wrongIndexRoutingSchemaJsonStr)
+        );
+
+        assertEquals(
+            "[schema.indexs._routing] is an internal parameter of fed, please do not configure it.",
+            indexRoutingError.getMessage()
+        );
     }
 
     public void testDataTableJsonValidate() {

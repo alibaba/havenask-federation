@@ -157,6 +157,8 @@ public class RestHavenaskCreate extends BaseRestHandler {
         JSONObject schemaJsonObject = JSONObject.parseObject(schemaJsonInput);
 
         validateValueAtPath(schemaJsonObject, "table_name", index, "schema");
+        validateDefaultSchemaFieldsValue(schemaJsonObject);
+        validateDefaultSchemaIndexField(schemaJsonObject);
     }
 
     protected void dataTableJsonValidate(String index, String dataTableJsonInput) {
@@ -218,6 +220,124 @@ public class RestHavenaskCreate extends BaseRestHandler {
                 + value
                 + "'";
             throw new IllegalArgumentException(errorMessage);
+        }
+    }
+
+    private void validateDefaultSchemaFieldsValue(JSONObject schemaJson) {
+        JSONArray fields = schemaJson.getJSONArray("fields");
+        if (fields == null) {
+            return;
+        }
+
+        final String ID_FIELD = "_id";
+        final String ID_TYPE = "STRING";
+        final String ROUTING_FIELD = "_routing";
+        final String ROUTING_TYPE = "STRING";
+        final String SEQNO_FIELD = "_seq_no";
+        final String SEQNO_TYPE = "INT64";
+        final String SOURCE_FIELD = "_source";
+        final String SOURCE_TYPE = "STRING";
+        final String VERSION_FIELD = "_version";
+        final String VERSION_TYPE = "INT64";
+        final String PRIMARY_TERM_FIELD = "_primary_term";
+        final String PRIMARY_TERM_TYPE = "INT64";
+
+        for (int i = 0; i < fields.size(); i++) {
+            JSONObject field = fields.getJSONObject(i);
+            compareDefaultSchemaFieldValue(field, ID_FIELD, ID_TYPE);
+            compareDefaultSchemaFieldValue(field, ROUTING_FIELD, ROUTING_TYPE);
+            compareDefaultSchemaFieldValue(field, SEQNO_FIELD, SEQNO_TYPE);
+            compareDefaultSchemaFieldValue(field, SOURCE_FIELD, SOURCE_TYPE);
+            compareDefaultSchemaFieldValue(field, VERSION_FIELD, VERSION_TYPE);
+            compareDefaultSchemaFieldValue(field, PRIMARY_TERM_FIELD, PRIMARY_TERM_TYPE);
+        }
+    }
+
+    private void compareDefaultSchemaFieldValue(JSONObject field, String field_name, String field_type) {
+        final String BINARY_FIELD = "binary_field";
+        final String FIELD_NAME = "field_name";
+        final String FIELD_TYPE = "field_type";
+        if (field.containsKey(FIELD_NAME) && field.get(FIELD_NAME) instanceof String && field.getString(FIELD_NAME).equals(field_name)) {
+            if (field.containsKey(BINARY_FIELD) && field.getBoolean(BINARY_FIELD) != false
+                || field.containsKey(FIELD_TYPE) && !field.getString(FIELD_TYPE).equals(field_type)) {
+                String errorMessage = String.format(
+                    Locale.ROOT,
+                    "[schema.fields.%s] is an internal parameter of fed, " + "please do not configure it.",
+                    field_name
+                );
+                throw new IllegalArgumentException(errorMessage);
+            }
+        }
+    }
+
+    private void validateDefaultSchemaIndexField(JSONObject schemaJson) {
+        JSONArray fields = schemaJson.getJSONArray("indexs");
+        if (fields == null) {
+            return;
+        }
+
+        final String ID_FIELD = "_id";
+        final String ROUTING_FIELD = "_routing";
+        final String ROUTING_TYPE = "STRING";
+        final String SEQNO_FIELD = "_seq_no";
+        final String SEQNO_TYPE = "NUMBER";
+
+        for (int i = 0; i < fields.size(); i++) {
+            JSONObject field = fields.getJSONObject(i);
+            compareDefaultSchemaPrimaryIndexValue(field, ID_FIELD);
+            compareDefaultSchemaNormalIndexValue(field, ROUTING_FIELD, ROUTING_TYPE);
+            compareDefaultSchemaNormalIndexValue(field, SEQNO_FIELD, SEQNO_TYPE);
+        }
+    }
+
+    private void compareDefaultSchemaNormalIndexValue(JSONObject field, String field_name, String field_type) {
+        final String INDEX_FIELDS = "index_fields";
+        final String INDEX_NAME = "index_name";
+        final String INDEX_TYPE = "index_type";
+        if (field.containsKey(INDEX_NAME) && field.get(INDEX_NAME) instanceof String && field.getString(INDEX_NAME).equals(field_name)) {
+            if (field.containsKey(INDEX_FIELDS)
+                && field.get(INDEX_FIELDS) instanceof String
+                && !field.getString(INDEX_FIELDS).equals(field_name)
+                || field.containsKey(INDEX_TYPE)
+                    && field.get(INDEX_TYPE) instanceof String
+                    && !field.getString(INDEX_TYPE).equals(field_type)) {
+                String errorMessage = String.format(
+                    Locale.ROOT,
+                    "[schema.indexs.%s] is an internal parameter of fed, " + "please do not configure it.",
+                    field_name
+                );
+                throw new IllegalArgumentException(errorMessage);
+            }
+        }
+    }
+
+    private void compareDefaultSchemaPrimaryIndexValue(JSONObject field, String field_name) {
+        final String HAS_PRIMARY_KEY_ATTRIBUTE = "has_primary_key_attribute";
+        final String INDEX_FIELDS = "index_fields";
+        final String INDEX_NAME = "index_name";
+        final String INDEX_TYPE = "index_type";
+        final String IS_PRIMARY_KEY_SORTED = "is_primary_key_sorted";
+        final String PRIMARY_KEY = "PRIMARYKEY64";
+        if (field.containsKey(INDEX_NAME) && field.get(INDEX_NAME) instanceof String && field.getString(INDEX_NAME).equals(field_name)) {
+            if (field.containsKey(INDEX_FIELDS)
+                && field.get(INDEX_FIELDS) instanceof String
+                && !field.getString(INDEX_FIELDS).equals(field_name)
+                || field.containsKey(INDEX_TYPE)
+                    && field.get(INDEX_TYPE) instanceof String
+                    && !field.getString(INDEX_TYPE).equals(PRIMARY_KEY)
+                || field.containsKey(IS_PRIMARY_KEY_SORTED)
+                    && field.get(IS_PRIMARY_KEY_SORTED) instanceof Boolean
+                    && field.getBoolean(IS_PRIMARY_KEY_SORTED) != false
+                || field.containsKey(HAS_PRIMARY_KEY_ATTRIBUTE)
+                    && field.get(HAS_PRIMARY_KEY_ATTRIBUTE) instanceof Boolean
+                    && field.getBoolean(HAS_PRIMARY_KEY_ATTRIBUTE) != true) {
+                String errorMessage = String.format(
+                    Locale.ROOT,
+                    "[schema.indexs.%s] is an internal parameter of fed, " + "please do not configure it.",
+                    field_name
+                );
+                throw new IllegalArgumentException(errorMessage);
+            }
         }
     }
 }
