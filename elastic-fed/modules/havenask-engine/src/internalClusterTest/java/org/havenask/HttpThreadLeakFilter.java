@@ -12,22 +12,13 @@
  *
  */
 
-package org.havenask.engine.rpc;
+package org.havenask;
 
-import java.io.Closeable;
-import java.io.IOException;
+import com.carrotsearch.randomizedtesting.ThreadFilter;
 
-public interface HavenaskClient extends Closeable {
-    /**
-     * 获取searcher heartbeat target数据
-     * @return Heartbeat target响应结果
-     */
-    HeartbeatTargetResponse getHeartbeatTarget() throws IOException;
-
-    /**
-     * 更新searcher heartbeat target
-     * @param request 更新请求
-     * @return 更新searcher heartbeat target的响应结果
-     */
-    HeartbeatTargetResponse updateHeartbeatTarget(UpdateHeartbeatTargetRequest request) throws IOException;
+public class HttpThreadLeakFilter implements ThreadFilter {
+    @Override
+    public boolean reject(Thread t) {
+        return t.getName().contains("I/O dispatcher") || t.getName().contains("pool-");
+    }
 }

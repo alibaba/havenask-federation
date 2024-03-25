@@ -16,7 +16,6 @@ package org.havenask.engine.rpc.http;
 
 import static org.havenask.common.xcontent.XContentType.JSON;
 
-import java.io.Closeable;
 import java.io.IOException;
 import org.apache.http.HttpHost;
 import org.apache.http.client.config.RequestConfig;
@@ -35,39 +34,50 @@ import org.havenask.engine.rpc.HavenaskClient;
 import org.havenask.engine.rpc.HeartbeatTargetResponse;
 import org.havenask.engine.rpc.UpdateHeartbeatTargetRequest;
 
-public class HavenaskHttpClient implements HavenaskClient, Closeable {
+public class HavenaskHttpClient implements HavenaskClient {
     private static final Logger LOGGER = LogManager.getLogger(HavenaskHttpClient.class);
     private static final String HEART_BEAT_URL = "/HeartbeatService/heartbeat";
 
     private static final int SOCKET_TIMEOUT = 1200000;
-    protected RestClient client;
+
+    private RestClient client;
+    private final int port;
+    private final int socketTimeout;
 
     public HavenaskHttpClient(int port) {
         this(port, SOCKET_TIMEOUT);
     }
 
     public HavenaskHttpClient(int port, final int socketTimeout) {
-        client = RestClient.builder(new HttpHost("127.0.0.1", port, "http"))
-            .setHttpClientConfigCallback(new RestClientBuilder.HttpClientConfigCallback() {
-                @Override
-                public HttpAsyncClientBuilder customizeHttpClient(HttpAsyncClientBuilder httpClientBuilder) {
-                    return httpClientBuilder.setMaxConnPerRoute(1000).setMaxConnTotal(1000);
+        this.port = port;
+        this.socketTimeout = socketTimeout;
+    }
 
-                }
-            })
-            .setRequestConfigCallback(new RestClientBuilder.RequestConfigCallback() {
-                @Override
-                public RequestConfig.Builder customizeRequestConfig(RequestConfig.Builder requestConfigBuilder) {
-                    return requestConfigBuilder.setSocketTimeout(socketTimeout);
-                }
-            })
-            .build();
+    protected synchronized RestClient getClient() {
+        if (client == null) {
+            client = RestClient.builder(new HttpHost("127.0.0.1", port, "http"))
+                .setHttpClientConfigCallback(new RestClientBuilder.HttpClientConfigCallback() {
+                    @Override
+                    public HttpAsyncClientBuilder customizeHttpClient(HttpAsyncClientBuilder httpClientBuilder) {
+                        return httpClientBuilder.setMaxConnPerRoute(1000).setMaxConnTotal(1000);
+
+                    }
+                })
+                .setRequestConfigCallback(new RestClientBuilder.RequestConfigCallback() {
+                    @Override
+                    public RequestConfig.Builder customizeRequestConfig(RequestConfig.Builder requestConfigBuilder) {
+                        return requestConfigBuilder.setSocketTimeout(socketTimeout);
+                    }
+                })
+                .build();
+        }
+        return client;
     }
 
     @Override
     public HeartbeatTargetResponse getHeartbeatTarget() throws IOException {
         Request request = new org.havenask.client.Request("GET", HEART_BEAT_URL);
-        Response response = client.performRequest(request);
+        Response response = getClient().performRequest(request);
         try (
             XContentParser parser = JSON.xContent()
                 .createParser(NamedXContentRegistry.EMPTY, LoggingDeprecationHandler.INSTANCE, response.getEntity().getContent())
@@ -83,7 +93,7 @@ public class HavenaskHttpClient implements HavenaskClient, Closeable {
         Request request = new org.havenask.client.Request("POST", HEART_BEAT_URL);
         request.setJsonEntity(Strings.toString(updateHeartbeatTargetRequest));
 
-        Response response = client.performRequest(request);
+        Response response = getClient().performRequest(request);
         Long end = System.nanoTime();
         LOGGER.trace("updateHeartbeatTarget cost [{}] ms", (end - start) / 1000000);
         try (
@@ -97,6 +107,8 @@ public class HavenaskHttpClient implements HavenaskClient, Closeable {
 
     @Override
     public void close() throws IOException {
-        client.close();
+        if (client != null) {
+            client.close();
+        }
     }
 }

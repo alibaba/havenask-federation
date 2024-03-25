@@ -182,6 +182,7 @@ public class SearcherHttpClientIT extends HavenaskITTestCase {
         assertEquals(expectCustomInfo, response.getCustomInfo().toString());
         assertEquals(expectServiceInfo, response.getServiceInfo());
         assertEquals(expectSignature, response.getSignature().toString());
+        client.close();
     }
 
     public void testUpdateHeartbeatTarget() throws IOException {
@@ -302,5 +303,6 @@ public class SearcherHttpClientIT extends HavenaskITTestCase {
         assertEquals(responseTargetStr, response.getCustomInfo().toString());
         assertEquals(serviceInfoStr, response.getServiceInfo());
         assertEquals(targetInfo, response.getSignature());
+        client.close();
     }
 }

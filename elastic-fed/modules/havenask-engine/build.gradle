@@ -55,7 +55,9 @@ bundlePlugin {
 tasks.named("thirdPartyAudit").configure {
   ignoreMissingClasses(
           // classes are missing
-          'android.util.Log',
+          "okhttp3.MediaType",
+          "okhttp3.RequestBody",
+          "okhttp3.ResponseBody",
           "com.google.common.collect.ArrayListMultimap",
           "com.google.common.collect.Multimap",
           "javax.money.CurrencyUnit",

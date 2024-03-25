@@ -381,4 +381,11 @@ public class HavenaskEnginePlugin extends Plugin
             }
         });
     }
+
+    @Override
+    public void close() throws IOException {
+        if (qrsClientSetOnce.get() != null) {
+            qrsClientSetOnce.get().close();
+        }
+    }
 }

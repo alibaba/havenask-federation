@@ -49,7 +49,7 @@ public class QrsHttpClient extends HavenaskHttpClient implements QrsClient {
             query += "&&kvpair=" + qrsSqlRequest.getKvpair();
         }
         request.addParameter("query", query);
-        Response response = client.performRequest(request);
+        Response response = getClient().performRequest(request);
         long end = System.nanoTime();
         logger.debug("execute sql: {} cost: {} us", qrsSqlRequest.getSql(), (end - start) / 1000);
         String responseString = EntityUtils.toString(response.getEntity());
@@ -59,7 +59,7 @@ public class QrsHttpClient extends HavenaskHttpClient implements QrsClient {
     @Override
     public SqlClientInfoResponse executeSqlClientInfo() throws IOException {
         Request request = new Request("GET", SQL_TABLE_INFO_URL);
-        Response response = client.performRequest(request);
+        Response response = getClient().performRequest(request);
         String responseStr = EntityUtils.toString(response.getEntity());
         JSONObject jsonObject = JSONObject.parseObject(responseStr);
         int errorCode = -1;
