@@ -970,6 +970,189 @@ public class SchemaGeneratorTests extends MapperServiceTestCase {
         assertEquals(expect, actual);
     }
 
+    public void testVectorWithCategory() throws IOException {
+        String[] illegalTypes = new String[] { "text", "double", "float", "boolean", "date" };
+        String[] legalTypes = new String[] { "keyword", "long", "integer", "short", "byte" };
+        for (String type : illegalTypes) {
+            MapperService illegalMapperService = createMapperService(mapping(b -> {
+                {
+                    b.startObject("text_field");
+                    {
+                        b.field("type", type);
+                    }
+                    b.endObject();
+                    b.startObject("image_vector");
+                    {
+                        b.field("type", DenseVectorFieldMapper.CONTENT_TYPE);
+                        b.field("dims", 128);
+                        b.field("category", "text_field");
+                    }
+                    b.endObject();
+                }
+            }));
+            SchemaGenerator schemaGenerator = new SchemaGenerator();
+
+            IllegalArgumentException e = expectThrows(
+                IllegalArgumentException.class,
+                () -> schemaGenerator.getSchema(indexName, Settings.EMPTY, illegalMapperService)
+            );
+            assertEquals(
+                "category [text_field] is not a legal type, category must be keyword or a integer value type"
+                    + "(long, integer, short, or byte)",
+                e.getMessage()
+            );
+        }
+
+        for (String type : legalTypes) {
+            MapperService illegalMapperService = createMapperService(mapping(b -> {
+                {
+                    b.startObject("text_field");
+                    {
+                        b.field("type", type);
+                    }
+                    b.endObject();
+                    b.startObject("image_vector");
+                    {
+                        b.field("type", DenseVectorFieldMapper.CONTENT_TYPE);
+                        b.field("dims", 128);
+                        b.field("category", "text_field");
+                    }
+                    b.endObject();
+                }
+            }));
+            SchemaGenerator schemaGenerator = new SchemaGenerator();
+            schemaGenerator.getSchema(indexName, Settings.EMPTY, illegalMapperService);
+        }
+
+        // test Object Mapper
+        MapperService ObjectMapperService = createMapperService(mapping(b -> {
+            {
+                b.startObject("type");
+                {
+                    b.startObject("properties");
+                    {
+                        b.startObject("file_type");
+                        {
+                            b.field("type", "integer");
+                        }
+                        b.endObject();
+                    }
+                    b.endObject();
+                }
+                b.endObject();
+                b.startObject("image_vector");
+                {
+                    b.field("type", DenseVectorFieldMapper.CONTENT_TYPE);
+                    b.field("dims", 128);
+                    b.field("category", "type.file_type");
+                }
+                b.endObject();
+            }
+        }));
+        SchemaGenerator schemaGenerator = new SchemaGenerator();
+        Schema ObjectSchema = schemaGenerator.getSchema(indexName, Settings.EMPTY, ObjectMapperService);
+        String ObjectActual = ObjectSchema.toString();
+        String ObjectExpected = String.format(
+            Locale.ROOT,
+            "{\n"
+                + "\t\"attributes\":[\"_id\",\"_seq_no\",\"type_file_type\",\"_version\",\"_primary_term\"],\n"
+                + "\t\"fields\":[{\n"
+                + "\t\t\"binary_field\":false,\n"
+                + "\t\t\"field_name\":\"_id\",\n"
+                + "\t\t\"field_type\":\"STRING\"\n"
+                + "\t},{\n"
+                + "\t\t\"binary_field\":false,\n"
+                + "\t\t\"field_name\":\"_routing\",\n"
+                + "\t\t\"field_type\":\"STRING\"\n"
+                + "\t},{\n"
+                + "\t\t\"binary_field\":false,\n"
+                + "\t\t\"field_name\":\"_seq_no\",\n"
+                + "\t\t\"field_type\":\"INT64\"\n"
+                + "\t},{\n"
+                + "\t\t\"binary_field\":false,\n"
+                + "\t\t\"field_name\":\"type_file_type\",\n"
+                + "\t\t\"field_type\":\"INTEGER\"\n"
+                + "\t},{\n"
+                + "\t\t\"binary_field\":false,\n"
+                + "\t\t\"field_name\":\"_source\",\n"
+                + "\t\t\"field_type\":\"STRING\"\n"
+                + "\t},{\n"
+                + "\t\t\"binary_field\":false,\n"
+                + "\t\t\"field_name\":\"_version\",\n"
+                + "\t\t\"field_type\":\"INT64\"\n"
+                + "\t},{\n"
+                + "\t\t\"binary_field\":false,\n"
+                + "\t\t\"field_name\":\"image_vector\",\n"
+                + "\t\t\"field_type\":\"STRING\"\n"
+                + "\t},{\n"
+                + "\t\t\"binary_field\":false,\n"
+                + "\t\t\"field_name\":\"DUP_image_vector\",\n"
+                + "\t\t\"field_type\":\"RAW\"\n"
+                + "\t},{\n"
+                + "\t\t\"binary_field\":false,\n"
+                + "\t\t\"field_name\":\"_primary_term\",\n"
+                + "\t\t\"field_type\":\"INT64\"\n"
+                + "\t}],\n"
+                + "\t\"indexs\":[{\n"
+                + "\t\t\"has_primary_key_attribute\":true,\n"
+                + "\t\t\"index_fields\":\"_id\",\n"
+                + "\t\t\"index_name\":\"_id\",\n"
+                + "\t\t\"index_type\":\"PRIMARYKEY64\",\n"
+                + "\t\t\"is_primary_key_sorted\":false\n"
+                + "\t},{\n"
+                + "\t\t\"index_fields\":\"_routing\",\n"
+                + "\t\t\"index_name\":\"_routing\",\n"
+                + "\t\t\"index_type\":\"STRING\"\n"
+                + "\t},{\n"
+                + "\t\t\"index_fields\":\"_seq_no\",\n"
+                + "\t\t\"index_name\":\"_seq_no\",\n"
+                + "\t\t\"index_type\":\"NUMBER\"\n"
+                + "\t},{\n"
+                + "\t\t\"index_fields\":\"type_file_type\",\n"
+                + "\t\t\"index_name\":\"type_file_type\",\n"
+                + "\t\t\"index_type\":\"NUMBER\"\n"
+                + "\t},{\n"
+                + "\t\t\"index_fields\":[\n"
+                + "\t\t\t{\n"
+                + "\t\t\t\t\"boost\":1,\n"
+                + "\t\t\t\t\"field_name\":\"_id\"\n"
+                + "\t\t\t},\n"
+                + "\t\t\t{\n"
+                + "\t\t\t\t\"boost\":1,\n"
+                + "\t\t\t\t\"field_name\":\"type_file_type\"\n"
+                + "\t\t\t},\n"
+                + "\t\t\t{\n"
+                + "\t\t\t\t\"boost\":1,\n"
+                + "\t\t\t\t\"field_name\":\"DUP_image_vector\"\n"
+                + "\t\t\t}\n"
+                + "\t\t],\n"
+                + "\t\t\"index_name\":\"image_vector\",\n"
+                + "\t\t\"index_type\":\"CUSTOMIZED\",\n"
+                + "\t\t\"indexer\":\"aitheta2_indexer\",\n"
+                + "\t\t\"parameters\":{\n"
+                + "\t\t\t\"dimension\":\"128\",\n"
+                + "\t\t\t\"enable_rt_build\":\"true\",\n"
+                + "\t\t\t\"distance_type\":\"SquaredEuclidean\",\n"
+                + "\t\t\t\"ignore_invalid_doc\":\"true\",\n"
+                + "\t\t\t\"builder_name\":\"HnswBuilder\",\n"
+                + "\t\t\t\"searcher_name\":\"HnswSearcher\"\n"
+                + "\t\t}\n"
+                + "\t}],\n"
+                + "\t\"settings\":{\n"
+                + "\t\t\"enable_all_text_field_meta\":true\n"
+                + "\t},\n"
+                + "\t\"summarys\":{\n"
+                + "\t\t\"compress\":true,\n"
+                + "\t\t\"summary_fields\":[\"_id\",\"_routing\",\"_source\"]\n"
+                + "\t},\n"
+                + "\t\"table_name\":\"%s\",\n"
+                + "\t\"table_type\":\"normal\"\n"
+                + "}",
+            indexName
+        );
+        assertEquals(ObjectExpected, ObjectActual);
+    }
+
     protected final MapperService createMapperServiceIncludingHavenaskAnalyzer(Version version, XContentBuilder mapping)
         throws IOException {
         IndexMetadata meta = IndexMetadata.builder("index")

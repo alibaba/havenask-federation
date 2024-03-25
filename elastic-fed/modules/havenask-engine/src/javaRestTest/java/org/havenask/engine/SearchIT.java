@@ -31,6 +31,7 @@ import org.havenask.action.index.IndexRequest;
 import org.havenask.action.search.SearchRequest;
 import org.havenask.action.search.SearchResponse;
 import org.havenask.client.RequestOptions;
+import org.havenask.client.ha.SqlResponse;
 import org.havenask.client.indices.CreateIndexRequest;
 import org.havenask.client.indices.GetIndexRequest;
 import org.havenask.cluster.health.ClusterHealthStatus;
@@ -694,6 +695,101 @@ public class SearchIT extends AbstractHavenaskRestTestCase {
         // delete index
         deleteAndHeadIndex(luceneIndex);
         deleteAndHeadIndex(havenaskIndex);
+    }
+
+    public void testVectorWithCategory() throws Exception {
+        String index = "vector_with_category_test";
+        searchITIndices.add(index);
+        // create index
+        ClusterHealthResponse clusterHealthResponse = highLevelClient().cluster()
+            .health(new ClusterHealthRequest(), RequestOptions.DEFAULT);
+        int numberOfDataNodes = clusterHealthResponse.getNumberOfDataNodes();
+        int shardsNum = randomIntBetween(1, 6);
+        int replicasNum = randomIntBetween(0, numberOfDataNodes - 1);
+
+        XContentBuilder mappingBuilder = XContentFactory.jsonBuilder();
+        mappingBuilder.startObject();
+        {
+            mappingBuilder.startObject("properties");
+            {
+                mappingBuilder.startObject("image_vector");
+                {
+                    mappingBuilder.field("type", DenseVectorFieldMapper.CONTENT_TYPE);
+                    mappingBuilder.field("dims", 3);
+                    mappingBuilder.field("similarity", "l2_norm");
+                    mappingBuilder.field("category", "file_type");
+                }
+                mappingBuilder.endObject();
+                mappingBuilder.startObject("file_type");
+                {
+                    mappingBuilder.field("type", "keyword");
+                }
+                mappingBuilder.endObject();
+            }
+            mappingBuilder.endObject();
+        }
+        mappingBuilder.endObject();
+
+        assertTrue(
+            createTestIndex(
+                index,
+                Settings.builder()
+                    .put(EngineSettings.ENGINE_TYPE_SETTING.getKey(), EngineSettings.ENGINE_HAVENASK)
+                    .put("number_of_shards", shardsNum)
+                    .put("number_of_replicas", replicasNum)
+                    .build(),
+                mappingBuilder
+            )
+        );
+
+        waitIndexGreen(index);
+
+        // put doc
+        BulkRequest bulkRequest = new BulkRequest();
+        int docNum = randomIntBetween(20, 40);
+        int jpgNum = docNum / 2;
+        int pngNum = docNum - jpgNum;
+        for (int i = 0; i < docNum; i++) {
+            String fileType = i < jpgNum ? "jpg" : "png";
+            bulkRequest.add(
+                new IndexRequest(index).id(String.valueOf(i))
+                    .source(
+                        Map.of("image_vector", new float[] { randomFloat(), randomFloat(), randomFloat() }, "file_type", fileType),
+                        XContentType.JSON
+                    )
+            );
+        }
+        highLevelClient().bulk(bulkRequest, RequestOptions.DEFAULT);
+
+        // get doc with sql
+        assertBusy(() -> {
+            SqlResponse sqlResponse = getSqlResponse(
+                String.format(
+                    Locale.ROOT,
+                    "select _id, file_type, ((1/(1+vector_score('image_vector')))) as _score "
+                        + "from `%s` where MATCHINDEX('image_vector', 'jpg#-5.0,9.0,-12.0&n=10') "
+                        + "order by _score desc limit 40 offset 0",
+                    index
+                )
+            );
+            assertEquals(jpgNum, sqlResponse.getSqlResult().getData().length);
+        }, 2, TimeUnit.SECONDS);
+
+        assertBusy(() -> {
+            SqlResponse sqlResponse = getSqlResponse(
+                String.format(
+                    Locale.ROOT,
+                    "select _id, file_type, ((1/(1+vector_score('image_vector')))) as _score "
+                        + "from `%s` where MATCHINDEX('image_vector', 'png#-5.0,9.0,-12.0&n=10') "
+                        + "order by _score desc limit 40 offset 0",
+                    index
+                )
+            );
+            assertEquals(pngNum, sqlResponse.getSqlResult().getData().length);
+        }, 2, TimeUnit.SECONDS);
+
+        // delete index and HEAD index
+        deleteAndHeadIndex(index);
     }
 
     private static XContentBuilder createMapping(String fieldName, int vectorDims, String similarity) throws IOException {
