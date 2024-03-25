@@ -39,6 +39,8 @@ public class HavenaskHttpClient implements HavenaskClient {
     private static final String HEART_BEAT_URL = "/HeartbeatService/heartbeat";
 
     private static final int SOCKET_TIMEOUT = 1200000;
+    private static final int MAX_CONNECTION = 1000;
+    private static final String LOCALHOST = "127.0.0.1";
 
     private RestClient client;
     private final int port;
@@ -55,11 +57,11 @@ public class HavenaskHttpClient implements HavenaskClient {
 
     protected synchronized RestClient getClient() {
         if (client == null) {
-            client = RestClient.builder(new HttpHost("127.0.0.1", port, "http"))
+            client = RestClient.builder(new HttpHost(LOCALHOST, port, "http"))
                 .setHttpClientConfigCallback(new RestClientBuilder.HttpClientConfigCallback() {
                     @Override
                     public HttpAsyncClientBuilder customizeHttpClient(HttpAsyncClientBuilder httpClientBuilder) {
-                        return httpClientBuilder.setMaxConnPerRoute(1000).setMaxConnTotal(1000);
+                        return httpClientBuilder.setMaxConnPerRoute(MAX_CONNECTION).setMaxConnTotal(MAX_CONNECTION);
 
                     }
                 })
