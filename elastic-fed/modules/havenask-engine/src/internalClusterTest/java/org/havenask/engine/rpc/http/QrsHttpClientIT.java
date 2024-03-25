@@ -18,7 +18,6 @@ import static org.hamcrest.CoreMatchers.containsString;
 
 import java.io.IOException;
 
-import org.havenask.OkHttpThreadLeakFilter;
 import org.havenask.engine.HavenaskITTestCase;
 import org.havenask.engine.rpc.HeartbeatTargetResponse;
 import org.havenask.engine.rpc.QrsClient;
@@ -30,7 +29,6 @@ import org.havenask.engine.rpc.UpdateHeartbeatTargetRequest;
 
 import com.carrotsearch.randomizedtesting.annotations.ThreadLeakFilters;
 
-@ThreadLeakFilters(filters = { OkHttpThreadLeakFilter.class })
 public class QrsHttpClientIT extends HavenaskITTestCase {
 
     public void testTimeout() {
