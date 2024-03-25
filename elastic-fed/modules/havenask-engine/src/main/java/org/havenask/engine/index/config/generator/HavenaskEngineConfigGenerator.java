@@ -17,6 +17,7 @@ package org.havenask.engine.index.config.generator;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import com.alibaba.fastjson.JSONPath;
+import com.alibaba.fastjson.parser.Feature;
 import org.havenask.cluster.metadata.IndexMetadata;
 import org.havenask.common.settings.Settings;
 import org.havenask.engine.index.config.ClusterJsonMinMustParams;
@@ -58,7 +59,10 @@ public class HavenaskEngineConfigGenerator {
         SchemaGenerator schemaGenerator = new SchemaGenerator();
         String defaultSchemaJsonStr = schemaGenerator.defaultSchema(indexName).toString();
         String mergedSchemaJsonStr = JsonPrettyFormatter.toJsonString(
-            mergeSchemaJson(JSONObject.parseObject(inputSchemaJsonStr), JSONObject.parseObject(defaultSchemaJsonStr))
+            mergeSchemaJson(
+                JSONObject.parseObject(inputSchemaJsonStr, Feature.OrderedField),
+                JSONObject.parseObject(defaultSchemaJsonStr, Feature.OrderedField)
+            )
         );
         return mergedSchemaJsonStr;
     }
@@ -98,27 +102,70 @@ public class HavenaskEngineConfigGenerator {
         return clusterJson;
     }
 
-    private static JSONObject mergeSchemaJson(JSONObject schemaJson, JSONObject defaultSchemaJson) {
-        for (String key : defaultSchemaJson.keySet()) {
-            if (schemaJson.containsKey(key)) {
-                if (schemaJson.get(key) instanceof JSONArray && defaultSchemaJson.get(key) instanceof JSONArray) {
-                    JSONArray jsonArrayA = schemaJson.getJSONArray(key);
-                    JSONArray jsonArrayB = defaultSchemaJson.getJSONArray(key);
-                    for (Object item : jsonArrayB) {
-                        if (!jsonArrayA.contains(item)) {
-                            jsonArrayA.add(item);
-                        }
-                    }
-                } else if (schemaJson.get(key) instanceof JSONObject && defaultSchemaJson.get(key) instanceof JSONObject) {
-                    schemaJson.put(key, mergeSchemaJson((JSONObject) schemaJson.get(key), (JSONObject) defaultSchemaJson.get(key)));
-                } else {
-                    schemaJson.put(key, defaultSchemaJson.get(key));
-                }
+    private static JSONObject mergeSchemaJson(JSONObject schemaJsonA, JSONObject schemaJsonB) {
+        for (String key : schemaJsonA.keySet()) {
+            Object valueA = schemaJsonA.get(key);
+            if (!schemaJsonB.containsKey(key)) {
+                schemaJsonB.put(key, valueA);
             } else {
-                schemaJson.put(key, defaultSchemaJson.get(key));
+                Object valueB = schemaJsonB.get(key);
+                if (valueA instanceof JSONArray && valueB instanceof JSONArray) {
+                    mergeJsonArrays((JSONArray) valueA, (JSONArray) valueB);
+                } else if (valueA instanceof JSONObject && valueB instanceof JSONObject) {
+                    mergeSchemaJson((JSONObject) valueA, (JSONObject) valueB);
+                } else {
+                    // keep valueB
+                }
             }
         }
-        return schemaJson;
+        return schemaJsonB;
+    }
+
+    private static void mergeJsonArrays(JSONArray arrayA, JSONArray arrayB) {
+        for (int i = 0; i < arrayA.size(); i++) {
+            Object a = arrayA.get(i);
+            if (!jsonArrayContains(arrayB, a)) {
+                arrayB.add(a);
+            }
+        }
+    }
+
+    private static boolean jsonArrayContains(JSONArray array, Object element) {
+        for (int i = 0; i < array.size(); i++) {
+            Object arrayElement = array.get(i);
+            if (deepEquals(arrayElement, element)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean deepEquals(Object obj1, Object obj2) {
+        if (obj1 == obj2) {
+            return true;
+        }
+        if (obj1 == null || obj2 == null || obj1.getClass() != obj2.getClass()) {
+            return false;
+        }
+        if (obj1 instanceof JSONObject && obj2 instanceof JSONObject) {
+            JSONObject json1 = (JSONObject) obj1;
+            JSONObject json2 = (JSONObject) obj2;
+            return json1.equals(json2);
+        }
+        if (obj1 instanceof JSONArray && obj2 instanceof JSONArray) {
+            JSONArray array1 = (JSONArray) obj1;
+            JSONArray array2 = (JSONArray) obj2;
+            if (array1.size() != array2.size()) {
+                return false;
+            }
+            for (int i = 0; i < array1.size(); i++) {
+                if (!deepEquals(array1.get(i), array2.get(i))) {
+                    return false;
+                }
+            }
+            return true;
+        }
+        return obj1.equals(obj2);
     }
 
     private static JSONObject mergeDataTableJson(JSONObject dataTableJson, JSONObject defaultDataTableJson) {

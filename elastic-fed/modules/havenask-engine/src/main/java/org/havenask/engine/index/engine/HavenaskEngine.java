@@ -630,7 +630,7 @@ public class HavenaskEngine extends InternalEngine {
                             default:
                                 // TODO
                         }
-                        message.append("\u001D");
+                        message.append(",");
                     }
                     // 删掉最后一个多余的分隔符
                     message.delete(message.length() - 1, message.length());
