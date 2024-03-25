@@ -14,9 +14,10 @@
 
 package org.havenask.engine.rpc;
 
+import java.io.Closeable;
 import java.io.IOException;
 
-public interface HavenaskClient {
+public interface HavenaskClient extends Closeable {
     /**
      * 获取searcher heartbeat target数据
      * @return Heartbeat target响应结果

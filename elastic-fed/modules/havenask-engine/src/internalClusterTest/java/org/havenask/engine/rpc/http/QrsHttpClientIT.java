@@ -18,7 +18,6 @@ import static org.hamcrest.CoreMatchers.containsString;
 
 import java.io.IOException;
 
-import org.havenask.OkHttpThreadLeakFilter;
 import org.havenask.engine.HavenaskITTestCase;
 import org.havenask.engine.rpc.HeartbeatTargetResponse;
 import org.havenask.engine.rpc.QrsClient;
@@ -28,16 +27,14 @@ import org.havenask.engine.rpc.SqlClientInfoResponse;
 import org.havenask.engine.rpc.TargetInfo;
 import org.havenask.engine.rpc.UpdateHeartbeatTargetRequest;
 
-import com.carrotsearch.randomizedtesting.annotations.ThreadLeakFilters;
-
-@ThreadLeakFilters(filters = { OkHttpThreadLeakFilter.class })
 public class QrsHttpClientIT extends HavenaskITTestCase {
 
-    public void testTimeout() {
+    public void testTimeout() throws IOException {
         QrsClient client = new QrsHttpClient(49200, 1);
         String sql = "timeout";
         QrsSqlRequest request = new QrsSqlRequest(sql, null);
         expectThrows(Exception.class, () -> { client.executeSql(request); });
+        client.close();
     }
 
     public void testSql() throws IOException {
@@ -47,6 +44,7 @@ public class QrsHttpClientIT extends HavenaskITTestCase {
         QrsSqlResponse response = client.executeSql(request);
         assertEquals(200, response.getResultCode());
         assertThat(response.getResult(), containsString("total_time"));
+        client.close();
     }
 
     public void testSqlClientInfo() throws IOException {
@@ -58,6 +56,7 @@ public class QrsHttpClientIT extends HavenaskITTestCase {
         } else {
             assertThat(response.getResult().toString(), containsString("default"));
         }
+        client.close();
     }
 
     public void testGetHeartbeatTarget() throws IOException {
@@ -156,6 +155,7 @@ public class QrsHttpClientIT extends HavenaskITTestCase {
         assertEquals(expectCustomInfo, response.getCustomInfo().toString());
         assertEquals(expectServiceInfo, response.getServiceInfo());
         assertEquals(expectSignature, response.getSignature().toString());
+        client.close();
     }
 
     public void testUpdateHeartbeatTarget() throws IOException {
@@ -268,5 +268,6 @@ public class QrsHttpClientIT extends HavenaskITTestCase {
         assertEquals(responseTargetStr, response.getCustomInfo().toString());
         assertEquals(serviceInfoStr, response.getServiceInfo());
         assertEquals(targetInfo, response.getSignature());
+        client.close();
     }
 }

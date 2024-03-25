@@ -14,7 +14,6 @@
 
 package org.havenask.engine.rpc.arpc;
 
-import java.io.Closeable;
 import java.io.IOException;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
@@ -42,7 +41,7 @@ import suez.service.proto.TableQueryResponse;
 import suez.service.proto.TableService;
 import suez.service.proto.Write;
 
-public class SearcherArpcClient implements SearcherClient, Closeable {
+public class SearcherArpcClient implements SearcherClient {
     private static final Logger logger = LogManager.getLogger(SearcherArpcClient.class);
     private final ANetRPCChannelManager manager;
     private volatile ANetRPCChannel channel;

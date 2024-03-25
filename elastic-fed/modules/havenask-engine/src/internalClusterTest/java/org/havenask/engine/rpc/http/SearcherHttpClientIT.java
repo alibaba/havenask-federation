@@ -16,15 +16,12 @@ package org.havenask.engine.rpc.http;
 
 import java.io.IOException;
 
-import com.carrotsearch.randomizedtesting.annotations.ThreadLeakFilters;
-import org.havenask.OkHttpThreadLeakFilter;
 import org.havenask.engine.HavenaskITTestCase;
 import org.havenask.engine.rpc.HeartbeatTargetResponse;
 import org.havenask.engine.rpc.SearcherClient;
 import org.havenask.engine.rpc.TargetInfo;
 import org.havenask.engine.rpc.UpdateHeartbeatTargetRequest;
 
-@ThreadLeakFilters(filters = { OkHttpThreadLeakFilter.class })
 public class SearcherHttpClientIT extends HavenaskITTestCase {
     public void testGetHeartbeatTarget() throws IOException {
         SearcherClient client = new SearcherHttpClient(39200);
@@ -185,6 +182,7 @@ public class SearcherHttpClientIT extends HavenaskITTestCase {
         assertEquals(expectCustomInfo, response.getCustomInfo().toString());
         assertEquals(expectServiceInfo, response.getServiceInfo());
         assertEquals(expectSignature, response.getSignature().toString());
+        client.close();
     }
 
     public void testUpdateHeartbeatTarget() throws IOException {
@@ -305,5 +303,6 @@ public class SearcherHttpClientIT extends HavenaskITTestCase {
         assertEquals(responseTargetStr, response.getCustomInfo().toString());
         assertEquals(serviceInfoStr, response.getServiceInfo());
         assertEquals(targetInfo, response.getSignature());
+        client.close();
     }
 }
