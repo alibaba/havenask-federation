@@ -792,6 +792,112 @@ public class SearchIT extends AbstractHavenaskRestTestCase {
         deleteAndHeadIndex(index);
     }
 
+    public void testVectorWithCategoryWithLargeDoc() throws Exception {
+        String index = "vector_with_category_with_large_doctest";
+        searchITIndices.add(index);
+        // create index
+        ClusterHealthResponse clusterHealthResponse = highLevelClient().cluster()
+            .health(new ClusterHealthRequest(), RequestOptions.DEFAULT);
+        int numberOfDataNodes = clusterHealthResponse.getNumberOfDataNodes();
+        int shardsNum = randomIntBetween(1, 6);
+        int replicasNum = randomIntBetween(0, numberOfDataNodes - 1);
+
+        XContentBuilder mappingBuilder = XContentFactory.jsonBuilder();
+        mappingBuilder.startObject();
+        {
+            mappingBuilder.startObject("properties");
+            {
+                mappingBuilder.startObject("image_vector");
+                {
+                    mappingBuilder.field("type", DenseVectorFieldMapper.CONTENT_TYPE);
+                    mappingBuilder.field("dims", 3);
+                    mappingBuilder.field("similarity", "l2_norm");
+                    mappingBuilder.field("category", "file_type");
+                    mappingBuilder.startObject("index_options");
+                    {
+                        mappingBuilder.field("type", "hnsw");
+                        mappingBuilder.startObject("rt_index_params");
+                        {
+                            mappingBuilder.field("proxima.oswg.streamer.segment_size", 2048);
+                        }
+                        mappingBuilder.endObject();
+                    }
+                    mappingBuilder.endObject();
+                }
+                mappingBuilder.endObject();
+                mappingBuilder.startObject("file_type");
+                {
+                    mappingBuilder.field("type", "keyword");
+                }
+                mappingBuilder.endObject();
+            }
+            mappingBuilder.endObject();
+        }
+        mappingBuilder.endObject();
+
+        assertTrue(
+            createTestIndex(
+                index,
+                Settings.builder()
+                    .put(EngineSettings.ENGINE_TYPE_SETTING.getKey(), EngineSettings.ENGINE_HAVENASK)
+                    .put("number_of_shards", shardsNum)
+                    .put("number_of_replicas", replicasNum)
+                    .put(EngineSettings.HAVENASK_BUILD_CONFIG_MAX_DOC_COUNT.getKey(), 2)
+                    .build(),
+                mappingBuilder
+            )
+        );
+
+        waitIndexGreen(index);
+
+        // put doc
+        BulkRequest bulkRequest = new BulkRequest();
+        int docNum = randomIntBetween(2000, 4000);
+        int jpgNum = docNum / 2;
+        int pngNum = docNum - jpgNum;
+        for (int i = 0; i < docNum; i++) {
+            String fileType = i < jpgNum ? "jpg" : "png";
+            bulkRequest.add(
+                new IndexRequest(index).id(String.valueOf(i))
+                    .source(
+                        Map.of("image_vector", new float[] { randomFloat(), randomFloat(), randomFloat() }, "file_type", fileType),
+                        XContentType.JSON
+                    )
+            );
+        }
+        highLevelClient().bulk(bulkRequest, RequestOptions.DEFAULT);
+
+        // get doc with sql
+        assertBusy(() -> {
+            SqlResponse sqlResponse = getSqlResponse(
+                String.format(
+                    Locale.ROOT,
+                    "select _id, file_type, ((1/(1+vector_score('image_vector')))) as _score "
+                        + "from `%s` where MATCHINDEX('image_vector', 'jpg#-5.0,9.0,-12.0&n=10') "
+                        + "order by _score desc limit 40 offset 0",
+                    index
+                )
+            );
+            assertEquals(jpgNum, sqlResponse.getSqlResult().getData().length);
+        }, 2, TimeUnit.SECONDS);
+
+        assertBusy(() -> {
+            SqlResponse sqlResponse = getSqlResponse(
+                String.format(
+                    Locale.ROOT,
+                    "select _id, file_type, ((1/(1+vector_score('image_vector')))) as _score "
+                        + "from `%s` where MATCHINDEX('image_vector', 'png#-5.0,9.0,-12.0&n=10') "
+                        + "order by _score desc limit 40 offset 0",
+                    index
+                )
+            );
+            assertEquals(pngNum, sqlResponse.getSqlResult().getData().length);
+        }, 2, TimeUnit.SECONDS);
+
+        // delete index and HEAD index
+        deleteAndHeadIndex(index);
+    }
+
     private static XContentBuilder createMapping(String fieldName, int vectorDims, String similarity) throws IOException {
         XContentBuilder mappingBuilder = XContentFactory.jsonBuilder();
         mappingBuilder.startObject()
