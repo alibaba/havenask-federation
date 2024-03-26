@@ -587,6 +587,11 @@ public class SchemaGeneratorTests extends MapperServiceTestCase {
                             b.field("proxima.linear.builder.column_major_order", "false");
                         }
                         b.endObject();
+                        b.startObject("rt_index_params");
+                        {
+                            b.field("proxima.oswg.streamer.segment_size", 2048);
+                        }
+                        b.endObject();
                     }
                     b.endObject();
                 }
@@ -760,6 +765,7 @@ public class SchemaGeneratorTests extends MapperServiceTestCase {
                 + "\t\t\t\"is_embedding_saved\":\"true\",\n"
                 + "\t\t\t\"min_scan_doc_cnt\":\"20000\",\n"
                 + "\t\t\t\"linear_build_threshold\":\"500\",\n"
+                + "\t\t\t\"rt_index_params\":\"{\\\"proxima.oswg.streamer.segment.size\\\":2048}\",\n"
                 + "\t\t\t\"builder_name\":\"LinearBuilder\",\n"
                 + "\t\t\t\"searcher_name\":\"LinearSearcher\",\n"
                 + "\t\t\t\"searcher_index_params\":\"{\\\"proxima.hnsw.builder.linear_build_threshold\\\":500}\"\n"
@@ -826,8 +832,9 @@ public class SchemaGeneratorTests extends MapperServiceTestCase {
                 + "\\\"proxima.qc.searcher.brute_force_threshold\\\":1000}\",\n"
                 + "\t\t\t\"builder_index_params\":\"{\\\"proxima.qc.builder.train_sample_count\\\":0,"
                 + "\\\"proxima.qc.builder.thread_count\\\":0,\\\"proxima.qc.builder.centroid_count\\\":\\\"1000\\\","
-                + "\\\"proxima.qc.builder.cluster_auto_tuning\\\":false,\\\"proxima.qc.builder.quantize_by_centroid\\\":false,"
-                + "\\\"proxima.qc.builder.store_original_features\\\":false,\\\"proxima.qc.builder.train_sample_ratio\\\":1.0}\"\n"
+                + "\\\"proxima.qc.builder.cluster_auto_tuning\\\":false,\\\"proxima.qc.builder.quantize_by_centroid"
+                + "\\\":false,\\\"proxima.qc.builder.store_original_features\\\":false,"
+                + "\\\"proxima.qc.builder.train_sample_ratio\\\":1.0}\"\n"
                 + "\t\t}\n"
                 + "\t}],\n"
                 + "\t\"settings\":{\n"

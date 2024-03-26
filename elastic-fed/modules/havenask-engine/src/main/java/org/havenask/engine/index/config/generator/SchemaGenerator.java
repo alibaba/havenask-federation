@@ -297,6 +297,13 @@ public class SchemaGenerator {
         if (indexOptions.linearBuildThreshold != null) {
             parameter.put("linear_build_threshold", String.valueOf(indexOptions.linearBuildThreshold));
         }
+        if (indexOptions.oswgStreamerSegmentSize != null) {
+            StringBuilder proximaOswgStreamerSegmentSizeBuilder = new StringBuilder();
+            proximaOswgStreamerSegmentSizeBuilder.append("{");
+            proximaOswgStreamerSegmentSizeBuilder.append("\"proxima.oswg.streamer.segment.size\":" + indexOptions.oswgStreamerSegmentSize);
+            proximaOswgStreamerSegmentSizeBuilder.append("}");
+            parameter.put("rt_index_params", proximaOswgStreamerSegmentSizeBuilder.toString());
+        }
 
         if (indexOptions.type == Algorithm.HNSW) {
             parameter.put("builder_name", HNSW_BUILDER);
