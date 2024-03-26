@@ -363,7 +363,8 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
                 && Objects.equals(enableRecallReport, that.enableRecallReport)
                 && Objects.equals(isEmbeddingSaved, that.isEmbeddingSaved)
                 && Objects.equals(minScanDocCnt, that.minScanDocCnt)
-                && Objects.equals(linearBuildThreshold, that.linearBuildThreshold);
+                && Objects.equals(linearBuildThreshold, that.linearBuildThreshold)
+                && Objects.equals(oswgStreamerSegmentSize, that.oswgStreamerSegmentSize);
         }
 
         @Override
@@ -375,7 +376,8 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
                 enableRecallReport,
                 isEmbeddingSaved,
                 minScanDocCnt,
-                linearBuildThreshold
+                linearBuildThreshold,
+                oswgStreamerSegmentSize
             );
         }
 
@@ -398,6 +400,8 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
                 + minScanDocCnt
                 + ", linearBuildThreshold="
                 + linearBuildThreshold
+                + ", oswgStreamerSegmentSize="
+                + oswgStreamerSegmentSize
                 + '}';
         }
 
@@ -424,6 +428,13 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
             }
             if (linearBuildThreshold != null) {
                 builder.field("linear_build_threshold", linearBuildThreshold);
+            }
+            if (oswgStreamerSegmentSize != null) {
+                builder.startObject("rt_index_params");
+                {
+                    builder.field("proxima.oswg.streamer.segment_size", oswgStreamerSegmentSize);
+                }
+                builder.endObject();
             }
             return builder;
         }

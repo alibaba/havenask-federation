@@ -300,7 +300,7 @@ public class SchemaGenerator {
         if (indexOptions.oswgStreamerSegmentSize != null) {
             StringBuilder proximaOswgStreamerSegmentSizeBuilder = new StringBuilder();
             proximaOswgStreamerSegmentSizeBuilder.append("{");
-            proximaOswgStreamerSegmentSizeBuilder.append("\"proxima.oswg.streamer.segment.size\":" + indexOptions.oswgStreamerSegmentSize);
+            proximaOswgStreamerSegmentSizeBuilder.append("\"proxima.oswg.streamer.segment_size\":" + indexOptions.oswgStreamerSegmentSize);
             proximaOswgStreamerSegmentSizeBuilder.append("}");
             parameter.put("rt_index_params", proximaOswgStreamerSegmentSizeBuilder.toString());
         }

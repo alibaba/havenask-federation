@@ -765,7 +765,7 @@ public class SchemaGeneratorTests extends MapperServiceTestCase {
                 + "\t\t\t\"is_embedding_saved\":\"true\",\n"
                 + "\t\t\t\"min_scan_doc_cnt\":\"20000\",\n"
                 + "\t\t\t\"linear_build_threshold\":\"500\",\n"
-                + "\t\t\t\"rt_index_params\":\"{\\\"proxima.oswg.streamer.segment.size\\\":2048}\",\n"
+                + "\t\t\t\"rt_index_params\":\"{\\\"proxima.oswg.streamer.segment_size\\\":2048}\",\n"
                 + "\t\t\t\"builder_name\":\"LinearBuilder\",\n"
                 + "\t\t\t\"searcher_name\":\"LinearSearcher\",\n"
                 + "\t\t\t\"searcher_index_params\":\"{\\\"proxima.hnsw.builder.linear_build_threshold\\\":500}\"\n"
