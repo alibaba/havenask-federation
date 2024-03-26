@@ -1118,12 +1118,17 @@ public class HavenaskEngine extends InternalEngine {
             currentCheckpoint
         );
 
-        if (currentCheckpoint > lastCommitInfo.getCommitCheckpoint()) {
+        // havenask会定期刷新version文件，因此在checkpoint没有变化但检测到version文件更新时也同步更新lucene segment metadata中的commit信息
+        if (currentCheckpoint > lastCommitInfo.getCommitCheckpoint()
+            || (currentCheckpoint == lastCommitInfo.getCommitCheckpoint() && segmentVersion > lastCommitInfo.getCommitVersion())) {
             logger.info(
-                "havenask engine refresh checkpoint, checkpoint time: {}, current checkpoint: {}, last commit " + "checkpoint: {}",
+                "havenask engine refresh checkpoint, checkpoint time: {}, current checkpoint: {}, last commit checkpoint: {}"
+                    + ", havenask version: {}, last commit version: {}",
                 havenaskTime,
                 currentCheckpoint,
-                lastCommitInfo.getCommitCheckpoint()
+                lastCommitInfo.getCommitCheckpoint(),
+                segmentVersion,
+                lastCommitInfo.getCommitVersion()
             );
             refreshCommitInfo(havenaskTimePoint, segmentVersion, currentCheckpoint);
 
