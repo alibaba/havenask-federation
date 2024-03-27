@@ -16,9 +16,11 @@ package org.havenask.engine.search.rest;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Objects;
 
 import org.havenask.client.node.NodeClient;
 import org.havenask.common.xcontent.XContentBuilder;
+import org.havenask.common.xcontent.XContentParser;
 import org.havenask.common.xcontent.XContentType;
 import org.havenask.engine.search.action.HavenaskSqlAction;
 import org.havenask.engine.search.action.HavenaskSqlRequest;
@@ -32,7 +34,8 @@ import org.havenask.rest.RestStatus;
 import org.havenask.rest.action.RestBuilderListener;
 
 public class RestHavenaskSqlAction extends BaseRestHandler {
-
+    private static final String QUERY = "query";
+    private static final String KVPAIR = "kvpair";
     public static final String SQL_DATABASE = "general";
 
     @Override
@@ -46,12 +49,36 @@ public class RestHavenaskSqlAction extends BaseRestHandler {
 
     @Override
     protected RestChannelConsumer prepareRequest(RestRequest request, NodeClient client) throws IOException {
-        String query = request.param("query");
-        if (query == null) {
-            throw new IllegalArgumentException("query is null");
+        HavenaskSqlRequest havenaskSqlRequest = createHavenaskSqlRequest(request);
+        return channel -> client.execute(HavenaskSqlAction.INSTANCE, havenaskSqlRequest, new RestBuilderListener<>(channel) {
+            @Override
+            public RestResponse buildResponse(HavenaskSqlResponse response, XContentBuilder builder) {
+                RestStatus status = RestStatus.fromCode(response.getResultCode());
+                if (status == null) {
+                    status = RestStatus.INTERNAL_SERVER_ERROR;
+                }
+                return new BytesRestResponse(status, XContentType.JSON.mediaType(), response.getResult());
+            }
+        });
+    }
+
+    static HavenaskSqlRequest createHavenaskSqlRequest(RestRequest request) throws IOException {
+        String query = null;
+        XContentParser requestBody = request.contentOrSourceParamParser();
+
+        // Attempt to parse the 'query' from the request body.
+        // If the body is empty or not present, fall back to parsing the 'query' from the request parameters.
+        if (Objects.nonNull(requestBody)) {
+            query = parseQueryFromXContent(requestBody);
+        }
+        if (Objects.isNull(query)) {
+            query = request.param(QUERY);
+            if (Objects.isNull(query)) {
+                throw new IllegalArgumentException("query is null");
+            }
         }
 
-        String kvpair = request.param("kvpair");
+        String kvpair = request.param(KVPAIR);
         if (kvpair == null) {
             // 组装kvpair
             kvpair = buildKvpair(request);
@@ -65,17 +92,7 @@ public class RestHavenaskSqlAction extends BaseRestHandler {
             }
         }
 
-        HavenaskSqlRequest havenaskSqlRequest = new HavenaskSqlRequest(query, kvpair);
-        return channel -> client.execute(HavenaskSqlAction.INSTANCE, havenaskSqlRequest, new RestBuilderListener<>(channel) {
-            @Override
-            public RestResponse buildResponse(HavenaskSqlResponse response, XContentBuilder builder) {
-                RestStatus status = RestStatus.fromCode(response.getResultCode());
-                if (status == null) {
-                    status = RestStatus.INTERNAL_SERVER_ERROR;
-                }
-                return new BytesRestResponse(status, XContentType.JSON.mediaType(), response.getResult());
-            }
-        });
+        return new HavenaskSqlRequest(query, kvpair);
     }
 
     static String buildKvpair(RestRequest request) {
@@ -160,5 +177,24 @@ public class RestHavenaskSqlAction extends BaseRestHandler {
         }
 
         return kvBuffer.substring(0, kvBuffer.length() - 1);
+    }
+
+    public static String parseQueryFromXContent(XContentParser parser) throws IOException {
+        XContentParser.Token token;
+        String query = null;
+        while ((token = parser.nextToken()) != XContentParser.Token.END_OBJECT) {
+            if (token == XContentParser.Token.FIELD_NAME) {
+                String fieldName = parser.currentName();
+                parser.nextToken();
+                switch (fieldName) {
+                    case QUERY:
+                        query = parser.text();
+                        break;
+                    default:
+                        throw new IllegalArgumentException("Unknown field [" + fieldName + "]");
+                }
+            }
+        }
+        return query;
     }
 }
