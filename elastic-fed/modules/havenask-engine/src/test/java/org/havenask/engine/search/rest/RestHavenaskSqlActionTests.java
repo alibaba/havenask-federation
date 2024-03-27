@@ -14,9 +14,13 @@
 
 package org.havenask.engine.search.rest;
 
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.havenask.common.bytes.BytesArray;
+import org.havenask.common.xcontent.XContentType;
+import org.havenask.engine.search.action.HavenaskSqlRequest;
 import org.havenask.rest.RestRequest;
 import org.havenask.test.HavenaskTestCase;
 import org.havenask.test.rest.FakeRestRequest;
@@ -183,5 +187,44 @@ public class RestHavenaskSqlActionTests extends HavenaskTestCase {
         }
 
         assertEquals(expected, kvpair);
+    }
+
+    public void testQueryInBody() throws IOException {
+        String jsonContent = "{" + "\"query\":\"" + "select * from `test`" + "\"" + "}";
+
+        Map<String, String> params = new HashMap<>();
+        params.put("trace", "true");
+        params.put("format", "json");
+        params.put("timeout", "1000");
+        params.put("searchInfo", "true");
+        params.put("sqlPlan", "true");
+        params.put("forbitMergeSearchInfo", "true");
+        params.put("resultReadable", "true");
+        params.put("parallel", "2");
+        params.put("parallelTables", "t1,t2");
+        params.put("databaseName", "db1");
+        params.put("lackResultEnable", "true");
+        params.put("optimizerDebug", "true");
+        params.put("sortLimitTogether", "false");
+        params.put("forceLimit", "true");
+        params.put("joinConditionCheck", "false");
+        params.put("forceJoinHask", "true");
+        params.put("planLevel", "true");
+        params.put("cacheEnable", "true");
+
+        RestRequest request = new FakeRestRequest.Builder(xContentRegistry()).withPath("/_sql")
+            .withParams(params)
+            .withContent(new BytesArray(jsonContent), XContentType.JSON)
+            .build();
+
+        HavenaskSqlRequest havenaskSqlRequest = RestHavenaskSqlAction.createHavenaskSqlRequest(request);
+        assertEquals("select * from `test`", havenaskSqlRequest.getSql());
+
+        String expectedKvpair = "databaseName:db1;trace:true;format:json;timeout:1000;searchInfo:true;sqlPlan:true;"
+            + "forbitMergeSearchInfo:true;resultReadable:true;parallel:2;"
+            + "parallelTables:t1,t2;lackResultEnable:true;optimizerDebug:true;sortLimitTogether:false;"
+            + "forceLimit:true;"
+            + "joinConditionCheck:false;forceJoinHask:true;planLevel:true;cacheEnable:true";
+        assertEquals(expectedKvpair, havenaskSqlRequest.getKvpair());
     }
 }
