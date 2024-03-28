@@ -1258,14 +1258,14 @@ public class Store extends AbstractIndexShardComponent implements Closeable, Ref
      * mechanism that is used in some repository plugins (S3 for example). However, the checksum is only calculated on
      * the first read. All consecutive reads of the same data are not used to calculate the checksum.
      */
-    public static class VerifyingIndexInput extends ChecksumIndexInput {
+    static class VerifyingIndexInput extends ChecksumIndexInput {
         private final IndexInput input;
         private final Checksum digest;
         private final long checksumPosition;
         private final byte[] checksum = new byte[8];
         private long verifiedPosition = 0;
 
-        public VerifyingIndexInput(IndexInput input) {
+        VerifyingIndexInput(IndexInput input) {
             this(input, new BufferedChecksum(new CRC32()));
         }
 

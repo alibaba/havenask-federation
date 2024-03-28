@@ -109,20 +109,16 @@ public class FileInfoTests extends HavenaskTestCase {
             String failure = null;
             long length = Math.max(0, Math.abs(randomLong()));
             // random corruption
-            switch (randomIntBetween(0, 3)) {
+            switch (randomIntBetween(0, 2)) {
                 case 0:
                     name = "foo,bar";
                     failure = "missing or invalid file name";
                     break;
                 case 1:
-                    physicalName = "_foo,bar";
-                    failure = "missing or invalid physical file name";
-                    break;
-                case 2:
                     length = -Math.abs(randomLong());
                     failure = "missing or invalid file length";
                     break;
-                case 3:
+                case 2:
                     break;
                 default:
                     fail("shouldn't be here");

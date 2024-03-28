@@ -170,7 +170,11 @@ public class HavenaskStore extends Store {
             if (metadata.length() == 0 && metadata.checksum().equals(EntryTable.Type.DIR.name())) {
                 Files.createDirectories(shardPath.resolve(fileName));
                 // return empty ByteBuffersIndexOutput
-                return new ByteBuffersIndexOutput(new ByteBuffersDataOutput(), "ByteBuffersIndexOutput(path=\"" + shardPath.resolve(fileName) + "\")", fileName);
+                return new ByteBuffersIndexOutput(
+                    new ByteBuffersDataOutput(),
+                    "ByteBuffersIndexOutput(path=\"" + shardPath.resolve(fileName) + "\")",
+                    fileName
+                );
             } else {
                 Path fileDir = filePath.getParent();
                 if (Files.notExists(fileDir)) {
@@ -178,14 +182,23 @@ public class HavenaskStore extends Store {
                 }
 
                 if (Files.exists(filePath)) {
-                    return new ByteBuffersIndexOutput(new ByteBuffersDataOutput(), "ByteBuffersIndexOutput(path=\"" + shardPath.resolve(fileName) + "\")", fileName);
+                    // 文件存在时, 则使用原文件,不覆盖原文件内容
+                    return new ByteBuffersIndexOutput(
+                        new ByteBuffersDataOutput(),
+                        "ByteBuffersIndexOutput(path=\"" + shardPath.resolve(fileName) + "\")",
+                        fileName
+                    );
                 } else {
-                    OutputStream os = Files.newOutputStream(shardPath.resolve(fileName), StandardOpenOption.WRITE, StandardOpenOption.CREATE_NEW);
+                    OutputStream os = Files.newOutputStream(
+                        shardPath.resolve(fileName),
+                        StandardOpenOption.WRITE,
+                        StandardOpenOption.CREATE_NEW
+                    );
                     return new OutputStreamIndexOutput(
-                            "OutputStreamIndexOutput(path=\"" + shardPath.resolve(fileName) + "\")",
-                            fileName,
-                            os,
-                            CHUNK_SIZE
+                        "OutputStreamIndexOutput(path=\"" + shardPath.resolve(fileName) + "\")",
+                        fileName,
+                        os,
+                        CHUNK_SIZE
                     );
                 }
             }
