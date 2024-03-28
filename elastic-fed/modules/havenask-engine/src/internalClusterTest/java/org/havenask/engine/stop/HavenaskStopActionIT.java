@@ -20,7 +20,6 @@ import java.util.concurrent.TimeUnit;
 
 import com.carrotsearch.randomizedtesting.annotations.ThreadLeakFilters;
 import org.havenask.ArpcThreadLeakFilter;
-import org.havenask.OkHttpThreadLeakFilter;
 import org.havenask.common.SuppressForbidden;
 import org.havenask.common.settings.Settings;
 import org.havenask.engine.HavenaskEnginePlugin;
@@ -37,7 +36,7 @@ import org.junit.After;
 import static org.havenask.engine.NativeProcessControlService.checkProcessAlive;
 
 @SuppressForbidden(reason = "use a http server")
-@ThreadLeakFilters(filters = { OkHttpThreadLeakFilter.class, ArpcThreadLeakFilter.class })
+@ThreadLeakFilters(filters = { ArpcThreadLeakFilter.class })
 @HavenaskIntegTestCase.ClusterScope(numDataNodes = 1, numClientNodes = 0, scope = HavenaskIntegTestCase.Scope.TEST)
 public class HavenaskStopActionIT extends HavenaskITTestCase {
 

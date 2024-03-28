@@ -14,20 +14,18 @@
 
 package org.havenask.engine.rpc.http;
 
-import com.alibaba.fastjson.JSONObject;
-import okhttp3.HttpUrl;
-import okhttp3.Request;
-import okhttp3.Response;
+import java.io.IOException;
+import org.apache.http.util.EntityUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.havenask.client.Request;
+import org.havenask.client.Response;
 import org.havenask.engine.rpc.QrsClient;
 import org.havenask.engine.rpc.QrsSqlRequest;
 import org.havenask.engine.rpc.QrsSqlResponse;
 import org.havenask.engine.rpc.SqlClientInfoResponse;
 
-import java.io.IOException;
-import java.security.AccessController;
-import java.security.PrivilegedAction;
+import com.alibaba.fastjson.JSONObject;
 
 public class QrsHttpClient extends HavenaskHttpClient implements QrsClient {
     private static final Logger logger = LogManager.getLogger(QrsHttpClient.class);
@@ -38,46 +36,31 @@ public class QrsHttpClient extends HavenaskHttpClient implements QrsClient {
         super(port);
     }
 
-    public QrsHttpClient(int port, long socketTimeout) {
+    public QrsHttpClient(int port, int socketTimeout) {
         super(port, socketTimeout);
     }
 
     @Override
     public QrsSqlResponse executeSql(QrsSqlRequest qrsSqlRequest) throws IOException {
         long start = System.nanoTime();
-        HttpUrl.Builder urlBuilder = HttpUrl.parse(url + SQL_URL).newBuilder();
+        Request request = new Request("GET", SQL_URL);
         String query = qrsSqlRequest.getSql();
         if (qrsSqlRequest.getKvpair() != null) {
             query += "&&kvpair=" + qrsSqlRequest.getKvpair();
         }
-        urlBuilder.addQueryParameter("query", query);
-        String url = urlBuilder.build().toString();
-        Request request = new Request.Builder().url(url).build();
-        Response response = AccessController.doPrivileged((PrivilegedAction<Response>) () -> {
-            try {
-                return client.newCall(request).execute();
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-        });
+        request.addParameter("query", query);
+        Response response = getClient().performRequest(request);
         long end = System.nanoTime();
-        logger.debug("execute sql: {} cost: {} us", url, (end - start) / 1000);
-        return new QrsSqlResponse(response.body().string(), response.code());
+        logger.debug("execute sql: {} cost: {} us", qrsSqlRequest.getSql(), (end - start) / 1000);
+        String responseString = EntityUtils.toString(response.getEntity());
+        return new QrsSqlResponse(responseString, response.getStatusLine().getStatusCode());
     }
 
     @Override
     public SqlClientInfoResponse executeSqlClientInfo() throws IOException {
-        HttpUrl.Builder urlBuilder = HttpUrl.parse(url + SQL_TABLE_INFO_URL).newBuilder();
-        String url = urlBuilder.build().toString();
-        Request request = new Request.Builder().url(url).build();
-        Response response = AccessController.doPrivileged((PrivilegedAction<Response>) () -> {
-            try {
-                return client.newCall(request).execute();
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-        });
-        String responseStr = response.body().string();
+        Request request = new Request("GET", SQL_TABLE_INFO_URL);
+        Response response = getClient().performRequest(request);
+        String responseStr = EntityUtils.toString(response.getEntity());
         JSONObject jsonObject = JSONObject.parseObject(responseStr);
         int errorCode = -1;
         String errorMessage = "execute sql client info api failed";

@@ -16,9 +16,9 @@ package org.havenask;
 
 import com.carrotsearch.randomizedtesting.ThreadFilter;
 
-public class OkHttpThreadLeakFilter implements ThreadFilter {
+public class HttpThreadLeakFilter implements ThreadFilter {
     @Override
     public boolean reject(Thread t) {
-        return t.getName().startsWith("Okio") || t.getName().startsWith("OkHttp");
+        return t.getName().contains("I/O dispatcher") || t.getName().contains("pool-");
     }
 }

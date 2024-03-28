@@ -17,12 +17,15 @@ package org.havenask.engine.rpc.http;
 import static org.havenask.common.xcontent.XContentType.JSON;
 
 import java.io.IOException;
-import java.security.AccessController;
-import java.security.PrivilegedAction;
-import java.util.concurrent.TimeUnit;
-
+import org.apache.http.HttpHost;
+import org.apache.http.client.config.RequestConfig;
+import org.apache.http.impl.nio.client.HttpAsyncClientBuilder;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.havenask.client.Request;
+import org.havenask.client.Response;
+import org.havenask.client.RestClient;
+import org.havenask.client.RestClientBuilder;
 import org.havenask.common.Strings;
 import org.havenask.common.xcontent.LoggingDeprecationHandler;
 import org.havenask.common.xcontent.NamedXContentRegistry;
@@ -31,44 +34,55 @@ import org.havenask.engine.rpc.HavenaskClient;
 import org.havenask.engine.rpc.HeartbeatTargetResponse;
 import org.havenask.engine.rpc.UpdateHeartbeatTargetRequest;
 
-import okhttp3.MediaType;
-import okhttp3.OkHttpClient;
-import okhttp3.Request;
-import okhttp3.RequestBody;
-import okhttp3.Response;
-
 public class HavenaskHttpClient implements HavenaskClient {
     private static final Logger LOGGER = LogManager.getLogger(HavenaskHttpClient.class);
     private static final String HEART_BEAT_URL = "/HeartbeatService/heartbeat";
 
-    private static final long SOCKET_TIMEOUT = 120;
-    protected OkHttpClient client;
-    protected final String url;
+    private static final int SOCKET_TIMEOUT = 1200000;
+    private static final int MAX_CONNECTION = 1000;
+    private static final String LOCALHOST = "127.0.0.1";
+
+    private RestClient client;
+    private final int port;
+    private final int socketTimeout;
 
     public HavenaskHttpClient(int port) {
         this(port, SOCKET_TIMEOUT);
     }
 
-    public HavenaskHttpClient(int port, long socketTimeout) {
-        this.url = "http://127.0.0.1:" + port;
-        client = AccessController.doPrivileged(
-            (PrivilegedAction<OkHttpClient>) () -> new OkHttpClient.Builder().readTimeout(socketTimeout, TimeUnit.SECONDS).build()
-        );
+    public HavenaskHttpClient(int port, final int socketTimeout) {
+        this.port = port;
+        this.socketTimeout = socketTimeout;
+    }
+
+    protected synchronized RestClient getClient() {
+        if (client == null) {
+            client = RestClient.builder(new HttpHost(LOCALHOST, port, "http"))
+                .setHttpClientConfigCallback(new RestClientBuilder.HttpClientConfigCallback() {
+                    @Override
+                    public HttpAsyncClientBuilder customizeHttpClient(HttpAsyncClientBuilder httpClientBuilder) {
+                        return httpClientBuilder.setMaxConnPerRoute(MAX_CONNECTION).setMaxConnTotal(MAX_CONNECTION);
+
+                    }
+                })
+                .setRequestConfigCallback(new RestClientBuilder.RequestConfigCallback() {
+                    @Override
+                    public RequestConfig.Builder customizeRequestConfig(RequestConfig.Builder requestConfigBuilder) {
+                        return requestConfigBuilder.setSocketTimeout(socketTimeout);
+                    }
+                })
+                .build();
+        }
+        return client;
     }
 
     @Override
     public HeartbeatTargetResponse getHeartbeatTarget() throws IOException {
-        Request request = new Request.Builder().url(url + HEART_BEAT_URL).build();
-        Response response = AccessController.doPrivileged((PrivilegedAction<Response>) () -> {
-            try {
-                return client.newCall(request).execute();
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-        });
+        Request request = new org.havenask.client.Request("GET", HEART_BEAT_URL);
+        Response response = getClient().performRequest(request);
         try (
             XContentParser parser = JSON.xContent()
-                .createParser(NamedXContentRegistry.EMPTY, LoggingDeprecationHandler.INSTANCE, response.body().byteStream())
+                .createParser(NamedXContentRegistry.EMPTY, LoggingDeprecationHandler.INSTANCE, response.getEntity().getContent())
         ) {
             HeartbeatTargetResponse heartbeatTargetResponse = HeartbeatTargetResponse.fromXContent(parser);
             return heartbeatTargetResponse;
@@ -76,26 +90,27 @@ public class HavenaskHttpClient implements HavenaskClient {
     }
 
     @Override
-    public HeartbeatTargetResponse updateHeartbeatTarget(UpdateHeartbeatTargetRequest request) throws IOException {
-        RequestBody body = RequestBody.create(MediaType.parse("application/json"), Strings.toString(request));
+    public HeartbeatTargetResponse updateHeartbeatTarget(UpdateHeartbeatTargetRequest updateHeartbeatTargetRequest) throws IOException {
         Long start = System.nanoTime();
-        Request httpRequest = new Request.Builder().url(url + HEART_BEAT_URL).post(body).build();
+        Request request = new org.havenask.client.Request("POST", HEART_BEAT_URL);
+        request.setJsonEntity(Strings.toString(updateHeartbeatTargetRequest));
 
-        Response response = AccessController.doPrivileged((PrivilegedAction<Response>) () -> {
-            try {
-                return client.newCall(httpRequest).execute();
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-        });
+        Response response = getClient().performRequest(request);
         Long end = System.nanoTime();
         LOGGER.trace("updateHeartbeatTarget cost [{}] ms", (end - start) / 1000000);
         try (
             XContentParser parser = JSON.xContent()
-                .createParser(NamedXContentRegistry.EMPTY, LoggingDeprecationHandler.INSTANCE, response.body().byteStream())
+                .createParser(NamedXContentRegistry.EMPTY, LoggingDeprecationHandler.INSTANCE, response.getEntity().getContent())
         ) {
             HeartbeatTargetResponse heartbeatTargetResponse = HeartbeatTargetResponse.fromXContent(parser);
             return heartbeatTargetResponse;
+        }
+    }
+
+    @Override
+    public void close() throws IOException {
+        if (client != null) {
+            client.close();
         }
     }
 }
