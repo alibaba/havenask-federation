@@ -64,10 +64,13 @@ public class RestHavenaskSqlAction extends BaseRestHandler {
 
     static HavenaskSqlRequest createHavenaskSqlRequest(RestRequest request) throws IOException {
         String query = null;
-        XContentParser requestBody = request.contentOrSourceParamParser();
+        XContentParser requestBody = null;
 
         // Attempt to parse the 'query' from the request body.
         // If the body is empty or not present, fall back to parsing the 'query' from the request parameters.
+        if (request.hasContent()) {
+            requestBody = request.contentParser();
+        }
         if (Objects.nonNull(requestBody)) {
             query = parseQueryFromXContent(requestBody);
         }
