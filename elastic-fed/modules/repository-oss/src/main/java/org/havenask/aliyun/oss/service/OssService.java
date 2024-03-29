@@ -65,8 +65,8 @@ public interface OssService {
      *
      * @param listObjectsRequest request information
      * @return object list {@link ObjectListing}
-     * @throws OSSException
-     * @throws ClientException
+     * @throws OSSException OSSException
+     * @throws ClientException ClientException
      */
     ObjectListing listObjects(ListObjectsRequest listObjectsRequest) throws OSSException, ClientException;
 
@@ -110,8 +110,8 @@ public interface OssService {
      *
      * @param bucketName Bucket name.
      * @param key        Object key.
-     * @throws OSSException
-     * @throws ClientException
+     * @throws OSSException OSSException
+     * @throws ClientException ClientException
      */
     void deleteObject(String bucketName, String key) throws OSSException, ClientException;
 
@@ -123,8 +123,8 @@ public interface OssService {
      * @param destinationBucketName the name of the bucket where the target object is.
      * @param destinationKey        key of the target Object.
      * @return request result {@link CopyObjectResult} instance.
-     * @throws OSSException
-     * @throws ClientException
+     * @throws OSSException OSSException
+     * @throws ClientException ClientException
      */
     CopyObjectResult copyObject(String sourceBucketName, String sourceKey, String destinationBucketName, String destinationKey)
         throws OSSException, ClientException;

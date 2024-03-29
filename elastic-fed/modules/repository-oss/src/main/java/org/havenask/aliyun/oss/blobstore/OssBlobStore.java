@@ -206,10 +206,10 @@ public class OssBlobStore implements BlobStore {
      * @param blobName name of the blob
      * @param position blob start position
      * @param length  blob content length
-     * @return
-     * @throws OSSException
-     * @throws ClientException
-     * @throws IOException
+     * @return InputStream InputStream
+     * @throws OSSException OSSException
+     * @throws ClientException ClientException
+     * @throws IOException IOException
      */
     InputStream readBlob(String blobName, long position, long length) throws OSSException, ClientException, IOException {
         if (position < 0L) {
