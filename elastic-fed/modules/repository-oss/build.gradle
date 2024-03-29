@@ -11,10 +11,13 @@ havenaskplugin {
 dependencies {
     api project(":server")
     runtimeOnly 'com.google.guava:guava:31.1-jre'
-    api('com.aliyun.oss:aliyun-sdk-oss:2.8.1') {
+    implementation('com.aliyun.oss:aliyun-sdk-oss:2.8.1') {
       exclude module: "commons-beanutils"
       exclude module: "commons-collections"
     }
+    api "org.apache.httpcomponents:httpclient:${versions.httpclient}"
+    api "org.apache.httpcomponents:httpcore:${versions.httpcore}"
+    api "org.apache.httpcomponents:httpcore-nio:${versions.httpcore}"
     api 'commons-lang:commons-lang:2.6'
     api 'com.alibaba:fastjson:1.2.83_noneautotype'
     testImplementation 'org.mockito:mockito-core:1.9.5'
