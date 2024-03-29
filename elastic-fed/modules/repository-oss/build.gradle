@@ -1,14 +1,10 @@
 
 apply plugin: 'havenask.havenaskplugin'
-apply plugin: 'nebula.maven-base-publish'
-apply plugin: 'nebula.maven-scm'
 apply plugin: 'havenask.internal-cluster-test'
 
-archivesBaseName = 'a-pack-repository-oss'
-
 havenaskplugin {
-  name 'elasticsearch-repository-oss'
-  description 'Aliyun A-Pack Plugin OSS snapshot plugin'
+  name 'repository-oss'
+  description 'Aliyun OSS snapshot plugin'
   classname 'org.havenask.plugin.repository.oss.OssRepositoryPlugin'
 }
 
