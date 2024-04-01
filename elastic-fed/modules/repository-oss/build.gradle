@@ -8,10 +8,21 @@ havenaskplugin {
   classname 'org.havenask.plugin.repository.oss.OssRepositoryPlugin'
 }
 
+repositories {
+    mavenLocal()
+    maven {
+        url = uri('https://repo.maven.apache.org/maven2/')
+    }
+
+    maven {
+        url = uri('https://mvnrepo.alibaba-inc.com/mvn/repository')
+    }
+}
+
 dependencies {
     api project(":server")
     runtimeOnly 'com.google.guava:guava:31.1-jre'
-    implementation('com.aliyun.oss:aliyun-sdk-oss:2.8.1') {
+    implementation('com.alibaba.elasticsearch:aliyun-sdk-oss:2.8.1-ali0.1.0-SNAPSHOT') {
       exclude module: "commons-beanutils"
       exclude module: "commons-collections"
     }

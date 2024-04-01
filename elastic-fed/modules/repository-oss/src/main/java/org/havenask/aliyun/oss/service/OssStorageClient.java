@@ -64,6 +64,7 @@ public class OssStorageClient {
     private final String ACCESS_KEY_SECRET = "AccessKeySecret";
     private final String SECURITY_TOKEN = "SecurityToken";
     private final int REFRESH_RETRY_COUNT = 3;
+    private final int CONNECTION_TIMEOUT = 10000;
     private boolean isStsOssClient;
     private ReadWriteLock readWriteLock;
 
@@ -290,6 +291,7 @@ public class OssStorageClient {
     private ClientConfiguration extractClientConfiguration(RepositoryMetadata repositoryMetadata) {
         ClientConfiguration configuration = new ClientConfiguration();
         configuration.setSupportCname(OssRepository.getSetting(OssClientSettings.SUPPORT_CNAME, repositoryMetadata));
+        configuration.setConnectionTimeout(CONNECTION_TIMEOUT);
         return configuration;
     }
 
