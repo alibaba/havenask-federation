@@ -11,7 +11,7 @@ havenaskplugin {
 dependencies {
     api project(":server")
     runtimeOnly 'com.google.guava:guava:31.1-jre'
-    implementation('com.aliyun.oss:aliyun-sdk-oss:2.8.2') {
+    implementation('com.aliyun.oss:aliyun-sdk-oss:3.12.1') {
       exclude module: "commons-beanutils"
       exclude module: "commons-collections"
     }
