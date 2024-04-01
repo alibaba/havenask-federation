@@ -46,6 +46,62 @@ import java.util.Objects;
 public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
 
     public static final String CONTENT_TYPE = "vector";
+    public static final String DIMS = "dims";
+    public static final String DIMENSION = "dimension";
+    public static final String SIMILARITY = "similarity";
+    public static final String CATEGORY = "category";
+    public static final String INDEX_OPTIONS = "index_options";
+
+    // index_options params
+    public static final String INDEX_OPTIONS_TYPE = "type";
+    public static final String EMBEDDING_DELIMITER = "embedding_delimiter";
+    public static final String MAJOR_ORDER = "major_order";
+    public static final String IGNORE_INVALID_DOC = "ignore_invalid_doc";
+    public static final String ENABLE_RECALL_REPORT = "enable_recall_report";
+    public static final String IS_EMBEDDING_SAVED = "is_embedding_saved";
+    public static final String MIN_SCAN_DOC_CNT = "min_scan_doc_cnt";
+    public static final String LINEAR_BUILD_THRESHOLD = "linear_build_threshold";
+    public static final String ENABLE_RT_BUILD = "enable_rt_build";
+    public static final String RT_INDEX_PARAMS = "rt_index_params";
+    public static final String BUILD_INDEX_PARAMS = "build_index_params";
+    public static final String SEARCH_INDEX_PARAMS = "search_index_params";
+
+    // index_options_schema_params
+    public static final String DISTANCE_TYPE = "distance_type";
+    public static final String BUILDER_NAME = "builder_name";
+    public static final String SEARCHER_NAME = "searcher_name";
+
+    // rt_index_params
+    public static final String OSWG_STREAMER_SEGMENT_SIZE = "proxima.oswg.streamer.segment_size";
+
+    // hnsw_build_index_params
+    public static final String HNSW_BUILDER_MAX_NEIGHBOR_COUNT = "proxima.hnsw.builder.max_neighbor_count";
+    public static final String HNSW_BUILDER_EFCONSTRUCTION = "proxima.hnsw.builder.efconstruction";
+    public static final String HNSW_BUILDER_THREAD_COUNT = "proxima.hnsw.builder.thread_count";
+
+    // linear_build_index_params
+    public static final String LINEAR_BUILDER_COLUMN_MAJOR_ORDER = "proxima.linear.builder.column_major_order";
+
+    // qc_build_index_params
+    public static final String QC_BUILDER_TRAIN_SAMPLE_COUNT = "proxima.qc.builder.train_sample_count";
+    public static final String QC_BUILDER_THREAD_COUNT = "proxima.qc.builder.thread_count";
+    public static final String QC_BUILDER_CENTROID_COUNT = "proxima.qc.builder.centroid_count";
+    public static final String QC_BUILDER_CLUSTER_AUTO_TUNING = "proxima.qc.builder.cluster_auto_tuning";
+    public static final String QC_BUILDER_OPTIMIZER_CLASS = "proxima.qc.builder.optimizer_class";
+    public static final String QC_BUILDER_OPTIMIZER_PARAMS = "proxima.qc.builder.optimizer_params";
+    public static final String QC_BUILDER_QUANTIZER_CLASS = "proxima.qc.builder.quantizer_class";
+    public static final String QC_BUILDER_QUANTIZE_BY_CENTROID = "proxima.qc.builder.quantize_by_centroid";
+    public static final String QC_BUILDER_STORE_ORIGINAL_FEATURES = "proxima.qc.builder.store_original_features";
+    public static final String QC_BUILDER_TRAIN_SAMPLE_RATIO = "proxima.qc.builder.train_sample_ratio";
+
+    // hnsw_search_index_params
+    public static final String HNSW_SEARCHER_EF = "proxima.hnsw.searcher.ef";
+
+    // qc_search_index_params
+    public static final String QC_SEARCHER_SCAN_RATIO = "proxima.qc.searcher.scan_ratio";
+    public static final String QC_SEARCHER_OPTIMIZER_PARAMS = "proxima.qc.searcher.optimizer_params";
+    public static final String QC_SEARCHER_BRUTE_FORCE_THRESHOLD = "proxima.qc.searcher.brute_force_threshold";
+
     private static final int DIM_MAX = 2048;
 
     private static DenseVectorFieldMapper toType(FieldMapper in) {
@@ -54,7 +110,7 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
 
     public static class Builder extends ParametrizedFieldMapper.Builder {
 
-        protected final Parameter<Integer> dimension = new Parameter<>("dims", false, () -> -1, (n, c, o) -> {
+        protected final Parameter<Integer> dimension = new Parameter<>(DIMS, false, () -> -1, (n, c, o) -> {
             if (o == null) {
                 throw new IllegalArgumentException("dims cannot be null");
             }
@@ -79,17 +135,12 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
             return value;
         }, m -> toType(m).dims);
 
-        private final Parameter<String> similarity = Parameter.stringParam(
-            "similarity",
-            false,
-            m -> toType(m).similarity.name(),
-            "l2_norm"
-        );
+        private final Parameter<String> similarity = Parameter.stringParam(SIMILARITY, false, m -> toType(m).similarity.name(), "l2_norm");
 
-        private final Parameter<String> category = Parameter.stringParam("category", false, m -> toType(m).category, "");
+        private final Parameter<String> category = Parameter.stringParam(CATEGORY, false, m -> toType(m).category, "");
 
         private final Parameter<IndexOptions> indexOptions = new Parameter<>(
-            "index_options",
+            INDEX_OPTIONS,
             false,
             () -> HnswIndexOptions.parseIndexOptions("", Collections.emptyMap()),
             (n, c, o) -> o == null ? null : parseIndexOptions(n, o),
@@ -241,31 +292,31 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
         public final Integer oswgStreamerSegmentSize;
 
         static IndexOptions parseIndexOptions(String fieldName, Map<String, ?> indexOptionsMap) {
-            Object embeddingDelimiterNode = indexOptionsMap.remove("embedding_delimiter");
+            Object embeddingDelimiterNode = indexOptionsMap.remove(EMBEDDING_DELIMITER);
             String embeddingDelimiter = embeddingDelimiterNode != null ? XContentMapValues.nodeStringValue(embeddingDelimiterNode) : null;
-            Object majorOrderNode = indexOptionsMap.remove("major_order");
+            Object majorOrderNode = indexOptionsMap.remove(MAJOR_ORDER);
             MajorOrder majorOrder = majorOrderNode != null
                 ? MajorOrder.fromString(XContentMapValues.nodeStringValue(majorOrderNode))
                 : null;
-            Object ignoreInvalidDocNode = indexOptionsMap.remove("ignore_invalid_doc");
+            Object ignoreInvalidDocNode = indexOptionsMap.remove(IGNORE_INVALID_DOC);
             Boolean ignoreInvalidDoc = ignoreInvalidDocNode != null ? XContentMapValues.nodeBooleanValue(ignoreInvalidDocNode) : true;
-            Object enableRecallReportNode = indexOptionsMap.remove("enable_recall_report");
+            Object enableRecallReportNode = indexOptionsMap.remove(ENABLE_RECALL_REPORT);
             Boolean enableRecallReport = enableRecallReportNode != null ? XContentMapValues.nodeBooleanValue(enableRecallReportNode) : null;
-            Object isEmbeddingSavedNode = indexOptionsMap.remove("is_embedding_saved");
+            Object isEmbeddingSavedNode = indexOptionsMap.remove(IS_EMBEDDING_SAVED);
             Boolean isEmbeddingSaved = isEmbeddingSavedNode != null ? XContentMapValues.nodeBooleanValue(isEmbeddingSavedNode) : null;
-            Object minScanDocCntNode = indexOptionsMap.remove("min_scan_doc_cnt");
+            Object minScanDocCntNode = indexOptionsMap.remove(MIN_SCAN_DOC_CNT);
             Integer minScanDocCnt = minScanDocCntNode != null ? XContentMapValues.nodeIntegerValue(minScanDocCntNode) : null;
-            Object linearBuildThresholdNode = indexOptionsMap.remove("linear_build_threshold");
+            Object linearBuildThresholdNode = indexOptionsMap.remove(LINEAR_BUILD_THRESHOLD);
             Integer linearBuildThreshold = linearBuildThresholdNode != null
                 ? XContentMapValues.nodeIntegerValue(linearBuildThresholdNode)
                 : null;
             Integer oswgStreamerSegmentSize = null;
-            Object rtIndexParamsNode = indexOptionsMap.remove("rt_index_params");
+            Object rtIndexParamsNode = indexOptionsMap.remove(RT_INDEX_PARAMS);
             Map<String, ?> rtIndexParamsMap = rtIndexParamsNode != null
-                ? XContentMapValues.nodeMapValue(rtIndexParamsNode, "rt_index_params")
+                ? XContentMapValues.nodeMapValue(rtIndexParamsNode, RT_INDEX_PARAMS)
                 : null;
             if (rtIndexParamsMap != null) {
-                Object oswgStreamerSegmentSizeNode = rtIndexParamsMap.remove("proxima.oswg.streamer.segment_size");
+                Object oswgStreamerSegmentSizeNode = rtIndexParamsMap.remove(OSWG_STREAMER_SEGMENT_SIZE);
                 oswgStreamerSegmentSize = oswgStreamerSegmentSizeNode != null
                     ? XContentMapValues.nodeIntegerValue(oswgStreamerSegmentSizeNode)
                     : null;
@@ -343,7 +394,7 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
         @Override
         public XContentBuilder toXContent(XContentBuilder builder, Params params) throws IOException {
             builder.startObject();
-            builder.field("type", type.name());
+            builder.field(INDEX_OPTIONS_TYPE, type.name());
             builder.endObject();
             return builder;
         }
@@ -407,32 +458,32 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
 
         public XContentBuilder toInnerXContent(XContentBuilder builder, Params params) throws IOException {
             builder.startObject();
-            builder.field("type", type.name());
+            builder.field(INDEX_OPTIONS_TYPE, type.name());
             if (embeddingDelimiter != null) {
-                builder.field("embedding_delimiter", embeddingDelimiter);
+                builder.field(EMBEDDING_DELIMITER, embeddingDelimiter);
             }
             if (majorOrder != null) {
-                builder.field("major_order", majorOrder.getValue());
+                builder.field(MAJOR_ORDER, majorOrder.getValue());
             }
             if (ignoreInvalidDoc != null) {
-                builder.field("ignore_invalid_doc", ignoreInvalidDoc);
+                builder.field(IGNORE_INVALID_DOC, ignoreInvalidDoc);
             }
             if (enableRecallReport != null) {
-                builder.field("enable_recall_report", enableRecallReport);
+                builder.field(ENABLE_RECALL_REPORT, enableRecallReport);
             }
             if (isEmbeddingSaved != null) {
-                builder.field("is_embedding_saved", isEmbeddingSaved);
+                builder.field(IS_EMBEDDING_SAVED, isEmbeddingSaved);
             }
             if (minScanDocCnt != null) {
-                builder.field("min_scan_doc_cnt", minScanDocCnt);
+                builder.field(MIN_SCAN_DOC_CNT, minScanDocCnt);
             }
             if (linearBuildThreshold != null) {
-                builder.field("linear_build_threshold", linearBuildThreshold);
+                builder.field(LINEAR_BUILD_THRESHOLD, linearBuildThreshold);
             }
             if (oswgStreamerSegmentSize != null) {
-                builder.startObject("rt_index_params");
+                builder.startObject(RT_INDEX_PARAMS);
                 {
-                    builder.field("proxima.oswg.streamer.segment_size", oswgStreamerSegmentSize);
+                    builder.field(OSWG_STREAMER_SEGMENT_SIZE, oswgStreamerSegmentSize);
                 }
                 builder.endObject();
             }
@@ -451,14 +502,14 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
 
         static IndexOptions parseIndexOptions(String fieldName, Map<String, ?> indexOptionsMap) {
             IndexOptions baseIndexOptions = IndexOptions.parseIndexOptions(fieldName, indexOptionsMap);
-            Object buildIndexParamsNode = indexOptionsMap.remove("build_index_params");
+            Object buildIndexParamsNode = indexOptionsMap.remove(BUILD_INDEX_PARAMS);
             Map<String, ?> buildIndexParamsMap = buildIndexParamsNode != null
-                ? XContentMapValues.nodeMapValue(buildIndexParamsNode, "build_index_params")
+                ? XContentMapValues.nodeMapValue(buildIndexParamsNode, BUILD_INDEX_PARAMS)
                 : null;
 
             String builderColumnMajorOrder = null;
             if (buildIndexParamsMap != null) {
-                Object builderColumnMajorOrderNode = buildIndexParamsMap.remove("proxima.linear.builder.column_major_order");
+                Object builderColumnMajorOrderNode = buildIndexParamsMap.remove(LINEAR_BUILDER_COLUMN_MAJOR_ORDER);
                 builderColumnMajorOrder = builderColumnMajorOrderNode != null
                     ? XContentMapValues.nodeStringValue(builderColumnMajorOrderNode)
                     : null;
@@ -479,9 +530,9 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
         public XContentBuilder toXContent(XContentBuilder builder, Params params) throws IOException {
             XContentBuilder baseBuilder = toInnerXContent(builder, params);
             if (builderColumnMajorOrder != null) {
-                baseBuilder.startObject("build_index_params");
+                baseBuilder.startObject(BUILD_INDEX_PARAMS);
                 {
-                    baseBuilder.field("proxima.linear.builder.column_major_order", builderColumnMajorOrder);
+                    baseBuilder.field(LINEAR_BUILDER_COLUMN_MAJOR_ORDER, builderColumnMajorOrder);
                 }
                 baseBuilder.endObject();
             }
@@ -558,46 +609,46 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
             Boolean builderStoreOriginalFeatures = null;
             Double builderTrainSampleRatio = null;
 
-            Object buildIndexParamsNode = indexOptionsMap.remove("build_index_params");
+            Object buildIndexParamsNode = indexOptionsMap.remove(BUILD_INDEX_PARAMS);
             Map<String, ?> buildIndexParamsMap = buildIndexParamsNode != null
-                ? XContentMapValues.nodeMapValue(buildIndexParamsNode, "build_index_params")
+                ? XContentMapValues.nodeMapValue(buildIndexParamsNode, BUILD_INDEX_PARAMS)
                 : null;
             if (buildIndexParamsMap != null) {
-                Object builderTrainSampleCountNode = buildIndexParamsMap.remove("proxima.qc.builder.train_sample_count");
+                Object builderTrainSampleCountNode = buildIndexParamsMap.remove(QC_BUILDER_TRAIN_SAMPLE_COUNT);
                 builderTrainSampleCount = builderTrainSampleCountNode != null
                     ? XContentMapValues.nodeIntegerValue(builderTrainSampleCountNode)
                     : null;
-                Object builderThreadCountNode = buildIndexParamsMap.remove("proxima.qc.builder.thread_count");
+                Object builderThreadCountNode = buildIndexParamsMap.remove(QC_BUILDER_THREAD_COUNT);
                 builderThreadCount = builderThreadCountNode != null ? XContentMapValues.nodeIntegerValue(builderThreadCountNode) : null;
-                Object builderCentroidCountNode = buildIndexParamsMap.remove("proxima.qc.builder.centroid_count");
+                Object builderCentroidCountNode = buildIndexParamsMap.remove(QC_BUILDER_CENTROID_COUNT);
                 builderCentroidCount = builderCentroidCountNode != null
                     ? XContentMapValues.nodeStringValue(builderCentroidCountNode)
                     : null;
-                Object builderClusterAutoTuningNode = buildIndexParamsMap.remove("proxima.qc.builder.cluster_auto_tuning");
+                Object builderClusterAutoTuningNode = buildIndexParamsMap.remove(QC_BUILDER_CLUSTER_AUTO_TUNING);
                 builderClusterAutoTuning = builderClusterAutoTuningNode != null
                     ? XContentMapValues.nodeBooleanValue(builderClusterAutoTuningNode)
                     : null;
-                Object builderOptimizerClassNode = buildIndexParamsMap.remove("proxima.qc.builder.optimizer_class");
+                Object builderOptimizerClassNode = buildIndexParamsMap.remove(QC_BUILDER_OPTIMIZER_CLASS);
                 builderOptimizerClass = builderOptimizerClassNode != null
                     ? XContentMapValues.nodeStringValue(builderOptimizerClassNode)
                     : null;
-                Object builderOptimizerParamsNode = buildIndexParamsMap.remove("proxima.qc.builder.optimizer_params");
+                Object builderOptimizerParamsNode = buildIndexParamsMap.remove(QC_BUILDER_OPTIMIZER_PARAMS);
                 builderOptimizerParams = builderOptimizerParamsNode != null
                     ? XContentMapValues.nodeStringValue(builderOptimizerParamsNode)
                     : null;
-                Object builderQuantizerClassNode = buildIndexParamsMap.remove("proxima.qc.builder.quantizer_class");
+                Object builderQuantizerClassNode = buildIndexParamsMap.remove(QC_BUILDER_QUANTIZER_CLASS);
                 builderQuantizerClass = builderQuantizerClassNode != null
                     ? XContentMapValues.nodeStringValue(builderQuantizerClassNode)
                     : null;
-                Object builderQuantizeByCentroidNode = buildIndexParamsMap.remove("proxima.qc.builder.quantize_by_centroid");
+                Object builderQuantizeByCentroidNode = buildIndexParamsMap.remove(QC_BUILDER_QUANTIZE_BY_CENTROID);
                 builderQuantizeByCentroid = builderQuantizeByCentroidNode != null
                     ? XContentMapValues.nodeBooleanValue(builderQuantizeByCentroidNode)
                     : null;
-                Object builderStoreOriginalFeaturesNode = buildIndexParamsMap.remove("proxima.qc.builder.store_original_features");
+                Object builderStoreOriginalFeaturesNode = buildIndexParamsMap.remove(QC_BUILDER_STORE_ORIGINAL_FEATURES);
                 builderStoreOriginalFeatures = builderStoreOriginalFeaturesNode != null
                     ? XContentMapValues.nodeBooleanValue(builderStoreOriginalFeaturesNode)
                     : null;
-                Object builderTrainSampleRatioNode = buildIndexParamsMap.remove("proxima.qc.builder.train_sample_ratio");
+                Object builderTrainSampleRatioNode = buildIndexParamsMap.remove(QC_BUILDER_TRAIN_SAMPLE_RATIO);
                 builderTrainSampleRatio = builderTrainSampleRatioNode != null
                     ? XContentMapValues.nodeDoubleValue(builderTrainSampleRatioNode)
                     : null;
@@ -608,18 +659,18 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
             String searcherOptimizerParams = null;
             Integer searcherBruteForceThreshold = null;
 
-            Object searcherParamsNode = indexOptionsMap.remove("search_index_params");
+            Object searcherParamsNode = indexOptionsMap.remove(SEARCH_INDEX_PARAMS);
             Map<String, ?> searcherParamsMap = searcherParamsNode != null
-                ? XContentMapValues.nodeMapValue(searcherParamsNode, "search_index_params")
+                ? XContentMapValues.nodeMapValue(searcherParamsNode, SEARCH_INDEX_PARAMS)
                 : null;
             if (searcherParamsMap != null) {
-                Object searcherScanRatioNode = searcherParamsMap.remove("proxima.qc.searcher.scan_ratio");
+                Object searcherScanRatioNode = searcherParamsMap.remove(QC_SEARCHER_SCAN_RATIO);
                 searcherScanRatio = searcherScanRatioNode != null ? XContentMapValues.nodeDoubleValue(searcherScanRatioNode) : null;
-                Object searcherOptimizerParamsNode = searcherParamsMap.remove("proxima.qc.searcher.optimizer_params");
+                Object searcherOptimizerParamsNode = searcherParamsMap.remove(QC_SEARCHER_OPTIMIZER_PARAMS);
                 searcherOptimizerParams = searcherOptimizerParamsNode != null
                     ? XContentMapValues.nodeStringValue(searcherOptimizerParamsNode)
                     : null;
-                Object searcherBruteForceThresholdNode = searcherParamsMap.remove("proxima.qc.searcher.brute_force_threshold");
+                Object searcherBruteForceThresholdNode = searcherParamsMap.remove(QC_SEARCHER_BRUTE_FORCE_THRESHOLD);
                 searcherBruteForceThreshold = searcherBruteForceThresholdNode != null
                     ? XContentMapValues.nodeIntegerValue(searcherBruteForceThresholdNode)
                     : null;
@@ -681,51 +732,51 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
         public XContentBuilder toXContent(XContentBuilder builder, Params params) throws IOException {
             XContentBuilder baseBuilder = toInnerXContent(builder, params);
 
-            baseBuilder.startObject("build_index_params");
+            baseBuilder.startObject(BUILD_INDEX_PARAMS);
             {
                 if (builderTrainSampleCount != null) {
-                    baseBuilder.field("proxima.qc.builder.train_sample_count", builderTrainSampleCount);
+                    baseBuilder.field(QC_BUILDER_TRAIN_SAMPLE_COUNT, builderTrainSampleCount);
                 }
                 if (builderThreadCount != null) {
-                    baseBuilder.field("proxima.qc.builder.thread_count", builderThreadCount);
+                    baseBuilder.field(QC_BUILDER_THREAD_COUNT, builderThreadCount);
                 }
                 if (builderCentroidCount != null) {
-                    baseBuilder.field("proxima.qc.builder.centroid_count", builderCentroidCount);
+                    baseBuilder.field(QC_BUILDER_CENTROID_COUNT, builderCentroidCount);
                 }
                 if (builderClusterAutoTuning != null) {
-                    baseBuilder.field("proxima.qc.builder.cluster_auto_tuning", builderClusterAutoTuning);
+                    baseBuilder.field(QC_BUILDER_CLUSTER_AUTO_TUNING, builderClusterAutoTuning);
                 }
                 if (builderOptimizerClass != null) {
-                    baseBuilder.field("proxima.qc.builder.optimizer_class", builderOptimizerClass);
+                    baseBuilder.field(QC_BUILDER_OPTIMIZER_CLASS, builderOptimizerClass);
                 }
                 if (builderOptimizerParams != null) {
-                    baseBuilder.field("proxima.qc.builder.optimizer_params", builderOptimizerParams);
+                    baseBuilder.field(QC_BUILDER_OPTIMIZER_PARAMS, builderOptimizerParams);
                 }
                 if (builderQuantizerClass != null) {
-                    baseBuilder.field("proxima.qc.builder.quantizer_class", builderQuantizerClass);
+                    baseBuilder.field(QC_BUILDER_QUANTIZER_CLASS, builderQuantizerClass);
                 }
                 if (builderQuantizeByCentroid != null) {
-                    baseBuilder.field("proxima.qc.builder.quantize_by_centroid", builderQuantizeByCentroid);
+                    baseBuilder.field(QC_BUILDER_QUANTIZE_BY_CENTROID, builderQuantizeByCentroid);
                 }
                 if (builderStoreOriginalFeatures != null) {
-                    baseBuilder.field("proxima.qc.builder.store_original_features", builderStoreOriginalFeatures);
+                    baseBuilder.field(QC_BUILDER_STORE_ORIGINAL_FEATURES, builderStoreOriginalFeatures);
                 }
                 if (builderTrainSampleRatio != null) {
-                    baseBuilder.field("proxima.qc.builder.train_sample_ratio", builderTrainSampleRatio);
+                    baseBuilder.field(QC_BUILDER_TRAIN_SAMPLE_RATIO, builderTrainSampleRatio);
                 }
             }
             baseBuilder.endObject();
 
-            baseBuilder.startObject("search_index_params");
+            baseBuilder.startObject(SEARCH_INDEX_PARAMS);
             {
                 if (searcherScanRatio != null) {
-                    baseBuilder.field("proxima.qc.searcher.scan_ratio", searcherScanRatio);
+                    baseBuilder.field(QC_SEARCHER_SCAN_RATIO, searcherScanRatio);
                 }
                 if (searcherOptimizerParams != null) {
-                    baseBuilder.field("proxima.qc.searcher.optimizer_params", searcherOptimizerParams);
+                    baseBuilder.field(QC_SEARCHER_OPTIMIZER_PARAMS, searcherOptimizerParams);
                 }
                 if (searcherBruteForceThreshold != null) {
-                    baseBuilder.field("proxima.qc.searcher.brute_force_threshold", searcherBruteForceThreshold);
+                    baseBuilder.field(QC_SEARCHER_BRUTE_FORCE_THRESHOLD, searcherBruteForceThreshold);
                 }
             }
             baseBuilder.endObject();
@@ -830,31 +881,31 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
             Integer builderMaxNeighborCnt = null;
             Integer builderEfConstruction = null;
             Integer builderThreadCnt = null;
-            Object buildIndexParamsNode = indexOptionsMap.remove("build_index_params");
+            Object buildIndexParamsNode = indexOptionsMap.remove(BUILD_INDEX_PARAMS);
             Map<String, ?> buildIndexParamsMap = buildIndexParamsNode != null
-                ? XContentMapValues.nodeMapValue(buildIndexParamsNode, "build_index_params")
+                ? XContentMapValues.nodeMapValue(buildIndexParamsNode, BUILD_INDEX_PARAMS)
                 : null;
             if (buildIndexParamsMap != null) {
-                Object builderMaxNeighborCntNode = buildIndexParamsMap.remove("proxima.hnsw.builder.max_neighbor_count");
+                Object builderMaxNeighborCntNode = buildIndexParamsMap.remove(HNSW_BUILDER_MAX_NEIGHBOR_COUNT);
                 builderMaxNeighborCnt = builderMaxNeighborCntNode != null
                     ? XContentMapValues.nodeIntegerValue(builderMaxNeighborCntNode)
                     : null;
-                Object builderEfConstructionNode = buildIndexParamsMap.remove("proxima.hnsw.builder.efconstruction");
+                Object builderEfConstructionNode = buildIndexParamsMap.remove(HNSW_BUILDER_EFCONSTRUCTION);
                 builderEfConstruction = builderEfConstructionNode != null
                     ? XContentMapValues.nodeIntegerValue(builderEfConstructionNode)
                     : null;
-                Object builderThreadCntNode = buildIndexParamsMap.remove("proxima.hnsw.builder.thread_count");
+                Object builderThreadCntNode = buildIndexParamsMap.remove(HNSW_BUILDER_THREAD_COUNT);
                 builderThreadCnt = builderThreadCntNode != null ? XContentMapValues.nodeIntegerValue(builderThreadCntNode) : null;
                 DocumentMapperParser.checkNoRemainingFields(fieldName, buildIndexParamsMap, Version.CURRENT);
             }
 
             Integer searcherEf = null;
-            Object searcherParamsNode = indexOptionsMap.remove("search_index_params");
+            Object searcherParamsNode = indexOptionsMap.remove(SEARCH_INDEX_PARAMS);
             Map<String, ?> searcherParamsMap = searcherParamsNode != null
-                ? XContentMapValues.nodeMapValue(searcherParamsNode, "search_index_params")
+                ? XContentMapValues.nodeMapValue(searcherParamsNode, SEARCH_INDEX_PARAMS)
                 : null;
             if (searcherParamsMap != null) {
-                Object searcherEfNode = searcherParamsMap.remove("proxima.hnsw.searcher.ef");
+                Object searcherEfNode = searcherParamsMap.remove(HNSW_SEARCHER_EF);
                 searcherEf = searcherEfNode != null ? XContentMapValues.nodeIntegerValue(searcherEfNode) : null;
                 DocumentMapperParser.checkNoRemainingFields(fieldName, searcherParamsMap, Version.CURRENT);
             }
@@ -882,23 +933,23 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
         @Override
         public XContentBuilder toXContent(XContentBuilder builder, Params params) throws IOException {
             XContentBuilder baseBuilder = toInnerXContent(builder, params);
-            baseBuilder.startObject("build_index_params");
+            baseBuilder.startObject(BUILD_INDEX_PARAMS);
             {
                 if (builderMaxNeighborCnt != null) {
-                    baseBuilder.field("proxima.hnsw.builder.max_neighbor_count", builderMaxNeighborCnt);
+                    baseBuilder.field(HNSW_BUILDER_MAX_NEIGHBOR_COUNT, builderMaxNeighborCnt);
                 }
                 if (builderEfConstruction != null) {
-                    baseBuilder.field("proxima.hnsw.builder.efconstruction", builderEfConstruction);
+                    baseBuilder.field(HNSW_BUILDER_EFCONSTRUCTION, builderEfConstruction);
                 }
                 if (builderThreadCnt != null) {
-                    baseBuilder.field("proxima.hnsw.builder.thread_count", builderThreadCnt);
+                    baseBuilder.field(HNSW_BUILDER_THREAD_COUNT, builderThreadCnt);
                 }
             }
             baseBuilder.endObject();
-            baseBuilder.startObject("search_index_params");
+            baseBuilder.startObject(SEARCH_INDEX_PARAMS);
             {
                 if (searcherEf != null) {
-                    baseBuilder.field("proxima.hnsw.searcher.ef", searcherEf);
+                    baseBuilder.field(HNSW_SEARCHER_EF, searcherEf);
                 }
             }
             baseBuilder.endObject();
@@ -944,7 +995,7 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
     private static IndexOptions parseIndexOptions(String fieldName, Object propNode) {
         @SuppressWarnings("unchecked")
         Map<String, ?> indexOptionsMap = (Map<String, ?>) propNode;
-        Object typeNode = indexOptionsMap.remove("type");
+        Object typeNode = indexOptionsMap.remove(INDEX_OPTIONS_TYPE);
         if (typeNode == null) {
             throw new MapperParsingException("[index_options] requires field [type] to be configured");
         }
