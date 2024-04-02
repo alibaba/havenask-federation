@@ -145,6 +145,7 @@ public class HavenaskEngine extends InternalEngine {
     private KafkaProducer<String, String> producer = null;
     private volatile HavenaskCommitInfo lastCommitInfo = null;
     private CheckpointCalc checkpointCalc = null;
+    private long lastLocalCheckpoint = -1;
     private final String partitionName;
     private final RangeUtil.PartitionRange partitionRange;
     private final SingleObjectCache<DocsStats> docsStatsCache;
@@ -1110,13 +1111,23 @@ public class HavenaskEngine extends InternalEngine {
         long currentCheckpoint = checkpointCalc.getCheckpoint(havenaskTimePoint);
 
         logger.debug(
-            "havenask engine maybeRefresh, source: {}, time: {}, checkpoint: {}, havenask time point: {}, current checkpoint: {}",
+            "havenask engine maybeRefresh, source: {}, time: {}, checkpoint: {}, havenask time point: {}, current checkpoint: {}, last local checkpoint: {}, segment version: {}",
             source,
             time,
             checkpoint,
             havenaskTimePoint,
-            currentCheckpoint
+            currentCheckpoint,
+            lastLocalCheckpoint,
+            segmentVersion
         );
+
+        // 如果checkpoint没变化,则说明数据在这期间没发生变化
+        // 但是检测到version文件更新, 说明数据都落盘了, 所以havenask的checkpoint可以调整为当前的checkpoint
+        if (checkpoint == lastLocalCheckpoint && segmentVersion > lastCommitInfo.getCommitVersion()) {
+            currentCheckpoint = checkpoint;
+        }
+
+        lastLocalCheckpoint = checkpoint;
 
         // havenask会定期刷新version文件，因此在checkpoint没有变化但检测到version文件更新时也同步更新lucene segment metadata中的commit信息
         if (currentCheckpoint > lastCommitInfo.getCommitCheckpoint()
