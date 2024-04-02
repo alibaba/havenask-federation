@@ -590,6 +590,7 @@ public class SchemaGeneratorTests extends MapperServiceTestCase {
                         b.startObject("rt_index_params");
                         {
                             b.field("proxima.oswg.streamer.segment_size", 2048);
+                            b.field("proxima.oswg.streamer.efconstruction", 100);
                         }
                         b.endObject();
                     }
@@ -618,6 +619,9 @@ public class SchemaGeneratorTests extends MapperServiceTestCase {
                             b.field("proxima.qc.builder.thread_count", "0");
                             b.field("proxima.qc.builder.centroid_count", "1000");
                             b.field("proxima.qc.builder.cluster_auto_tuning", "false");
+                            b.field("proxima.qc.builder.optimizer_class", "HnswBuilder");
+                            b.field("proxima.qc.builder.optimizer_params", "{\"proxima.hnsw.builder.max_neighbor_count\": 100}");
+                            b.field("proxima.qc.builder.quantizer_class", "DoubleBitConverter");
                             b.field("proxima.qc.builder.quantize_by_centroid", "false");
                             b.field("proxima.qc.builder.store_original_features", "false");
                             b.field("proxima.qc.builder.train_sample_ratio", "1.0");
@@ -626,6 +630,7 @@ public class SchemaGeneratorTests extends MapperServiceTestCase {
                         b.startObject("search_index_params");
                         {
                             b.field("proxima.qc.searcher.scan_ratio", "0.01");
+                            b.field("proxima.qc.searcher.optimizer_params", "{\"proxima.hnsw.searcher.max_scan_ratio\": 0.1}");
                             b.field("proxima.qc.searcher.brute_force_threshold", "1000");
                         }
                         b.endObject();
@@ -765,10 +770,11 @@ public class SchemaGeneratorTests extends MapperServiceTestCase {
                 + "\t\t\t\"is_embedding_saved\":\"true\",\n"
                 + "\t\t\t\"min_scan_doc_cnt\":\"20000\",\n"
                 + "\t\t\t\"linear_build_threshold\":\"500\",\n"
-                + "\t\t\t\"rt_index_params\":\"{\\\"proxima.oswg.streamer.segment_size\\\":2048}\",\n"
+                + "\t\t\t\"rt_index_params\":\"{\\\"proxima.oswg.streamer.segment_size\\\":2048,"
+                + "\\\"proxima.oswg.streamer.efconstruction\\\":100}\",\n"
                 + "\t\t\t\"builder_name\":\"LinearBuilder\",\n"
                 + "\t\t\t\"searcher_name\":\"LinearSearcher\",\n"
-                + "\t\t\t\"searcher_index_params\":\"{\\\"proxima.hnsw.builder.linear_build_threshold\\\":500}\"\n"
+                + "\t\t\t\"build_index_params\":\"{\\\"proxima.linear.builder.column_major_order\\\":false}\"\n"
                 + "\t\t}\n"
                 + "\t},{\n"
                 + "\t\t\"index_fields\":[\n"
@@ -797,9 +803,9 @@ public class SchemaGeneratorTests extends MapperServiceTestCase {
                 + "\t\t\t\"linear_build_threshold\":\"500\",\n"
                 + "\t\t\t\"builder_name\":\"HnswBuilder\",\n"
                 + "\t\t\t\"searcher_name\":\"HnswSearcher\",\n"
-                + "\t\t\t\"searcher_index_params\":\"{\\\"proxima.hnsw.searcher.ef\\\":500}\",\n"
-                + "\t\t\t\"builder_index_params\":\"{\\\"proxima.hnsw.builder.max_neighbor_cnt\\\":100,"
-                + "\\\"proxima.hnsw.builder.ef_construction\\\":500,\\\"proxima.hnsw.builder.thread_cnt\\\":0}\"\n"
+                + "\t\t\t\"search_index_params\":\"{\\\"proxima.hnsw.searcher.ef\\\":500}\",\n"
+                + "\t\t\t\"build_index_params\":\"{\\\"proxima.hnsw.builder.max_neighbor_count\\\":100,"
+                + "\\\"proxima.hnsw.builder.efconstruction\\\":500,\\\"proxima.hnsw.builder.thread_count\\\":0}\"\n"
                 + "\t\t}\n"
                 + "\t},{\n"
                 + "\t\t\"index_fields\":[\n"
@@ -828,13 +834,16 @@ public class SchemaGeneratorTests extends MapperServiceTestCase {
                 + "\t\t\t\"linear_build_threshold\":\"500\",\n"
                 + "\t\t\t\"builder_name\":\"QcBuilder\",\n"
                 + "\t\t\t\"searcher_name\":\"QcSearcher\",\n"
-                + "\t\t\t\"searcher_index_params\":\"{\\\"proxima.qc.searcher.scan_ratio\\\":0.01,"
-                + "\\\"proxima.qc.searcher.brute_force_threshold\\\":1000}\",\n"
-                + "\t\t\t\"builder_index_params\":\"{\\\"proxima.qc.builder.train_sample_count\\\":0,"
+                + "\t\t\t\"search_index_params\":\"{\\\"proxima.qc.searcher.scan_ratio\\\":0.01,"
+                + "\\\"proxima.qc.searcher.optimizer_params\\\":\\\"{\\\"proxima.hnsw.searcher.max_scan_ratio\\\": 0.1}"
+                + "\\\",\\\"proxima.qc.searcher.brute_force_threshold\\\":1000}\",\n"
+                + "\t\t\t\"build_index_params\":\"{\\\"proxima.qc.builder.train_sample_count\\\":0,"
                 + "\\\"proxima.qc.builder.thread_count\\\":0,\\\"proxima.qc.builder.centroid_count\\\":\\\"1000\\\","
-                + "\\\"proxima.qc.builder.cluster_auto_tuning\\\":false,\\\"proxima.qc.builder.quantize_by_centroid"
-                + "\\\":false,\\\"proxima.qc.builder.store_original_features\\\":false,"
-                + "\\\"proxima.qc.builder.train_sample_ratio\\\":1.0}\"\n"
+                + "\\\"proxima.qc.builder.cluster_auto_tuning\\\":false,\\\"proxima.qc.builder.optimizer_class\\\":"
+                + "\\\"HnswBuilder\\\",\\\"proxima.qc.builder.optimizer_params\\\":\\\"{\\\"proxima.hnsw.builder.max_neighbor_count"
+                + "\\\": 100}\\\",\\\"proxima.qc.builder.quantizer_class\\\":\\\"DoubleBitConverter\\\","
+                + "\\\"proxima.qc.builder.quantize_by_centroid\\\":false,\\\"proxima.qc.builder.store_original_features"
+                + "\\\":false,\\\"proxima.qc.builder.train_sample_ratio\\\":1.0}\"\n"
                 + "\t\t}\n"
                 + "\t}],\n"
                 + "\t\"settings\":{\n"

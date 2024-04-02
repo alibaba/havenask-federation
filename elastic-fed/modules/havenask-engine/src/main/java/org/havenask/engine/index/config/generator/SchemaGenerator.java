@@ -39,6 +39,7 @@ import org.havenask.engine.index.config.Schema;
 import org.havenask.engine.index.config.Schema.FieldInfo;
 import org.havenask.engine.index.config.Schema.VectorIndex;
 import org.havenask.engine.index.engine.EngineSettings;
+import org.havenask.engine.index.mapper.DenseVectorFieldMapper;
 import org.havenask.engine.index.mapper.DenseVectorFieldMapper.Algorithm;
 import org.havenask.engine.index.mapper.DenseVectorFieldMapper.DenseVectorFieldType;
 import org.havenask.engine.index.mapper.DenseVectorFieldMapper.HnswIndexOptions;
@@ -271,75 +272,73 @@ public class SchemaGenerator {
         indexFields.add(new Schema.Field(dupFieldName));
 
         Map<String, String> parameter = new LinkedHashMap<>();
-        parameter.put("dimension", String.valueOf(vectorField.getDims()));
-        parameter.put("enable_rt_build", String.valueOf(true));
-        parameter.put("distance_type", DISTANCE_TYPE_MAP.get(vectorField.getSimilarity().getValue()));
+        parameter.put(DenseVectorFieldMapper.DIMENSION, String.valueOf(vectorField.getDims()));
+        parameter.put(DenseVectorFieldMapper.ENABLE_RT_BUILD, String.valueOf(true));
+        parameter.put(DenseVectorFieldMapper.DISTANCE_TYPE, DISTANCE_TYPE_MAP.get(vectorField.getSimilarity().getValue()));
 
         IndexOptions indexOptions = vectorField.getIndexOptions();
         if (indexOptions.embeddingDelimiter != null) {
-            parameter.put("embedding_delimiter", indexOptions.embeddingDelimiter);
+            parameter.put(DenseVectorFieldMapper.EMBEDDING_DELIMITER, indexOptions.embeddingDelimiter);
         }
         if (indexOptions.majorOrder != null) {
-            parameter.put("major_order", indexOptions.majorOrder.getValue());
+            parameter.put(DenseVectorFieldMapper.MAJOR_ORDER, indexOptions.majorOrder.getValue());
         }
         if (indexOptions.ignoreInvalidDoc != null) {
-            parameter.put("ignore_invalid_doc", String.valueOf(indexOptions.ignoreInvalidDoc));
+            parameter.put(DenseVectorFieldMapper.IGNORE_INVALID_DOC, String.valueOf(indexOptions.ignoreInvalidDoc));
         }
         if (indexOptions.enableRecallReport != null) {
-            parameter.put("enable_recall_report", String.valueOf(indexOptions.enableRecallReport));
+            parameter.put(DenseVectorFieldMapper.ENABLE_RECALL_REPORT, String.valueOf(indexOptions.enableRecallReport));
         }
         if (indexOptions.isEmbeddingSaved != null) {
-            parameter.put("is_embedding_saved", String.valueOf(indexOptions.isEmbeddingSaved));
+            parameter.put(DenseVectorFieldMapper.IS_EMBEDDING_SAVED, String.valueOf(indexOptions.isEmbeddingSaved));
         }
         if (indexOptions.minScanDocCnt != null) {
-            parameter.put("min_scan_doc_cnt", String.valueOf(indexOptions.minScanDocCnt));
+            parameter.put(DenseVectorFieldMapper.MIN_SCAN_DOC_CNT, String.valueOf(indexOptions.minScanDocCnt));
         }
         if (indexOptions.linearBuildThreshold != null) {
-            parameter.put("linear_build_threshold", String.valueOf(indexOptions.linearBuildThreshold));
+            parameter.put(DenseVectorFieldMapper.LINEAR_BUILD_THRESHOLD, String.valueOf(indexOptions.linearBuildThreshold));
         }
-        if (indexOptions.oswgStreamerSegmentSize != null) {
-            StringBuilder proximaOswgStreamerSegmentSizeBuilder = new StringBuilder();
-            proximaOswgStreamerSegmentSizeBuilder.append("{");
-            proximaOswgStreamerSegmentSizeBuilder.append("\"proxima.oswg.streamer.segment_size\":" + indexOptions.oswgStreamerSegmentSize);
-            proximaOswgStreamerSegmentSizeBuilder.append("}");
-            parameter.put("rt_index_params", proximaOswgStreamerSegmentSizeBuilder.toString());
+
+        String rtIndexParams = getRtIndexParams(indexOptions);
+        if (!Strings.isNullOrEmpty(rtIndexParams)) {
+            parameter.put(DenseVectorFieldMapper.RT_INDEX_PARAMS, rtIndexParams);
         }
 
         if (indexOptions.type == Algorithm.HNSW) {
-            parameter.put("builder_name", HNSW_BUILDER);
-            parameter.put("searcher_name", HNSW_SEARCHER);
+            parameter.put(DenseVectorFieldMapper.BUILDER_NAME, HNSW_BUILDER);
+            parameter.put(DenseVectorFieldMapper.SEARCHER_NAME, HNSW_SEARCHER);
 
             HnswIndexOptions hnswIndexOptions = (HnswIndexOptions) indexOptions;
             String[] SearchAndBuildIndexParams = getSearchAndBuildIndexParams(hnswIndexOptions);
             if (SearchAndBuildIndexParams[SEARCH_INDEX_PARAMS_POS] != null) {
-                parameter.put("searcher_index_params", SearchAndBuildIndexParams[SEARCH_INDEX_PARAMS_POS]);
+                parameter.put(DenseVectorFieldMapper.SEARCH_INDEX_PARAMS, SearchAndBuildIndexParams[SEARCH_INDEX_PARAMS_POS]);
             }
             if (SearchAndBuildIndexParams[BUILD_INDEX_PARAMS_POS] != null) {
-                parameter.put("builder_index_params", SearchAndBuildIndexParams[BUILD_INDEX_PARAMS_POS]);
+                parameter.put(DenseVectorFieldMapper.BUILD_INDEX_PARAMS, SearchAndBuildIndexParams[BUILD_INDEX_PARAMS_POS]);
             }
         } else if (indexOptions.type == Algorithm.QC) {
-            parameter.put("builder_name", QC_BUILDER);
-            parameter.put("searcher_name", QC_SEARCHER);
+            parameter.put(DenseVectorFieldMapper.BUILDER_NAME, QC_BUILDER);
+            parameter.put(DenseVectorFieldMapper.SEARCHER_NAME, QC_SEARCHER);
 
             QCIndexOptions qcIndexOptions = (QCIndexOptions) indexOptions;
             String[] SearchAndBuildIndexParams = getSearchAndBuildIndexParams(qcIndexOptions);
             if (SearchAndBuildIndexParams[SEARCH_INDEX_PARAMS_POS] != null) {
-                parameter.put("searcher_index_params", SearchAndBuildIndexParams[SEARCH_INDEX_PARAMS_POS]);
+                parameter.put(DenseVectorFieldMapper.SEARCH_INDEX_PARAMS, SearchAndBuildIndexParams[SEARCH_INDEX_PARAMS_POS]);
             }
             if (SearchAndBuildIndexParams[BUILD_INDEX_PARAMS_POS] != null) {
-                parameter.put("builder_index_params", SearchAndBuildIndexParams[BUILD_INDEX_PARAMS_POS]);
+                parameter.put(DenseVectorFieldMapper.BUILD_INDEX_PARAMS, SearchAndBuildIndexParams[BUILD_INDEX_PARAMS_POS]);
             }
         } else if (indexOptions.type == Algorithm.LINEAR) {
-            parameter.put("builder_name", LINEAR_BUILDER);
-            parameter.put("searcher_name", LINEAR_SEARCHER);
+            parameter.put(DenseVectorFieldMapper.BUILDER_NAME, LINEAR_BUILDER);
+            parameter.put(DenseVectorFieldMapper.SEARCHER_NAME, LINEAR_SEARCHER);
 
             LinearIndexOptions linearIndexOptions = (LinearIndexOptions) indexOptions;
             String[] SearchAndBuildIndexParams = getSearchAndBuildIndexParams(linearIndexOptions);
             if (SearchAndBuildIndexParams[SEARCH_INDEX_PARAMS_POS] != null) {
-                parameter.put("searcher_index_params", SearchAndBuildIndexParams[SEARCH_INDEX_PARAMS_POS]);
+                parameter.put(DenseVectorFieldMapper.SEARCH_INDEX_PARAMS, SearchAndBuildIndexParams[SEARCH_INDEX_PARAMS_POS]);
             }
             if (SearchAndBuildIndexParams[BUILD_INDEX_PARAMS_POS] != null) {
-                parameter.put("builder_index_params", SearchAndBuildIndexParams[BUILD_INDEX_PARAMS_POS]);
+                parameter.put(DenseVectorFieldMapper.BUILD_INDEX_PARAMS, SearchAndBuildIndexParams[BUILD_INDEX_PARAMS_POS]);
             }
         }
 
@@ -386,6 +385,25 @@ public class SchemaGenerator {
         return schema;
     }
 
+    public String getRtIndexParams(IndexOptions indexOptions) {
+        StringBuilder rtIndexParamsBuilder = new StringBuilder();
+        if (Objects.nonNull(indexOptions.oswgStreamerSegmentSize) || Objects.nonNull(indexOptions.oswgStreamerEfConstruction)) {
+            rtIndexParamsBuilder.append("{");
+            if (Objects.nonNull(indexOptions.oswgStreamerSegmentSize)) {
+                rtIndexParamsBuilder.append("\"" + DenseVectorFieldMapper.OSWG_STREAMER_SEGMENT_SIZE + "\":");
+                rtIndexParamsBuilder.append(String.valueOf(indexOptions.oswgStreamerSegmentSize) + ',');
+            }
+            if (Objects.nonNull(indexOptions.oswgStreamerEfConstruction)) {
+                rtIndexParamsBuilder.append("\"" + DenseVectorFieldMapper.OSWG_STREAMER_EFCONSTRUCTION + "\":");
+                rtIndexParamsBuilder.append(String.valueOf(indexOptions.oswgStreamerEfConstruction) + ',');
+            }
+            // 删掉最后一个多余的','
+            rtIndexParamsBuilder.deleteCharAt(rtIndexParamsBuilder.length() - 1);
+            rtIndexParamsBuilder.append("}");
+        }
+        return rtIndexParamsBuilder.toString();
+    }
+
     public String[] getSearchAndBuildIndexParams(IndexOptions indexOptions) {
         String[] resStrs = new String[2];
         if (indexOptions.type == Algorithm.HNSW) {
@@ -394,7 +412,8 @@ public class SchemaGenerator {
             StringBuilder hnswSearchIndexParamsBuilder = new StringBuilder();
             if (hnswIndexOptions.searcherEf != null) {
                 hnswSearchIndexParamsBuilder.append("{");
-                hnswSearchIndexParamsBuilder.append("\"proxima.hnsw.searcher.ef\":" + hnswIndexOptions.searcherEf);
+                hnswSearchIndexParamsBuilder.append("\"" + DenseVectorFieldMapper.HNSW_SEARCHER_EF + "\":");
+                hnswSearchIndexParamsBuilder.append(hnswIndexOptions.searcherEf);
                 hnswSearchIndexParamsBuilder.append("}");
                 resStrs[SEARCH_INDEX_PARAMS_POS] = hnswSearchIndexParamsBuilder.toString();
             }
@@ -405,17 +424,16 @@ public class SchemaGenerator {
                 || hnswIndexOptions.builderThreadCnt != null) {
                 hnswBuildIndexParamsBuilder.append("{");
                 if (hnswIndexOptions.builderMaxNeighborCnt != null) {
-                    hnswBuildIndexParamsBuilder.append(
-                        "\"proxima.hnsw.builder.max_neighbor_cnt\":" + hnswIndexOptions.builderMaxNeighborCnt + ','
-                    );
+                    hnswBuildIndexParamsBuilder.append("\"" + DenseVectorFieldMapper.HNSW_BUILDER_MAX_NEIGHBOR_COUNT + "\":");
+                    hnswBuildIndexParamsBuilder.append(String.valueOf(hnswIndexOptions.builderMaxNeighborCnt) + ',');
                 }
                 if (hnswIndexOptions.builderEfConstruction != null) {
-                    hnswBuildIndexParamsBuilder.append(
-                        "\"proxima.hnsw.builder.ef_construction\":" + hnswIndexOptions.builderEfConstruction + ','
-                    );
+                    hnswBuildIndexParamsBuilder.append("\"" + DenseVectorFieldMapper.HNSW_BUILDER_EFCONSTRUCTION + "\":");
+                    hnswBuildIndexParamsBuilder.append(String.valueOf(hnswIndexOptions.builderEfConstruction) + ',');
                 }
                 if (hnswIndexOptions.builderThreadCnt != null) {
-                    hnswBuildIndexParamsBuilder.append("\"proxima.hnsw.builder.thread_cnt\":" + hnswIndexOptions.builderThreadCnt + ',');
+                    hnswBuildIndexParamsBuilder.append("\"" + DenseVectorFieldMapper.HNSW_BUILDER_THREAD_COUNT + "\":");
+                    hnswBuildIndexParamsBuilder.append(String.valueOf(hnswIndexOptions.builderThreadCnt) + ',');
                 }
                 // 删掉最后一个多余的','
                 hnswBuildIndexParamsBuilder.deleteCharAt(hnswBuildIndexParamsBuilder.length() - 1);
@@ -431,17 +449,16 @@ public class SchemaGenerator {
                 || qcIndexOptions.searcherBruteForceThreshold != null) {
                 if (qcIndexOptions.searcherScanRatio != null) {
                     qcSearchIndexParamsBuilder.append("{");
-                    qcSearchIndexParamsBuilder.append("\"proxima.qc.searcher.scan_ratio\":" + qcIndexOptions.searcherScanRatio + ',');
+                    qcSearchIndexParamsBuilder.append("\"" + DenseVectorFieldMapper.QC_SEARCHER_SCAN_RATIO + "\":");
+                    qcSearchIndexParamsBuilder.append(qcIndexOptions.searcherScanRatio.toString() + ',');
                 }
                 if (qcIndexOptions.searcherOptimizerParams != null) {
-                    qcSearchIndexParamsBuilder.append(
-                        "\"proxima.qc.searcher.optimizer_params\":" + '\"' + qcIndexOptions.searcherOptimizerParams + '\"' + ','
-                    );
+                    qcSearchIndexParamsBuilder.append("\"" + DenseVectorFieldMapper.QC_SEARCHER_OPTIMIZER_PARAMS + "\":");
+                    qcSearchIndexParamsBuilder.append('\"' + qcIndexOptions.searcherOptimizerParams + '\"' + ',');
                 }
                 if (qcIndexOptions.searcherBruteForceThreshold != null) {
-                    qcSearchIndexParamsBuilder.append(
-                        "\"proxima.qc.searcher.brute_force_threshold\":" + qcIndexOptions.searcherBruteForceThreshold + ','
-                    );
+                    qcSearchIndexParamsBuilder.append("\"" + DenseVectorFieldMapper.QC_SEARCHER_BRUTE_FORCE_THRESHOLD + "\":");
+                    qcSearchIndexParamsBuilder.append(String.valueOf(qcIndexOptions.searcherBruteForceThreshold) + ',');
                 }
                 // 删掉最后一个多余的','
                 qcSearchIndexParamsBuilder.deleteCharAt(qcSearchIndexParamsBuilder.length() - 1);
@@ -462,52 +479,44 @@ public class SchemaGenerator {
                 || qcIndexOptions.builderTrainSampleRatio != null) {
                 if (qcIndexOptions.builderTrainSampleCount != null) {
                     qcBuildIndexParamsBuilder.append("{");
-                    qcBuildIndexParamsBuilder.append(
-                        "\"proxima.qc.builder.train_sample_count\":" + qcIndexOptions.builderTrainSampleCount + ','
-                    );
+                    qcBuildIndexParamsBuilder.append("\"" + DenseVectorFieldMapper.QC_BUILDER_TRAIN_SAMPLE_COUNT + "\":");
+                    qcBuildIndexParamsBuilder.append(String.valueOf(qcIndexOptions.builderTrainSampleCount) + ',');
                 }
                 if (qcIndexOptions.builderThreadCount != null) {
-                    qcBuildIndexParamsBuilder.append("\"proxima.qc.builder.thread_count\":" + qcIndexOptions.builderThreadCount + ',');
+                    qcBuildIndexParamsBuilder.append("\"" + DenseVectorFieldMapper.QC_BUILDER_THREAD_COUNT + "\":");
+                    qcBuildIndexParamsBuilder.append(String.valueOf(qcIndexOptions.builderThreadCount) + ',');
                 }
                 if (qcIndexOptions.builderCentroidCount != null) {
-                    qcBuildIndexParamsBuilder.append(
-                        "\"proxima.qc.builder.centroid_count\":" + '\"' + qcIndexOptions.builderCentroidCount + '\"' + ','
-                    );
+                    qcBuildIndexParamsBuilder.append("\"" + DenseVectorFieldMapper.QC_BUILDER_CENTROID_COUNT + "\":");
+                    qcBuildIndexParamsBuilder.append('\"' + qcIndexOptions.builderCentroidCount + '\"' + ',');
                 }
                 if (qcIndexOptions.builderClusterAutoTuning != null) {
-                    qcBuildIndexParamsBuilder.append(
-                        "\"proxima.qc.builder.cluster_auto_tuning\":" + qcIndexOptions.builderClusterAutoTuning + ','
-                    );
+                    qcBuildIndexParamsBuilder.append("\"" + DenseVectorFieldMapper.QC_BUILDER_CLUSTER_AUTO_TUNING + "\":");
+                    qcBuildIndexParamsBuilder.append(String.valueOf(qcIndexOptions.builderClusterAutoTuning) + ',');
                 }
                 if (qcIndexOptions.builderOptimizerClass != null) {
-                    qcBuildIndexParamsBuilder.append(
-                        "\"proxima.qc.builder.optimizer_class\":" + '\"' + qcIndexOptions.builderOptimizerClass + '\"' + ','
-                    );
+                    qcBuildIndexParamsBuilder.append("\"" + DenseVectorFieldMapper.QC_BUILDER_OPTIMIZER_CLASS + "\":");
+                    qcBuildIndexParamsBuilder.append('\"' + qcIndexOptions.builderOptimizerClass + '\"' + ',');
                 }
                 if (qcIndexOptions.builderOptimizerParams != null) {
-                    qcBuildIndexParamsBuilder.append(
-                        "\"proxima.qc.builder.optimizer_params\":" + '\"' + qcIndexOptions.builderOptimizerParams + '\"' + ','
-                    );
+                    qcBuildIndexParamsBuilder.append("\"" + DenseVectorFieldMapper.QC_BUILDER_OPTIMIZER_PARAMS + "\":");
+                    qcBuildIndexParamsBuilder.append('\"' + qcIndexOptions.builderOptimizerParams + '\"' + ',');
                 }
                 if (qcIndexOptions.builderQuantizerClass != null) {
-                    qcBuildIndexParamsBuilder.append(
-                        "\"proxima.qc.builder.quantizer_class\":" + '\"' + qcIndexOptions.builderQuantizerClass + '\"' + ','
-                    );
+                    qcBuildIndexParamsBuilder.append("\"" + DenseVectorFieldMapper.QC_BUILDER_QUANTIZER_CLASS + "\":");
+                    qcBuildIndexParamsBuilder.append('\"' + qcIndexOptions.builderQuantizerClass + '\"' + ',');
                 }
                 if (qcIndexOptions.builderQuantizeByCentroid != null) {
-                    qcBuildIndexParamsBuilder.append(
-                        "\"proxima.qc.builder.quantize_by_centroid\":" + qcIndexOptions.builderQuantizeByCentroid + ','
-                    );
+                    qcBuildIndexParamsBuilder.append("\"" + DenseVectorFieldMapper.QC_BUILDER_QUANTIZE_BY_CENTROID + "\":");
+                    qcBuildIndexParamsBuilder.append(String.valueOf(qcIndexOptions.builderQuantizeByCentroid) + ',');
                 }
                 if (qcIndexOptions.builderStoreOriginalFeatures != null) {
-                    qcBuildIndexParamsBuilder.append(
-                        "\"proxima.qc.builder.store_original_features\":" + qcIndexOptions.builderStoreOriginalFeatures + ','
-                    );
+                    qcBuildIndexParamsBuilder.append("\"" + DenseVectorFieldMapper.QC_BUILDER_STORE_ORIGINAL_FEATURES + "\":");
+                    qcBuildIndexParamsBuilder.append(String.valueOf(qcIndexOptions.builderStoreOriginalFeatures) + ',');
                 }
                 if (qcIndexOptions.builderTrainSampleRatio != null) {
-                    qcBuildIndexParamsBuilder.append(
-                        "\"proxima.qc.builder.train_sample_ratio\":" + qcIndexOptions.builderTrainSampleRatio + ','
-                    );
+                    qcBuildIndexParamsBuilder.append("\"" + DenseVectorFieldMapper.QC_BUILDER_TRAIN_SAMPLE_RATIO + "\":");
+                    qcBuildIndexParamsBuilder.append(String.valueOf(qcIndexOptions.builderTrainSampleRatio) + ',');
                 }
                 // 删掉最后一个多余的','
                 qcBuildIndexParamsBuilder.deleteCharAt(qcBuildIndexParamsBuilder.length() - 1);
@@ -517,9 +526,11 @@ public class SchemaGenerator {
 
         } else if (indexOptions.type == Algorithm.LINEAR) {
             LinearIndexOptions linearIndexOptions = (LinearIndexOptions) indexOptions;
-            if (linearIndexOptions.linearBuildThreshold != null) {
-                resStrs[SEARCH_INDEX_PARAMS_POS] = "{\"proxima.hnsw.builder.linear_build_threshold\":"
-                    + linearIndexOptions.linearBuildThreshold
+            if (linearIndexOptions.builderColumnMajorOrder != null) {
+                resStrs[BUILD_INDEX_PARAMS_POS] = "{\""
+                    + DenseVectorFieldMapper.LINEAR_BUILDER_COLUMN_MAJOR_ORDER
+                    + "\":"
+                    + linearIndexOptions.builderColumnMajorOrder
                     + '}';
             }
         }
