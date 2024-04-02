@@ -1111,7 +1111,8 @@ public class HavenaskEngine extends InternalEngine {
         long currentCheckpoint = checkpointCalc.getCheckpoint(havenaskTimePoint);
 
         logger.debug(
-            "havenask engine maybeRefresh, source: {}, time: {}, checkpoint: {}, havenask time point: {}, current checkpoint: {}, last local checkpoint: {}, segment version: {}",
+            "havenask engine maybeRefresh, source: {}, time: {}, checkpoint: {}, havenask time point: {},"
+                + " current checkpoint: {}, last local checkpoint: {}, segment version: {}",
             source,
             time,
             checkpoint,
