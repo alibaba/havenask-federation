@@ -73,6 +73,7 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
 
     // rt_index_params
     public static final String OSWG_STREAMER_SEGMENT_SIZE = "proxima.oswg.streamer.segment_size";
+    public static final String OSWG_STREAMER_EFCONSTRUCTION = "proxima.oswg.streamer.efconstruction";
 
     // hnsw_build_index_params
     public static final String HNSW_BUILDER_MAX_NEIGHBOR_COUNT = "proxima.hnsw.builder.max_neighbor_count";
@@ -290,6 +291,7 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
         public final Integer minScanDocCnt;
         public final Integer linearBuildThreshold;
         public final Integer oswgStreamerSegmentSize;
+        public final Integer oswgStreamerEfConstruction;
 
         static IndexOptions parseIndexOptions(String fieldName, Map<String, ?> indexOptionsMap) {
             Object embeddingDelimiterNode = indexOptionsMap.remove(EMBEDDING_DELIMITER);
@@ -311,6 +313,7 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
                 ? XContentMapValues.nodeIntegerValue(linearBuildThresholdNode)
                 : null;
             Integer oswgStreamerSegmentSize = null;
+            Integer oswgStreamerEfConstruction = null;
             Object rtIndexParamsNode = indexOptionsMap.remove(RT_INDEX_PARAMS);
             Map<String, ?> rtIndexParamsMap = rtIndexParamsNode != null
                 ? XContentMapValues.nodeMapValue(rtIndexParamsNode, RT_INDEX_PARAMS)
@@ -319,6 +322,10 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
                 Object oswgStreamerSegmentSizeNode = rtIndexParamsMap.remove(OSWG_STREAMER_SEGMENT_SIZE);
                 oswgStreamerSegmentSize = oswgStreamerSegmentSizeNode != null
                     ? XContentMapValues.nodeIntegerValue(oswgStreamerSegmentSizeNode)
+                    : null;
+                Object oswgStreamerEfConstructionNode = rtIndexParamsMap.remove(OSWG_STREAMER_EFCONSTRUCTION);
+                oswgStreamerEfConstruction = oswgStreamerEfConstructionNode != null
+                    ? XContentMapValues.nodeIntegerValue(oswgStreamerEfConstructionNode)
                     : null;
                 DocumentMapperParser.checkNoRemainingFields(fieldName, rtIndexParamsMap, Version.CURRENT);
             }
@@ -332,7 +339,8 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
                 isEmbeddingSaved,
                 minScanDocCnt,
                 linearBuildThreshold,
-                oswgStreamerSegmentSize
+                oswgStreamerSegmentSize,
+                oswgStreamerEfConstruction
             );
         }
 
@@ -344,7 +352,8 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
             Boolean isEmbeddingSaved,
             Integer minScanDocCnt,
             Integer linearBuildThreshold,
-            Integer oswgStreamerSegmentSize
+            Integer oswgStreamerSegmentSize,
+            Integer oswgStreamerEfConstruction
         ) {
             this.type = null;
             this.embeddingDelimiter = embeddingDelimiter;
@@ -355,6 +364,7 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
             this.minScanDocCnt = minScanDocCnt;
             this.linearBuildThreshold = linearBuildThreshold;
             this.oswgStreamerSegmentSize = oswgStreamerSegmentSize;
+            this.oswgStreamerEfConstruction = oswgStreamerEfConstruction;
         }
 
         IndexOptions(
@@ -366,7 +376,8 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
             Boolean isEmbeddingSaved,
             Integer minScanDocCnt,
             Integer linearBuildThreshold,
-            Integer oswgStreamerSegmentSize
+            Integer oswgStreamerSegmentSize,
+            Integer oswgStreamerEfConstruction
         ) {
             this.type = type;
             this.embeddingDelimiter = embeddingDelimiter;
@@ -377,6 +388,7 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
             this.minScanDocCnt = minScanDocCnt;
             this.linearBuildThreshold = linearBuildThreshold;
             this.oswgStreamerSegmentSize = oswgStreamerSegmentSize;
+            this.oswgStreamerEfConstruction = oswgStreamerEfConstruction;
         }
 
         IndexOptions(Algorithm type, IndexOptions other) {
@@ -389,6 +401,7 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
             this.minScanDocCnt = other.minScanDocCnt;
             this.linearBuildThreshold = other.linearBuildThreshold;
             this.oswgStreamerSegmentSize = other.oswgStreamerSegmentSize;
+            this.oswgStreamerEfConstruction = other.oswgStreamerEfConstruction;
         }
 
         @Override
@@ -415,7 +428,8 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
                 && Objects.equals(isEmbeddingSaved, that.isEmbeddingSaved)
                 && Objects.equals(minScanDocCnt, that.minScanDocCnt)
                 && Objects.equals(linearBuildThreshold, that.linearBuildThreshold)
-                && Objects.equals(oswgStreamerSegmentSize, that.oswgStreamerSegmentSize);
+                && Objects.equals(oswgStreamerSegmentSize, that.oswgStreamerSegmentSize)
+                && Objects.equals(oswgStreamerEfConstruction, that.oswgStreamerEfConstruction);
         }
 
         @Override
@@ -428,7 +442,8 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
                 isEmbeddingSaved,
                 minScanDocCnt,
                 linearBuildThreshold,
-                oswgStreamerSegmentSize
+                oswgStreamerSegmentSize,
+                oswgStreamerEfConstruction
             );
         }
 
@@ -453,6 +468,8 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
                 + linearBuildThreshold
                 + ", oswgStreamerSegmentSize="
                 + oswgStreamerSegmentSize
+                + "oswgStreamerEfConstruction="
+                + oswgStreamerEfConstruction
                 + '}';
         }
 
@@ -480,10 +497,15 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
             if (linearBuildThreshold != null) {
                 builder.field(LINEAR_BUILD_THRESHOLD, linearBuildThreshold);
             }
-            if (oswgStreamerSegmentSize != null) {
+            if (oswgStreamerSegmentSize != null || oswgStreamerEfConstruction != null) {
                 builder.startObject(RT_INDEX_PARAMS);
                 {
-                    builder.field(OSWG_STREAMER_SEGMENT_SIZE, oswgStreamerSegmentSize);
+                    if (oswgStreamerSegmentSize != null) {
+                        builder.field(OSWG_STREAMER_SEGMENT_SIZE, oswgStreamerSegmentSize);
+                    }
+                    if (oswgStreamerEfConstruction != null) {
+                        builder.field(OSWG_STREAMER_EFCONSTRUCTION, oswgStreamerEfConstruction);
+                    }
                 }
                 builder.endObject();
             }

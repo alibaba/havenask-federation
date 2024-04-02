@@ -298,13 +298,10 @@ public class SchemaGenerator {
         if (indexOptions.linearBuildThreshold != null) {
             parameter.put(DenseVectorFieldMapper.LINEAR_BUILD_THRESHOLD, String.valueOf(indexOptions.linearBuildThreshold));
         }
-        if (indexOptions.oswgStreamerSegmentSize != null) {
-            StringBuilder proximaOswgStreamerSegmentSizeBuilder = new StringBuilder();
-            proximaOswgStreamerSegmentSizeBuilder.append("{");
-            proximaOswgStreamerSegmentSizeBuilder.append("\"" + DenseVectorFieldMapper.OSWG_STREAMER_SEGMENT_SIZE + "\":");
-            proximaOswgStreamerSegmentSizeBuilder.append(indexOptions.oswgStreamerSegmentSize);
-            proximaOswgStreamerSegmentSizeBuilder.append("}");
-            parameter.put(DenseVectorFieldMapper.RT_INDEX_PARAMS, String.valueOf(proximaOswgStreamerSegmentSizeBuilder));
+
+        String rtIndexParams = getRtIndexParams(indexOptions);
+        if (!Strings.isNullOrEmpty(rtIndexParams)) {
+            parameter.put(DenseVectorFieldMapper.RT_INDEX_PARAMS, rtIndexParams);
         }
 
         if (indexOptions.type == Algorithm.HNSW) {
@@ -386,6 +383,25 @@ public class SchemaGenerator {
             new Schema.FieldInfo("_primary_term", "INT64")
         );
         return schema;
+    }
+
+    public String getRtIndexParams(IndexOptions indexOptions) {
+        StringBuilder rtIndexParamsBuilder = new StringBuilder();
+        if (Objects.nonNull(indexOptions.oswgStreamerSegmentSize) || Objects.nonNull(indexOptions.oswgStreamerEfConstruction)) {
+            rtIndexParamsBuilder.append("{");
+            if (Objects.nonNull(indexOptions.oswgStreamerSegmentSize)) {
+                rtIndexParamsBuilder.append("\"" + DenseVectorFieldMapper.OSWG_STREAMER_SEGMENT_SIZE + "\":");
+                rtIndexParamsBuilder.append(String.valueOf(indexOptions.oswgStreamerSegmentSize) + ',');
+            }
+            if (Objects.nonNull(indexOptions.oswgStreamerEfConstruction)) {
+                rtIndexParamsBuilder.append("\"" + DenseVectorFieldMapper.OSWG_STREAMER_EFCONSTRUCTION + "\":");
+                rtIndexParamsBuilder.append(String.valueOf(indexOptions.oswgStreamerEfConstruction) + ',');
+            }
+            // 删掉最后一个多余的','
+            rtIndexParamsBuilder.deleteCharAt(rtIndexParamsBuilder.length() - 1);
+            rtIndexParamsBuilder.append("}");
+        }
+        return rtIndexParamsBuilder.toString();
     }
 
     public String[] getSearchAndBuildIndexParams(IndexOptions indexOptions) {
