@@ -1,0 +1,67 @@
+
+apply plugin: 'havenask.havenaskplugin'
+apply plugin: 'havenask.internal-cluster-test'
+
+havenaskplugin {
+  name 'repository-oss'
+  description 'Aliyun OSS snapshot plugin'
+  classname 'org.havenask.plugin.repository.oss.OssRepositoryPlugin'
+}
+
+dependencies {
+    api project(":server")
+    api "com.aliyun.oss:aliyun-sdk-oss:3.12.0"
+    api "org.apache.httpcomponents:httpclient:${versions.httpclient}"
+    api "org.apache.httpcomponents:httpcore:${versions.httpcore}"
+    api "org.jdom:jdom2:2.0.6"
+    api "org.codehaus.jettison:jettison:1.1"
+    api "stax:stax-api:1.0.1"
+    api "com.aliyun:aliyun-java-sdk-core:4.5.10"
+    api "com.aliyun:aliyun-java-sdk-ram:3.1.0"
+    api "com.aliyun:aliyun-java-sdk-kms:2.11.0"
+    api 'com.google.code.gson:gson:2.8.5'
+    api "commons-logging:commons-logging:${versions.commonslogging}"
+    api "javax.xml.bind:jaxb-api:2.3.1"
+    api "javax.activation:javax.activation-api:1.2.0"
+    api "org.jacoco:org.jacoco.agent:0.8.5"
+    api "org.ini4j:ini4j:0.5.4"
+    api "io.opentracing:opentracing-api:0.33.0"
+    api "io.opentracing:opentracing-util:0.33.0"
+    api "io.opentracing:opentracing-noop:0.33.0"
+    api "org.slf4j:slf4j-api:${versions.slf4j}"
+
+    api "com.squareup.okhttp3:okhttp:3.10.0"
+    api "com.squareup.okio:okio:1.11.0"
+
+    api 'commons-lang:commons-lang:2.6'
+    api "commons-codec:commons-codec:${versions.commonscodec}"
+    api 'com.alibaba:fastjson:1.2.83_noneautotype'
+    testImplementation 'org.mockito:mockito-core:1.9.5'
+    testImplementation 'com.squareup.okhttp3:mockwebserver:3.10.0'
+    testImplementation ('org.powermock:powermock-api-mockito2:2.0.0-beta.5')
+    testImplementation 'org.powermock:powermock-module-junit4:2.0.0'
+    testImplementation 'org.elasticsearch:securemock:1.2'
+}
+
+ext.expansions = [
+  'project.version': version
+]
+
+
+compileJava.options.compilerArgs << "-Xlint:-cast,-deprecation,-rawtypes,-try,-unchecked"
+compileTestJava.options.compilerArgs << "-Xlint:-cast,-deprecation,-rawtypes,-try,-unchecked"
+compileInternalClusterTestJava.options.compilerArgs << "-Xlint:-cast,-deprecation,-rawtypes,-try,-unchecked"
+javadoc.options.addStringOption('Xdoclint:none,-missing', '-quiet')
+
+test {
+  systemProperty 'tests.security.manager', 'false'
+}
+
+internalClusterTest {
+  systemProperty 'tests.security.manager', 'false'
+}
+
+thirdPartyAudit.enabled = false
+disableTasks('forbiddenApisMain')
+disableTasks('forbiddenApisTest')
+tasks.named("dependencyLicenses").configure { it.enabled = false }
