@@ -252,6 +252,29 @@ public class HavenaskStoreTests extends HavenaskTestCase {
             String fileContent = Files.readString(dataPath.resolve(tempFileName));
             assertEquals(fileContent, content);
         }
+
+        // test create directory
+        String dirName = "dir1";
+        StoreFileMetadata metadata = new StoreFileMetadata(dirName, 0, "DIR", HavenaskStore.HAVENASK_VERSION);
+        String tempDirName = "recovery." + UUIDs.randomBase64UUID() + "." + dirName;
+        IndexOutput indexOutput = havenaskStore.createVerifyingOutput(tempDirName, metadata, IOContext.DEFAULT);
+        indexOutput.close();
+
+        assertTrue(Files.exists(dataPath.resolve(tempDirName)));
+
+        // test create exist file
+        String existFileName = "existFile";
+        String oldContent = "old content";
+        StoreFileMetadata existMetadata = new StoreFileMetadata(existFileName, oldContent.length(), "", HavenaskStore.HAVENASK_VERSION);
+        String tempExistFileName = "recovery." + UUIDs.randomBase64UUID() + "." + existFileName;
+        Files.write(dataPath.resolve(tempExistFileName), oldContent.getBytes(StandardCharsets.UTF_8));
+        IndexOutput existIndexOutput = havenaskStore.createVerifyingOutput(tempExistFileName, existMetadata, IOContext.DEFAULT);
+        existIndexOutput.writeBytes("new content".getBytes(StandardCharsets.UTF_8), "new content".length());
+        existIndexOutput.close();
+
+        assertTrue(Files.exists(dataPath.resolve(tempExistFileName)));
+        String existFileContent = Files.readString(dataPath.resolve(tempExistFileName));
+        assertEquals(existFileContent, oldContent);
     }
 
     public void testRenameTempFilesSafe() throws IOException {

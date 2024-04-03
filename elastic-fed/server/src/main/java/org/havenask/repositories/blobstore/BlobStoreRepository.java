@@ -105,6 +105,7 @@ import org.havenask.common.xcontent.XContentFactory;
 import org.havenask.common.xcontent.XContentParser;
 import org.havenask.common.xcontent.XContentType;
 import org.havenask.index.mapper.MapperService;
+import org.havenask.index.shard.IndexShard;
 import org.havenask.index.shard.ShardId;
 import org.havenask.index.snapshots.IndexShardRestoreFailedException;
 import org.havenask.index.snapshots.IndexShardSnapshotFailedException;
@@ -1978,7 +1979,11 @@ public abstract class BlobStoreRepository extends AbstractLifecycleComponent imp
                         logger.trace(
                             "[{}] [{}] Loading store metadata using index commit [{}]", shardId, snapshotId, snapshotIndexCommit);
                         metadataFromStore = store.getMetadata(snapshotIndexCommit);
-                        fileNames = snapshotIndexCommit.getFileNames();
+                        if (store.indexSettings() != null && IndexShard.isHavenaskIndex(store.indexSettings().getSettings())) {
+                            fileNames = metadataFromStore.asMap().keySet();
+                        } else {
+                            fileNames = snapshotIndexCommit.getFileNames();
+                        }
                     } catch (IOException e) {
                         throw new IndexShardSnapshotFailedException(shardId, "Failed to get store file metadata", e);
                     }
