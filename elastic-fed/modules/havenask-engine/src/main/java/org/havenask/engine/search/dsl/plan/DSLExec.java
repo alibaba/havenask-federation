@@ -18,9 +18,12 @@ import java.io.IOException;
 
 import org.havenask.action.search.SearchResponse;
 import org.havenask.action.search.SearchResponseSections;
+import org.havenask.action.search.ShardSearchFailure;
+import org.havenask.cluster.metadata.IndexMetadata;
 import org.havenask.engine.search.dsl.DSLSession;
 import org.havenask.engine.search.dsl.expression.SourceExpression;
 import org.havenask.search.SearchHits;
+import org.havenask.search.aggregations.InternalAggregations;
 import org.havenask.search.builder.SearchSourceBuilder;
 
 public class DSLExec implements Executable<SearchResponse> {
@@ -46,9 +49,27 @@ public class DSLExec implements Executable<SearchResponse> {
 
         }
 
+        IndexMetadata indexMetadata = session.getIndexMetadata();
+
         // build response
-        SearchResponseSections searchResponseSections = new SearchResponseSections(searchHits, null, null, false, false, null, 0);
-        // TODO get shards
-        return new SearchResponse(searchResponseSections, null, 0, 0, 0, session.getTook(), null, null);
+        SearchResponseSections searchResponseSections = new SearchResponseSections(
+            searchHits,
+            InternalAggregations.EMPTY,
+            null,
+            false,
+            false,
+            null,
+            1
+        );
+        return new SearchResponse(
+            searchResponseSections,
+            null,
+            indexMetadata.getNumberOfShards(),
+            indexMetadata.getNumberOfShards(),
+            0,
+            session.getTook(),
+            ShardSearchFailure.EMPTY_ARRAY,
+            SearchResponse.Clusters.EMPTY
+        );
     }
 }

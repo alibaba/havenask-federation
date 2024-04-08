@@ -17,6 +17,7 @@ package org.havenask.engine.search.dsl;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.havenask.action.search.SearchResponse;
+import org.havenask.cluster.metadata.IndexMetadata;
 import org.havenask.common.UUIDs;
 import org.havenask.engine.rpc.QrsClient;
 import org.havenask.engine.search.dsl.plan.DSLExec;
@@ -28,14 +29,14 @@ public class DSLSession {
     protected Logger logger = LogManager.getLogger(DSLSession.class);
 
     private final QrsClient client;
-    private final String index;
+    private final IndexMetadata indexMetadata;
     private final long startTime;
     private final String sessionId;
     private SearchSourceBuilder query;
 
-    public DSLSession(QrsClient client, String index) {
+    public DSLSession(QrsClient client, IndexMetadata indexMetadata) {
         this.client = client;
-        this.index = index;
+        this.indexMetadata = indexMetadata;
         this.startTime = System.currentTimeMillis();
         this.sessionId = UUIDs.randomBase64UUID();
     }
@@ -45,7 +46,11 @@ public class DSLSession {
     }
 
     public String getIndex() {
-        return index;
+        return indexMetadata.getIndex().getName();
+    }
+
+    public IndexMetadata getIndexMetadata() {
+        return indexMetadata;
     }
 
     public SearchSourceBuilder getQuery() {
