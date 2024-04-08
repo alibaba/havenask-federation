@@ -25,7 +25,7 @@ public class WhereExpression extends Expression {
     public String translate() {
         String where = expression.translate();
         if (where == null || where.isEmpty()) {
-            return "WHERE 1=1";
+            return "";
         } else {
             return "WHERE " + where;
         }
