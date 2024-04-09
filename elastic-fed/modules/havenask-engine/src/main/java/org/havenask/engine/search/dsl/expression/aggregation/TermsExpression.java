@@ -12,26 +12,20 @@
  *
  */
 
-package org.havenask.engine.search.dsl.expression;
+package org.havenask.engine.search.dsl.expression.aggregation;
 
-public class WhereExpression extends Expression {
-    private final Expression expression;
-    private String where;
+import org.havenask.engine.search.dsl.expression.Expression;
+import org.havenask.search.aggregations.bucket.terms.TermsAggregationBuilder;
 
-    public WhereExpression(Expression expression) {
-        this.expression = expression;
+public class TermsExpression extends Expression {
+    private final TermsAggregationBuilder termsAggregationBuilder;
+
+    public TermsExpression(TermsAggregationBuilder termsAggregationBuilder) {
+        this.termsAggregationBuilder = termsAggregationBuilder;
     }
 
     @Override
     public String translate() {
-        if (where == null) {
-            where = expression.translate();
-        }
-
-        if (where == null || where.isEmpty()) {
-            return "";
-        } else {
-            return "WHERE " + where;
-        }
+        return null;
     }
 }

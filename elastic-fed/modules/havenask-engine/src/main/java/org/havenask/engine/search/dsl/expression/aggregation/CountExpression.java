@@ -12,26 +12,14 @@
  *
  */
 
-package org.havenask.engine.search.dsl.expression;
+package org.havenask.engine.search.dsl.expression.aggregation;
 
-public class WhereExpression extends Expression {
-    private final Expression expression;
-    private String where;
+import org.havenask.engine.search.dsl.expression.Expression;
 
-    public WhereExpression(Expression expression) {
-        this.expression = expression;
-    }
+public class CountExpression extends Expression {
 
     @Override
     public String translate() {
-        if (where == null) {
-            where = expression.translate();
-        }
-
-        if (where == null || where.isEmpty()) {
-            return "";
-        } else {
-            return "WHERE " + where;
-        }
+        return "COUNT(*)";
     }
 }
