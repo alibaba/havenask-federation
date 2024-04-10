@@ -917,8 +917,12 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
                     ? XContentMapValues.nodeIntegerValue(builderEfConstructionNode)
                     : null;
                 Object builderThreadCntNode = buildIndexParamsMap.remove(HNSW_BUILDER_THREAD_COUNT);
-                builderThreadCnt = builderThreadCntNode != null ? XContentMapValues.nodeIntegerValue(builderThreadCntNode) : null;
+                builderThreadCnt = builderThreadCntNode != null
+                    ? XContentMapValues.nodeIntegerValue(builderThreadCntNode)
+                    : getBuilderMaxNeighborCnt();
                 DocumentMapperParser.checkNoRemainingFields(fieldName, buildIndexParamsMap, Version.CURRENT);
+            } else {
+                builderThreadCnt = getBuilderMaxNeighborCnt();
             }
 
             Integer searcherEf = null;
@@ -936,6 +940,12 @@ public class DenseVectorFieldMapper extends ParametrizedFieldMapper {
 
             // TODO vaild value
             return new HnswIndexOptions(baseIndexOptions, builderMaxNeighborCnt, builderEfConstruction, builderThreadCnt, searcherEf);
+        }
+
+        public static Integer getBuilderMaxNeighborCnt() {
+            int availableProcessors = Runtime.getRuntime().availableProcessors();
+            int maxNeighborCnt = availableProcessors / 4;
+            return Math.max(1, Math.min(4, maxNeighborCnt));
         }
 
         private HnswIndexOptions(
