@@ -81,6 +81,13 @@ public class HavenaskEngineEnvironment implements CustomEnvironment {
         Property.NodeScope
     );
 
+    public static final Setting<String> HAVENASK_ENVIRONMENT_BINFILE_PATH_SETTING = new Setting<>(
+        "havenask.binfile.path",
+        "",
+        Function.identity(),
+        Property.NodeScope
+    );
+
     private final Environment environment;
     private final Path dataPath;
     private final Path configPath;

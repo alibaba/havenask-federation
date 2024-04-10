@@ -21,6 +21,7 @@ import org.havenask.client.Client;
 import org.havenask.client.Requests;
 import org.havenask.cluster.node.DiscoveryNode;
 import org.havenask.cluster.service.ClusterService;
+import org.havenask.common.Strings;
 import org.havenask.common.component.AbstractLifecycleComponent;
 import org.havenask.common.settings.Setting;
 import org.havenask.common.settings.Setting.Property;
@@ -37,6 +38,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.HashSet;
@@ -63,6 +65,9 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
         + " -c /ha3_install/usr/local/etc/sql/sql_alog.conf >> search.log 2>> search.error.log";
     private static final String CHECK_HAVENASK_ALIVE_COMMAND =
         "ps aux | grep ha_sql | grep 'roleType=%s' | grep -v grep | awk '{print $2}'";
+
+    private static final String CHECK_HAVENASK_ALIVE_WITH_HTTP_PORT_COMMAND =
+        "ps aux | grep ha_sql | grep 'roleType=%s' | grep 'httpPort=%s' | grep -v grep | awk '{print $2}'";
     private static final String GET_TABLE_SIZE_COMMAND = "du -sk %s | awk '{print $1}'";
 
     public static final Setting<Integer> HAVENASK_SEARCHER_HTTP_PORT_SETTING = Setting.intSetting(
@@ -153,11 +158,20 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
         this.searcherGrpcPort = HAVENASK_SEARCHER_GRPC_PORT_SETTING.get(settings);
         this.qrsHttpPort = HAVENASK_QRS_HTTP_PORT_SETTING.get(settings);
         this.qrsTcpPort = HAVENASK_QRS_TCP_PORT_SETTING.get(settings);
+
+        String binFilePathStr = HavenaskEngineEnvironment.HAVENASK_ENVIRONMENT_BINFILE_PATH_SETTING.get(settings);
+        Path binFilePath = null;
+        if (!Strings.isNullOrEmpty(binFilePathStr)) {
+            binFilePath = Paths.get(binFilePathStr);
+        } else {
+            binFilePath = environment.binFile().toAbsolutePath();
+        }
+
         this.startSearcherCommand = String.format(
             Locale.ROOT,
             START_SEARCHER_COMMAND,
             havenaskEngineEnvironment.getDataPath().toAbsolutePath(),
-            environment.binFile().toAbsolutePath(),
+            binFilePath,
             havenaskEngineEnvironment.getRuntimedataPath(),
             havenaskEngineEnvironment.getConfigPath(),
             searcherHttpPort,
@@ -168,7 +182,7 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
             Locale.ROOT,
             START_QRS_COMMAND,
             havenaskEngineEnvironment.getDataPath().toAbsolutePath(),
-            environment.binFile().toAbsolutePath(),
+            binFilePath,
             havenaskEngineEnvironment.getRuntimedataPath(),
             havenaskEngineEnvironment.getConfigPath(),
             qrsHttpPort,
@@ -178,7 +192,7 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
             Locale.ROOT,
             STOP_HAVENASK_COMMAND,
             havenaskEngineEnvironment.getDataPath().toAbsolutePath(),
-            environment.binFile().toAbsolutePath()
+            binFilePath
         );
         this.commandTimeout = HAVENASK_COMMAND_TIMEOUT_SETTING.get(settings);
         clusterService.getClusterSettings().addSettingsUpdateConsumer(HAVENASK_COMMAND_TIMEOUT_SETTING, this::setCommandTimeout);
@@ -255,7 +269,7 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
             }
 
             if (isDataNode) {
-                if (false == checkProcessAlive(SEARCHER_ROLE)) {
+                if (false == checkProcessAlive(SEARCHER_ROLE, searcherHttpPort)) {
                     havenaskEngines.forEach((havenaskEngine) -> {
                         LOGGER.warn(
                             "havenask searcher process is not alive, failed engine, shardId: {}",
@@ -278,7 +292,7 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
             }
 
             if (isIngestNode) {
-                if (false == checkProcessAlive(QRS_ROLE)) {
+                if (false == checkProcessAlive(QRS_ROLE, qrsHttpPort)) {
                     LOGGER.info("start qrs process...");
                     // 启动qrs
                     runCommand(startQrsCommand, commandTimeout);
@@ -303,7 +317,7 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
     private void startProcess() {
         if (isDataNode) {
             LOGGER.info("start searcher process...");
-            while (false == checkProcessAlive(SEARCHER_ROLE)) {
+            while (false == checkProcessAlive(SEARCHER_ROLE, searcherHttpPort)) {
                 // 启动searcher
                 boolean runSearcherState = runCommand(startSearcherCommand, commandTimeout);
                 if (!runSearcherState) {
@@ -318,7 +332,7 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
 
         if (isIngestNode) {
             LOGGER.info("start qrs process...");
-            while (false == checkProcessAlive(QRS_ROLE)) {
+            while (false == checkProcessAlive(QRS_ROLE, qrsHttpPort)) {
                 // 启动qrs
                 boolean runQrsState = runCommand(startQrsCommand, commandTimeout);
                 if (!runQrsState) {
@@ -341,6 +355,61 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
     public static boolean checkProcessAlive(String role) {
         Process process = null;
         String command = String.format(Locale.ROOT, CHECK_HAVENASK_ALIVE_COMMAND, role);
+        try {
+            process = AccessController.doPrivileged((PrivilegedAction<Process>) () -> {
+                try {
+                    return Runtime.getRuntime().exec(new String[] { "sh", "-c", command });
+                } catch (IOException e) {
+                    LOGGER.warn(() -> new ParameterizedMessage("run check command error, command [{}]", command), e);
+                    return null;
+                }
+            });
+            if (process == null) {
+                LOGGER.warn("run check command error, the process is null, don't know the process [{}] status", role);
+                return true;
+            }
+
+            try (InputStream inputStream = process.getInputStream()) {
+                byte[] bytes = inputStream.readAllBytes();
+                String result = new String(bytes, StandardCharsets.UTF_8);
+                if (result.trim().equals("")) {
+                    LOGGER.info("[{}] pid not found, the process is not alive", role);
+                    return false;
+                }
+
+                try {
+                    if (Integer.valueOf(result.trim()) > 0) {
+                        return true;
+                    } else {
+                        LOGGER.warn("check command get the process [{}] pid error, check result is [{}]", role, result);
+                        return false;
+                    }
+                } catch (NumberFormatException e) {
+                    LOGGER.warn("check command get the process [{}] result format error, check result is [{}]", role, result);
+                    return false;
+                }
+            }
+        } catch (IOException e) {
+            LOGGER.warn(() -> new ParameterizedMessage("check command get the process [{}] input error", role), e);
+        } finally {
+            if (process != null) {
+                process.destroy();
+            }
+        }
+        return true;
+    }
+
+    /**
+     * 检测进程是否存活
+     *
+     * @param role 进程角色: searcher 或者 qrs
+     * @param httpPort 进程的http端口
+     * @return 返回进程存活状态
+     */
+    public static boolean checkProcessAlive(String role, int httpPort) {
+        Process process = null;
+
+        String command = String.format(Locale.ROOT, CHECK_HAVENASK_ALIVE_WITH_HTTP_PORT_COMMAND, role, httpPort);
         try {
             process = AccessController.doPrivileged((PrivilegedAction<Process>) () -> {
                 try {

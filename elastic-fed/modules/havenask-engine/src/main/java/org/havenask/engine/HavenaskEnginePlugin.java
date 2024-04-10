@@ -240,6 +240,7 @@ public class HavenaskEnginePlugin extends Plugin
             HAVENASK_ENGINE_ENABLED_SETTING,
             HAVENASK_SET_DEFAULT_ENGINE_SETTING,
             HavenaskEngineEnvironment.HAVENASK_PATH_DATA_SETTING,
+            HavenaskEngineEnvironment.HAVENASK_ENVIRONMENT_BINFILE_PATH_SETTING,
             EngineSettings.ENGINE_TYPE_SETTING,
             EngineSettings.HA3_FLOAT_MUL_BY10,
             EngineSettings.HAVENASK_REALTIME_ENABLE,
