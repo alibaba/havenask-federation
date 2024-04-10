@@ -35,7 +35,6 @@ import org.havenask.index.mapper.KeywordFieldMapper;
 import org.havenask.index.mapper.ParseContext;
 import org.havenask.index.mapper.ParsedDocument;
 import org.havenask.index.shard.ShardId;
-import org.junit.Ignore;
 import suez.service.proto.ErrorCode;
 
 import java.io.IOException;
@@ -54,7 +53,6 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 @ThreadLeakFilters(filters = { KafkaThreadLeakFilter.class })
-@Ignore
 public class HavenaskEngineTests extends EngineTestCase {
     // test toHaIndex
     public void testToHaIndex() throws IOException {
