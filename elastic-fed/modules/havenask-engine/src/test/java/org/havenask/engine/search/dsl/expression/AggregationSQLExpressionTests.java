@@ -22,7 +22,7 @@ import org.havenask.test.HavenaskTestCase;
 
 import java.util.List;
 
-public class AggregationSQLExpressionTest extends HavenaskTestCase {
+public class AggregationSQLExpressionTests extends HavenaskTestCase {
     public void testBasic() {
         SearchSourceBuilder builder = new SearchSourceBuilder().sort("field1", SortOrder.ASC)
             .query(
@@ -78,7 +78,8 @@ public class AggregationSQLExpressionTest extends HavenaskTestCase {
         List<AggregationSQLExpression> aggregationSQLExpressionList = sourceExpression.getAggregationSQLExpressions("table1");
         assertEquals(5, aggregationSQLExpressionList.size());
         assertEquals(
-            "SELECT SUM(`field11`), AVG(`field11`) FROM `table1` WHERE (`field1` = 'value1' AND `field2` = 'value2')  GROUP BY field1 LIMIT 10 ",
+            "SELECT SUM(`field11`), AVG(`field11`) FROM `table1` WHERE (`field1` = 'value1' AND `field2` = 'value2') "
+                + " GROUP BY field1 LIMIT 10 ",
             aggregationSQLExpressionList.get(0).translate()
         );
         assertEquals(
@@ -90,7 +91,8 @@ public class AggregationSQLExpressionTest extends HavenaskTestCase {
             aggregationSQLExpressionList.get(2).translate()
         );
         assertEquals(
-            "SELECT SUM(`field21`), AVG(`field21`) FROM `table1` WHERE (`field1` = 'value1' AND `field2` = 'value2')  GROUP BY field2 LIMIT 10 ",
+            "SELECT SUM(`field21`), AVG(`field21`) FROM `table1` WHERE (`field1` = 'value1' AND `field2` = 'value2') "
+                + " GROUP BY field2 LIMIT 10 ",
             aggregationSQLExpressionList.get(3).translate()
         );
         assertEquals(

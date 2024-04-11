@@ -21,7 +21,7 @@ import org.havenask.index.query.QueryBuilders;
 import org.havenask.search.builder.SearchSourceBuilder;
 import org.havenask.test.HavenaskTestCase;
 
-public class BoolExpressionTest extends HavenaskTestCase {
+public class BoolExpressionTests extends HavenaskTestCase {
     public void testTranslateMust() {
         SearchSourceBuilder builder = new SearchSourceBuilder().query(
             QueryBuilders.boolQuery()

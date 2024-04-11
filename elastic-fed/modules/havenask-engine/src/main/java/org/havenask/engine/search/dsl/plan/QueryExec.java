@@ -41,13 +41,13 @@ public class QueryExec implements Executable<SearchHits> {
     public SearchHits execute(DSLSession session) throws IOException {
         // exec query
         String sql = querySQLExpression.translate();
-        logger.debug("query exec, session: {}, exec sql: {}", sql);
+        logger.debug("query exec, session: {}, exec sql: {}", session.getSessionId(), sql);
         String kvpair = "format:full_json;timeout:10000;databaseName:" + SQL_DATABASE;
 
         QrsSqlResponse qrsSqlResponse = session.getClient().executeSql(new QrsSqlRequest(sql, kvpair));
         SqlResponse queryPhaseSqlResponse = SqlResponse.parse(qrsSqlResponse.getResult());
 
         HavenaskSearchFetchProcessor fetchProcessor = new HavenaskSearchFetchProcessor(session.getClient());
-        return fetchProcessor.executeFetchHits(queryPhaseSqlResponse, session.getIndex(), session.getQuery(), true);
+        return fetchProcessor.executeFetchHits(queryPhaseSqlResponse, session.getIndex(), session.getQuery(), session.isSourceEnabled());
     }
 }

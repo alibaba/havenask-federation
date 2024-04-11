@@ -18,7 +18,7 @@ import org.havenask.index.query.QueryBuilders;
 import org.havenask.search.builder.SearchSourceBuilder;
 import org.havenask.test.HavenaskTestCase;
 
-public class WhereExpressionTest extends HavenaskTestCase {
+public class WhereExpressionTests extends HavenaskTestCase {
 
     public void testTranslate() {
         SearchSourceBuilder builder = new SearchSourceBuilder().query(

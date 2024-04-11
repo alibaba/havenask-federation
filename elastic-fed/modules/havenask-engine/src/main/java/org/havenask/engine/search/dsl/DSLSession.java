@@ -24,6 +24,7 @@ import org.havenask.engine.search.dsl.plan.DSLExec;
 import org.havenask.search.builder.SearchSourceBuilder;
 
 import java.io.IOException;
+import java.util.Map;
 
 public class DSLSession {
     protected Logger logger = LogManager.getLogger(DSLSession.class);
@@ -33,12 +34,34 @@ public class DSLSession {
     private final long startTime;
     private final String sessionId;
     private SearchSourceBuilder query;
+    private final boolean sourceEnabled;
 
     public DSLSession(QrsClient client, IndexMetadata indexMetadata) {
         this.client = client;
         this.indexMetadata = indexMetadata;
         this.startTime = System.currentTimeMillis();
         this.sessionId = UUIDs.randomBase64UUID();
+        this.sourceEnabled = setSourceEnabled();
+    }
+
+    private boolean setSourceEnabled() {
+        Map<String, Object> indexMapping = indexMetadata.mapping() != null ? indexMetadata.mapping().getSourceAsMap() : null;
+        Boolean sourceEnabled = true;
+        if (indexMapping != null && indexMapping.containsKey("_source")) {
+            Object sourceValue = indexMapping.get("_source");
+            if (sourceValue instanceof Map) {
+                @SuppressWarnings("unchecked")
+                Object sourceEnabledValue = ((Map<String, Object>) sourceValue).get("enabled");
+                if (sourceEnabledValue instanceof Boolean) {
+                    sourceEnabled = (Boolean) sourceEnabledValue;
+                }
+            }
+        }
+        return sourceEnabled;
+    }
+
+    public boolean isSourceEnabled() {
+        return sourceEnabled;
     }
 
     public QrsClient getClient() {
@@ -59,6 +82,10 @@ public class DSLSession {
 
     public long getTook() {
         return System.currentTimeMillis() - startTime;
+    }
+
+    public String getSessionId() {
+        return sessionId;
     }
 
     public SearchResponse execute(SearchSourceBuilder query) throws IOException {

@@ -19,7 +19,7 @@ import org.havenask.search.builder.SearchSourceBuilder;
 import org.havenask.search.sort.SortOrder;
 import org.havenask.test.HavenaskTestCase;
 
-public class QuerySQLExpressionTest extends HavenaskTestCase {
+public class QuerySQLExpressionTests extends HavenaskTestCase {
 
     public void testTranslate() {
         SearchSourceBuilder builder = new SearchSourceBuilder().sort("field1", SortOrder.ASC)

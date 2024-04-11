@@ -14,18 +14,14 @@
 
 package org.havenask.engine.search.action;
 
-import java.util.Map;
-
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.havenask.action.ActionListener;
 import org.havenask.action.ingest.IngestActionForwarder;
 import org.havenask.action.search.SearchRequest;
 import org.havenask.action.search.SearchResponse;
-import org.havenask.action.search.ShardSearchFailure;
 import org.havenask.action.support.ActionFilters;
 import org.havenask.action.support.HandledTransportAction;
-import org.havenask.client.ha.SqlResponse;
 import org.havenask.cluster.ClusterState;
 import org.havenask.cluster.metadata.IndexAbstraction;
 import org.havenask.cluster.metadata.IndexMetadata;
@@ -34,9 +30,7 @@ import org.havenask.common.inject.Inject;
 import org.havenask.engine.NativeProcessControlService;
 import org.havenask.engine.rpc.QrsClient;
 import org.havenask.engine.rpc.http.QrsHttpClient;
-import org.havenask.engine.search.HavenaskSearchFetchProcessor;
-import org.havenask.engine.search.HavenaskSearchQueryProcessor;
-import org.havenask.search.internal.InternalSearchResponse;
+import org.havenask.engine.search.dsl.DSLSession;
 import org.havenask.tasks.Task;
 import org.havenask.threadpool.ThreadPool;
 import org.havenask.transport.TransportService;
@@ -46,8 +40,6 @@ public class TransportHavenaskSearchAction extends HandledTransportAction<Search
     private ClusterService clusterService;
     private final IngestActionForwarder ingestForwarder;
     private QrsClient qrsClient;
-    private HavenaskSearchQueryProcessor havenaskSearchQueryProcessor;
-    private HavenaskSearchFetchProcessor havenaskSearchFetchProcessor;
 
     @Inject
     public TransportHavenaskSearchAction(
@@ -61,8 +53,6 @@ public class TransportHavenaskSearchAction extends HandledTransportAction<Search
         this.ingestForwarder = new IngestActionForwarder(transportService);
         clusterService.addStateApplier(this.ingestForwarder);
         this.qrsClient = new QrsHttpClient(nativeProcessControlService.getQrsHttpPort());
-        havenaskSearchQueryProcessor = new HavenaskSearchQueryProcessor(qrsClient);
-        havenaskSearchFetchProcessor = new HavenaskSearchFetchProcessor(qrsClient);
     }
 
     @Override
@@ -86,66 +76,13 @@ public class TransportHavenaskSearchAction extends HandledTransportAction<Search
             }
 
             IndexMetadata indexMetadata = indexAbstraction.getWriteIndex();
-            tableName = indexMetadata.getIndex().getName();
 
-            long startTime = System.nanoTime();
-
-            Map<String, Object> indexMapping = indexMetadata.mapping() != null ? indexMetadata.mapping().getSourceAsMap() : null;
-            Boolean sourceEnabled = true;
-            if (indexMapping != null && indexMapping.containsKey("_source")) {
-                Object sourceValue = indexMapping.get("_source");
-                if (sourceValue instanceof Map) {
-                    @SuppressWarnings("unchecked")
-                    Object sourceEnabledValue = ((Map<String, Object>) sourceValue).get("enabled");
-                    if (sourceEnabledValue instanceof Boolean) {
-                        sourceEnabled = (Boolean) sourceEnabledValue;
-                    }
-                }
-            }
-
-            SqlResponse havenaskSearchQueryPhaseSqlResponse = havenaskSearchQueryProcessor.executeQuery(request, tableName, indexMapping);
-
-            InternalSearchResponse internalSearchResponse = havenaskSearchFetchProcessor.executeFetch(
-                havenaskSearchQueryPhaseSqlResponse,
-                tableName,
-                request.source(),
-                sourceEnabled
-            );
-
-            SearchResponse searchResponse = buildSearchResponse(
-                tableName,
-                internalSearchResponse,
-                havenaskSearchQueryPhaseSqlResponse,
-                startTime
-            );
+            DSLSession session = new DSLSession(qrsClient, indexMetadata);
+            SearchResponse searchResponse = session.execute(request.source());
             listener.onResponse(searchResponse);
         } catch (Exception e) {
             logger.info("Failed to execute havenask search, ", e);
             listener.onFailure(e);
         }
-    }
-
-    private SearchResponse buildSearchResponse(
-        String indexName,
-        InternalSearchResponse internalSearchResponse,
-        SqlResponse havenaskSearchQueryPhaseSqlResponse,
-        long startTime
-    ) {
-        ClusterState clusterState = clusterService.state();
-        int totalShards = clusterState.metadata().index(indexName).getNumberOfShards();
-        double coveredPercent = havenaskSearchQueryPhaseSqlResponse.getCoveredPercent();
-        int successfulShards = (int) Math.round(totalShards * coveredPercent);
-
-        long endTime = System.nanoTime();
-        return new SearchResponse(
-            internalSearchResponse,
-            null,
-            totalShards,
-            successfulShards,
-            0,
-            (endTime - startTime) / 1000000,
-            ShardSearchFailure.EMPTY_ARRAY,
-            SearchResponse.Clusters.EMPTY
-        );
     }
 }
