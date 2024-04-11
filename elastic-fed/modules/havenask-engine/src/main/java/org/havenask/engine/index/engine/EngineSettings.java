@@ -120,7 +120,7 @@ public class EngineSettings {
             }
         },
         Setting.Property.IndexScope,
-        Property.Final
+        Property.Dynamic
     );
 
     public static final Setting<Integer> HAVENASK_WAL_CONFIG_SINK_QUEUE_SIZE = new Setting<>(
@@ -134,7 +134,7 @@ public class EngineSettings {
             }
         },
         Setting.Property.IndexScope,
-        Property.Final
+        Property.Dynamic
     );
 
     public static final Setting<String> HAVENASK_HASH_MODE_HASH_FIELD = new Setting<>(
@@ -150,7 +150,7 @@ public class EngineSettings {
         "",
         (s) -> s,
         Setting.Property.IndexScope,
-        Property.Final
+        Property.Dynamic
     );
 
     public static final Setting<String> HAVENASK_DATA_TABLE_JSON = new Setting<>(
@@ -158,7 +158,7 @@ public class EngineSettings {
         "",
         (s) -> s,
         Setting.Property.IndexScope,
-        Property.Final
+        Property.Dynamic
     );
 
     public static final Setting<String> HAVENASK_SCHEMA_JSON = new Setting<>(
@@ -166,7 +166,7 @@ public class EngineSettings {
         "",
         (s) -> s,
         Setting.Property.IndexScope,
-        Property.Final
+        Property.Dynamic
     );
 
     public static boolean isHavenaskEngine(Settings indexSettings) {
