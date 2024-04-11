@@ -39,13 +39,13 @@ public class DSLExec implements Executable<SearchResponse> {
     public SearchResponse execute(DSLSession session) throws IOException {
         // exec query
         SearchHits searchHits = SearchHits.empty();
-        if (dsl.size() > 0) {
+        if (sourceExpression.size() > 0) {
             QueryExec queryExec = new QueryExec(sourceExpression.getQuerySQLExpression(session.getIndex()));
             searchHits = queryExec.execute(session);
         }
 
         // exec aggregation
-        if (dsl.aggregations() != null) {
+        if (sourceExpression.getAggregationSQLExpressions(session.getIndex()).size() > 0) {
 
         }
 

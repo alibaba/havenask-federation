@@ -40,17 +40,30 @@ import org.havenask.search.aggregations.support.ValuesSourceAggregationBuilder;
 import org.havenask.search.builder.SearchSourceBuilder;
 
 public class SourceExpression extends Expression {
+    private static final int DEFAULT_SEARCH_SIZE = 10;
     private final SearchSourceBuilder searchSourceBuilder;
 
     private final WhereExpression where;
     private final OrderByExpression orderBy;
     private QuerySQLExpression querySQLExpression;
     private List<AggregationSQLExpression> aggregationSQLExpressions = new ArrayList<>();
+    private final int size;
+    private final int from;
 
     public SourceExpression(SearchSourceBuilder searchSourceBuilder) {
         this.searchSourceBuilder = searchSourceBuilder;
         this.where = new WhereExpression(visitQuery(searchSourceBuilder.query()));
         this.orderBy = new OrderByExpression(searchSourceBuilder.sorts());
+        this.size = searchSourceBuilder.size() >= 0 ? searchSourceBuilder.size() : DEFAULT_SEARCH_SIZE;
+        this.from = searchSourceBuilder.from() >= 0 ? searchSourceBuilder.from() : 0;
+    }
+
+    public int size() {
+        return size;
+    }
+
+    public int from() {
+        return from;
     }
 
     public QuerySQLExpression getQuerySQLExpression(String index) {
@@ -60,8 +73,8 @@ public class SourceExpression extends Expression {
                 index,
                 where,
                 orderBy,
-                searchSourceBuilder.size(),
-                searchSourceBuilder.from()
+                size,
+                from
             );
         }
 
