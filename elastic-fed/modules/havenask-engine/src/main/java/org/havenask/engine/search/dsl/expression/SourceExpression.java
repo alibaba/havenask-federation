@@ -25,8 +25,10 @@ import org.havenask.engine.search.dsl.expression.aggregation.GroupByExpression;
 import org.havenask.engine.search.dsl.expression.aggregation.SumExpression;
 import org.havenask.engine.search.dsl.expression.aggregation.TermsExpression;
 import org.havenask.engine.search.dsl.expression.query.BoolExpression;
+import org.havenask.engine.search.dsl.expression.query.MatchAllExpression;
 import org.havenask.engine.search.dsl.expression.query.TermExpression;
 import org.havenask.index.query.BoolQueryBuilder;
+import org.havenask.index.query.MatchAllQueryBuilder;
 import org.havenask.index.query.QueryBuilder;
 import org.havenask.index.query.TermQueryBuilder;
 import org.havenask.search.aggregations.AggregationBuilder;
@@ -154,10 +156,16 @@ public class SourceExpression extends Expression {
     }
 
     public static Expression visitQuery(QueryBuilder query) {
+        if (query == null) {
+            return new MatchAllExpression();
+        }
+
         if (query instanceof BoolQueryBuilder) {
             return visitBoolQuery((BoolQueryBuilder) query);
         } else if (query instanceof TermQueryBuilder) {
             return new TermExpression((TermQueryBuilder) query);
+        } else if (query instanceof MatchAllQueryBuilder) {
+            return new MatchAllExpression();
         } else {
             throw new IllegalArgumentException("Unsupported query type: " + query.getClass().getName());
         }
