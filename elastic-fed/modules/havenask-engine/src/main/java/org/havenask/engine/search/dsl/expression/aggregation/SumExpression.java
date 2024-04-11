@@ -29,6 +29,6 @@ public class SumExpression extends Expression {
 
     @Override
     public String translate() {
-        return null;
+        return "SUM(`" + field + "`)";
     }
 }

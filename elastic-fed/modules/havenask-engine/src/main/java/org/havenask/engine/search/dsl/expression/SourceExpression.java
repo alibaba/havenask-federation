@@ -19,6 +19,7 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
+import org.havenask.engine.search.dsl.expression.aggregation.AvgExpression;
 import org.havenask.engine.search.dsl.expression.aggregation.CountExpression;
 import org.havenask.engine.search.dsl.expression.aggregation.GroupByExpression;
 import org.havenask.engine.search.dsl.expression.aggregation.SumExpression;
@@ -31,6 +32,7 @@ import org.havenask.index.query.TermQueryBuilder;
 import org.havenask.search.aggregations.AggregationBuilder;
 import org.havenask.search.aggregations.AggregatorFactories;
 import org.havenask.search.aggregations.bucket.terms.TermsAggregationBuilder;
+import org.havenask.search.aggregations.metrics.AvgAggregationBuilder;
 import org.havenask.search.aggregations.metrics.SumAggregationBuilder;
 import org.havenask.search.aggregations.support.ValuesSourceAggregationBuilder;
 import org.havenask.search.builder.SearchSourceBuilder;
@@ -81,11 +83,7 @@ public class SourceExpression extends Expression {
         List<Expression> metrics = new ArrayList<>();
         for (AggregationBuilder aggregationBuilder : aggBuilder.getAggregatorFactories()) {
             if (aggregationBuilder instanceof ValuesSourceAggregationBuilder.LeafOnly) {
-                if (aggregationBuilder instanceof SumAggregationBuilder) {
-                    metrics.add(new SumExpression(((SumAggregationBuilder) aggregationBuilder).field()));
-                } else {
-                    throw new IllegalArgumentException("Unsupported aggregation type: " + aggregationBuilder.getClass().getName());
-                }
+                metrics.add(visitMetricExpression(aggregationBuilder));
             } else {
                 List<GroupByExpression> groupByExpressions = visitAggregation(aggregationBuilder);
                 for (GroupByExpression groupByExpression : groupByExpressions) {
@@ -106,11 +104,7 @@ public class SourceExpression extends Expression {
                             return;
                         }
 
-                        if (subAgg instanceof SumAggregationBuilder) {
-                            inMetrics.add(new SumExpression(((SumAggregationBuilder) subAgg).field()));
-                        } else {
-                            throw new IllegalArgumentException("Unsupported aggregation type: " + subAgg.getClass().getName());
-                        }
+                        inMetrics.add(visitMetricExpression(subAgg));
                     });
                     if (inMetrics.size() == 0) {
                         inMetrics.add(new CountExpression());
@@ -126,6 +120,16 @@ public class SourceExpression extends Expression {
         }
 
         return aggregationSQLExpressions;
+    }
+
+    private Expression visitMetricExpression(AggregationBuilder aggregationBuilder) {
+        if (aggregationBuilder instanceof SumAggregationBuilder) {
+            return new SumExpression(((SumAggregationBuilder) aggregationBuilder).field());
+        } else if (aggregationBuilder instanceof AvgAggregationBuilder) {
+            return new AvgExpression(((AvgAggregationBuilder) aggregationBuilder).field());
+        } else {
+            throw new IllegalArgumentException("Unsupported aggregation type: " + aggregationBuilder.getClass().getName());
+        }
     }
 
     public static List<GroupByExpression> visitAggregation(AggregationBuilder aggregationBuilder) {

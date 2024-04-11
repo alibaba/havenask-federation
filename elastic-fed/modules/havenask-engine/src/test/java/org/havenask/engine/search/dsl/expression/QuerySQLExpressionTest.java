@@ -36,8 +36,8 @@ public class QuerySQLExpressionTest extends HavenaskTestCase {
         SourceExpression sourceExpression = new SourceExpression(builder);
         String actualTranslate = sourceExpression.getQuerySQLExpression("table1").translate();
         assertEquals(
-            "SELECT `_id` FROM `table1` WHERE (`field1` = 'value1' AND `field2` = 'value2' AND `field3` = 'value3')" +
-                    " ORDER BY `field1` ASC, `field2` DESC LIMIT 10 OFFSET 20 ",
+            "SELECT `_id` FROM `table1` WHERE (`field1` = 'value1' AND `field2` = 'value2' AND `field3` = 'value3')"
+                + " ORDER BY `field1` ASC, `field2` DESC LIMIT 10 OFFSET 20 ",
             actualTranslate
         );
     }

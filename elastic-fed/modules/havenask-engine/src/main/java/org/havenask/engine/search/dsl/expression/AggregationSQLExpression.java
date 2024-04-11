@@ -31,7 +31,6 @@ public class AggregationSQLExpression extends Expression {
         this.from = from;
     }
 
-
     @Override
     public String translate() {
         // translate to sql
@@ -40,19 +39,21 @@ public class AggregationSQLExpression extends Expression {
         for (Expression field : metrics) {
             sb.append(field.translate()).append(", ");
         }
+        sb.delete(sb.length() - 2, sb.length());
+
         sb.append(" FROM `").append(from).append("` ");
         if (where != null) {
             sb.append(where.translate()).append(" ");
         }
         if (groupBy != null && !groupBy.isEmpty()) {
-            sb.append("GROUP BY ");
+            sb.append(" GROUP BY ");
             for (Expression field : groupBy) {
                 sb.append(field.translate()).append(", ");
             }
             sb.delete(sb.length() - 2, sb.length());
         }
         if (limit > 0) {
-            sb.append("LIMIT ").append(limit).append(" ");
+            sb.append(" LIMIT ").append(limit).append(" ");
         }
 
         return sb.toString();

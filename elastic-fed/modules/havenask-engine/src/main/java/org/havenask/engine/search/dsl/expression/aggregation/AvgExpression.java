@@ -15,17 +15,20 @@
 package org.havenask.engine.search.dsl.expression.aggregation;
 
 import org.havenask.engine.search.dsl.expression.Expression;
-import org.havenask.search.aggregations.bucket.terms.TermsAggregationBuilder;
 
-public class TermsExpression extends Expression {
-    private final TermsAggregationBuilder termsAggregationBuilder;
+public class AvgExpression extends Expression {
+    private final String field;
 
-    public TermsExpression(TermsAggregationBuilder termsAggregationBuilder) {
-        this.termsAggregationBuilder = termsAggregationBuilder;
+    public AvgExpression(String field) {
+        this.field = field;
+    }
+
+    public String getField() {
+        return field;
     }
 
     @Override
     public String translate() {
-        return termsAggregationBuilder.field();
+        return "AVG(`" + field + "`)";
     }
 }
