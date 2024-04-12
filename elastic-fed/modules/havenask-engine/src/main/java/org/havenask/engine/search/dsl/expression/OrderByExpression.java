@@ -15,6 +15,7 @@
 package org.havenask.engine.search.dsl.expression;
 
 import org.havenask.search.sort.FieldSortBuilder;
+import org.havenask.search.sort.ScoreSortBuilder;
 import org.havenask.search.sort.SortBuilder;
 
 import java.util.List;
@@ -22,9 +23,14 @@ import java.util.Locale;
 
 public class OrderByExpression extends Expression {
     private final List<SortBuilder<?>> sorts;
+    private boolean hasScoreSort = false;
 
     public OrderByExpression(List<SortBuilder<?>> sorts) {
         this.sorts = sorts;
+    }
+
+    public boolean hasScoreSort() {
+        return hasScoreSort;
     }
 
     @Override
@@ -42,6 +48,14 @@ public class OrderByExpression extends Expression {
                         .append("` ")
                         .append(fieldSort.order().toString().toUpperCase(Locale.ROOT))
                         .append(", ");
+                }
+                if (sort instanceof ScoreSortBuilder) {
+                    if (hasScoreSort) {
+                        throw new IllegalArgumentException("Multiple score sort is not supported");
+                    }
+
+                    sb.append("_score ").append(sort.order().toString().toUpperCase(Locale.ROOT)).append(", ");
+                    hasScoreSort = true;
                 } else {
                     throw new IllegalArgumentException("Unsupported sort type: " + sort.getClass().getName());
                 }

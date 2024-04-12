@@ -28,10 +28,15 @@ import org.havenask.engine.search.dsl.expression.aggregation.SumExpression;
 import org.havenask.engine.search.dsl.expression.aggregation.TermsExpression;
 import org.havenask.engine.search.dsl.expression.query.BoolExpression;
 import org.havenask.engine.search.dsl.expression.query.MatchAllExpression;
+import org.havenask.engine.search.dsl.expression.query.MatchExpression;
+import org.havenask.engine.search.dsl.expression.query.RangeExpression;
 import org.havenask.engine.search.dsl.expression.query.TermExpression;
+import org.havenask.index.mapper.IdFieldMapper;
 import org.havenask.index.query.BoolQueryBuilder;
 import org.havenask.index.query.MatchAllQueryBuilder;
+import org.havenask.index.query.MatchQueryBuilder;
 import org.havenask.index.query.QueryBuilder;
+import org.havenask.index.query.RangeQueryBuilder;
 import org.havenask.index.query.TermQueryBuilder;
 import org.havenask.search.aggregations.AggregationBuilder;
 import org.havenask.search.aggregations.AggregatorFactories;
@@ -70,7 +75,13 @@ public class SourceExpression extends Expression {
 
     public QuerySQLExpression getQuerySQLExpression(String index) {
         if (querySQLExpression == null) {
-            querySQLExpression = new QuerySQLExpression(List.of("_id"), index, where, orderBy, size, from);
+            List<String> fields = new ArrayList<>();
+            fields.add(IdFieldMapper.NAME);
+            if (orderBy.hasScoreSort()) {
+                fields.add(", bm25_score() as _score");
+            }
+
+            querySQLExpression = new QuerySQLExpression(List.of(IdFieldMapper.NAME), index, where, orderBy, size, from);
         }
 
         return querySQLExpression;
@@ -174,6 +185,10 @@ public class SourceExpression extends Expression {
             return new TermExpression((TermQueryBuilder) query);
         } else if (query instanceof MatchAllQueryBuilder) {
             return new MatchAllExpression();
+        } else if (query instanceof RangeQueryBuilder) {
+            return new RangeExpression((RangeQueryBuilder) query);
+        } else if (query instanceof MatchQueryBuilder) {
+            return new MatchExpression(((MatchQueryBuilder) query));
         } else {
             throw new IllegalArgumentException("Unsupported query type: " + query.getClass().getName());
         }

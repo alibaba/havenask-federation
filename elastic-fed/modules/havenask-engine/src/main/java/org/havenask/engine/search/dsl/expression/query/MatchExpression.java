@@ -16,17 +16,25 @@ package org.havenask.engine.search.dsl.expression.query;
 
 import org.havenask.engine.index.config.Schema;
 import org.havenask.engine.search.dsl.expression.Expression;
-import org.havenask.index.query.TermQueryBuilder;
+import org.havenask.index.query.MatchQueryBuilder;
 
-public class TermExpression extends Expression {
-    private final TermQueryBuilder termQueryBuilder;
+public class MatchExpression extends Expression {
+    private final MatchQueryBuilder matchQueryBuilder;
 
-    public TermExpression(TermQueryBuilder termQueryBuilder) {
-        this.termQueryBuilder = termQueryBuilder;
+    public MatchExpression(MatchQueryBuilder matchQueryBuilder) {
+        this.matchQueryBuilder = matchQueryBuilder;
     }
 
     @Override
     public String translate() {
-        return "`" + Schema.encodeFieldWithDot(termQueryBuilder.fieldName()) + "` = '" + termQueryBuilder.value() + "'";
+        StringBuilder sb = new StringBuilder();
+        sb.append("MATCHINDEX('")
+            .append(Schema.encodeFieldWithDot(matchQueryBuilder.fieldName()))
+            .append("', '")
+            .append(matchQueryBuilder.value())
+            .append("', 'default_op:")
+            .append(matchQueryBuilder.operator())
+            .append("')");
+        return sb.toString();
     }
 }

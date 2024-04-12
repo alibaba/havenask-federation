@@ -14,6 +14,7 @@
 
 package org.havenask.engine.search.dsl.expression.query;
 
+import org.havenask.engine.index.config.Schema;
 import org.havenask.engine.search.dsl.expression.Expression;
 import org.havenask.index.query.RangeQueryBuilder;
 
@@ -26,7 +27,16 @@ public class RangeExpression extends Expression {
 
     @Override
     public String translate() {
-        // TODO
-        return "";
+        StringBuilder sb = new StringBuilder();
+        sb.append("QUERY('', '")
+            .append(Schema.encodeFieldWithDot(rangeQueryBuilder.fieldName()))
+            .append(":")
+            .append(rangeQueryBuilder.includeLower() ? "[" : "(")
+            .append(rangeQueryBuilder.from())
+            .append(",")
+            .append(rangeQueryBuilder.to())
+            .append(rangeQueryBuilder.includeUpper() ? "]" : ")")
+            .append("')");
+        return sb.toString();
     }
 }
