@@ -290,8 +290,7 @@ public class HavenaskStoreTests extends HavenaskTestCase {
         Files.write(dataPath.resolve(prefix + "dir1/dir2/test"), "test dir1 dir2 content".getBytes(StandardCharsets.UTF_8));
         havenaskStore.renameHavenaskTempFilesSafe(tempFileMap);
 
-        assert tempFileMap.isEmpty() : "tempFileMap is not empty";
-
+        assertTrue(tempFileMap.isEmpty());
         assertEquals(Files.readString(dataPath.resolve("test")), "test content");
         assertEquals(Files.readString(dataPath.resolve("dir1/test")), "test dir1 content");
         assertEquals(Files.readString(dataPath.resolve("dir1/dir2/test")), "test dir1 dir2 content");
@@ -314,8 +313,7 @@ public class HavenaskStoreTests extends HavenaskTestCase {
         Files.write(dataPath.resolve("dir1/dir2/test"), "test dir1 dir2 content".getBytes(StandardCharsets.UTF_8));
         havenaskStore.renameHavenaskTempFilesSafe(tempFileMap);
 
-        assert tempFileMap.isEmpty() : "tempFileMap is not empty";
-
+        assertTrue(tempFileMap.isEmpty());
         assertEquals(Files.readString(dataPath.resolve("test")), "test content new");
         assertEquals(Files.readString(dataPath.resolve("dir1/test")), "test dir1 content new");
         assertEquals(Files.readString(dataPath.resolve("dir1/dir2/test")), "test dir1 dir2 content new");
