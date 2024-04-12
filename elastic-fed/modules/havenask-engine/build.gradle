@@ -153,11 +153,10 @@ test {
 
 internalClusterTest {
   maxParallelForks = '1'
-  final String enableInternalClusterTest = System.getProperty("tests.enable.internal.test", null);
-  if (enableInternalClusterTest == null) {
-    enabled = false
-  } else {
+  if (System.getProperty("tests.internal.enable") == "true") {
     systemProperty 'tests.security.manager', 'false'
+  } else {
+    enabled = false
   }
 }
 

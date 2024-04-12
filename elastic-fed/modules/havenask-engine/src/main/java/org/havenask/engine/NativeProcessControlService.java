@@ -346,70 +346,24 @@ public class NativeProcessControlService extends AbstractLifecycleComponent {
         }
     }
 
-    /**
-     * 检测进程是否存活
-     *
-     * @param role 进程角色: searcher 或者 qrs
-     * @return 返回进程存活状态
-     */
     public static boolean checkProcessAlive(String role) {
-        Process process = null;
-        String command = String.format(Locale.ROOT, CHECK_HAVENASK_ALIVE_COMMAND, role);
-        try {
-            process = AccessController.doPrivileged((PrivilegedAction<Process>) () -> {
-                try {
-                    return Runtime.getRuntime().exec(new String[] { "sh", "-c", command });
-                } catch (IOException e) {
-                    LOGGER.warn(() -> new ParameterizedMessage("run check command error, command [{}]", command), e);
-                    return null;
-                }
-            });
-            if (process == null) {
-                LOGGER.warn("run check command error, the process is null, don't know the process [{}] status", role);
-                return true;
-            }
-
-            try (InputStream inputStream = process.getInputStream()) {
-                byte[] bytes = inputStream.readAllBytes();
-                String result = new String(bytes, StandardCharsets.UTF_8);
-                if (result.trim().equals("")) {
-                    LOGGER.info("[{}] pid not found, the process is not alive", role);
-                    return false;
-                }
-
-                try {
-                    if (Integer.valueOf(result.trim()) > 0) {
-                        return true;
-                    } else {
-                        LOGGER.warn("check command get the process [{}] pid error, check result is [{}]", role, result);
-                        return false;
-                    }
-                } catch (NumberFormatException e) {
-                    LOGGER.warn("check command get the process [{}] result format error, check result is [{}]", role, result);
-                    return false;
-                }
-            }
-        } catch (IOException e) {
-            LOGGER.warn(() -> new ParameterizedMessage("check command get the process [{}] input error", role), e);
-        } finally {
-            if (process != null) {
-                process.destroy();
-            }
-        }
-        return true;
+        return checkProcessAlive(role, null);
     }
 
     /**
      * 检测进程是否存活
      *
      * @param role 进程角色: searcher 或者 qrs
-     * @param httpPort 进程的http端口
+     * @param httpPort 进程的http端口, 不指定则不检测http端口
      * @return 返回进程存活状态
      */
-    public static boolean checkProcessAlive(String role, int httpPort) {
+    public static boolean checkProcessAlive(String role, Integer httpPort) {
         Process process = null;
 
-        String command = String.format(Locale.ROOT, CHECK_HAVENASK_ALIVE_WITH_HTTP_PORT_COMMAND, role, httpPort);
+        String command = Objects.isNull(httpPort)
+            ? String.format(Locale.ROOT, CHECK_HAVENASK_ALIVE_COMMAND, role)
+            : String.format(Locale.ROOT, CHECK_HAVENASK_ALIVE_WITH_HTTP_PORT_COMMAND, role, httpPort);
+
         try {
             process = AccessController.doPrivileged((PrivilegedAction<Process>) () -> {
                 try {
