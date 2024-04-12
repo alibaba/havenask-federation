@@ -38,7 +38,7 @@ import static org.hamcrest.CoreMatchers.containsString;
 @SuppressForbidden(reason = "use a http server")
 @ThreadLeakFilters(filters = { HttpThreadLeakFilter.class, ArpcThreadLeakFilter.class })
 @HavenaskIntegTestCase.ClusterScope(numDataNodes = 1, numClientNodes = 0, scope = HavenaskIntegTestCase.Scope.TEST)
-public class SqlActionIT extends HavenaskITTestCase {
+public class SqlActionTests extends HavenaskITTestCase {
 
     @Override
     protected Settings nodeSettings(int nodeOrdinal) {

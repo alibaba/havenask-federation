@@ -22,7 +22,7 @@ import org.havenask.engine.rpc.SearcherClient;
 import org.havenask.engine.rpc.TargetInfo;
 import org.havenask.engine.rpc.UpdateHeartbeatTargetRequest;
 
-public class SearcherHttpClientIT extends HavenaskITTestCase {
+public class SearcherHttpClientTests extends HavenaskITTestCase {
     public void testGetHeartbeatTarget() throws IOException {
         SearcherClient client = new SearcherHttpClient(39200);
         HeartbeatTargetResponse response = client.getHeartbeatTarget();
