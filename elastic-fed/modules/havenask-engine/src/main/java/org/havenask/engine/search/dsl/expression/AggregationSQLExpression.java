@@ -14,16 +14,25 @@
 
 package org.havenask.engine.search.dsl.expression;
 
+import org.havenask.engine.search.dsl.expression.aggregation.BucketExpression;
+import org.havenask.engine.search.dsl.expression.aggregation.MetricExpression;
+
 import java.util.List;
 
 public class AggregationSQLExpression extends Expression {
     public final String from;
-    private final List<Expression> groupBy;
-    private final List<Expression> metrics;
+    private final List<BucketExpression> groupBy;
+    private final List<MetricExpression> metrics;
     private final WhereExpression where;
     private final int limit;
 
-    public AggregationSQLExpression(List<Expression> groupBy, List<Expression> metrics, String from, WhereExpression where, int limit) {
+    public AggregationSQLExpression(
+        List<BucketExpression> groupBy,
+        List<MetricExpression> metrics,
+        String from,
+        WhereExpression where,
+        int limit
+    ) {
         this.groupBy = groupBy;
         this.metrics = metrics;
         this.where = where;
@@ -31,11 +40,23 @@ public class AggregationSQLExpression extends Expression {
         this.from = from;
     }
 
+    public List<BucketExpression> getGroupBy() {
+        return groupBy;
+    }
+
+    public List<MetricExpression> getMetrics() {
+        return metrics;
+    }
+
     @Override
     public String translate() {
         // translate to sql
         StringBuilder sb = new StringBuilder();
         sb.append("SELECT ");
+        for (BucketExpression field : groupBy) {
+            sb.append(field.getField()).append(", ");
+        }
+
         for (Expression field : metrics) {
             sb.append(field.translate()).append(", ");
         }

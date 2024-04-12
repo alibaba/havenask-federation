@@ -14,10 +14,9 @@
 
 package org.havenask.engine.search.dsl.expression.aggregation;
 
-import org.havenask.engine.search.dsl.expression.Expression;
 import org.havenask.search.aggregations.bucket.terms.TermsAggregationBuilder;
 
-public class TermsExpression extends Expression {
+public class TermsExpression extends BucketExpression {
     private final TermsAggregationBuilder termsAggregationBuilder;
 
     public TermsExpression(TermsAggregationBuilder termsAggregationBuilder) {
@@ -26,6 +25,11 @@ public class TermsExpression extends Expression {
 
     @Override
     public String translate() {
-        return termsAggregationBuilder.field();
+        return "`" + termsAggregationBuilder.field() + "`";
+    }
+
+    @Override
+    public String getField() {
+        return "`" + termsAggregationBuilder.field() + "` AS `" + termsAggregationBuilder.getName() + "`";
     }
 }

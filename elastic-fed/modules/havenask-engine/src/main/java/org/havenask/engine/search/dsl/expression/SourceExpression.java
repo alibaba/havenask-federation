@@ -20,8 +20,10 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 import org.havenask.engine.search.dsl.expression.aggregation.AvgExpression;
+import org.havenask.engine.search.dsl.expression.aggregation.BucketExpression;
 import org.havenask.engine.search.dsl.expression.aggregation.CountExpression;
 import org.havenask.engine.search.dsl.expression.aggregation.GroupByExpression;
+import org.havenask.engine.search.dsl.expression.aggregation.MetricExpression;
 import org.havenask.engine.search.dsl.expression.aggregation.SumExpression;
 import org.havenask.engine.search.dsl.expression.aggregation.TermsExpression;
 import org.havenask.engine.search.dsl.expression.query.BoolExpression;
@@ -68,14 +70,7 @@ public class SourceExpression extends Expression {
 
     public QuerySQLExpression getQuerySQLExpression(String index) {
         if (querySQLExpression == null) {
-            querySQLExpression = new QuerySQLExpression(
-                List.of("_id"),
-                index,
-                where,
-                orderBy,
-                size,
-                from
-            );
+            querySQLExpression = new QuerySQLExpression(List.of("_id"), index, where, orderBy, size, from);
         }
 
         return querySQLExpression;
@@ -95,14 +90,14 @@ public class SourceExpression extends Expression {
             throw new IllegalArgumentException("Pipeline aggregation is not supported");
         }
 
-        List<Expression> metrics = new ArrayList<>();
+        List<MetricExpression> metrics = new ArrayList<>();
         for (AggregationBuilder aggregationBuilder : aggBuilder.getAggregatorFactories()) {
             if (aggregationBuilder instanceof ValuesSourceAggregationBuilder.LeafOnly) {
                 metrics.add(visitMetricExpression(aggregationBuilder));
             } else {
                 List<GroupByExpression> groupByExpressions = visitAggregation(aggregationBuilder);
                 for (GroupByExpression groupByExpression : groupByExpressions) {
-                    List<Expression> groupBy = new ArrayList<>();
+                    List<BucketExpression> groupBy = new ArrayList<>();
                     AtomicInteger limit = new AtomicInteger(1);
                     groupByExpression.getAggregationBuilders().forEach(agg -> {
                         if (agg instanceof TermsAggregationBuilder) {
@@ -113,7 +108,7 @@ public class SourceExpression extends Expression {
                         }
                     });
 
-                    List<Expression> inMetrics = new ArrayList<>();
+                    List<MetricExpression> inMetrics = new ArrayList<>();
                     groupByExpression.getLastAggregationBuilder().getSubAggregations().forEach(subAgg -> {
                         if (false == subAgg instanceof ValuesSourceAggregationBuilder.LeafOnly) {
                             return;
@@ -137,11 +132,11 @@ public class SourceExpression extends Expression {
         return aggregationSQLExpressions;
     }
 
-    private Expression visitMetricExpression(AggregationBuilder aggregationBuilder) {
+    private MetricExpression visitMetricExpression(AggregationBuilder aggregationBuilder) {
         if (aggregationBuilder instanceof SumAggregationBuilder) {
-            return new SumExpression(((SumAggregationBuilder) aggregationBuilder).field());
+            return new SumExpression((SumAggregationBuilder) aggregationBuilder);
         } else if (aggregationBuilder instanceof AvgAggregationBuilder) {
-            return new AvgExpression(((AvgAggregationBuilder) aggregationBuilder).field());
+            return new AvgExpression((AvgAggregationBuilder) aggregationBuilder);
         } else {
             throw new IllegalArgumentException("Unsupported aggregation type: " + aggregationBuilder.getClass().getName());
         }

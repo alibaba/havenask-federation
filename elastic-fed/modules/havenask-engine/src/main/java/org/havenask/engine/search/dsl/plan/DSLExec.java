@@ -23,6 +23,7 @@ import org.havenask.cluster.metadata.IndexMetadata;
 import org.havenask.engine.search.dsl.DSLSession;
 import org.havenask.engine.search.dsl.expression.SourceExpression;
 import org.havenask.search.SearchHits;
+import org.havenask.search.aggregations.Aggregations;
 import org.havenask.search.aggregations.InternalAggregations;
 import org.havenask.search.builder.SearchSourceBuilder;
 
@@ -45,22 +46,16 @@ public class DSLExec implements Executable<SearchResponse> {
         }
 
         // exec aggregation
+        Aggregations aggregations = InternalAggregations.EMPTY;
         if (sourceExpression.getAggregationSQLExpressions(session.getIndex()).size() > 0) {
-
+            AggExec aggExec = new AggExec(sourceExpression.getAggregationSQLExpressions(session.getIndex()));
+            aggregations = aggExec.execute(session);
         }
 
         IndexMetadata indexMetadata = session.getIndexMetadata();
 
         // build response
-        SearchResponseSections searchResponseSections = new SearchResponseSections(
-            searchHits,
-            InternalAggregations.EMPTY,
-            null,
-            false,
-            false,
-            null,
-            1
-        );
+        SearchResponseSections searchResponseSections = new SearchResponseSections(searchHits, aggregations, null, false, false, null, 1);
         return new SearchResponse(
             searchResponseSections,
             null,

@@ -14,21 +14,30 @@
 
 package org.havenask.engine.search.dsl.expression.aggregation;
 
-import org.havenask.engine.search.dsl.expression.Expression;
+import org.havenask.common.collect.Map;
+import org.havenask.search.DocValueFormat;
+import org.havenask.search.aggregations.InternalAggregation;
+import org.havenask.search.aggregations.metrics.InternalSum;
+import org.havenask.search.aggregations.metrics.SumAggregationBuilder;
 
-public class SumExpression extends Expression {
-    private final String field;
+public class SumExpression extends MetricExpression {
+    private final SumAggregationBuilder sumAggregationBuilder;
 
-    public SumExpression(String field) {
-        this.field = field;
+    public SumExpression(SumAggregationBuilder sumAggregationBuilder) {
+        this.sumAggregationBuilder = sumAggregationBuilder;
     }
 
     public String getField() {
-        return field;
+        return sumAggregationBuilder.field();
+    }
+
+    @Override
+    public InternalAggregation buildInternalAggregation(Object value) {
+        return new InternalSum(sumAggregationBuilder.getName(), (Double) value, DocValueFormat.RAW, Map.of());
     }
 
     @Override
     public String translate() {
-        return "SUM(`" + field + "`)";
+        return "SUM(`" + sumAggregationBuilder.field() + "`) AS `" + sumAggregationBuilder.getName() + "`";
     }
 }

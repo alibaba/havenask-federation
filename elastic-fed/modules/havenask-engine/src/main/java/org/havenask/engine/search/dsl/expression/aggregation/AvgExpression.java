@@ -14,21 +14,30 @@
 
 package org.havenask.engine.search.dsl.expression.aggregation;
 
-import org.havenask.engine.search.dsl.expression.Expression;
+import org.havenask.common.collect.Map;
+import org.havenask.search.DocValueFormat;
+import org.havenask.search.aggregations.InternalAggregation;
+import org.havenask.search.aggregations.metrics.AvgAggregationBuilder;
+import org.havenask.search.aggregations.metrics.InternalAvg;
 
-public class AvgExpression extends Expression {
-    private final String field;
+public class AvgExpression extends MetricExpression {
+    private final AvgAggregationBuilder avgAggregationBuilder;
 
-    public AvgExpression(String field) {
-        this.field = field;
+    public AvgExpression(AvgAggregationBuilder avgAggregationBuilder) {
+        this.avgAggregationBuilder = avgAggregationBuilder;
     }
 
     public String getField() {
-        return field;
+        return avgAggregationBuilder.field();
     }
 
     @Override
     public String translate() {
-        return "AVG(`" + field + "`)";
+        return "AVG(`" + avgAggregationBuilder.field() + "`) AS `" + avgAggregationBuilder.getName() + "`";
+    }
+
+    @Override
+    public InternalAggregation buildInternalAggregation(Object value) {
+        return new InternalAvg(avgAggregationBuilder.getName(), (Double) value, 1, DocValueFormat.RAW, Map.of());
     }
 }

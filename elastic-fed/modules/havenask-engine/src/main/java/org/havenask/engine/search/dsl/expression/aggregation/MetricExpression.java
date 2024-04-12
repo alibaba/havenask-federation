@@ -14,17 +14,9 @@
 
 package org.havenask.engine.search.dsl.expression.aggregation;
 
+import org.havenask.engine.search.dsl.expression.Expression;
 import org.havenask.search.aggregations.InternalAggregation;
 
-public class CountExpression extends MetricExpression {
-
-    @Override
-    public String translate() {
-        return "COUNT(*)";
-    }
-
-    @Override
-    public InternalAggregation buildInternalAggregation(Object value) {
-        return null;
-    }
+public abstract class MetricExpression extends Expression {
+    public abstract InternalAggregation buildInternalAggregation(Object value);
 }

@@ -28,6 +28,6 @@ public class WhereExpressionTests extends HavenaskTestCase {
         Expression expression = SourceExpression.visitQuery(builder.query());
         WhereExpression whereExpression = new WhereExpression(expression);
         String actualTranslate = whereExpression.translate();
-        assertEquals("WHERE 1=1", actualTranslate);
+        assertEquals("WHERE (`field1` = 'value1' AND `field2` = 'value2')", actualTranslate);
     }
 }
