@@ -27,7 +27,7 @@ import org.havenask.engine.rpc.SqlClientInfoResponse;
 import org.havenask.engine.rpc.TargetInfo;
 import org.havenask.engine.rpc.UpdateHeartbeatTargetRequest;
 
-public class QrsHttpClientIT extends HavenaskITTestCase {
+public class QrsHttpClientTests extends HavenaskITTestCase {
 
     public void testTimeout() throws IOException {
         QrsClient client = new QrsHttpClient(49200, 1);

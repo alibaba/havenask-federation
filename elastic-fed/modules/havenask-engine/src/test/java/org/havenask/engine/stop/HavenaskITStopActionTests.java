@@ -38,7 +38,7 @@ import static org.havenask.engine.NativeProcessControlService.checkProcessAlive;
 @SuppressForbidden(reason = "use a http server")
 @ThreadLeakFilters(filters = { ArpcThreadLeakFilter.class })
 @HavenaskIntegTestCase.ClusterScope(numDataNodes = 1, numClientNodes = 0, scope = HavenaskIntegTestCase.Scope.TEST)
-public class HavenaskStopActionIT extends HavenaskITTestCase {
+public class HavenaskITStopActionTests extends HavenaskITTestCase {
 
     @Override
     protected Settings nodeSettings(int nodeOrdinal) {
@@ -58,7 +58,7 @@ public class HavenaskStopActionIT extends HavenaskITTestCase {
         return nodePlugins();
     }
 
-    private String startScript = HavenaskStopActionIT.class.getResource("/fake_sap.sh").getPath();
+    private String startScript = HavenaskITStopActionTests.class.getResource("/fake_sap.sh").getPath();
     String stopScript = MockNativeProcessControlService.class.getResource("/stop_fake_sap.sh").getPath();
     private String startSearcherCommand = "sh " + startScript + " ha_sql roleType=searcher &";
     private String startQrsCommand = "sh " + startScript + " ha_sql roleType=qrs &";
