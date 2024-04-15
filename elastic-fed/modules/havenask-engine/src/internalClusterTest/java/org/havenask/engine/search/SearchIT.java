@@ -24,20 +24,27 @@ import org.havenask.action.admin.cluster.health.ClusterHealthResponse;
 import org.havenask.action.index.IndexRequest;
 import org.havenask.action.search.SearchRequest;
 import org.havenask.action.search.SearchResponse;
+import org.havenask.action.support.master.AcknowledgedResponse;
 import org.havenask.cluster.health.ClusterHealthStatus;
+import org.havenask.common.Strings;
 import org.havenask.common.collect.Map;
 import org.havenask.common.settings.Settings;
+import org.havenask.common.xcontent.XContentBuilder;
+import org.havenask.common.xcontent.XContentFactory;
 import org.havenask.common.xcontent.XContentType;
 import org.havenask.engine.HavenaskInternalClusterTestCase;
 import org.havenask.engine.index.engine.EngineSettings;
 import org.havenask.engine.index.query.KnnQueryBuilder;
+import org.havenask.index.IndexNotFoundException;
 import org.havenask.search.builder.SearchSourceBuilder;
 import org.havenask.test.HavenaskIntegTestCase;
 
 import java.util.concurrent.TimeUnit;
 
+import static org.havenask.test.HavenaskIntegTestCase.Scope.SUITE;
+
 @ThreadLeakFilters(filters = { HttpThreadLeakFilter.class, ArpcThreadLeakFilter.class })
-@HavenaskIntegTestCase.ClusterScope(numDataNodes = 2, numClientNodes = 0, scope = HavenaskIntegTestCase.Scope.TEST)
+@HavenaskIntegTestCase.ClusterScope(supportsDedicatedMasters = false, numDataNodes = 2, numClientNodes = 0, scope = SUITE)
 public class SearchIT extends HavenaskInternalClusterTestCase {
     private static final Logger logger = LogManager.getLogger(SearchIT.class);
 
@@ -60,9 +67,18 @@ public class SearchIT extends HavenaskInternalClusterTestCase {
         assertBusy(() -> {
             SearchResponse searchResponse = client().prepareSearch(index).setSource(searchSourceBuilder).get();
             assertEquals(dataNum, searchResponse.getHits().getTotalHits().value);
-
-            logger.info("searchResponse.getHits().getTotalHits().value: " + searchResponse.getHits().getTotalHits().value);
         }, 5, TimeUnit.SECONDS);
+
+        logger.info("testSearch success");
+
+        try {
+            AcknowledgedResponse deleteIndexResponse = client().admin().indices().prepareDelete(index).get();
+            assertTrue(deleteIndexResponse.isAcknowledged());
+        } catch (IndexNotFoundException e) {
+            fail("Index was not found to delete: " + index);
+        }
+        boolean exists = client().admin().indices().prepareExists(index).get().isExists();
+        assertFalse("Index should have been deleted but still exists", exists);
     }
 
     public void testKnnSearch() throws Exception {
@@ -87,9 +103,18 @@ public class SearchIT extends HavenaskInternalClusterTestCase {
         assertBusy(() -> {
             SearchResponse searchResponse = client().prepareSearch(index).setSource(searchSourceBuilder).get();
             assertEquals(dataNum, searchResponse.getHits().getTotalHits().value);
-
-            logger.info("searchResponse.getHits().getTotalHits().value: " + searchResponse.getHits().getTotalHits().value);
         }, 5, TimeUnit.SECONDS);
+
+        logger.info("testKnnSearch success");
+
+        try {
+            AcknowledgedResponse deleteIndexResponse = client().admin().indices().prepareDelete(index).get();
+            assertTrue(deleteIndexResponse.isAcknowledged());
+        } catch (IndexNotFoundException e) {
+            fail("Index was not found to delete: " + index);
+        }
+        boolean exists = client().admin().indices().prepareExists(index).get().isExists();
+        assertFalse("Index should have been deleted but still exists", exists);
     }
 
     private void prepareKeywordIndex(String index) throws Exception {
@@ -106,9 +131,6 @@ public class SearchIT extends HavenaskInternalClusterTestCase {
 
         int shardsNum = randomIntBetween(1, 6);
         int replicasNum = randomIntBetween(0, numberOfDataNodes - 1);
-
-        logger.info("shardsNum : " + shardsNum);
-        logger.info("replicasNum : " + replicasNum);
 
         assertTrue(
             client().admin()
@@ -148,9 +170,6 @@ public class SearchIT extends HavenaskInternalClusterTestCase {
         int shardsNum = randomIntBetween(1, 6);
         int replicasNum = randomIntBetween(0, numberOfDataNodes - 1);
 
-        logger.info("shardsNum : " + shardsNum);
-        logger.info("replicasNum : " + replicasNum);
-
         assertTrue(
             client().admin()
                 .indices()
@@ -175,14 +194,25 @@ public class SearchIT extends HavenaskInternalClusterTestCase {
 
     public void testSourceFilter() throws Exception {
         String index = "test2";
-        String mapping = "{\n"
-            + "  \"properties\": {\n"
-            + "    \"vector\": {\n"
-            + "      \"type\": \"vector\",\n"
-            + "      \"dims\": 2\n"
-            + "    }\n"
-            + "  }\n"
-            + "}";
+        XContentBuilder mappingBuilder = XContentFactory.jsonBuilder();
+        mappingBuilder.startObject();
+        {
+            mappingBuilder.startObject("properties");
+            {
+                mappingBuilder.startObject("name");
+                {
+                    mappingBuilder.field("type", "keyword");
+                }
+                mappingBuilder.endObject();
+                mappingBuilder.startObject("seq");
+                {
+                    mappingBuilder.field("type", "integer");
+                }
+                mappingBuilder.endObject();
+            }
+            mappingBuilder.endObject();
+        }
+        mappingBuilder.endObject();
 
         assertTrue(
             client().admin()
@@ -195,7 +225,7 @@ public class SearchIT extends HavenaskInternalClusterTestCase {
                         .put(EngineSettings.ENGINE_TYPE_SETTING.getKey(), EngineSettings.ENGINE_HAVENASK)
                         .build()
                 )
-                .addMapping("_doc", mapping, XContentType.JSON)
+                .addMapping("_doc", Strings.toString(mappingBuilder), XContentType.JSON)
                 .get()
                 .isAcknowledged()
         );
@@ -205,24 +235,47 @@ public class SearchIT extends HavenaskInternalClusterTestCase {
             assertEquals(clusterHealthResponse.getStatus(), ClusterHealthStatus.GREEN);
         }, 30, TimeUnit.SECONDS);
 
-        String[] include1 = new String[] { "name", "key1" };
-        String[] exclude1 = new String[] {};
+        // put doc
+        client().index(new IndexRequest(index).id(String.valueOf("1")).source(Map.of("name", "alice", "seq", 1), XContentType.JSON));
+        client().index(new IndexRequest(index).id(String.valueOf("2")).source(Map.of("name", "bob", "seq", 2), XContentType.JSON));
+        client().index(new IndexRequest(index).id(String.valueOf("3")).source(Map.of("name", "eve", "seq", 3), XContentType.JSON));
 
-        SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-        KnnQueryBuilder knnQueryBuilder = new KnnQueryBuilder("vector", new float[] { 1.5f, 2.5f }, 10);
-        searchSourceBuilder.query(knnQueryBuilder);
-        searchSourceBuilder.fetchSource(include1, exclude1);
-        SearchResponse searchResponse = client().prepareSearch(index).setSource(searchSourceBuilder).get();
-        assertEquals(searchResponse.getHits().getTotalHits().value, 2);
+        String[] include1 = new String[] { "name" };
+        String[] exclude1 = new String[] { "seq" };
 
-        String[] include2 = new String[] {};
-        String[] exclude2 = new String[] { "key1" };
+        SearchSourceBuilder searchSourceBuilder1 = new SearchSourceBuilder();
+        searchSourceBuilder1.fetchSource(include1, exclude1);
+
+        assertBusy(() -> {
+            SearchResponse searchResponse = client().prepareSearch(index).setSource(searchSourceBuilder1).get();
+            for (int i = 0; i < searchResponse.getHits().getHits().length; i++) {
+                assertTrue(searchResponse.getHits().getHits()[i].getSourceAsString().contains("name"));
+                assertFalse(searchResponse.getHits().getHits()[i].getSourceAsString().contains("seq"));
+            }
+        }, 5, TimeUnit.SECONDS);
+
+        String[] include2 = null;
+        String[] exclude2 = new String[] { "name" };
 
         SearchSourceBuilder searchSourceBuilder2 = new SearchSourceBuilder();
-        KnnQueryBuilder knnQueryBuilder2 = new KnnQueryBuilder("vector", new float[] { 1.5f, 2.5f }, 10);
-        searchSourceBuilder2.query(knnQueryBuilder2);
         searchSourceBuilder2.fetchSource(include2, exclude2);
-        SearchResponse searchResponse2 = client().prepareSearch(index).setSource(searchSourceBuilder2).get();
-        assertEquals(searchResponse2.getHits().getTotalHits().value, 2);
+        assertBusy(() -> {
+            SearchResponse searchResponse = client().prepareSearch(index).setSource(searchSourceBuilder2).get();
+            for (int i = 0; i < searchResponse.getHits().getHits().length; i++) {
+                assertFalse(searchResponse.getHits().getHits()[i].getSourceAsString().contains("name"));
+                assertTrue(searchResponse.getHits().getHits()[i].getSourceAsString().contains("seq"));
+            }
+        }, 5, TimeUnit.SECONDS);
+
+        logger.info("testSourceFilter success");
+
+        try {
+            AcknowledgedResponse deleteIndexResponse = client().admin().indices().prepareDelete(index).get();
+            assertTrue(deleteIndexResponse.isAcknowledged());
+        } catch (IndexNotFoundException e) {
+            fail("Index was not found to delete: " + index);
+        }
+        boolean exists = client().admin().indices().prepareExists(index).get().isExists();
+        assertFalse("Index should have been deleted but still exists", exists);
     }
 }

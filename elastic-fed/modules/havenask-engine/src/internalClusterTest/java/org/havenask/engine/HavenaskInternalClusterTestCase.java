@@ -47,6 +47,7 @@ public abstract class HavenaskInternalClusterTestCase extends HavenaskIntegTestC
         return false;
     }
 
+    // TODO: Supports customization of each node‘s node roles
     @Override
     protected Settings nodeSettings(int nodeOrdinal) {
         String usrDir = System.getProperty("user.dir");
