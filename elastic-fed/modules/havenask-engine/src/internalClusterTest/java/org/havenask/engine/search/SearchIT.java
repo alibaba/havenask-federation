@@ -28,64 +28,18 @@ import org.havenask.cluster.health.ClusterHealthStatus;
 import org.havenask.common.collect.Map;
 import org.havenask.common.settings.Settings;
 import org.havenask.common.xcontent.XContentType;
-import org.havenask.engine.HavenaskEnginePlugin;
-import org.havenask.engine.NativeProcessControlService;
+import org.havenask.engine.HavenaskInternalClusterTestCase;
 import org.havenask.engine.index.engine.EngineSettings;
 import org.havenask.engine.index.query.KnnQueryBuilder;
-import org.havenask.plugins.Plugin;
 import org.havenask.search.builder.SearchSourceBuilder;
 import org.havenask.test.HavenaskIntegTestCase;
 
-import java.util.Arrays;
-import java.util.Collection;
 import java.util.concurrent.TimeUnit;
 
 @ThreadLeakFilters(filters = { HttpThreadLeakFilter.class, ArpcThreadLeakFilter.class })
 @HavenaskIntegTestCase.ClusterScope(numDataNodes = 2, numClientNodes = 0, scope = HavenaskIntegTestCase.Scope.TEST)
-public class SearchIT extends HavenaskIntegTestCase {
+public class SearchIT extends HavenaskInternalClusterTestCase {
     private static final Logger logger = LogManager.getLogger(SearchIT.class);
-    private static String relativeBinPath = "/distribution/src/bin";
-
-    @Override
-    protected Collection<Class<? extends Plugin>> nodePlugins() {
-        return Arrays.asList(HavenaskEnginePlugin.class);
-    }
-
-    @Override
-    protected Settings nodeSettings(int nodeOrdinal) {
-        String usrDir = System.getProperty("user.dir");
-        String pattern = "/havenask-federation/elastic-fed";
-        String binDir = "";
-
-        int lastIndex = usrDir.lastIndexOf(pattern);
-        if (lastIndex != -1) {
-            String projectDir = usrDir.substring(0, lastIndex + pattern.length());
-            binDir = projectDir + relativeBinPath;
-        }
-
-        int searcherHttpPort = 39200 + nodeOrdinal;
-        int searcherTcpPort = 39300 + nodeOrdinal;
-        int searcherGrpcPort = 39400 + nodeOrdinal;
-        int qrsHttpPort = 49200 + nodeOrdinal;
-        int qrsTcpPort = 49300 + nodeOrdinal;
-
-        return Settings.builder()
-            .put(super.nodeSettings(nodeOrdinal))
-            .putList("node.roles", Arrays.asList("master", "data", "ingest"))
-            .put("havenask.engine.enabled", true)
-            .put("havenask.binfile.path", binDir)
-            .put(NativeProcessControlService.HAVENASK_SEARCHER_HTTP_PORT_SETTING.getKey(), String.valueOf(searcherHttpPort))
-            .put(NativeProcessControlService.HAVENASK_SEARCHER_TCP_PORT_SETTING.getKey(), String.valueOf(searcherTcpPort))
-            .put(NativeProcessControlService.HAVENASK_SEARCHER_GRPC_PORT_SETTING.getKey(), String.valueOf(searcherGrpcPort))
-            .put(NativeProcessControlService.HAVENASK_QRS_HTTP_PORT_SETTING.getKey(), String.valueOf(qrsHttpPort))
-            .put(NativeProcessControlService.HAVENASK_QRS_TCP_PORT_SETTING.getKey(), String.valueOf(qrsTcpPort))
-            .build();
-    }
-
-    @Override
-    protected boolean addMockInternalEngine() {
-        return false;
-    }
 
     public void testSearch() throws Exception {
         String index = "keyword_test";
