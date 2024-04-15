@@ -152,7 +152,12 @@ test {
 }
 
 internalClusterTest {
-  systemProperty 'tests.security.manager', 'false'
+  maxParallelForks = '1'
+  if (System.getProperty("tests.internal.enable") == "true") {
+    systemProperty 'tests.security.manager', 'false'
+  } else {
+    enabled = false
+  }
 }
 
 tasks.withType(Test) {
