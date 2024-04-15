@@ -36,6 +36,13 @@ public class EntryTable {
         public long length;
     }
 
+    public EntryTable() {}
+
+    public EntryTable(Map<String, Map<String, File>> files, Map<String, Map<String, File>> packageFiles) {
+        this.files = files;
+        this.packageFiles = packageFiles;
+    }
+
     public static EntryTable parse(String content) {
         JSONObject jsonObject = JsonPrettyFormatter.fromStringByOrder(content);
         EntryTable entryTable = new EntryTable();
@@ -106,6 +113,8 @@ public class EntryTable {
         JSONObject jsonObject = new JSONObject(true);
         jsonObject.put("files", filesJson);
         jsonObject.put("package_files", packageFilesJson);
-        return jsonObject.toJSONString();
+
+        String str = JsonPrettyFormatter.toJsonString(jsonObject);
+        return str.replaceAll("/", "\\\\/");
     }
 }

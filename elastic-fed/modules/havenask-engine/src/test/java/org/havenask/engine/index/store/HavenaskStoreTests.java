@@ -361,4 +361,336 @@ public class HavenaskStoreTests extends HavenaskTestCase {
         assertTrue(Files.exists(existDir));
         assertTrue(Files.exists(existFile));
     }
+
+    public void testNoRewriteEntryFile() throws IOException {
+        String indexName = "test";
+        Path shardPath = dataPath;
+        long commitVersion = 0;
+        String versionFile = "version." + commitVersion;
+        String content = "{\n"
+            + "  \"description\":\n"
+            + "  {\n"
+            + "  },\n"
+            + "  \"format_version\":\n"
+            + "  2,\n"
+            + "  \"last_segmentid\":\n"
+            + "  -1,\n"
+            + "  \"level_info\":\n"
+            + "  {\n"
+            + "    \"level_metas\":\n"
+            + "    [\n"
+            + "      {\n"
+            + "        \"cursor\":\n"
+            + "        0,\n"
+            + "        \"level_idx\":\n"
+            + "        0,\n"
+            + "        \"segments\":\n"
+            + "        [\n"
+            + "        ],\n"
+            + "        \"topology\":\n"
+            + "        \"sequence\"\n"
+            + "      }\n"
+            + "    ]\n"
+            + "  },\n"
+            + "  \"locator\":\n"
+            + "  \"\",\n"
+            + "  \"schema_version\":\n"
+            + "  0,\n"
+            + "  \"segments\":\n"
+            + "  [\n"
+            + "  ],\n"
+            + "  \"timestamp\":\n"
+            + "  -1,\n"
+            + "  \"versionid\":\n"
+            + "  0\n"
+            + "}";
+        try {
+            Files.write(shardPath.resolve(versionFile), content.getBytes(StandardCharsets.UTF_8));
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+
+        // write schema.json
+        String schemaFile = "schema.json";
+        String schemaContent = "{\n"
+            + "  \"description\":\n"
+            + "  {\n"
+            + "  },\n"
+            + "  \"fields\":\n"
+            + "  [\n"
+            + "    {\n"
+            + "      \"name\": \"_id\",\n"
+            + "      \"type\": \"keyword\"\n"
+            + "    }\n"
+            + "  ]\n"
+            + "}";
+        try {
+            Files.write(shardPath.resolve(schemaFile), schemaContent.getBytes(StandardCharsets.UTF_8));
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+
+        String entryTableFile = "entry_table." + commitVersion;
+        String entryTableContent = "{\n"
+            + "\t\"files\":{\n"
+            + "\t\t\"\":{\n"
+            + "\t\t\t\"index_format_version\":{\n"
+            + "\t\t\t\t\"length\":82\n"
+            + "\t\t\t},\n"
+            + "\t\t\t\"index_partition_meta\":{\n"
+            + "\t\t\t\t\"length\":28\n"
+            + "\t\t\t},\n"
+            + "\t\t\t\"schema.json\":{\n"
+            + "\t\t\t\t\"length\":"
+            + schemaContent.length()
+            + "\n"
+            + "\t\t\t},\n"
+            + "\t\t\t\"segment_0_level_0\":{\n"
+            + "\t\t\t\t\"length\":-2\n"
+            + "\t\t\t},\n"
+            + "\t\t\t\"segment_0_level_0\\/attribute\":{\n"
+            + "\t\t\t\t\"length\":-2\n"
+            + "\t\t\t},\n"
+            + "\t\t\t\"segment_0_level_0\\/attribute\\/_id\":{\n"
+            + "\t\t\t\t\"length\":-2\n"
+            + "\t\t\t},\n"
+            + "\t\t\t\"segment_0_level_0\\/attribute\\/_id\\/data\":{\n"
+            + "\t\t\t\t\"length\":1050\n"
+            + "\t\t\t},\n"
+            + "\t\t\t\"segment_0_level_0\\/counter\":{\n"
+            + "\t\t\t\t\"length\":0\n"
+            + "\t\t\t},\n"
+            + "\t\t\t\"segment_0_level_0\\/deletionmap\":{\n"
+            + "\t\t\t\t\"length\":-2\n"
+            + "\t\t\t},\n"
+            + "\t\t\t\"segment_0_level_0\\/segment_info\":{\n"
+            + "\t\t\t\t\"length\":347\n"
+            + "\t\t\t},\n"
+            + "\t\t\t\"segment_0_level_0\\/segment_metrics\":{\n"
+            + "\t\t\t\t\"length\":52\n"
+            + "\t\t\t},\n"
+            + "\t\t\t\"segment_0_level_0\\/summary\":{\n"
+            + "\t\t\t\t\"length\":-2\n"
+            + "\t\t\t},\n"
+            + "\t\t\t\"segment_0_level_0\\/summary\\/data\":{\n"
+            + "\t\t\t\t\"length\":1400\n"
+            + "\t\t\t},\n"
+            + "\t\t\t\"segment_0_level_0\\/summary\\/offset\":{\n"
+            + "\t\t\t\t\"length\":400\n"
+            + "\t\t\t},\n"
+            + "\t\t\t\"truncate_meta\":{\n"
+            + "\t\t\t\t\"length\":-2\n"
+            + "\t\t\t},\n"
+            + "\t\t\t\"truncate_meta\\/index.mapper\":{\n"
+            + "\t\t\t\t\"length\":41\n"
+            + "\t\t\t},\n"
+            + "\t\t\t\"version.1\":{\n"
+            + "\t\t\t\t\"length\":1371\n"
+            + "\t\t\t}\n"
+            + "\t\t}\n"
+            + "\t},\n"
+            + "\t\"package_files\":{}\n"
+            + "}";
+        try {
+            Files.write(shardPath.resolve(entryTableFile), entryTableContent.getBytes(StandardCharsets.UTF_8));
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+
+        HavenaskStore.rewriteEntryFile(indexName, shardPath);
+
+        try {
+            String newEntryTable = Files.readString(shardPath.resolve(entryTableFile));
+            assertEquals(newEntryTable, entryTableContent);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public void testRewriteEntryFile() throws IOException {
+        String indexName = "test";
+        Path shardPath = dataPath;
+        long commitVersion = 0;
+        String versionFile = "version." + commitVersion;
+        String content = "{\n"
+            + "  \"description\":\n"
+            + "  {\n"
+            + "  },\n"
+            + "  \"fence_name\": \"__FENCE__2EyV9JborPyRrMe3G2kmwtd3IA\",\n"
+            + "  \"format_version\":\n"
+            + "  2,\n"
+            + "  \"last_segmentid\":\n"
+            + "  -1,\n"
+            + "  \"level_info\":\n"
+            + "  {\n"
+            + "    \"level_metas\":\n"
+            + "    [\n"
+            + "      {\n"
+            + "        \"cursor\":\n"
+            + "        0,\n"
+            + "        \"level_idx\":\n"
+            + "        0,\n"
+            + "        \"segments\":\n"
+            + "        [\n"
+            + "        ],\n"
+            + "        \"topology\":\n"
+            + "        \"sequence\"\n"
+            + "      }\n"
+            + "    ]\n"
+            + "  },\n"
+            + "  \"locator\":\n"
+            + "  \"\",\n"
+            + "  \"schema_version\":\n"
+            + "  0,\n"
+            + "  \"segments\":\n"
+            + "  [\n"
+            + "  ],\n"
+            + "  \"timestamp\":\n"
+            + "  -1,\n"
+            + "  \"versionid\":\n"
+            + "  0\n"
+            + "}";
+        try {
+            Files.write(shardPath.resolve(versionFile), content.getBytes(StandardCharsets.UTF_8));
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+
+        // write schema.json
+        String schemaFile = "schema.json";
+        String schemaContent = "{\n"
+            + "  \"description\":\n"
+            + "  {\n"
+            + "  },\n"
+            + "  \"fields\":\n"
+            + "  [\n"
+            + "    {\n"
+            + "      \"name\": \"_id\",\n"
+            + "      \"type\": \"keyword\"\n"
+            + "    }\n"
+            + "  ]\n"
+            + "}";
+        try {
+            Files.write(shardPath.resolve(schemaFile), schemaContent.getBytes(StandardCharsets.UTF_8));
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+
+        String fenceName = "__FENCE__2EyV9JborPyRrMe3G2kmwtd3IA";
+        String entryTableFile = "entry_table." + commitVersion;
+        String entryTableContent = "{\n"
+            + "  \"files\":\n"
+            + "  {\n"
+            + "    \"\":\n"
+            + "    {\n"
+            + "      \"deploy_meta.0\":\n"
+            + "      {\n"
+            + "        \"length\":\n"
+            + "        711\n"
+            + "      },\n"
+            + "      \"index_format_version\":\n"
+            + "      {\n"
+            + "        \"length\":\n"
+            + "        82\n"
+            + "      },\n"
+            + "      \"index_partition_meta\":\n"
+            + "      {\n"
+            + "        \"length\":\n"
+            + "        28\n"
+            + "      },\n"
+            + "      \"schema.json\":\n"
+            + "      {\n"
+            + "        \"length\":\n"
+            + "        2335\n"
+            + "      },\n"
+            + "      \"version.0\":\n"
+            + "      {\n"
+            + "        \"length\":\n"
+            + "        372\n"
+            + "      }\n"
+            + "    },\n"
+            + "\"\\/usr\\/share\\/havenask\\/data\\/havenask\\/local_search_12000\\/general_p0_r0\\/runtimedata\\"
+            + "/image_index1\\/generation_0\\/partition_0_13107\":\n"
+            + "    {\n"
+            + "      \"segment_1_level_0/attribute/_id\":\n"
+            + "      {\n"
+            + "        \"length\":\n"
+            + "        -2\n"
+            + "      },\n"
+            + "      \"segment_1_level_0/attribute/_id/data\":\n"
+            + "      {\n"
+            + "        \"length\":\n"
+            + "        210\n"
+            + "      },\n"
+            + "      \"segment_1_level_0/attribute/_id/data_info\":\n"
+            + "      {\n"
+            + "        \"length\":\n"
+            + "        72\n"
+            + "      },\n"
+            + "      \"segment_1_level_0/attribute/_id/offset\":\n"
+            + "      {\n"
+            + "        \"length\":\n"
+            + "        44\n"
+            + "      }\n"
+            + "    }\n"
+            + "  },\n"
+            + "  \"package_files\":\n"
+            + "  {\n"
+            + "  }\n"
+            + "}";
+        try {
+            Files.createDirectories(shardPath.resolve(fenceName));
+            Files.write(shardPath.resolve(fenceName).resolve(entryTableFile), entryTableContent.getBytes(StandardCharsets.UTF_8));
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+
+        HavenaskStore.rewriteEntryFile(indexName, shardPath);
+
+        String newEntryTableContent = "{\n"
+            + "\t\"files\":{\n"
+            + "\t\t\"\":{\n"
+            + "\t\t\t\"deploy_meta.0\":{\n"
+            + "\t\t\t\t\"length\":711\n"
+            + "\t\t\t},\n"
+            + "\t\t\t\"index_format_version\":{\n"
+            + "\t\t\t\t\"length\":82\n"
+            + "\t\t\t},\n"
+            + "\t\t\t\"index_partition_meta\":{\n"
+            + "\t\t\t\t\"length\":28\n"
+            + "\t\t\t},\n"
+            + "\t\t\t\"schema.json\":{\n"
+            + "\t\t\t\t\"length\":"
+            + schemaContent.length()
+            + "\n"
+            + "\t\t\t},\n"
+            + "\t\t\t\"version.0\":{\n"
+            + "\t\t\t\t\"length\":372\n"
+            + "\t\t\t}\n"
+            + "\t\t},\n"
+            + "\t\t\"\\/usr\\/share\\/havenask\\/data\\/havenask\\/local_search_12000\\/general_p0_r0\\"
+            + "/runtimedata\\/test\\/generation_0\\/partition_0_13107\":{\n"
+            + "\t\t\t\"segment_1_level_0\\/attribute\\/_id\":{\n"
+            + "\t\t\t\t\"length\":-2\n"
+            + "\t\t\t},\n"
+            + "\t\t\t\"segment_1_level_0\\/attribute\\/_id\\/data\":{\n"
+            + "\t\t\t\t\"length\":210\n"
+            + "\t\t\t},\n"
+            + "\t\t\t\"segment_1_level_0\\/attribute\\/_id\\/data_info\":{\n"
+            + "\t\t\t\t\"length\":72\n"
+            + "\t\t\t},\n"
+            + "\t\t\t\"segment_1_level_0\\/attribute\\/_id\\/offset\":{\n"
+            + "\t\t\t\t\"length\":44\n"
+            + "\t\t\t}\n"
+            + "\t\t}\n"
+            + "\t},\n"
+            + "\t\"package_files\":{}\n"
+            + "}";
+        try {
+            String newEntryTable = Files.readString(shardPath.resolve(fenceName).resolve(entryTableFile));
+            assertEquals(newEntryTable, newEntryTableContent);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
 }
