@@ -368,7 +368,7 @@ public class HavenaskStoreTests extends HavenaskTestCase {
         assertTrue(Files.exists(existFile));
     }
 
-    public void testNoRewriteEntryFile() {
+    public void testNoRewriteEntryFile() throws IOException {
         String indexName = "test";
         Path shardPath = dataPath;
         long commitVersion = 0;
@@ -491,7 +491,7 @@ public class HavenaskStoreTests extends HavenaskTestCase {
         }
     }
 
-    public void testRewriteEntryFile() {
+    public void testRewriteEntryFile() throws IOException {
         String indexName = "test";
         Path shardPath = dataPath;
         long commitVersion = 0;

@@ -1654,4 +1654,12 @@ public class Store extends AbstractIndexShardComponent implements Closeable, Ref
                 // we also don't specify a codec here and merges should use the engines for this index
                 .setMergePolicy(NoMergePolicy.INSTANCE);
     }
+
+    /**
+     *
+     * called after the store has been restored from a snapshot. This method is called after the store has been restored
+     */
+    public void afterRestore() throws IOException {
+
+    }
 }
