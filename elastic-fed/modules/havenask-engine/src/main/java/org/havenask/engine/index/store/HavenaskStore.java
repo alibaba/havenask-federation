@@ -56,6 +56,7 @@ import java.util.stream.Stream;
 import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 import static org.apache.lucene.index.IndexFileNames.SEGMENTS;
 import static org.havenask.cluster.metadata.IndexMetadata.SETTING_INDEX_PROVIDED_NAME;
+import static org.havenask.engine.index.config.generator.RuntimeSegmentGenerator.SCHEMA_FILE_NAME;
 
 public class HavenaskStore extends Store {
 
@@ -544,13 +545,32 @@ public class HavenaskStore extends Store {
 
         Map<String, Map<String, EntryTable.File>> files = new LinkedHashMap<>();
         entryTable.files.forEach((name, fileMap) -> {
-            if (name.equals("")) {
-                files.put(name, fileMap);
-                return;
+            EntryTable.File schemaFile = null;
+            for (Map.Entry<String, EntryTable.File> entry : fileMap.entrySet()) {
+                String fileName = entry.getKey();
+                EntryTable.File file = entry.getValue();
+                if (fileName.equals(SCHEMA_FILE_NAME)) {
+                    schemaFile = file;
+                    break;
+                }
             }
 
-            String newName = name.replaceFirst("runtimedata/.+/generation_", "runtimedata/" + indexName + "/generation_");
-            files.put(newName, fileMap);
+            if (schemaFile != null) {
+                try {
+                    long size = Files.size(shardPath.resolve(SCHEMA_FILE_NAME));
+                    schemaFile.length = size;
+                } catch (IOException e) {
+                    // ignore
+                }
+            }
+
+            if (name.equals("")) {
+                files.put(name, fileMap);
+            } else {
+                String newName = name.replaceFirst("runtimedata/.+/generation_", "runtimedata/" + indexName + "/generation_");
+                files.put(newName, fileMap);
+            }
+
         });
 
         EntryTable newEntryTable = new EntryTable(files, entryTable.packageFiles);

@@ -416,6 +416,26 @@ public class HavenaskStoreTests extends HavenaskTestCase {
             throw new RuntimeException(e);
         }
 
+        // write schema.json
+        String schemaFile = "schema.json";
+        String schemaContent = "{\n"
+            + "  \"description\":\n"
+            + "  {\n"
+            + "  },\n"
+            + "  \"fields\":\n"
+            + "  [\n"
+            + "    {\n"
+            + "      \"name\": \"_id\",\n"
+            + "      \"type\": \"keyword\"\n"
+            + "    }\n"
+            + "  ]\n"
+            + "}";
+        try {
+            Files.write(shardPath.resolve(schemaFile), schemaContent.getBytes(StandardCharsets.UTF_8));
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+
         String entryTableFile = "entry_table." + commitVersion;
         String entryTableContent = "{\n"
             + "\t\"files\":{\n"
@@ -427,7 +447,9 @@ public class HavenaskStoreTests extends HavenaskTestCase {
             + "\t\t\t\t\"length\":28\n"
             + "\t\t\t},\n"
             + "\t\t\t\"schema.json\":{\n"
-            + "\t\t\t\t\"length\":2335\n"
+            + "\t\t\t\t\"length\":"
+            + schemaContent.length()
+            + "\n"
             + "\t\t\t},\n"
             + "\t\t\t\"segment_0_level_0\":{\n"
             + "\t\t\t\t\"length\":-2\n"
@@ -540,6 +562,26 @@ public class HavenaskStoreTests extends HavenaskTestCase {
             throw new RuntimeException(e);
         }
 
+        // write schema.json
+        String schemaFile = "schema.json";
+        String schemaContent = "{\n"
+            + "  \"description\":\n"
+            + "  {\n"
+            + "  },\n"
+            + "  \"fields\":\n"
+            + "  [\n"
+            + "    {\n"
+            + "      \"name\": \"_id\",\n"
+            + "      \"type\": \"keyword\"\n"
+            + "    }\n"
+            + "  ]\n"
+            + "}";
+        try {
+            Files.write(shardPath.resolve(schemaFile), schemaContent.getBytes(StandardCharsets.UTF_8));
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+
         String fenceName = "__FENCE__2EyV9JborPyRrMe3G2kmwtd3IA";
         String entryTableFile = "entry_table." + commitVersion;
         String entryTableContent = "{\n"
@@ -624,7 +666,9 @@ public class HavenaskStoreTests extends HavenaskTestCase {
             + "\t\t\t\t\"length\":28\n"
             + "\t\t\t},\n"
             + "\t\t\t\"schema.json\":{\n"
-            + "\t\t\t\t\"length\":2335\n"
+            + "\t\t\t\t\"length\":"
+            + schemaContent.length()
+            + "\n"
             + "\t\t\t},\n"
             + "\t\t\t\"version.0\":{\n"
             + "\t\t\t\t\"length\":372\n"
