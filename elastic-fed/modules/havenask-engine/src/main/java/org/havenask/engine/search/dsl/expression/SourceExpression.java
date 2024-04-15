@@ -36,6 +36,7 @@ import org.havenask.index.query.BoolQueryBuilder;
 import org.havenask.index.query.MatchAllQueryBuilder;
 import org.havenask.index.query.MatchQueryBuilder;
 import org.havenask.index.query.QueryBuilder;
+import org.havenask.index.query.QueryBuilders;
 import org.havenask.index.query.RangeQueryBuilder;
 import org.havenask.index.query.TermQueryBuilder;
 import org.havenask.search.aggregations.AggregationBuilder;
@@ -44,6 +45,7 @@ import org.havenask.search.aggregations.bucket.terms.TermsAggregationBuilder;
 import org.havenask.search.aggregations.metrics.AvgAggregationBuilder;
 import org.havenask.search.aggregations.metrics.SumAggregationBuilder;
 import org.havenask.search.aggregations.support.ValuesSourceAggregationBuilder;
+import org.havenask.search.builder.KnnSearchBuilder;
 import org.havenask.search.builder.SearchSourceBuilder;
 
 public class SourceExpression extends Expression {
@@ -54,6 +56,7 @@ public class SourceExpression extends Expression {
     private final OrderByExpression orderBy;
     private QuerySQLExpression querySQLExpression;
     private List<AggregationSQLExpression> aggregationSQLExpressions = new ArrayList<>();
+    private List<KnnExpression> knnExpressions = new ArrayList<>();
     private final int size;
     private final int from;
 
@@ -73,7 +76,21 @@ public class SourceExpression extends Expression {
         return from;
     }
 
-    public QuerySQLExpression getQuerySQLExpression(String index) {
+    synchronized public List<KnnExpression> getKnnExpressions() {
+        if (knnExpressions.size() > 0) {
+            return knnExpressions;
+        }
+
+        for (KnnSearchBuilder knnSearchBuilder : searchSourceBuilder.knnSearch()) {
+            BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery();
+            knnSearchBuilder.getFilterQueries().forEach(boolQueryBuilder::filter);
+            knnExpressions.add(new KnnExpression(knnSearchBuilder, visitBoolQuery(boolQueryBuilder)));
+        }
+
+        return knnExpressions;
+    }
+
+    synchronized public QuerySQLExpression getQuerySQLExpression(String index) {
         if (querySQLExpression == null) {
             List<String> fields = new ArrayList<>();
             fields.add(IdFieldMapper.NAME);
@@ -87,7 +104,7 @@ public class SourceExpression extends Expression {
         return querySQLExpression;
     }
 
-    public List<AggregationSQLExpression> getAggregationSQLExpressions(String index) {
+    synchronized public List<AggregationSQLExpression> getAggregationSQLExpressions(String index) {
         if (aggregationSQLExpressions.size() > 0) {
             return aggregationSQLExpressions;
         }
@@ -194,7 +211,7 @@ public class SourceExpression extends Expression {
         }
     }
 
-    private static Expression visitBoolQuery(BoolQueryBuilder query) {
+    private static BoolExpression visitBoolQuery(BoolQueryBuilder query) {
         List<Expression> must = query.must().stream().map(SourceExpression::visitQuery).collect(Collectors.toList());
         List<Expression> mustNot = query.mustNot().stream().map(SourceExpression::visitQuery).collect(Collectors.toList());
         List<Expression> should = query.should().stream().map(SourceExpression::visitQuery).collect(Collectors.toList());

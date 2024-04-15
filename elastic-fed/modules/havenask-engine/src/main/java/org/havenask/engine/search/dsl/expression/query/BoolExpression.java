@@ -32,6 +32,7 @@ public class BoolExpression extends Expression {
         List<Expression> filter,
         String minimumShouldMatch
     ) {
+
         this.must = must;
         this.should = should;
         this.mustNot = mustNot;
