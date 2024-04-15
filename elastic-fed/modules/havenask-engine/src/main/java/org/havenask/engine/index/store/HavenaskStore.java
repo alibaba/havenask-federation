@@ -55,6 +55,7 @@ import java.util.stream.Stream;
 
 import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 import static org.apache.lucene.index.IndexFileNames.SEGMENTS;
+import static org.havenask.cluster.metadata.IndexMetadata.SETTING_INDEX_PROVIDED_NAME;
 
 public class HavenaskStore extends Store {
 
@@ -371,6 +372,10 @@ public class HavenaskStore extends Store {
         });
     }
 
+    private boolean isRenameIndex() {
+        return false == shardId.getIndexName().equals(indexSettings.getSettings().get(SETTING_INDEX_PROVIDED_NAME));
+    }
+
     @Override
     public void deleteQuiet(String... files) {
         super.deleteQuiet(files);
@@ -380,6 +385,11 @@ public class HavenaskStore extends Store {
             } catch (IOException e) {
                 // ignore :(
             }
+        }
+
+        // Notice:此处增加一个针对restore的逻辑，当索引名称不一致时，单独处理下entry_table文件
+        if (isRenameIndex()) {
+            rewriteEntryFile(shardId.getIndexName(), shardPath);
         }
     }
 
@@ -513,5 +523,38 @@ public class HavenaskStore extends Store {
 
     public static boolean isHavenaskFile(Version version) {
         return version.major == HAVENASK_VERSION.major;
+    }
+
+    static void rewriteEntryFile(String indexName, Path shardPath) {
+        try {
+            long commitVersion = Utils.getIndexMaxVersionNum(shardPath);
+            String versionFile = HAVENASK_VERSION_FILE_PREFIX + commitVersion;
+            String content = Files.readString(shardPath.resolve(versionFile));
+            JSONObject jsonObject = JsonPrettyFormatter.fromString(content);
+            String fenceName = jsonObject.getString("fence_name");
+            Path entryTablePath = shardPath.resolve(HAVENASK_ENTRY_TABLE_FILE_PREFIX + commitVersion);
+            if (false == Strings.isEmpty(fenceName)) {
+                entryTablePath = shardPath.resolve(fenceName).resolve(HAVENASK_ENTRY_TABLE_FILE_PREFIX + commitVersion);
+            }
+
+            String entryTableContent = Files.readString(entryTablePath);
+            EntryTable entryTable = EntryTable.parse(entryTableContent);
+
+            Map<String, Map<String, EntryTable.File>> files = new LinkedHashMap<>();
+            entryTable.files.forEach((name, fileMap) -> {
+                if (name.equals("")) {
+                    files.put(name, fileMap);
+                    return;
+                }
+
+                String newName = name.replaceFirst("runtimedata/.+/generation_", "runtimedata/" + indexName + "/generation_");
+                files.put(newName, fileMap);
+            });
+
+            EntryTable newEntryTable = new EntryTable(files, entryTable.packageFiles);
+            Files.writeString(entryTablePath, newEntryTable.toString());
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 }
