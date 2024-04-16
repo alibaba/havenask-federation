@@ -56,7 +56,6 @@ import java.nio.file.Path;
 import java.util.stream.Stream;
 
 import static org.havenask.test.hamcrest.HavenaskAssertions.assertAcked;
-import static org.havenask.test.hamcrest.HavenaskAssertions.assertHitCount;
 import static org.hamcrest.Matchers.instanceOf;
 
 public class FsBlobStoreRepositoryIT extends HavenaskBlobStoreRepositoryIntegTestCase {
@@ -93,7 +92,7 @@ public class FsBlobStoreRepositoryIT extends HavenaskBlobStoreRepositoryIntegTes
         int docCount = iterations(10, 1000);
         logger.info("-->  create random index {} with {} records", indexName, docCount);
         addRandomDocuments(indexName, docCount);
-        assertHitCount(client().prepareSearch(indexName).setSize(0).get(), docCount);
+        assertHitCount(client().prepareSearch(indexName).setSize(docCount).get(), docCount);
 
         final String snapshotName = randomName();
         logger.info("-->  create snapshot {}:{}", repoName, snapshotName);
