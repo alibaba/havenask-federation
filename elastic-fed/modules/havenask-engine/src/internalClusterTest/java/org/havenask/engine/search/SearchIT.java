@@ -17,8 +17,8 @@ package org.havenask.engine.search;
 import com.carrotsearch.randomizedtesting.annotations.ThreadLeakFilters;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.havenask.ArpcThreadLeakFilter;
-import org.havenask.HttpThreadLeakFilter;
+import org.havenask.ArpcThreadLeakFilterIT;
+import org.havenask.HttpThreadLeakFilterIT;
 import org.havenask.action.admin.cluster.health.ClusterHealthRequest;
 import org.havenask.action.admin.cluster.health.ClusterHealthResponse;
 import org.havenask.action.index.IndexRequest;
@@ -43,7 +43,7 @@ import java.util.concurrent.TimeUnit;
 
 import static org.havenask.test.HavenaskIntegTestCase.Scope.SUITE;
 
-@ThreadLeakFilters(filters = { HttpThreadLeakFilter.class, ArpcThreadLeakFilter.class })
+@ThreadLeakFilters(filters = { HttpThreadLeakFilterIT.class, ArpcThreadLeakFilterIT.class })
 @HavenaskIntegTestCase.ClusterScope(supportsDedicatedMasters = false, numDataNodes = 2, numClientNodes = 0, scope = SUITE)
 public class SearchIT extends HavenaskInternalClusterTestCase {
     private static final Logger logger = LogManager.getLogger(SearchIT.class);
