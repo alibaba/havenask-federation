@@ -33,9 +33,6 @@ RUN chmod 0775 config config/jvm.options.d data logs
 COPY config/havenask.yml config/log4j2.properties config/
 RUN chmod 0660 config/havenask.yml config/log4j2.properties
 
-COPY dev/dev.sh dev/
-RUN chmod +x dev/dev.sh
-
 # add opensearch-dashboard
 ADD "./packages/dashboards.tar.gz" "/usr/share/havenask/"
 ADD "./packages/libjemalloc.so.2" "/usr/share/havenask/lib/libjemalloc.so.2"
