@@ -14,6 +14,9 @@
 
 package org.havenask.engine.repositories;
 
+import com.carrotsearch.randomizedtesting.annotations.ThreadLeakFilters;
+import org.havenask.ArpcThreadLeakFilterIT;
+import org.havenask.HttpThreadLeakFilterIT;
 import org.havenask.common.settings.Settings;
 import org.havenask.engine.HavenaskEnginePlugin;
 import org.havenask.plugins.Plugin;
@@ -24,6 +27,7 @@ import java.util.Collection;
 
 import static org.havenask.engine.HavenaskInternalClusterTestCase.havenaskNodeSettings;
 
+@ThreadLeakFilters(filters = { HttpThreadLeakFilterIT.class, ArpcThreadLeakFilterIT.class })
 public class HavenaskFsRepositoryIT extends FsBlobStoreRepositoryIT {
     @Override
     protected Collection<Class<? extends Plugin>> nodePlugins() {
