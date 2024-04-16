@@ -50,6 +50,10 @@ public abstract class HavenaskInternalClusterTestCase extends HavenaskIntegTestC
     // TODO: Supports customization of each node‘s node roles
     @Override
     protected Settings nodeSettings(int nodeOrdinal) {
+        return havenaskNodeSettings(super.nodeSettings(nodeOrdinal), nodeOrdinal);
+    }
+
+    public static Settings havenaskNodeSettings(Settings base, int nodeOrdinal) {
         String usrDir = System.getProperty("user.dir");
         String binDir = "";
 
@@ -66,7 +70,7 @@ public abstract class HavenaskInternalClusterTestCase extends HavenaskIntegTestC
         int qrsTcpPort = DEFAULT_QRS_TCP_PORT + nodeOrdinal;
 
         return Settings.builder()
-            .put(super.nodeSettings(nodeOrdinal))
+            .put(base)
             .putList(NodeRoleSettings.NODE_ROLES_SETTING.getKey(), Arrays.asList("master", "data", "ingest"))
             .put(HavenaskEnginePlugin.HAVENASK_ENGINE_ENABLED_SETTING.getKey(), true)
             .put(HavenaskEngineEnvironment.HAVENASK_ENVIRONMENT_BINFILE_PATH_SETTING.getKey(), binDir)
