@@ -363,7 +363,8 @@ public class BizConfigGeneratorTests extends MapperServiceTestCase {
                     + "\t\t\t\"distance_type\":\"SquaredEuclidean\",\n"
                     + "\t\t\t\"ignore_invalid_doc\":\"true\",\n"
                     + "\t\t\t\"builder_name\":\"HnswBuilder\",\n"
-                    + "\t\t\t\"searcher_name\":\"HnswSearcher\"\n"
+                    + "\t\t\t\"searcher_name\":\"HnswSearcher\",\n"
+                    + "\t\t\t\"build_index_params\":\"{\\\"proxima.hnsw.builder.thread_count\\\":%d}\"\n"
                     + "\t\t}\n"
                     + "\t},{\n"
                     + "\t\t\"index_fields\":[\n"
@@ -385,7 +386,8 @@ public class BizConfigGeneratorTests extends MapperServiceTestCase {
                     + "\t\t\t\"distance_type\":\"SquaredEuclidean\",\n"
                     + "\t\t\t\"ignore_invalid_doc\":\"true\",\n"
                     + "\t\t\t\"builder_name\":\"HnswBuilder\",\n"
-                    + "\t\t\t\"searcher_name\":\"HnswSearcher\"\n"
+                    + "\t\t\t\"searcher_name\":\"HnswSearcher\",\n"
+                    + "\t\t\t\"build_index_params\":\"{\\\"proxima.hnsw.builder.thread_count\\\":%d}\"\n"
                     + "\t\t}\n"
                     + "\t}],\n"
                     + "\t\"settings\":{\n"
@@ -398,6 +400,8 @@ public class BizConfigGeneratorTests extends MapperServiceTestCase {
                     + "\t\"table_name\":\"%s\",\n"
                     + "\t\"table_type\":\"normal\"\n"
                     + "}",
+                DenseVectorFieldMapper.HnswIndexOptions.getBuilderMaxNeighborCnt(),
+                DenseVectorFieldMapper.HnswIndexOptions.getBuilderMaxNeighborCnt(),
                 indexName
             );
             assertEquals(expect, content);

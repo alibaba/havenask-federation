@@ -214,6 +214,9 @@ public abstract class FileRestoreContext {
                     logger.warn("[{}] [{}] failed to delete file [{}] during snapshot cleanup", shardId, snapshotId, storeFile);
                 }
             }
+
+            // do some post restore actions
+            store.afterRestore();
         } catch (IOException e) {
             logger.warn("[{}] [{}] failed to list directory - some of files might not be deleted", shardId, snapshotId);
         }

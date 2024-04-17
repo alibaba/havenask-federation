@@ -28,7 +28,7 @@ import org.havenask.test.HavenaskIntegTestCase;
 import org.havenask.transport.nio.MockNioTransportPlugin;
 
 @ThreadLeakFilters(filters = { ArpcThreadLeakFilter.class })
-public class SqlActionNoIngestIT extends HavenaskIntegTestCase {
+public class SqlActionNoIngestTests extends HavenaskIntegTestCase {
 
     @Override
     protected Settings nodeSettings(int nodeOrdinal) {
