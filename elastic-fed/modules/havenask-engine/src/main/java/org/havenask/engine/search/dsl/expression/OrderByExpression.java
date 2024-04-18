@@ -48,8 +48,7 @@ public class OrderByExpression extends Expression {
                         .append("` ")
                         .append(fieldSort.order().toString().toUpperCase(Locale.ROOT))
                         .append(", ");
-                }
-                if (sort instanceof ScoreSortBuilder) {
+                } else if (sort instanceof ScoreSortBuilder) {
                     if (hasScoreSort) {
                         throw new IllegalArgumentException("Multiple score sort is not supported");
                     }

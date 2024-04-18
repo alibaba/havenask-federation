@@ -76,7 +76,7 @@ public class SourceExpression extends Expression {
         return from;
     }
 
-    synchronized public List<KnnExpression> getKnnExpressions() {
+    public synchronized List<KnnExpression> getKnnExpressions() {
         if (knnExpressions.size() > 0) {
             return knnExpressions;
         }
@@ -90,7 +90,7 @@ public class SourceExpression extends Expression {
         return knnExpressions;
     }
 
-    synchronized public QuerySQLExpression getQuerySQLExpression(String index) {
+    public synchronized QuerySQLExpression getQuerySQLExpression(String index) {
         if (querySQLExpression == null) {
             List<String> fields = new ArrayList<>();
             fields.add(IdFieldMapper.NAME);
@@ -104,7 +104,7 @@ public class SourceExpression extends Expression {
         return querySQLExpression;
     }
 
-    synchronized public List<AggregationSQLExpression> getAggregationSQLExpressions(String index) {
+    public synchronized List<AggregationSQLExpression> getAggregationSQLExpressions(String index) {
         if (aggregationSQLExpressions.size() > 0) {
             return aggregationSQLExpressions;
         }

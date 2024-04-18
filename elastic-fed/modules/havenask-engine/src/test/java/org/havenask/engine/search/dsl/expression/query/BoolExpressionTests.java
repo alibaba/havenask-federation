@@ -47,7 +47,7 @@ public class BoolExpressionTests extends HavenaskTestCase {
         Expression expression = SourceExpression.visitQuery(builder.query());
         WhereExpression whereExpression = new WhereExpression(expression);
         String actualTranslate = whereExpression.translate();
-        assertEquals("WHERE (NOT (`field1` = 'value1' AND `field2` = 'value2' AND `field2` = 'value3') )", actualTranslate);
+        assertEquals("WHERE NOT (`field1` = 'value1' AND `field2` = 'value2' AND `field2` = 'value3')", actualTranslate);
     }
 
     public void testTranslateFilter() {

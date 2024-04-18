@@ -14,5 +14,4 @@
 
 package org.havenask.engine.search.dsl.expression;
 
-public class KnnSQLExpression {
-}
+public class KnnSQLExpression {}

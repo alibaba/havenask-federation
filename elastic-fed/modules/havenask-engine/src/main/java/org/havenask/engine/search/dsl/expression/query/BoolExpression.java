@@ -50,48 +50,64 @@ public class BoolExpression extends Expression {
             throw new IllegalArgumentException("minimumShouldMatch not supported with should clauses");
         }
 
-        StringBuilder sb = new StringBuilder("(");
-        if (must.size() > 0) {
-            for (Expression expression : must) {
-                sb.append(expression.translate()).append(" AND ");
+        StringBuilder shouldStr = new StringBuilder();
+        if (should.size() > 0) {
+            shouldStr.append("(");
+            for (Expression expression : should) {
+                shouldStr.append(expression.translate()).append(" OR ");
             }
-            sb.delete(sb.length() - 5, sb.length());
-        }
-        if (mustNot.size() > 0) {
-            if (sb.length() > 1) {
-                sb.append("AND ");
-            }
-            sb.append("NOT (");
-            for (Expression expression : mustNot) {
-                sb.append(expression.translate()).append(" AND ");
-            }
-            sb.delete(sb.length() - 5, sb.length());
-            sb.append(") ");
-        }
-        if (filter.size() > 0) {
-            if (sb.length() > 1) {
-                sb.append("AND ");
-            }
-            sb.append(" (");
-            for (Expression expression : filter) {
-                sb.append(expression.translate()).append(" AND ");
-            }
-            sb.delete(sb.length() - 5, sb.length());
-            sb.append(") ");
+            shouldStr.delete(shouldStr.length() - 4, shouldStr.length());
+            shouldStr.append(")");
+            return shouldStr.toString();
         }
 
-        if (should.size() > 0) {
-            for (Expression expression : should) {
-                sb.append(expression.translate()).append(" OR ");
+        StringBuilder mustStr = new StringBuilder();
+        if (must.size() > 0) {
+            mustStr.append("(");
+            for (Expression expression : must) {
+                mustStr.append(expression.translate()).append(" AND ");
             }
-            sb.delete(sb.length() - 4, sb.length());
+            mustStr.delete(mustStr.length() - 5, mustStr.length());
+            mustStr.append(")");
         }
-        if (sb.length() > 1) {
-            sb.append(")");
-        } else {
-            // delete (
-            sb.delete(0, sb.length());
+
+        StringBuilder filterStr = new StringBuilder();
+        if (filter.size() > 0) {
+            filterStr.append("(");
+            for (Expression expression : filter) {
+                filterStr.append(expression.translate()).append(" AND ");
+            }
+            filterStr.delete(filterStr.length() - 5, filterStr.length());
+            filterStr.append(")");
         }
+
+        StringBuilder mustNotStr = new StringBuilder();
+        if (mustNot.size() > 0) {
+            mustNotStr.append("NOT (");
+            for (Expression expression : mustNot) {
+                mustNotStr.append(expression.translate()).append(" AND ");
+            }
+            mustNotStr.delete(mustNotStr.length() - 5, mustNotStr.length());
+            mustNotStr.append(")");
+        }
+
+        StringBuilder sb = new StringBuilder();
+        if (mustStr.length() > 0) {
+            sb.append(mustStr);
+        }
+        if (filterStr.length() > 0) {
+            if (sb.length() > 0) {
+                sb.append(" AND ");
+            }
+            sb.append(filterStr);
+        }
+        if (mustNotStr.length() > 0) {
+            if (sb.length() > 0) {
+                sb.append(" AND ");
+            }
+            sb.append(mustNotStr);
+        }
+
         return sb.toString();
     }
 }

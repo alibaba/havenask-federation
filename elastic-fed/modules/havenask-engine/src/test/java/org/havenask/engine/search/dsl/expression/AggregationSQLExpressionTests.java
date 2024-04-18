@@ -37,11 +37,12 @@ public class AggregationSQLExpressionTests extends HavenaskTestCase {
         List<AggregationSQLExpression> aggregationSQLExpressionList = sourceExpression.getAggregationSQLExpressions("table1");
         assertEquals(2, aggregationSQLExpressionList.size());
         assertEquals(
-            "SELECT COUNT(*) FROM `table1` WHERE (`field1` = 'value1' AND `field2` = 'value2')  GROUP BY field1 LIMIT 10 ",
+            "SELECT `field1` AS `group_by_field1`, COUNT(*) FROM `table1` WHERE"
+                + " (`field1` = 'value1' AND `field2` = 'value2')  GROUP BY `field1` LIMIT 10 ",
             aggregationSQLExpressionList.get(0).translate()
         );
         assertEquals(
-            "SELECT SUM(`field2`) FROM `table1` WHERE (`field1` = 'value1' AND `field2` = 'value2')  LIMIT 1 ",
+            "SELECT SUM(`field2`) AS `sum_field2` FROM `table1` WHERE (`field1` = 'value1' AND `field2` = 'value2')  LIMIT 1 ",
             aggregationSQLExpressionList.get(1).translate()
         );
     }
@@ -78,25 +79,28 @@ public class AggregationSQLExpressionTests extends HavenaskTestCase {
         List<AggregationSQLExpression> aggregationSQLExpressionList = sourceExpression.getAggregationSQLExpressions("table1");
         assertEquals(5, aggregationSQLExpressionList.size());
         assertEquals(
-            "SELECT SUM(`field11`), AVG(`field11`) FROM `table1` WHERE (`field1` = 'value1' AND `field2` = 'value2') "
-                + " GROUP BY field1 LIMIT 10 ",
+            "SELECT `field1` AS `group_by_field1`, SUM(`field11`) AS `sum_field11`, AVG(`field11`) AS `avg_field11`"
+                + " FROM `table1` WHERE (`field1` = 'value1' AND `field2` = 'value2')  GROUP BY `field1` LIMIT 10 ",
             aggregationSQLExpressionList.get(0).translate()
         );
         assertEquals(
-            "SELECT SUM(`field111`) FROM `table1` WHERE (`field1` = 'value1' AND `field2` = 'value2')  GROUP BY field1, field11 LIMIT 100 ",
+            "SELECT `field1` AS `group_by_field1`, `field11` AS `group_by_field11`, SUM(`field111`) AS `sum_field111` "
+                + "FROM `table1` WHERE (`field1` = 'value1' AND `field2` = 'value2')  GROUP BY `field1`, `field11` LIMIT 100 ",
             aggregationSQLExpressionList.get(1).translate()
         );
         assertEquals(
-            "SELECT COUNT(*) FROM `table1` WHERE (`field1` = 'value1' AND `field2` = 'value2')  GROUP BY field1, field12 LIMIT 100 ",
+            "SELECT `field1` AS `group_by_field1`, `field12` AS `group_by_field12`, COUNT(*) "
+                + "FROM `table1` WHERE (`field1` = 'value1' AND `field2` = 'value2')  GROUP BY `field1`, `field12` LIMIT 100 ",
             aggregationSQLExpressionList.get(2).translate()
         );
         assertEquals(
-            "SELECT SUM(`field21`), AVG(`field21`) FROM `table1` WHERE (`field1` = 'value1' AND `field2` = 'value2') "
-                + " GROUP BY field2 LIMIT 10 ",
+            "SELECT `field2` AS `group_by_field2`, SUM(`field21`) AS `sum_field21`, AVG(`field21`) AS `avg_field21` "
+                + "FROM `table1` WHERE (`field1` = 'value1' AND `field2` = 'value2')  GROUP BY `field2` LIMIT 10 ",
             aggregationSQLExpressionList.get(3).translate()
         );
         assertEquals(
-            "SELECT SUM(`field3`), AVG(`field4`) FROM `table1` WHERE (`field1` = 'value1' AND `field2` = 'value2')  LIMIT 1 ",
+            "SELECT SUM(`field3`) AS `sum_field3`, AVG(`field4`) AS `avg_field4` FROM `table1` "
+                + "WHERE (`field1` = 'value1' AND `field2` = 'value2')  LIMIT 1 ",
             aggregationSQLExpressionList.get(4).translate()
         );
     }

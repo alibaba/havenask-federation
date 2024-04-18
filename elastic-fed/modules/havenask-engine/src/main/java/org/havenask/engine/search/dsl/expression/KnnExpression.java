@@ -21,7 +21,6 @@ import org.havenask.search.builder.KnnSearchBuilder;
 
 import java.io.IOException;
 
-
 public class KnnExpression extends Expression {
     final String field;
     final float[] queryVector;
