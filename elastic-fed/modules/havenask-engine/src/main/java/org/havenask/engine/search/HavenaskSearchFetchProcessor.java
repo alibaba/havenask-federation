@@ -89,6 +89,32 @@ public class HavenaskSearchFetchProcessor {
         );
     }
 
+    public SearchHits executeFetchHits(
+        SqlResponse queryPhaseSqlResponse,
+        String tableName,
+        SearchSourceBuilder searchSourceBuilder,
+        Boolean sourceEnabled
+    ) throws IOException {
+        if (searchSourceBuilder == null) {
+            throw new IllegalArgumentException("request source can not be null!");
+        }
+        List<String> idList = new ArrayList<>(queryPhaseSqlResponse.getRowCount());
+        TopDocsAndMaxScore topDocsAndMaxScore = buildQuerySearchResult(queryPhaseSqlResponse, idList, searchSourceBuilder.from());
+        SqlResponse fetchPhaseSqlResponse = (true == sourceEnabled
+            && (searchSourceBuilder.fetchSource() == null || true == searchSourceBuilder.fetchSource().fetchSource()))
+                ? havenaskFetchWithSql(idList, tableName, searchSourceBuilder.fetchSource(), qrsClient)
+                : null;
+
+        return transferSqlResponse2SearchHits(
+            tableName,
+            idList,
+            fetchPhaseSqlResponse,
+            topDocsAndMaxScore,
+            searchSourceBuilder,
+            sourceEnabled
+        );
+    }
+
     public TopDocsAndMaxScore buildQuerySearchResult(SqlResponse queryPhaseSqlResponse, List<String> idList, int from) throws IOException {
         ScoreDoc[] queryScoreDocs = new ScoreDoc[queryPhaseSqlResponse.getRowCount()];
         // TODO: 当前通过sql没有较好的方法来获取totalHits的准确值，后续可能考虑优化
@@ -151,6 +177,25 @@ public class HavenaskSearchFetchProcessor {
         SearchSourceBuilder searchSourceBuilder,
         Boolean sourceEnabled
     ) throws IOException {
+        SearchHits searchHits = transferSqlResponse2SearchHits(
+            tableName,
+            idList,
+            fetchPhaseSqlResponse,
+            topDocsAndMaxScore,
+            searchSourceBuilder,
+            sourceEnabled
+        );
+        return new InternalSearchResponse(searchHits, InternalAggregations.EMPTY, null, null, false, null, 1);
+    }
+
+    public SearchHits transferSqlResponse2SearchHits(
+        String tableName,
+        List<String> idList,
+        SqlResponse fetchPhaseSqlResponse,
+        TopDocsAndMaxScore topDocsAndMaxScore,
+        SearchSourceBuilder searchSourceBuilder,
+        Boolean sourceEnabled
+    ) throws IOException {
         int loadSize = idList.size();
         TotalHits totalHits = topDocsAndMaxScore.topDocs.totalHits;
         SearchHit[] hits = new SearchHit[loadSize];
@@ -198,15 +243,7 @@ public class HavenaskSearchFetchProcessor {
                 hits[i].sourceRef(new BytesArray((String) source));
             }
         }
-        return new InternalSearchResponse(
-            new SearchHits(hits, totalHits, topDocsAndMaxScore.maxScore),
-            InternalAggregations.EMPTY,
-            null,
-            null,
-            false,
-            null,
-            1
-        );
+        return new SearchHits(hits, totalHits, topDocsAndMaxScore.maxScore);
     }
 
     List<HavenaskFetchSubPhaseProcessor> getProcessors(String tableName, SearchSourceBuilder searchSourceBuilder) throws IOException {
