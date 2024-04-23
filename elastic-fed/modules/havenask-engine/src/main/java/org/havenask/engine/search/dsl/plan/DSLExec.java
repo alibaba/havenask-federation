@@ -42,7 +42,9 @@ public class DSLExec implements Executable<SearchResponse> {
         // exec query
         SearchHits searchHits = SearchHits.empty();
         if (sourceExpression.size() > 0) {
-            QueryExec queryExec = new QueryExec(sourceExpression.getQuerySQLExpression(session.getIndex(), Map.of()));
+            IndexMetadata indexMetadata = session.getIndexMetadata();
+            Map<String, Object> indexMapping = indexMetadata.mapping() != null ? indexMetadata.mapping().getSourceAsMap() : null;
+            QueryExec queryExec = new QueryExec(sourceExpression.getQuerySQLExpression(session.getIndex(), indexMapping));
             searchHits = queryExec.execute(session);
         }
 
