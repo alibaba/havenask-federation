@@ -39,7 +39,9 @@
 
 package org.havenask.action.search;
 
+import org.apache.lucene.store.ByteArrayDataInput;
 import org.havenask.action.ActionListener;
+import org.havenask.action.ActionListenerResponseHandler;
 import org.havenask.action.support.ActionFilters;
 import org.havenask.action.support.HandledTransportAction;
 import org.havenask.cluster.service.ClusterService;
@@ -48,9 +50,13 @@ import org.havenask.common.io.stream.Writeable;
 import org.havenask.tasks.Task;
 import org.havenask.transport.TransportService;
 
+import java.io.IOException;
+import java.util.Base64;
+
 public class TransportSearchScrollAction extends HandledTransportAction<SearchScrollRequest, SearchResponse> {
 
     private final ClusterService clusterService;
+    private final TransportService transportService;
     private final SearchTransportService searchTransportService;
     private final SearchPhaseController searchPhaseController;
 
@@ -60,6 +66,7 @@ public class TransportSearchScrollAction extends HandledTransportAction<SearchSc
         super(SearchScrollAction.NAME, transportService, actionFilters,
             (Writeable.Reader<SearchScrollRequest>) SearchScrollRequest::new);
         this.clusterService = clusterService;
+        this.transportService = transportService;
         this.searchTransportService = searchTransportService;
         this.searchPhaseController = searchPhaseController;
     }
@@ -67,6 +74,14 @@ public class TransportSearchScrollAction extends HandledTransportAction<SearchSc
     @Override
     protected void doExecute(Task task, SearchScrollRequest request, ActionListener<SearchResponse> listener) {
         try {
+            if (isHavenaskScrollId(request.scrollId())) {
+                transportService.sendRequest(
+                        clusterService.state().nodes().getLocalNode(),
+                        HAVENASK_SEARCH_SCROLL_ACTION,
+                        request,
+                        new ActionListenerResponseHandler<>(listener, SearchAction.INSTANCE.getResponseReader())
+                );
+            }
             ParsedScrollId scrollId = TransportSearchHelper.parseScrollId(request.scrollId());
             Runnable action;
             switch (scrollId.getType()) {
@@ -84,6 +99,19 @@ public class TransportSearchScrollAction extends HandledTransportAction<SearchSc
             action.run();
         } catch (Exception e) {
             listener.onFailure(e);
+        }
+    }
+
+    private static final String HAVENASK_SEARCH_SCROLL_ACTION = "indices:data/read/havenask/scroll";
+
+    public static boolean isHavenaskScrollId(String scrollId) throws IOException {
+        byte[] bytes = Base64.getUrlDecoder().decode(scrollId);
+        ByteArrayDataInput in = new ByteArrayDataInput(bytes);
+        final String firstChunk = in.readString();
+        if ("havenask_scroll_id".equals(firstChunk)) {
+            return true;
+        } else {
+            return false;
         }
     }
 }

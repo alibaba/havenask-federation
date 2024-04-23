@@ -21,6 +21,7 @@ import org.havenask.cluster.metadata.IndexMetadata;
 import org.havenask.common.UUIDs;
 import org.havenask.engine.rpc.QrsClient;
 import org.havenask.engine.search.dsl.plan.DSLExec;
+import org.havenask.engine.search.internal.HavenaskScroll;
 import org.havenask.search.builder.SearchSourceBuilder;
 
 import java.io.IOException;
@@ -34,13 +35,16 @@ public class DSLSession {
     private final long startTime;
     private final String sessionId;
     private SearchSourceBuilder query;
+    private HavenaskScroll havenaskScroll;
     private final boolean sourceEnabled;
 
-    public DSLSession(QrsClient client, IndexMetadata indexMetadata) {
+    public DSLSession(QrsClient client, IndexMetadata indexMetadata, SearchSourceBuilder query, HavenaskScroll havenaskScroll) {
         this.client = client;
         this.indexMetadata = indexMetadata;
         this.startTime = System.currentTimeMillis();
         this.sessionId = UUIDs.randomBase64UUID();
+        this.query = query;
+        this.havenaskScroll = havenaskScroll;
         this.sourceEnabled = setSourceEnabled();
     }
 
@@ -88,8 +92,7 @@ public class DSLSession {
         return sessionId;
     }
 
-    public SearchResponse execute(SearchSourceBuilder query) throws IOException {
-        this.query = query;
+    public SearchResponse execute() throws IOException {
         DSLExec exec = new DSLExec(query);
         SearchResponse searchResponse = exec.execute(this);
         logger.debug("DSLSession [{}] executed in [{}] ms", sessionId, System.currentTimeMillis() - startTime);

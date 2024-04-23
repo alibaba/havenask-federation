@@ -132,6 +132,7 @@ public class HavenaskEnginePlugin extends Plugin
     private final SetOnce<QrsClient> qrsClientSetOnce = new SetOnce<>();
     private final SetOnce<Client> clientSetOnce = new SetOnce<>();
     private final SetOnce<MetaDataSyncer> metaDataSyncerSetOnce = new SetOnce<>();
+    private final SetOnce<HavenaskScrollService> havenaskScrollServiceSetOnce = new SetOnce<>();
     private final Settings settings;
 
     public static final String HAVENASK_THREAD_POOL_NAME = "havenask";
@@ -229,6 +230,8 @@ public class HavenaskEnginePlugin extends Plugin
             qrsClientSetOnce.get()
         );
         metaDataSyncerSetOnce.set(metaDataSyncer);
+        HavenaskScrollService havenaskScrollService = new HavenaskScrollService(clusterService, threadPool);
+        havenaskScrollServiceSetOnce.set(havenaskScrollService);
         clientSetOnce.set(client);
 
         return Arrays.asList(nativeProcessControlServiceSetOnce.get(), havenaskEngineEnvironmentSetOnce.get(), metaDataSyncerSetOnce.get());
