@@ -15,10 +15,9 @@
 package org.havenask.engine.search.dsl.expression.query;
 
 import org.havenask.engine.index.config.Schema;
-import org.havenask.engine.search.dsl.expression.Expression;
 import org.havenask.index.query.TermQueryBuilder;
 
-public class TermExpression extends Expression {
+public class TermExpression extends QueryExpression {
     private final TermQueryBuilder termQueryBuilder;
 
     public TermExpression(TermQueryBuilder termQueryBuilder) {
@@ -28,5 +27,10 @@ public class TermExpression extends Expression {
     @Override
     public String translate() {
         return "`" + Schema.encodeFieldWithDot(termQueryBuilder.fieldName()) + "` = '" + termQueryBuilder.value() + "'";
+    }
+
+    @Override
+    public String fieldName() {
+        return Schema.encodeFieldWithDot(termQueryBuilder.fieldName());
     }
 }

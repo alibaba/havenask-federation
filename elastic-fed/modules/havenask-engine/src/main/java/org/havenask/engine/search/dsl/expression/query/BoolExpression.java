@@ -14,9 +14,10 @@
 
 package org.havenask.engine.search.dsl.expression.query;
 
-import org.havenask.engine.search.dsl.expression.Expression;
-
+import java.util.ArrayList;
 import java.util.List;
+
+import org.havenask.engine.search.dsl.expression.Expression;
 
 public class BoolExpression extends Expression {
     private final List<Expression> must;
@@ -38,6 +39,43 @@ public class BoolExpression extends Expression {
         this.mustNot = mustNot;
         this.filter = filter;
         this.minimumShouldMatch = minimumShouldMatch;
+    }
+
+    public List<String> getFields() {
+        List<String> fields = new ArrayList<>();
+        for (Expression expression : must) {
+            if (expression instanceof QueryExpression) {
+                fields.add(((QueryExpression) expression).fieldName());
+            } else if (expression instanceof BoolExpression) {
+                fields.addAll(((BoolExpression) expression).getFields());
+            }
+        }
+
+        for (Expression expression : should) {
+            if (expression instanceof QueryExpression) {
+                fields.add(((QueryExpression) expression).fieldName());
+            } else if (expression instanceof BoolExpression) {
+                fields.addAll(((BoolExpression) expression).getFields());
+            }
+        }
+
+        for (Expression expression : mustNot) {
+            if (expression instanceof QueryExpression) {
+                fields.add(((QueryExpression) expression).fieldName());
+            } else if (expression instanceof BoolExpression) {
+                fields.addAll(((BoolExpression) expression).getFields());
+            }
+        }
+
+        for (Expression expression : filter) {
+            if (expression instanceof QueryExpression) {
+                fields.add(((QueryExpression) expression).fieldName());
+            } else if (expression instanceof BoolExpression) {
+                fields.addAll(((BoolExpression) expression).getFields());
+            }
+        }
+
+        return fields;
     }
 
     @Override

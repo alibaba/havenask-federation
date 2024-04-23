@@ -12,6 +12,10 @@
  *
  */
 
-package org.havenask.engine.search.dsl.expression;
+package org.havenask.engine.search.dsl.expression.query;
 
-public class KnnSQLExpression {}
+import org.havenask.engine.search.dsl.expression.Expression;
+
+public abstract class QueryExpression extends Expression {
+    public abstract String fieldName();
+}

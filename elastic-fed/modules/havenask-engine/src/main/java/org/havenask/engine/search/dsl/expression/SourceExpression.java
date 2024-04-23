@@ -15,7 +15,9 @@
 package org.havenask.engine.search.dsl.expression;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
@@ -31,7 +33,6 @@ import org.havenask.engine.search.dsl.expression.query.MatchAllExpression;
 import org.havenask.engine.search.dsl.expression.query.MatchExpression;
 import org.havenask.engine.search.dsl.expression.query.RangeExpression;
 import org.havenask.engine.search.dsl.expression.query.TermExpression;
-import org.havenask.index.mapper.IdFieldMapper;
 import org.havenask.index.query.BoolQueryBuilder;
 import org.havenask.index.query.MatchAllQueryBuilder;
 import org.havenask.index.query.MatchQueryBuilder;
@@ -50,6 +51,8 @@ import org.havenask.search.builder.SearchSourceBuilder;
 
 public class SourceExpression extends Expression {
     private static final int DEFAULT_SEARCH_SIZE = 10;
+    private static final String PROPERTIES_FIELD = "properties";
+
     private final SearchSourceBuilder searchSourceBuilder;
 
     private final WhereExpression where;
@@ -76,29 +79,24 @@ public class SourceExpression extends Expression {
         return from;
     }
 
-    public synchronized List<KnnExpression> getKnnExpressions() {
+    public synchronized List<KnnExpression> getKnnExpressions(Map<String, Object> indexMappings) {
         if (knnExpressions.size() > 0) {
             return knnExpressions;
         }
 
+        Map<String, Object> flattenFields = flattenFields(Map.of(PROPERTIES_FIELD, indexMappings), null);
         for (KnnSearchBuilder knnSearchBuilder : searchSourceBuilder.knnSearch()) {
             BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery();
             knnSearchBuilder.getFilterQueries().forEach(boolQueryBuilder::filter);
-            knnExpressions.add(new KnnExpression(knnSearchBuilder, visitBoolQuery(boolQueryBuilder)));
+            knnExpressions.add(new KnnExpression(knnSearchBuilder, visitBoolQuery(boolQueryBuilder), flattenFields));
         }
 
         return knnExpressions;
     }
 
-    public synchronized QuerySQLExpression getQuerySQLExpression(String index) {
+    public synchronized QuerySQLExpression getQuerySQLExpression(String index, Map<String, Object> indexMappings) {
         if (querySQLExpression == null) {
-            List<String> fields = new ArrayList<>();
-            fields.add(IdFieldMapper.NAME);
-            if (orderBy.hasScoreSort()) {
-                fields.add(", bm25_score() as _score");
-            }
-
-            querySQLExpression = new QuerySQLExpression(List.of(IdFieldMapper.NAME), index, where, orderBy, size, from);
+            querySQLExpression = new QuerySQLExpression(index, where, getKnnExpressions(indexMappings), orderBy, size, from);
         }
 
         return querySQLExpression;
@@ -222,5 +220,27 @@ public class SourceExpression extends Expression {
     @Override
     public String translate() {
         return "";
+    }
+
+    public static Map<String, Object> flattenFields(Map<String, Object> map, String parentPath) {
+        Map<String, Object> flatMap = new HashMap<>();
+        String prefix = parentPath != null ? parentPath + "_" : "";
+        for (Map.Entry<String, Object> entry : map.entrySet()) {
+            if (entry.getValue() instanceof Map) {
+                @SuppressWarnings("unchecked")
+                Map<String, Object> value = (Map<String, Object>) entry.getValue();
+                String type = (String) value.get("type");
+                if (type == null || type.equals("object")) {
+                    if (value.containsKey("properties")) {
+                        @SuppressWarnings("unchecked")
+                        Map<String, Object> properties = (Map<String, Object>) value.get("properties");
+                        flatMap.putAll(flattenFields(properties, prefix + entry.getKey()));
+                    }
+                } else {
+                    flatMap.put(prefix + entry.getKey(), entry.getValue());
+                }
+            }
+        }
+        return flatMap;
     }
 }
