@@ -363,7 +363,6 @@ public class HavenaskStoreTests extends HavenaskTestCase {
     }
 
     public void testNoRewriteEntryFile() throws IOException {
-        String indexName = "test";
         Path shardPath = dataPath;
         long commitVersion = 0;
         String versionFile = "version." + commitVersion;
@@ -497,7 +496,7 @@ public class HavenaskStoreTests extends HavenaskTestCase {
             throw new RuntimeException(e);
         }
 
-        HavenaskStore.rewriteEntryFile(indexName, shardPath);
+        havenaskStore.rewriteEntryFile();
 
         try {
             String newEntryTable = Files.readString(shardPath.resolve(entryTableFile));
@@ -609,8 +608,7 @@ public class HavenaskStoreTests extends HavenaskTestCase {
             + "        372\n"
             + "      }\n"
             + "    },\n"
-            + "\"\\/usr\\/share\\/havenask\\/data\\/havenask\\/local_search_12000\\/general_p0_r0\\/runtimedata\\"
-            + "/image_index1\\/generation_0\\/partition_0_13107\":\n"
+            + "\"\\/usr\\/share\\/havenask\\/data\\/havenask\\/local_search_12000\\/general_p0_r0\\/runtimedata\\/image_index1\\/generation_0\\/partition_0_13107\":\n"
             + "    {\n"
             + "      \"segment_1_level_0/attribute/_id\":\n"
             + "      {\n"
@@ -632,7 +630,30 @@ public class HavenaskStoreTests extends HavenaskTestCase {
             + "        \"length\":\n"
             + "        44\n"
             + "      }\n"
-            + "    }\n"
+            + "    },\n"
+            + "\"\\/usr\\/share\\/havenask\\/data\\/havenask\\/local_search_12000\\/general_p0_r0\\/runtimedata\\/image_index1\\/generation_0\\/partition_0_13107\\/__FENCE__2EEaXkAakbKOtu22yo3GeU3X9Z\":\n"
+            + "    {\n"
+            + "      \"segment_1_level_0/attribute/_id\":\n"
+            + "      {\n"
+            + "        \"length\":\n"
+            + "        -2\n"
+            + "      },\n"
+            + "      \"segment_1_level_0/attribute/_id/data\":\n"
+            + "      {\n"
+            + "        \"length\":\n"
+            + "        210\n"
+            + "      },\n"
+            + "      \"segment_1_level_0/attribute/_id/data_info\":\n"
+            + "      {\n"
+            + "        \"length\":\n"
+            + "        72\n"
+            + "      },\n"
+            + "      \"segment_1_level_0/attribute/_id/offset\":\n"
+            + "      {\n"
+            + "        \"length\":\n"
+            + "        44\n"
+            + "      }\n"
+            + "    }    \n"
             + "  },\n"
             + "  \"package_files\":\n"
             + "  {\n"
@@ -645,8 +666,9 @@ public class HavenaskStoreTests extends HavenaskTestCase {
             throw new RuntimeException(e);
         }
 
-        HavenaskStore.rewriteEntryFile(indexName, shardPath);
+        havenaskStore.rewriteEntryFile();
 
+        String shardPathStr = shardPath.toString();
         String newEntryTableContent = "{\n"
             + "\t\"files\":{\n"
             + "\t\t\"\":{\n"
@@ -668,8 +690,25 @@ public class HavenaskStoreTests extends HavenaskTestCase {
             + "\t\t\t\t\"length\":372\n"
             + "\t\t\t}\n"
             + "\t\t},\n"
-            + "\t\t\"\\/usr\\/share\\/havenask\\/data\\/havenask\\/local_search_12000\\/general_p0_r0\\"
-            + "/runtimedata\\/test\\/generation_0\\/partition_0_13107\":{\n"
+            + "\t\t\""
+            + shardPathStr.replaceAll("/", "\\\\/")
+            + "\":{\n"
+            + "\t\t\t\"segment_1_level_0\\/attribute\\/_id\":{\n"
+            + "\t\t\t\t\"length\":-2\n"
+            + "\t\t\t},\n"
+            + "\t\t\t\"segment_1_level_0\\/attribute\\/_id\\/data\":{\n"
+            + "\t\t\t\t\"length\":210\n"
+            + "\t\t\t},\n"
+            + "\t\t\t\"segment_1_level_0\\/attribute\\/_id\\/data_info\":{\n"
+            + "\t\t\t\t\"length\":72\n"
+            + "\t\t\t},\n"
+            + "\t\t\t\"segment_1_level_0\\/attribute\\/_id\\/offset\":{\n"
+            + "\t\t\t\t\"length\":44\n"
+            + "\t\t\t}\n"
+            + "\t\t},\n"
+            + "\t\t\""
+            + shardPathStr.replaceAll("/", "\\\\/")
+            + "\\/__FENCE__2EEaXkAakbKOtu22yo3GeU3X9Z\":{\n"
             + "\t\t\t\"segment_1_level_0\\/attribute\\/_id\":{\n"
             + "\t\t\t\t\"length\":-2\n"
             + "\t\t\t},\n"
