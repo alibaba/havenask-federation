@@ -14,11 +14,14 @@
 
 package org.havenask.engine.search.dsl.expression.query;
 
-import org.havenask.engine.search.dsl.expression.Expression;
-
-public class MatchAllExpression extends Expression {
+public class MatchAllExpression extends QueryExpression {
     @Override
     public String translate() {
         return "1=1";
+    }
+
+    @Override
+    public String fieldName() {
+        return "";
     }
 }

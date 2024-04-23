@@ -15,6 +15,7 @@
 package org.havenask.engine.search.dsl.plan;
 
 import java.io.IOException;
+import java.util.Map;
 
 import org.havenask.action.search.SearchResponse;
 import org.havenask.action.search.SearchResponseSections;
@@ -41,7 +42,9 @@ public class DSLExec implements Executable<SearchResponse> {
         // exec query
         SearchHits searchHits = SearchHits.empty();
         if (sourceExpression.size() > 0) {
-            QueryExec queryExec = new QueryExec(sourceExpression.getQuerySQLExpression(session.getIndex()));
+            IndexMetadata indexMetadata = session.getIndexMetadata();
+            Map<String, Object> indexMapping = indexMetadata.mapping() != null ? indexMetadata.mapping().getSourceAsMap() : null;
+            QueryExec queryExec = new QueryExec(sourceExpression.getQuerySQLExpression(session.getIndex(), indexMapping));
             searchHits = queryExec.execute(session);
         }
 
