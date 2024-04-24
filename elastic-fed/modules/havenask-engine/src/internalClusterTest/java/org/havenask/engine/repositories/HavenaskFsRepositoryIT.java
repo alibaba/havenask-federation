@@ -59,6 +59,11 @@ public class HavenaskFsRepositoryIT extends HavenaskBlobStoreRepositoryIntegTest
     }
 
     @Override
+    protected boolean addMockInternalEngine() {
+        return false;
+    }
+
+    @Override
     protected Collection<Class<? extends Plugin>> nodePlugins() {
         return Arrays.asList(HavenaskEnginePlugin.class);
     }
