@@ -1207,7 +1207,7 @@ public class HavenaskEngine extends InternalEngine {
         // if last commit timestamp in memory is newer than last commit timestamp in disk, it means commit info has changed
         if (lastCommitInfo.getCommitTimestamp() > lastCommitTimestamp) {
             logger.info(
-                "commit info changed, synchronization is needed， memory last commit timestamp: {}, disk last commit timestamp: {}",
+                "commit info changed, synchronization is needed, memory last commit timestamp: {}, disk last commit timestamp: {}",
                 lastCommitInfo.getCommitTimestamp(),
                 lastCommitTimestamp
             );

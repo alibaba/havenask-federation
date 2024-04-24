@@ -52,11 +52,11 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Stream;
 
 import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 import static org.apache.lucene.index.IndexFileNames.SEGMENTS;
-import static org.havenask.cluster.metadata.IndexMetadata.SETTING_INDEX_PROVIDED_NAME;
 import static org.havenask.engine.index.config.generator.RuntimeSegmentGenerator.SCHEMA_FILE_NAME;
 
 public class HavenaskStore extends Store {
@@ -528,17 +528,10 @@ public class HavenaskStore extends Store {
 
     @Override
     public void afterRestore() throws IOException {
-        if (isRenameIndex()) {
-            rewriteEntryFile(shardId.getIndexName(), shardPath);
-            logger.info("restore rewrite index [{}] entry file success", shardId.getIndexName());
-        }
+        rewriteEntryFile();
     }
 
-    private boolean isRenameIndex() {
-        return false == shardId.getIndexName().equals(indexSettings.getSettings().get(SETTING_INDEX_PROVIDED_NAME));
-    }
-
-    static void rewriteEntryFile(String indexName, Path shardPath) throws IOException {
+    void rewriteEntryFile() throws IOException {
         long commitVersion = Utils.getIndexMaxVersionNum(shardPath);
         String versionFile = HAVENASK_VERSION_FILE_PREFIX + commitVersion;
         String content = Files.readString(shardPath.resolve(versionFile));
@@ -553,6 +546,7 @@ public class HavenaskStore extends Store {
         EntryTable entryTable = EntryTable.parse(entryTableContent);
 
         Map<String, Map<String, EntryTable.File>> files = new LinkedHashMap<>();
+        AtomicBoolean entryTableChanged = new AtomicBoolean(false);
         entryTable.files.forEach((name, fileMap) -> {
             EntryTable.File schemaFile = null;
             for (Map.Entry<String, EntryTable.File> entry : fileMap.entrySet()) {
@@ -567,7 +561,10 @@ public class HavenaskStore extends Store {
             if (schemaFile != null) {
                 try {
                     long size = Files.size(shardPath.resolve(SCHEMA_FILE_NAME));
-                    schemaFile.length = size;
+                    if (size != schemaFile.length) {
+                        schemaFile.length = size;
+                        entryTableChanged.set(true);
+                    }
                 } catch (IOException e) {
                     // ignore
                 }
@@ -576,13 +573,21 @@ public class HavenaskStore extends Store {
             if (name.equals("")) {
                 files.put(name, fileMap);
             } else {
-                String newName = name.replaceFirst("runtimedata/.+/generation_", "runtimedata/" + indexName + "/generation_");
+                String newName = shardPath.toString();
+                if (name.contains("__FENCE__")) {
+                    String entryFenceName = name.substring(name.indexOf("__FENCE__"));
+                    newName = shardPath.resolve(entryFenceName).toString();
+                }
+                entryTableChanged.set(true);
                 files.put(newName, fileMap);
             }
 
         });
 
-        EntryTable newEntryTable = new EntryTable(files, entryTable.packageFiles);
-        Files.writeString(entryTablePath, newEntryTable.toString());
+        if (entryTableChanged.get()) {
+            EntryTable newEntryTable = new EntryTable(files, entryTable.packageFiles);
+            Files.writeString(entryTablePath, newEntryTable.toString());
+            logger.info("restore rewrite index [{}] entry file success", shardId.getIndexName());
+        }
     }
 }

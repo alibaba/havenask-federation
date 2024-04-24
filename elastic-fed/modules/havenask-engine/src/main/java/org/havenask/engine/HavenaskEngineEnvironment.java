@@ -256,7 +256,7 @@ public class HavenaskEngineEnvironment implements CustomEnvironment {
                         checkIndexIsDeletedInSearcher(metaDataSyncer, tableName);
                     } catch (IOException e) {
                         LOGGER.error(
-                            "checkIndexIsDeletedInSearcher failed while deleting index, table name: [{}]， error: [{}]",
+                            "checkIndexIsDeletedInSearcher failed while deleting index, table name: [{}], error: [{}]",
                             tableName,
                             e
                         );
@@ -266,7 +266,7 @@ public class HavenaskEngineEnvironment implements CustomEnvironment {
 
                 LOGGER.info("remove index dir successful, table name :[{}]", tableName);
             } catch (Exception e) {
-                LOGGER.warn("remove index dir failed, table name: [{}]， error: [{}]", tableName, e);
+                LOGGER.warn("remove index dir failed, table name: [{}], error: [{}]", tableName, e);
             } finally {
                 metaDataSyncer.deleteIndexLock(tableName);
                 LOGGER.debug("release lock after deleting index, table name :[{}]", tableName);
@@ -298,7 +298,7 @@ public class HavenaskEngineEnvironment implements CustomEnvironment {
 
                 LOGGER.info("remove shard dir successful, table name :[{}], partitionId:[{}]", tableName, partitionId);
             } catch (Exception e) {
-                LOGGER.warn("remove shard dir failed, table name: [{}]，partitionId:[{}], error: [{}]", tableName, partitionId, e);
+                LOGGER.warn("remove shard dir failed, table name: [{}], partitionId:[{}], error: [{}]", tableName, partitionId, e);
             } finally {
                 metaDataSyncer.deleteShardLock(shardId);
                 LOGGER.debug("release lock after deleting shard, table name :[{}], partitionId[{}]", tableName, partitionId);
