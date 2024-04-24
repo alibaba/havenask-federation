@@ -14,10 +14,12 @@
 
 package org.havenask.engine.search.dsl.expression;
 
+import org.havenask.engine.search.internal.HavenaskScroll;
 import org.havenask.index.mapper.IdFieldMapper;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 public class QuerySQLExpression extends Expression {
     public final String from;
@@ -26,6 +28,7 @@ public class QuerySQLExpression extends Expression {
     public final List<KnnExpression> knnExpressions;
     public final int limit;
     public final int offset;
+    public HavenaskScroll havenaskScroll;
 
     public QuerySQLExpression(
         String from,
@@ -33,7 +36,8 @@ public class QuerySQLExpression extends Expression {
         List<KnnExpression> knnExpressions,
         OrderByExpression orderBy,
         int limit,
-        int offset
+        int offset,
+        HavenaskScroll havenaskScroll
     ) {
         this.from = from;
         this.where = where;
@@ -41,6 +45,7 @@ public class QuerySQLExpression extends Expression {
         this.orderBy = orderBy;
         this.limit = limit;
         this.offset = offset;
+        this.havenaskScroll = havenaskScroll;
     }
 
     @Override
@@ -105,9 +110,22 @@ public class QuerySQLExpression extends Expression {
                 } else {
                     sb.append("AND ").append(knnWhere).append(" ");
                 }
+                if (Objects.nonNull(havenaskScroll) && Objects.nonNull(havenaskScroll.getLastEmittedDocId())) {
+                    sb.append("AND _id > '").append(havenaskScroll.getLastEmittedDocId()).append("' ");
+                }
             } else {
                 sb.append("WHERE ").append(knnWhere).append(" ");
+                if (Objects.nonNull(havenaskScroll) && Objects.nonNull(havenaskScroll.getLastEmittedDocId())) {
+                    sb.append("AND _id > '").append(havenaskScroll.getLastEmittedDocId()).append("' ");
+                }
             }
+        }
+
+        if (Objects.nonNull(havenaskScroll)) {
+            if (false == orderByStr.isEmpty() || false == knnExpressions.isEmpty()) {
+                throw new IllegalArgumentException("scroll is not supported when sort is specified");
+            }
+            sb.append("ORDER BY _id ASC ");
         }
 
         if (false == orderByStr.isEmpty()) {

@@ -14,7 +14,6 @@
 
 package org.havenask.engine.search.internal;
 
-import org.havenask.common.UUIDs;
 import org.havenask.common.lease.Releasable;
 import org.havenask.common.lease.Releasables;
 import org.havenask.engine.search.dsl.DSLSession;
@@ -23,7 +22,7 @@ import org.havenask.threadpool.ThreadPool;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class HavenaskScrollContext {
-    private final String scrollSessionId = UUIDs.randomBase64UUID();
+    private final String scrollSessionId;
     private final ThreadPool threadPool;
     private final DSLSession dslSession;
     private final AtomicLong keepAlive;
@@ -31,6 +30,7 @@ public class HavenaskScrollContext {
     private final long startTimeInNano = System.nanoTime();
 
     public HavenaskScrollContext(ThreadPool threadPool, DSLSession dslSession, long keepAliveInMillis) {
+        this.scrollSessionId = dslSession.getSessionId();
         this.threadPool = threadPool;
         this.dslSession = dslSession;
         this.keepAlive = new AtomicLong(keepAliveInMillis);

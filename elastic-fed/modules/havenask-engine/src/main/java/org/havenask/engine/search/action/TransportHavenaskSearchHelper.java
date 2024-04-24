@@ -24,7 +24,7 @@ import java.util.Base64;
 public class TransportHavenaskSearchHelper {
     public static final String HAVENASK_SCROLL_ID = "havenask_scroll_id";
 
-    static String buildHavenaskScrollId(String nodeId, String scrollSessionId) {
+    public static String buildHavenaskScrollId(String nodeId, String scrollSessionId) {
         try (RAMOutputStream out = new RAMOutputStream()) {
             out.writeString(HAVENASK_SCROLL_ID);
             out.writeString(nodeId);
@@ -37,7 +37,7 @@ public class TransportHavenaskSearchHelper {
         }
     }
 
-    static ParsedHavenaskScrollId parseHavenaskScrollId(String scrollId) {
+    public static ParsedHavenaskScrollId parseHavenaskScrollId(String scrollId) {
         try {
             byte[] bytes = Base64.getUrlDecoder().decode(scrollId);
             ByteArrayDataInput in = new ByteArrayDataInput(bytes);

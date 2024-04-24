@@ -86,7 +86,7 @@ public class TransportHavenaskSearchAction extends HandledTransportAction<Search
 
             HavenaskScroll havenaskScroll = null;
             if (Objects.nonNull(request.scroll())) {
-                havenaskScroll = new HavenaskScroll(request.scroll());
+                havenaskScroll = new HavenaskScroll(clusterService.localNode().getId(), request.scroll());
             }
 
             DSLSession session = new DSLSession(qrsClient, indexMetadata, request.source(), havenaskScroll);

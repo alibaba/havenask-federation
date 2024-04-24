@@ -17,11 +17,17 @@ package org.havenask.engine.search.internal;
 import org.havenask.search.Scroll;
 
 public class HavenaskScroll {
+    private String nodeId;
     private String lastEmittedDocId = null;
     private Scroll havenaskScroll;
 
-    public HavenaskScroll(Scroll havenaskScroll) {
+    public HavenaskScroll(String nodeId, Scroll havenaskScroll) {
+        this.nodeId = nodeId;
         this.havenaskScroll = havenaskScroll;
+    }
+
+    public String getNodeId() {
+        return nodeId;
     }
 
     public void setLastEmittedDocId(String lastEmittedDocId) {
@@ -30,5 +36,9 @@ public class HavenaskScroll {
 
     public String getLastEmittedDocId() {
         return lastEmittedDocId;
+    }
+
+    public Scroll getHavenaskScroll() {
+        return havenaskScroll;
     }
 }

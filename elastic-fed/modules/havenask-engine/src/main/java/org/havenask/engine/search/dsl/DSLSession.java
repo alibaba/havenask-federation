@@ -93,7 +93,7 @@ public class DSLSession {
     }
 
     public SearchResponse execute() throws IOException {
-        DSLExec exec = new DSLExec(query);
+        DSLExec exec = new DSLExec(query, havenaskScroll);
         SearchResponse searchResponse = exec.execute(this);
         logger.debug("DSLSession [{}] executed in [{}] ms", sessionId, System.currentTimeMillis() - startTime);
         return searchResponse;

@@ -30,6 +30,7 @@ import org.havenask.engine.NativeProcessControlService;
 import org.havenask.engine.rpc.QrsClient;
 import org.havenask.engine.rpc.http.QrsHttpClient;
 import org.havenask.engine.search.dsl.DSLSession;
+import org.havenask.engine.search.internal.HavenaskScrollContext;
 import org.havenask.tasks.Task;
 import org.havenask.threadpool.ThreadPool;
 import org.havenask.transport.TransportResponseHandler;
@@ -72,7 +73,11 @@ public class TransportHavenaskSearchScrollAction extends HandledTransportAction<
                 return;
             }
 
-            DSLSession session = havenaskScrollService.getScrollContext(havenaskScrollId.getScrollSessionId()).getDSLSession();
+            HavenaskScrollContext havenaskScrollContext = havenaskScrollService.getScrollContext(havenaskScrollId.getScrollSessionId());
+            DSLSession session = havenaskScrollContext.getDSLSession();
+
+            havenaskScrollContext.markAsUsed(request.scroll().keepAlive().getMillis());
+
             SearchResponse searchResponse = session.execute();
             listener.onResponse(searchResponse);
         } catch (Exception e) {

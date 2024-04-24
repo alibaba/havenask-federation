@@ -33,6 +33,7 @@ import org.havenask.engine.search.dsl.expression.query.MatchAllExpression;
 import org.havenask.engine.search.dsl.expression.query.MatchExpression;
 import org.havenask.engine.search.dsl.expression.query.RangeExpression;
 import org.havenask.engine.search.dsl.expression.query.TermExpression;
+import org.havenask.engine.search.internal.HavenaskScroll;
 import org.havenask.index.query.BoolQueryBuilder;
 import org.havenask.index.query.MatchAllQueryBuilder;
 import org.havenask.index.query.MatchQueryBuilder;
@@ -62,6 +63,7 @@ public class SourceExpression extends Expression {
     private List<KnnExpression> knnExpressions = new ArrayList<>();
     private final int size;
     private final int from;
+    private HavenaskScroll havenaskScroll;
 
     public SourceExpression(SearchSourceBuilder searchSourceBuilder) {
         this.searchSourceBuilder = searchSourceBuilder;
@@ -69,6 +71,16 @@ public class SourceExpression extends Expression {
         this.orderBy = new OrderByExpression(searchSourceBuilder.sorts());
         this.size = searchSourceBuilder.size() >= 0 ? searchSourceBuilder.size() : DEFAULT_SEARCH_SIZE;
         this.from = searchSourceBuilder.from() >= 0 ? searchSourceBuilder.from() : 0;
+        this.havenaskScroll = null;
+    }
+
+    public SourceExpression(SearchSourceBuilder searchSourceBuilder, HavenaskScroll havenaskScroll) {
+        this.searchSourceBuilder = searchSourceBuilder;
+        this.where = new WhereExpression(visitQuery(searchSourceBuilder.query()));
+        this.orderBy = new OrderByExpression(searchSourceBuilder.sorts());
+        this.size = searchSourceBuilder.size() >= 0 ? searchSourceBuilder.size() : DEFAULT_SEARCH_SIZE;
+        this.from = searchSourceBuilder.from() >= 0 ? searchSourceBuilder.from() : 0;
+        this.havenaskScroll = havenaskScroll;
     }
 
     public int size() {
@@ -96,7 +108,15 @@ public class SourceExpression extends Expression {
 
     public synchronized QuerySQLExpression getQuerySQLExpression(String index, Map<String, Object> indexMappings) {
         if (querySQLExpression == null) {
-            querySQLExpression = new QuerySQLExpression(index, where, getKnnExpressions(indexMappings), orderBy, size, from);
+            querySQLExpression = new QuerySQLExpression(
+                index,
+                where,
+                getKnnExpressions(indexMappings),
+                orderBy,
+                size,
+                from,
+                havenaskScroll
+            );
         }
 
         return querySQLExpression;
@@ -215,6 +235,14 @@ public class SourceExpression extends Expression {
         List<Expression> should = query.should().stream().map(SourceExpression::visitQuery).collect(Collectors.toList());
         List<Expression> filter = query.filter().stream().map(SourceExpression::visitQuery).collect(Collectors.toList());
         return new BoolExpression(must, should, mustNot, filter, query.minimumShouldMatch());
+    }
+
+    public HavenaskScroll getHavenaskScroll() {
+        return havenaskScroll;
+    }
+
+    public void setLastEmittedDocId(String lastEmittedDocId) {
+        this.havenaskScroll.setLastEmittedDocId(lastEmittedDocId);
     }
 
     @Override
