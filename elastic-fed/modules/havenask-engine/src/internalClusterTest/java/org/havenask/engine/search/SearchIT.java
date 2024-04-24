@@ -27,6 +27,7 @@ import org.havenask.action.search.SearchResponse;
 import org.havenask.action.support.master.AcknowledgedResponse;
 import org.havenask.cluster.health.ClusterHealthStatus;
 import org.havenask.common.Strings;
+import org.havenask.common.collect.List;
 import org.havenask.common.collect.Map;
 import org.havenask.common.settings.Settings;
 import org.havenask.common.xcontent.XContentBuilder;
@@ -34,8 +35,8 @@ import org.havenask.common.xcontent.XContentFactory;
 import org.havenask.common.xcontent.XContentType;
 import org.havenask.engine.HavenaskInternalClusterTestCase;
 import org.havenask.engine.index.engine.EngineSettings;
-import org.havenask.engine.index.query.KnnQueryBuilder;
 import org.havenask.index.IndexNotFoundException;
+import org.havenask.search.builder.KnnSearchBuilder;
 import org.havenask.search.builder.SearchSourceBuilder;
 import org.havenask.test.HavenaskIntegTestCase;
 
@@ -96,8 +97,8 @@ public class SearchIT extends HavenaskInternalClusterTestCase {
 
         // search doc
         SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-        KnnQueryBuilder knnQueryBuilder = new KnnQueryBuilder("vector", new float[] { 1.5f, 2.5f }, dataNum);
-        searchSourceBuilder.query(knnQueryBuilder);
+        searchSourceBuilder.knnSearch(List.of(new KnnSearchBuilder("vector", new float[] { 1.5f, 2.5f }, dataNum, dataNum, null)));
+
         searchSourceBuilder.size(dataNum);
 
         assertBusy(() -> {

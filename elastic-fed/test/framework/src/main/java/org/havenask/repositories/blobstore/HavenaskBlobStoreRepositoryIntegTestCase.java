@@ -485,7 +485,7 @@ public abstract class HavenaskBlobStoreRepositoryIntegTestCase extends HavenaskI
         indexRandom(true, indexRequestBuilders);
     }
 
-    private String[] generateRandomNames(int num) {
+    protected String[] generateRandomNames(int num) {
         Set<String> names = new HashSet<>();
         for (int i = 0; i < num; i++) {
             String name;
