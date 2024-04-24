@@ -81,7 +81,6 @@ public class HavenaskFsRepositoryIT extends HavenaskBlobStoreRepositoryIntegTest
             createIndex(
                 indexNames[i],
                 Settings.builder()
-                    .put(EngineSettings.ENGINE_TYPE_SETTING.getKey(), EngineSettings.ENGINE_HAVENASK)
                     .put(EngineSettings.HAVENASK_BUILD_CONFIG_MAX_DOC_COUNT.getKey(), 1)
                     .build()
             );

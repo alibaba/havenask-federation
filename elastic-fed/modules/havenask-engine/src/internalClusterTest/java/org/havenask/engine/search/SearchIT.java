@@ -187,10 +187,7 @@ public class SearchIT extends HavenaskInternalClusterTestCase {
                 .isAcknowledged()
         );
 
-        assertBusy(() -> {
-            ClusterHealthResponse clusterHealthResponse = client().admin().cluster().health(new ClusterHealthRequest(index)).get();
-            assertEquals(clusterHealthResponse.getStatus(), ClusterHealthStatus.GREEN);
-        }, 30, TimeUnit.SECONDS);
+        ensureGreen(index);
     }
 
     public void testSourceFilter() throws Exception {
