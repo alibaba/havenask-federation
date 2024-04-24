@@ -113,7 +113,7 @@ public class QuerySQLExpression extends Expression {
                     sb.append("AND ").append(knnWhere).append(" ");
                 }
                 if (Objects.nonNull(havenaskScroll) && Objects.nonNull(havenaskScroll.getLastEmittedDocId())) {
-                    sb.append("AND _id > '").append(havenaskScroll.getLastEmittedDocId()).append("' ");
+                    sb.append("AND `_id` > '").append(havenaskScroll.getLastEmittedDocId()).append("' ");
                 }
             } else {
                 sb.append("WHERE ").append(knnWhere).append(" ");
@@ -122,18 +122,23 @@ public class QuerySQLExpression extends Expression {
 
         if (Objects.nonNull(havenaskScroll) && Objects.nonNull(havenaskScroll.getLastEmittedDocId())) {
             if ((Objects.nonNull(where) && !where.translate().isEmpty()) || !knnExpressions.isEmpty()) {
-                sb.append("AND _id > '").append(havenaskScroll.getLastEmittedDocId()).append("' ");
+                sb.append("AND `_id` > '").append(havenaskScroll.getLastEmittedDocId()).append("' ");
             } else {
-                sb.append("WHERE _id > '").append(havenaskScroll.getLastEmittedDocId()).append("' ");
+                sb.append("WHERE `_id` > '").append(havenaskScroll.getLastEmittedDocId()).append("' ");
             }
         }
 
         // translate order by
         if (Objects.nonNull(havenaskScroll)) {
-            if (false == orderByStr.isEmpty() || false == knnExpressions.isEmpty()) {
-                throw new IllegalArgumentException("scroll is not supported when sort is specified");
+            if (false == knnExpressions.isEmpty()) {
+                throw new IllegalArgumentException("havenask scroll is not supported when sort is specified");
+            } else if (false == orderByStr.isEmpty()) {
+                if (!orderByStr.contains(HavenaskScroll.SCROLL_ORDER_BY)) {
+                    throw new IllegalArgumentException("havenask scroll is not supported when sort is specified");
+                }
+            } else {
+                sb.append(HavenaskScroll.SCROLL_ORDER_BY).append(" ");
             }
-            sb.append("ORDER BY _id ASC ");
         }
 
         if (false == orderByStr.isEmpty()) {

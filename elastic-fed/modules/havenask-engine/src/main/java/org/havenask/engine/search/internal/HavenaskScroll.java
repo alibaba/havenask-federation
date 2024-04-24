@@ -17,6 +17,7 @@ package org.havenask.engine.search.internal;
 import org.havenask.search.Scroll;
 
 public class HavenaskScroll {
+    public static final String SCROLL_ORDER_BY = "ORDER BY `_id` ASC";
     private String nodeId;
     private String lastEmittedDocId = null;
     private Scroll havenaskScroll;

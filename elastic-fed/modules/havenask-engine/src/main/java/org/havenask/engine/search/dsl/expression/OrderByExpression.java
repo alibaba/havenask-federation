@@ -24,6 +24,7 @@ import java.util.Locale;
 public class OrderByExpression extends Expression {
     private final List<SortBuilder<?>> sorts;
     private boolean hasScoreSort = false;
+    private static final String LUCENE_DOC_FIELD_NAME = "_doc";
 
     public OrderByExpression(List<SortBuilder<?>> sorts) {
         this.sorts = sorts;
@@ -43,8 +44,14 @@ public class OrderByExpression extends Expression {
             for (SortBuilder<?> sort : sorts) {
                 if (sort instanceof FieldSortBuilder) {
                     FieldSortBuilder fieldSort = (FieldSortBuilder) sort;
+
+                    String fieldName = fieldSort.getFieldName();
+                    if (fieldName.equals(LUCENE_DOC_FIELD_NAME)) {
+                        fieldName = "_id";
+                    }
+
                     sb.append("`")
-                        .append(fieldSort.getFieldName())
+                        .append(fieldName)
                         .append("` ")
                         .append(fieldSort.order().toString().toUpperCase(Locale.ROOT))
                         .append(", ");

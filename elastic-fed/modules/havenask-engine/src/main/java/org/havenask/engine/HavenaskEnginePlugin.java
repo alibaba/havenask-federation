@@ -238,10 +238,12 @@ public class HavenaskEnginePlugin extends Plugin
 
         clientSetOnce.set(client);
 
-        return Arrays.asList(nativeProcessControlServiceSetOnce.get(),
-                havenaskEngineEnvironmentSetOnce.get(),
-                metaDataSyncerSetOnce.get(),
-                havenaskScrollServiceSetOnce.get());
+        return Arrays.asList(
+            nativeProcessControlServiceSetOnce.get(),
+            havenaskEngineEnvironmentSetOnce.get(),
+            metaDataSyncerSetOnce.get(),
+            havenaskScrollServiceSetOnce.get()
+        );
     }
 
     @Override
@@ -280,7 +282,7 @@ public class HavenaskEnginePlugin extends Plugin
             new ActionHandler<>(HavenaskSqlClientInfoAction.INSTANCE, TransportHavenaskSqlClientInfoAction.class),
             new ActionHandler<>(HavenaskStopAction.INSTANCE, TransportHavenaskStopAction.class),
             new ActionHandler<>(HavenaskSearchAction.INSTANCE, TransportHavenaskSearchAction.class),
-                new ActionHandler<>(HavenaskSearchScrollAction.INSTANCE, TransportHavenaskSearchScrollAction.class)
+            new ActionHandler<>(HavenaskSearchScrollAction.INSTANCE, TransportHavenaskSearchScrollAction.class)
         );
     }
 
