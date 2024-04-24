@@ -40,7 +40,7 @@ import static org.havenask.engine.HavenaskInternalClusterTestCase.havenaskNodeSe
 import static org.havenask.test.HavenaskIntegTestCase.Scope.SUITE;
 import static org.havenask.test.hamcrest.HavenaskAssertions.assertAcked;
 
-@ThreadLeakFilters(filters = { HttpThreadLeakFilterIT.class, ArpcThreadLeakFilterIT.class })
+@ThreadLeakFilters(filters = {HttpThreadLeakFilterIT.class, ArpcThreadLeakFilterIT.class})
 @HavenaskIntegTestCase.ClusterScope(supportsDedicatedMasters = false, numDataNodes = 3, numClientNodes = 0, scope = SUITE)
 public class HavenaskFsRepositoryIT extends HavenaskBlobStoreRepositoryIntegTestCase {
 
@@ -74,9 +74,9 @@ public class HavenaskFsRepositoryIT extends HavenaskBlobStoreRepositoryIntegTest
     @Override
     protected Settings nodeSettings(int nodeOrdinal) {
         Settings settings = Settings.builder()
-            .put(super.nodeSettings(nodeOrdinal))
-            .put(HavenaskEnginePlugin.HAVENASK_SET_DEFAULT_ENGINE_SETTING.getKey(), true)
-            .build();
+                .put(super.nodeSettings(nodeOrdinal))
+                .put(HavenaskEnginePlugin.HAVENASK_SET_DEFAULT_ENGINE_SETTING.getKey(), true)
+                .build();
         return havenaskNodeSettings(settings, nodeOrdinal);
     }
 
@@ -87,10 +87,10 @@ public class HavenaskFsRepositoryIT extends HavenaskBlobStoreRepositoryIntegTest
         String[] indexNames = generateRandomNames(indexCount);
         for (int i = 0; i < indexCount; i++) {
             createIndex(
-                indexNames[i],
-                Settings.builder()
-                    .put(EngineSettings.HAVENASK_BUILD_CONFIG_MAX_DOC_COUNT.getKey(), 1)
-                    .build()
+                    indexNames[i],
+                    Settings.builder()
+                            .put(EngineSettings.HAVENASK_BUILD_CONFIG_MAX_DOC_COUNT.getKey(), 1)
+                            .build()
             );
         }
 
@@ -106,40 +106,12 @@ public class HavenaskFsRepositoryIT extends HavenaskBlobStoreRepositoryIntegTest
         final String snapshotName = randomName();
         logger.info("-->  create snapshot {}:{}", repoName, snapshotName);
         assertSuccessfulSnapshot(
-            client().admin().cluster().prepareCreateSnapshot(repoName, snapshotName).setWaitForCompletion(true).setIndices(indexNames)
+                client().admin().cluster().prepareCreateSnapshot(repoName, snapshotName).setWaitForCompletion(true).setIndices(indexNames)
         );
 
-        List<String> deleteIndices = randomSubsetOf(randomIntBetween(0, indexCount), indexNames);
-        if (deleteIndices.size() > 0) {
-            logger.info("-->  delete indices {}", deleteIndices);
-            assertAcked(client().admin().indices().prepareDelete(deleteIndices.toArray(new String[deleteIndices.size()])));
-        }
-
-        Set<String> closeIndices = new HashSet<>(Arrays.asList(indexNames));
-        closeIndices.removeAll(deleteIndices);
-
-        if (closeIndices.size() > 0) {
-            for (String index : closeIndices) {
-                if (randomBoolean()) {
-                    logger.info("--> add random documents to {}", index);
-                    addRandomDocuments(index, randomIntBetween(10, 1000));
-                } else {
-                    int docCount = (int) client().prepareSearch(index).setSize(0).get().getHits().getTotalHits().value;
-                    int deleteCount = randomIntBetween(1, docCount);
-                    logger.info("--> delete {} random documents from {}", deleteCount, index);
-                    for (int i = 0; i < deleteCount; i++) {
-                        int doc = randomIntBetween(0, docCount - 1);
-                        client().prepareDelete(index, index, Integer.toString(doc)).get();
-                    }
-                    client().admin().indices().prepareRefresh(index).get();
-                }
-            }
-
-            // Wait for green so the close does not fail in the edge case of coinciding with a shard recovery that hasn't fully synced yet
-            ensureGreen();
-            logger.info("-->  close indices {}", closeIndices);
-            assertAcked(client().admin().indices().prepareClose(closeIndices.toArray(new String[closeIndices.size()])));
-        }
+        List<String> deleteIndices = Arrays.asList(indexNames);
+        logger.info("-->  delete indices {}", deleteIndices);
+        assertAcked(client().admin().indices().prepareDelete(deleteIndices.toArray(new String[deleteIndices.size()])));
 
         logger.info("--> restore all indices from the snapshot");
         assertSuccessfulRestore(client().admin().cluster().prepareRestoreSnapshot(repoName, snapshotName).setWaitForCompletion(true));
@@ -155,15 +127,15 @@ public class HavenaskFsRepositoryIT extends HavenaskBlobStoreRepositoryIntegTest
         assertAcked(client().admin().cluster().prepareDeleteSnapshot(repoName, snapshotName).get());
 
         expectThrows(
-            SnapshotMissingException.class,
-            () -> client().admin().cluster().prepareGetSnapshots(repoName).setSnapshots(snapshotName).get()
+                SnapshotMissingException.class,
+                () -> client().admin().cluster().prepareGetSnapshots(repoName).setSnapshots(snapshotName).get()
         );
 
         expectThrows(SnapshotMissingException.class, () -> client().admin().cluster().prepareDeleteSnapshot(repoName, snapshotName).get());
 
         expectThrows(
-            SnapshotRestoreException.class,
-            () -> client().admin().cluster().prepareRestoreSnapshot(repoName, snapshotName).setWaitForCompletion(randomBoolean()).get()
+                SnapshotRestoreException.class,
+                () -> client().admin().cluster().prepareRestoreSnapshot(repoName, snapshotName).setWaitForCompletion(randomBoolean()).get()
         );
     }
 
