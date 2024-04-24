@@ -81,22 +81,23 @@ public class TransportSearchScrollAction extends HandledTransportAction<SearchSc
                         request,
                         new ActionListenerResponseHandler<>(listener, SearchAction.INSTANCE.getResponseReader())
                 );
+            } else {
+                ParsedScrollId scrollId = TransportSearchHelper.parseScrollId(request.scrollId());
+                Runnable action;
+                switch (scrollId.getType()) {
+                    case ParsedScrollId.QUERY_THEN_FETCH_TYPE:
+                        action = new SearchScrollQueryThenFetchAsyncAction(logger, clusterService, searchTransportService,
+                                searchPhaseController, request, (SearchTask)task, scrollId, listener);
+                        break;
+                    case ParsedScrollId.QUERY_AND_FETCH_TYPE: // TODO can we get rid of this?
+                        action = new SearchScrollQueryAndFetchAsyncAction(logger, clusterService, searchTransportService,
+                                searchPhaseController, request, (SearchTask)task, scrollId, listener);
+                        break;
+                    default:
+                        throw new IllegalArgumentException("Scroll id type [" + scrollId.getType() + "] unrecognized");
+                }
+                action.run();
             }
-            ParsedScrollId scrollId = TransportSearchHelper.parseScrollId(request.scrollId());
-            Runnable action;
-            switch (scrollId.getType()) {
-                case ParsedScrollId.QUERY_THEN_FETCH_TYPE:
-                    action = new SearchScrollQueryThenFetchAsyncAction(logger, clusterService, searchTransportService,
-                        searchPhaseController, request, (SearchTask)task, scrollId, listener);
-                    break;
-                case ParsedScrollId.QUERY_AND_FETCH_TYPE: // TODO can we get rid of this?
-                    action = new SearchScrollQueryAndFetchAsyncAction(logger, clusterService, searchTransportService,
-                        searchPhaseController, request, (SearchTask)task, scrollId, listener);
-                    break;
-                default:
-                    throw new IllegalArgumentException("Scroll id type [" + scrollId.getType() + "] unrecognized");
-            }
-            action.run();
         } catch (Exception e) {
             listener.onFailure(e);
         }

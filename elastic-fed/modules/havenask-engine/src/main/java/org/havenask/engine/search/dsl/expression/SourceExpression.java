@@ -18,6 +18,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
@@ -107,7 +108,7 @@ public class SourceExpression extends Expression {
     }
 
     public synchronized QuerySQLExpression getQuerySQLExpression(String index, Map<String, Object> indexMappings) {
-        if (querySQLExpression == null) {
+        if (querySQLExpression == null || Objects.nonNull(havenaskScroll)) {
             querySQLExpression = new QuerySQLExpression(
                 index,
                 where,

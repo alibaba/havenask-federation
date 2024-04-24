@@ -94,6 +94,8 @@ public class QuerySQLExpression extends Expression {
         }
         sb.delete(sb.length() - 2, sb.length());
         sb.append(" FROM `").append(from).append("` ");
+
+        // translate where
         if (where != null) {
             sb.append(where.translate()).append(" ");
         }
@@ -115,12 +117,18 @@ public class QuerySQLExpression extends Expression {
                 }
             } else {
                 sb.append("WHERE ").append(knnWhere).append(" ");
-                if (Objects.nonNull(havenaskScroll) && Objects.nonNull(havenaskScroll.getLastEmittedDocId())) {
-                    sb.append("AND _id > '").append(havenaskScroll.getLastEmittedDocId()).append("' ");
-                }
             }
         }
 
+        if (Objects.nonNull(havenaskScroll) && Objects.nonNull(havenaskScroll.getLastEmittedDocId())) {
+            if ((Objects.nonNull(where) && !where.translate().isEmpty()) || !knnExpressions.isEmpty()) {
+                sb.append("AND _id > '").append(havenaskScroll.getLastEmittedDocId()).append("' ");
+            } else {
+                sb.append("WHERE _id > '").append(havenaskScroll.getLastEmittedDocId()).append("' ");
+            }
+        }
+
+        // translate order by
         if (Objects.nonNull(havenaskScroll)) {
             if (false == orderByStr.isEmpty() || false == knnExpressions.isEmpty()) {
                 throw new IllegalArgumentException("scroll is not supported when sort is specified");

@@ -16,6 +16,7 @@ package org.havenask.engine.search.action;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.havenask.HavenaskException;
 import org.havenask.action.ActionListener;
 import org.havenask.action.ActionListenerResponseHandler;
 import org.havenask.action.search.SearchResponse;
@@ -35,6 +36,8 @@ import org.havenask.tasks.Task;
 import org.havenask.threadpool.ThreadPool;
 import org.havenask.transport.TransportResponseHandler;
 import org.havenask.transport.TransportService;
+
+import java.util.Objects;
 
 public class TransportHavenaskSearchScrollAction extends HandledTransportAction<SearchScrollRequest, SearchResponse> {
     private static final Logger logger = LogManager.getLogger(TransportHavenaskSearchScrollAction.class);
@@ -63,7 +66,7 @@ public class TransportHavenaskSearchScrollAction extends HandledTransportAction<
         try {
             ParsedHavenaskScrollId havenaskScrollId = TransportHavenaskSearchHelper.parseHavenaskScrollId(request.scrollId());
             // 如果不是本节点的处理内容，则转发到对应节点进行处理
-            if (clusterService.localNode().getId().equals(havenaskScrollId.getNodeId())) {
+            if (!clusterService.localNode().getId().equals(havenaskScrollId.getNodeId())) {
                 DiscoveryNode targetNode = clusterService.state().nodes().get(havenaskScrollId.getNodeId());
                 TransportResponseHandler<SearchResponse> responseHandler = new ActionListenerResponseHandler<>(
                     listener,
@@ -74,6 +77,9 @@ public class TransportHavenaskSearchScrollAction extends HandledTransportAction<
             }
 
             HavenaskScrollContext havenaskScrollContext = havenaskScrollService.getScrollContext(havenaskScrollId.getScrollSessionId());
+            if (Objects.isNull(havenaskScrollContext)) {
+                throw new HavenaskException("no havenask scroll context found, sessionId: " + havenaskScrollId.getScrollSessionId());
+            }
             DSLSession session = havenaskScrollContext.getDSLSession();
 
             havenaskScrollContext.markAsUsed(request.scroll().keepAlive().getMillis());

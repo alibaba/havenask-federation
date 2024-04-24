@@ -67,9 +67,11 @@ import org.havenask.engine.rpc.http.QrsHttpClient;
 import org.havenask.engine.rpc.http.SearcherHttpClient;
 import org.havenask.engine.search.HavenaskFetchPhase;
 import org.havenask.engine.search.action.HavenaskSearchAction;
+import org.havenask.engine.search.action.HavenaskSearchScrollAction;
 import org.havenask.engine.search.action.HavenaskSqlAction;
 import org.havenask.engine.search.action.HavenaskSqlClientInfoAction;
 import org.havenask.engine.search.action.TransportHavenaskSearchAction;
+import org.havenask.engine.search.action.TransportHavenaskSearchScrollAction;
 import org.havenask.engine.search.action.TransportHavenaskSqlAction;
 import org.havenask.engine.search.action.TransportHavenaskSqlClientInfoAction;
 import org.havenask.engine.search.rest.RestHavenaskSqlAction;
@@ -230,11 +232,16 @@ public class HavenaskEnginePlugin extends Plugin
             qrsClientSetOnce.get()
         );
         metaDataSyncerSetOnce.set(metaDataSyncer);
+
         HavenaskScrollService havenaskScrollService = new HavenaskScrollService(clusterService, threadPool);
         havenaskScrollServiceSetOnce.set(havenaskScrollService);
+
         clientSetOnce.set(client);
 
-        return Arrays.asList(nativeProcessControlServiceSetOnce.get(), havenaskEngineEnvironmentSetOnce.get(), metaDataSyncerSetOnce.get());
+        return Arrays.asList(nativeProcessControlServiceSetOnce.get(),
+                havenaskEngineEnvironmentSetOnce.get(),
+                metaDataSyncerSetOnce.get(),
+                havenaskScrollServiceSetOnce.get());
     }
 
     @Override
@@ -272,7 +279,8 @@ public class HavenaskEnginePlugin extends Plugin
             new ActionHandler<>(HavenaskSqlAction.INSTANCE, TransportHavenaskSqlAction.class),
             new ActionHandler<>(HavenaskSqlClientInfoAction.INSTANCE, TransportHavenaskSqlClientInfoAction.class),
             new ActionHandler<>(HavenaskStopAction.INSTANCE, TransportHavenaskStopAction.class),
-            new ActionHandler<>(HavenaskSearchAction.INSTANCE, TransportHavenaskSearchAction.class)
+            new ActionHandler<>(HavenaskSearchAction.INSTANCE, TransportHavenaskSearchAction.class),
+                new ActionHandler<>(HavenaskSearchScrollAction.INSTANCE, TransportHavenaskSearchScrollAction.class)
         );
     }
 
