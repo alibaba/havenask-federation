@@ -28,6 +28,7 @@ import org.havenask.repositories.blobstore.HavenaskBlobStoreRepositoryIntegTestC
 import org.havenask.repositories.fs.FsRepository;
 import org.havenask.snapshots.SnapshotMissingException;
 import org.havenask.snapshots.SnapshotRestoreException;
+import org.havenask.test.HavenaskIntegTestCase;
 
 import java.util.Arrays;
 import java.util.Collection;
@@ -36,9 +37,11 @@ import java.util.List;
 import java.util.Set;
 
 import static org.havenask.engine.HavenaskInternalClusterTestCase.havenaskNodeSettings;
+import static org.havenask.test.HavenaskIntegTestCase.Scope.SUITE;
 import static org.havenask.test.hamcrest.HavenaskAssertions.assertAcked;
 
 @ThreadLeakFilters(filters = { HttpThreadLeakFilterIT.class, ArpcThreadLeakFilterIT.class })
+@HavenaskIntegTestCase.ClusterScope(supportsDedicatedMasters = false, numDataNodes = 3, numClientNodes = 0, scope = SUITE)
 public class HavenaskFsRepositoryIT extends HavenaskBlobStoreRepositoryIntegTestCase {
 
     @Override
