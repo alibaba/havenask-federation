@@ -156,4 +156,32 @@ public class QuerySQLExpressionTests extends HavenaskTestCase {
             assertEquals("SELECT `_id` FROM `table` WHERE 1=1 ORDER BY `field1` DESC, `field2` ASC LIMIT 10 ", sql);
         }
     }
+
+    public void testMatchPhraseQuery() {
+        SearchSourceBuilder builder = new SearchSourceBuilder();
+        builder.query(QueryBuilders.matchPhraseQuery("field", "value"));
+
+        SourceExpression sourceExpression = new SourceExpression(builder);
+        String sql = sourceExpression.getQuerySQLExpression("table", Map.of()).translate();
+        assertEquals("SELECT `_id` FROM `table` WHERE QUERY('field', '\"value\"') LIMIT 10 ", sql);
+    }
+
+    public void testQueryStringQuery() {
+        SearchSourceBuilder builder = new SearchSourceBuilder();
+        builder.query(QueryBuilders.queryStringQuery("value"));
+
+        SourceExpression sourceExpression = new SourceExpression(builder);
+        String sql = sourceExpression.getQuerySQLExpression("table", Map.of()).translate();
+        assertEquals("SELECT `_id` FROM `table` WHERE QUERY('', 'value') LIMIT 10 ", sql);
+    }
+
+    // test terms
+    public void testTermsQuery() {
+        SearchSourceBuilder builder = new SearchSourceBuilder();
+        builder.query(QueryBuilders.termsQuery("field", "value1", "value2"));
+
+        SourceExpression sourceExpression = new SourceExpression(builder);
+        String sql = sourceExpression.getQuerySQLExpression("table", Map.of()).translate();
+        assertEquals("SELECT `_id` FROM `table` WHERE contain(`field`, 'value1|value2') LIMIT 10 ", sql);
+    }
 }
