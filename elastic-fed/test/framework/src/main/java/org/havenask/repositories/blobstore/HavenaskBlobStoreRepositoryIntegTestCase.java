@@ -38,7 +38,6 @@
 
 package org.havenask.repositories.blobstore;
 
-import org.apache.lucene.search.TotalHits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.SetOnce;
@@ -48,7 +47,6 @@ import org.havenask.action.admin.cluster.snapshots.create.CreateSnapshotResponse
 import org.havenask.action.admin.cluster.snapshots.restore.RestoreSnapshotRequestBuilder;
 import org.havenask.action.admin.cluster.snapshots.restore.RestoreSnapshotResponse;
 import org.havenask.action.index.IndexRequestBuilder;
-import org.havenask.action.search.SearchResponse;
 import org.havenask.action.support.PlainActionFuture;
 import org.havenask.client.Client;
 import org.havenask.common.blobstore.BlobContainer;
@@ -81,13 +79,13 @@ import java.util.Map;
 import java.util.Set;
 
 import static org.havenask.test.hamcrest.HavenaskAssertions.assertAcked;
+import static org.havenask.test.hamcrest.HavenaskAssertions.assertHitCount;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.instanceOf;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.nullValue;
-import static org.havenask.test.hamcrest.HavenaskAssertions.formatShardStatus;
 
 /**
  * Integration tests for {@link BlobStoreRepository} implementations.
@@ -301,7 +299,7 @@ public abstract class HavenaskBlobStoreRepositoryIntegTestCase extends HavenaskI
             docCounts[i] = iterations(10, 1000);
             logger.info("-->  create random index {} with {} records", indexNames[i], docCounts[i]);
             addRandomDocuments(indexNames[i], docCounts[i]);
-            assertHitCount(client().prepareSearch(indexNames[i]).setSize(docCounts[i]).get(), docCounts[i]);
+            assertHitCount(client().prepareSearch(indexNames[i]).setSize(0).get(), docCounts[i]);
         }
 
         final String snapshotName = randomName();
@@ -348,7 +346,7 @@ public abstract class HavenaskBlobStoreRepositoryIntegTestCase extends HavenaskI
         ensureGreen(TimeValue.timeValueSeconds(120));
 
         for (int i = 0; i < indexCount; i++) {
-            assertHitCount(client().prepareSearch(indexNames[i]).setSize(docCounts[i]).get(), docCounts[i]);
+            assertHitCount(client().prepareSearch(indexNames[i]).setSize(0).get(), docCounts[i]);
         }
 
         logger.info("-->  delete snapshot {}:{}", repoName, snapshotName);
@@ -410,7 +408,7 @@ public abstract class HavenaskBlobStoreRepositoryIntegTestCase extends HavenaskI
                     .setWaitForCompletion(true));
 
             ensureGreen();
-            assertHitCount(client().prepareSearch(indexName).setSize(docCounts[iterationToRestore]).get(), docCounts[iterationToRestore]);
+            assertHitCount(client().prepareSearch(indexName).setSize(0).get(), docCounts[iterationToRestore]);
         }
 
         for (int i = 0; i < iterationCount; i++) {
@@ -479,13 +477,13 @@ public abstract class HavenaskBlobStoreRepositoryIntegTestCase extends HavenaskI
     protected void addRandomDocuments(String name, int numDocs) throws InterruptedException {
         IndexRequestBuilder[] indexRequestBuilders = new IndexRequestBuilder[numDocs];
         for (int i = 0; i < numDocs; i++) {
-            indexRequestBuilders[i] = client().prepareIndex(name, "_doc", Integer.toString(i))
+            indexRequestBuilders[i] = client().prepareIndex(name, name, Integer.toString(i))
                 .setRouting(randomAlphaOfLength(randomIntBetween(1, 10))).setSource("field", "value");
         }
         indexRandom(true, indexRequestBuilders);
     }
 
-    protected String[] generateRandomNames(int num) {
+    private String[] generateRandomNames(int num) {
         Set<String> names = new HashSet<>();
         for (int i = 0; i < num; i++) {
             String name;
@@ -519,13 +517,5 @@ public abstract class HavenaskBlobStoreRepositoryIntegTestCase extends HavenaskI
 
     protected static String randomName() {
         return randomAlphaOfLength(randomIntBetween(1, 10)).toLowerCase(Locale.ROOT);
-    }
-
-    protected static void assertHitCount(SearchResponse countResponse, long expectedHitCount) {
-        final TotalHits totalHits = countResponse.getHits().getTotalHits();
-        if (totalHits.value != expectedHitCount) {
-            fail("Count is " + totalHits + " but " + expectedHitCount
-                    + " was expected. " + formatShardStatus(countResponse));
-        }
     }
 }
