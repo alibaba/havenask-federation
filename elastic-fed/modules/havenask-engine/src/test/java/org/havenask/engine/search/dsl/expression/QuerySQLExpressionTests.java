@@ -182,6 +182,41 @@ public class QuerySQLExpressionTests extends HavenaskTestCase {
             String sql = sourceExpression.getQuerySQLExpression("table", Map.of()).translate();
             assertEquals("SELECT `_id` FROM `table` WHERE `field` > 1 AND `field` <= 2 LIMIT 10 ", sql);
         }
+
+        {
+            // test format
+            SearchSourceBuilder builder = new SearchSourceBuilder();
+            builder.query(QueryBuilders.rangeQuery("field").gt("2024-01-01").lte("2024-01-02").format("yyyy-MM-dd"));
+
+            SourceExpression sourceExpression = new SourceExpression(builder);
+            String sql = sourceExpression.getQuerySQLExpression("table", Map.of()).translate();
+            assertEquals("SELECT `_id` FROM `table` WHERE `field` > 1704067200000 AND `field` <= 1704153600000 LIMIT 10 ", sql);
+        }
+
+        {
+            // test default format
+            SearchSourceBuilder builder = new SearchSourceBuilder();
+            builder.query(QueryBuilders.rangeQuery("field").gt("2024-01-01T11:20:51.462Z").lte("2024-01-01T11:35:51.462Z"));
+
+            SourceExpression sourceExpression = new SourceExpression(builder);
+            String sql = sourceExpression.getQuerySQLExpression("table", Map.of()).translate();
+            assertEquals("SELECT `_id` FROM `table` WHERE `field` > 1704108051462 AND `field` <= 1704108951462 LIMIT 10 ", sql);
+        }
+
+        {
+            // test not match format
+            SearchSourceBuilder builder = new SearchSourceBuilder();
+            builder.query(
+                QueryBuilders.rangeQuery("field").gt("2024-01-01T11:20:51.462Z").lte("2024-01-01T11:35:51.462Z").format("yyyy-MM-dd")
+            );
+
+            SourceExpression sourceExpression = new SourceExpression(builder);
+            String sql = sourceExpression.getQuerySQLExpression("table", Map.of()).translate();
+            assertEquals(
+                "SELECT `_id` FROM `table` WHERE `field` > 2024-01-01T11:20:51.462Z AND `field` <= 2024-01-01T11:35:51.462Z LIMIT 10 ",
+                sql
+            );
+        }
     }
 
     public void testSortQuery() {
