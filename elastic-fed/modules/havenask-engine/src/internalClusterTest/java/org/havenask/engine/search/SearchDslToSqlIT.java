@@ -24,6 +24,7 @@ import org.havenask.engine.index.engine.EngineSettings;
 import org.havenask.index.query.QueryBuilders;
 import org.havenask.search.builder.SearchSourceBuilder;
 import org.havenask.test.HavenaskIntegTestCase;
+import org.junit.Before;
 
 import java.util.concurrent.TimeUnit;
 
@@ -31,14 +32,12 @@ import static org.havenask.test.HavenaskIntegTestCase.Scope.SUITE;
 
 @ThreadLeakFilters(filters = { HttpThreadLeakFilterIT.class, ArpcThreadLeakFilterIT.class })
 @HavenaskIntegTestCase.ClusterScope(supportsDedicatedMasters = false, numDataNodes = 1, numClientNodes = 0, scope = SUITE)
-@HavenaskIntegTestCase.SuiteScopeTestCase
 public class SearchDslToSqlIT extends HavenaskInternalClusterTestCase {
 
     private static final String INDEX_NAME = "test_dsl2sql";
 
-    // prepare data
-    @Override
-    protected void setupSuiteScopeCluster() {
+    @Before
+    public void setUp() {
         prepareCreate(INDEX_NAME).setSettings(
             Settings.builder()
                 .put("index.number_of_shards", 1)
