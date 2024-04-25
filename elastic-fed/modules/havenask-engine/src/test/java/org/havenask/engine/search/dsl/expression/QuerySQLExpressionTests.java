@@ -14,12 +14,18 @@
 
 package org.havenask.engine.search.dsl.expression;
 
+import org.havenask.common.UUIDs;
+import org.havenask.common.unit.TimeValue;
+import org.havenask.engine.search.internal.HavenaskScroll;
 import org.havenask.index.query.QueryBuilders;
+import org.havenask.search.Scroll;
 import org.havenask.search.builder.SearchSourceBuilder;
 import org.havenask.search.sort.ScoreSortBuilder;
+import org.havenask.search.sort.SortBuilders;
 import org.havenask.search.sort.SortOrder;
 import org.havenask.test.HavenaskTestCase;
 
+import java.util.Locale;
 import java.util.Map;
 
 public class QuerySQLExpressionTests extends HavenaskTestCase {
@@ -154,6 +160,58 @@ public class QuerySQLExpressionTests extends HavenaskTestCase {
             SourceExpression sourceExpression = new SourceExpression(builder);
             String sql = sourceExpression.getQuerySQLExpression("table", Map.of()).translate();
             assertEquals("SELECT `_id` FROM `table` WHERE 1=1 ORDER BY `field1` DESC, `field2` ASC LIMIT 10 ", sql);
+        }
+    }
+
+    public void testScrollQuery() {
+        String nodeId = UUIDs.randomBase64UUID();
+        Scroll scroll = new Scroll(TimeValue.timeValueMinutes(1));
+        HavenaskScroll havenaskScroll = new HavenaskScroll(nodeId, scroll);
+        // match All ScrollQuery
+        {
+            SearchSourceBuilder builder = new SearchSourceBuilder();
+            builder.query(QueryBuilders.matchAllQuery());
+
+            SourceExpression sourceExpression = new SourceExpression(builder, havenaskScroll);
+            String resSql = sourceExpression.getQuerySQLExpression("table", Map.of()).translate();
+            String expectedSql = String.format(Locale.ROOT, "SELECT `_id` FROM `table` WHERE 1=1 ORDER BY `_id` ASC LIMIT 10 ");
+            assertEquals(expectedSql, resSql);
+
+            String lastEmittedDocId = randomAlphaOfLength(6);
+            havenaskScroll.setLastEmittedDocId(lastEmittedDocId);
+            resSql = sourceExpression.getQuerySQLExpression("table", Map.of()).translate();
+            expectedSql = String.format(
+                Locale.ROOT,
+                "SELECT `_id` FROM `table` WHERE 1=1 AND `_id` > '%s' ORDER BY `_id` ASC LIMIT 10 ",
+                lastEmittedDocId
+            );
+            assertEquals(expectedSql, resSql);
+
+            havenaskScroll.setLastEmittedDocId(null);
+        }
+
+        // reindex scroll query
+        {
+            SearchSourceBuilder builder = new SearchSourceBuilder();
+            builder.size(1000);
+            builder.version(false);
+            builder.seqNoAndPrimaryTerm(false);
+            builder.sort(SortBuilders.fieldSort(OrderByExpression.LUCENE_DOC_FIELD_NAME).order(SortOrder.ASC));
+
+            SourceExpression sourceExpression = new SourceExpression(builder, havenaskScroll);
+            String resSql = sourceExpression.getQuerySQLExpression("table", Map.of()).translate();
+            String expectedSql = String.format(Locale.ROOT, "SELECT `_id` FROM `table` WHERE 1=1 ORDER BY `_id` ASC LIMIT 1000 ");
+            assertEquals(expectedSql, resSql);
+
+            String lastEmittedDocId = randomAlphaOfLength(6);
+            havenaskScroll.setLastEmittedDocId(lastEmittedDocId);
+            resSql = sourceExpression.getQuerySQLExpression("table", Map.of()).translate();
+            expectedSql = String.format(
+                Locale.ROOT,
+                "SELECT `_id` FROM `table` WHERE 1=1 AND `_id` > '%s' ORDER BY `_id` ASC LIMIT 1000 ",
+                lastEmittedDocId
+            );
+            assertEquals(expectedSql, resSql);
         }
     }
 }

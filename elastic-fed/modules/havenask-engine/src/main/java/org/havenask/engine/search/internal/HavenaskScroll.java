@@ -20,11 +20,11 @@ public class HavenaskScroll {
     public static final String SCROLL_ORDER_BY = "ORDER BY `_id` ASC";
     private String nodeId;
     private String lastEmittedDocId = null;
-    private Scroll havenaskScroll;
+    private Scroll scroll;
 
-    public HavenaskScroll(String nodeId, Scroll havenaskScroll) {
+    public HavenaskScroll(String nodeId, Scroll scroll) {
         this.nodeId = nodeId;
-        this.havenaskScroll = havenaskScroll;
+        this.scroll = scroll;
     }
 
     public String getNodeId() {
@@ -39,7 +39,7 @@ public class HavenaskScroll {
         return lastEmittedDocId;
     }
 
-    public Scroll getHavenaskScroll() {
-        return havenaskScroll;
+    public Scroll getScroll() {
+        return scroll;
     }
 }

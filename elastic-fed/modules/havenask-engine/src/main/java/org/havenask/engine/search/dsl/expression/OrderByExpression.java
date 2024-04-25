@@ -24,7 +24,7 @@ import java.util.Locale;
 public class OrderByExpression extends Expression {
     private final List<SortBuilder<?>> sorts;
     private boolean hasScoreSort = false;
-    private static final String LUCENE_DOC_FIELD_NAME = "_doc";
+    public static final String LUCENE_DOC_FIELD_NAME = "_doc";
 
     public OrderByExpression(List<SortBuilder<?>> sorts) {
         this.sorts = sorts;
