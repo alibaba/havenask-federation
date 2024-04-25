@@ -28,16 +28,16 @@ import org.junit.Before;
 
 import java.util.concurrent.TimeUnit;
 
-import static org.havenask.test.HavenaskIntegTestCase.Scope.SUITE;
-
 @ThreadLeakFilters(filters = { HttpThreadLeakFilterIT.class, ArpcThreadLeakFilterIT.class })
-@HavenaskIntegTestCase.ClusterScope(supportsDedicatedMasters = false, numDataNodes = 1, numClientNodes = 0, scope = SUITE)
+@HavenaskIntegTestCase.ClusterScope(supportsDedicatedMasters = false, numDataNodes = 1, numClientNodes = 0)
+@HavenaskIntegTestCase.SuiteScopeTestCase
 public class SearchDslToSqlIT extends HavenaskInternalClusterTestCase {
 
     private static final String INDEX_NAME = "test_dsl2sql";
 
     @Before
-    public void setUp() {
+    public void setupSuiteScopeCluster() {
+        logger.info("Creating index [{}]", INDEX_NAME);
         prepareCreate(INDEX_NAME).setSettings(
             Settings.builder()
                 .put("index.number_of_shards", 1)
