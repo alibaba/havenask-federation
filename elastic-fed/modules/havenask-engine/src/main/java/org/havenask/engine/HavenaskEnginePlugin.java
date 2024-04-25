@@ -66,10 +66,12 @@ import org.havenask.engine.rpc.QrsClient;
 import org.havenask.engine.rpc.http.QrsHttpClient;
 import org.havenask.engine.rpc.http.SearcherHttpClient;
 import org.havenask.engine.search.HavenaskFetchPhase;
+import org.havenask.engine.search.action.ClearHavenaskScrollAction;
 import org.havenask.engine.search.action.HavenaskSearchAction;
 import org.havenask.engine.search.action.HavenaskSearchScrollAction;
 import org.havenask.engine.search.action.HavenaskSqlAction;
 import org.havenask.engine.search.action.HavenaskSqlClientInfoAction;
+import org.havenask.engine.search.action.TransportClearHavenaskScrollAction;
 import org.havenask.engine.search.action.TransportHavenaskSearchAction;
 import org.havenask.engine.search.action.TransportHavenaskSearchScrollAction;
 import org.havenask.engine.search.action.TransportHavenaskSqlAction;
@@ -282,7 +284,8 @@ public class HavenaskEnginePlugin extends Plugin
             new ActionHandler<>(HavenaskSqlClientInfoAction.INSTANCE, TransportHavenaskSqlClientInfoAction.class),
             new ActionHandler<>(HavenaskStopAction.INSTANCE, TransportHavenaskStopAction.class),
             new ActionHandler<>(HavenaskSearchAction.INSTANCE, TransportHavenaskSearchAction.class),
-            new ActionHandler<>(HavenaskSearchScrollAction.INSTANCE, TransportHavenaskSearchScrollAction.class)
+            new ActionHandler<>(HavenaskSearchScrollAction.INSTANCE, TransportHavenaskSearchScrollAction.class),
+            new ActionHandler<>(ClearHavenaskScrollAction.INSTANCE, TransportClearHavenaskScrollAction.class)
         );
     }
 
