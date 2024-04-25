@@ -14,7 +14,9 @@
 
 package org.havenask.engine.search.dsl.expression.query;
 
+import org.havenask.common.time.DateFormatter;
 import org.havenask.engine.index.config.Schema;
+import org.havenask.index.mapper.DateFieldMapper;
 import org.havenask.index.query.RangeQueryBuilder;
 
 public class RangeExpression extends QueryExpression {
@@ -38,6 +40,11 @@ public class RangeExpression extends QueryExpression {
         // .append("')");
 
         // `field` >= 1 AND `field` < 10
+        DateFormatter dateFormatter = DateFieldMapper.DEFAULT_DATE_TIME_FORMATTER;
+        if (rangeQueryBuilder.format() != null && false == rangeQueryBuilder.format().isEmpty()) {
+            dateFormatter = DateFormatter.forPattern(rangeQueryBuilder.format());
+        }
+
         StringBuilder from = new StringBuilder();
         if (rangeQueryBuilder.from() != null) {
             from.append("`");
@@ -47,7 +54,7 @@ public class RangeExpression extends QueryExpression {
             } else {
                 from.append("` > ");
             }
-            from.append(rangeQueryBuilder.from());
+            from.append(formatValue(rangeQueryBuilder.from(), dateFormatter));
         }
 
         StringBuilder to = new StringBuilder();
@@ -59,7 +66,7 @@ public class RangeExpression extends QueryExpression {
             } else {
                 to.append("` < ");
             }
-            to.append(rangeQueryBuilder.to());
+            to.append(formatValue(rangeQueryBuilder.to(), dateFormatter));
         }
 
         if (from.length() > 0 && to.length() > 0) {
@@ -71,6 +78,18 @@ public class RangeExpression extends QueryExpression {
         }
 
         return sb.toString();
+    }
+
+    private String formatValue(Object value, DateFormatter dateFormatter) {
+        if (value instanceof Number) {
+            return value.toString();
+        } else {
+            try {
+                return String.valueOf(dateFormatter.parseMillis(value.toString()));
+            } catch (Exception e) {
+                return value.toString();
+            }
+        }
     }
 
     @Override
