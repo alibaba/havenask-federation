@@ -139,7 +139,9 @@ public class SearchDslToSqlIT extends HavenaskInternalClusterTestCase {
     public void testBoolQueryWithShould() throws Exception {
         SearchSourceBuilder builder = new SearchSourceBuilder();
         builder.query(
-                QueryBuilders.boolQuery().should(QueryBuilders.termQuery("field3", "value1")).should(QueryBuilders.termQuery("field3", "value2")
+            QueryBuilders.boolQuery()
+                .should(QueryBuilders.termQuery("field3", "value1"))
+                .should(QueryBuilders.termQuery("field3", "value2"))
         );
 
         assertBusy(() -> {

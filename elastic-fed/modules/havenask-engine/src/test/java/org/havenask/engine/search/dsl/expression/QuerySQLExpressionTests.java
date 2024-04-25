@@ -129,12 +129,59 @@ public class QuerySQLExpressionTests extends HavenaskTestCase {
     }
 
     public void testRangeDocsQuery() {
-        SearchSourceBuilder builder = new SearchSourceBuilder();
-        builder.query(QueryBuilders.rangeQuery("field").gte(1).lt(2));
+        {
+            SearchSourceBuilder builder = new SearchSourceBuilder();
+            builder.query(QueryBuilders.rangeQuery("field").gte(1).lt(2));
 
-        SourceExpression sourceExpression = new SourceExpression(builder);
-        String sql = sourceExpression.getQuerySQLExpression("table", Map.of()).translate();
-        assertEquals("SELECT `_id` FROM `table` WHERE QUERY('', 'field:[1,2)') LIMIT 10 ", sql);
+            SourceExpression sourceExpression = new SourceExpression(builder);
+            String sql = sourceExpression.getQuerySQLExpression("table", Map.of()).translate();
+            assertEquals("SELECT `_id` FROM `table` WHERE `field` >= 1 AND `field` < 2 LIMIT 10 ", sql);
+        }
+
+        {
+            SearchSourceBuilder builder = new SearchSourceBuilder();
+            builder.query(QueryBuilders.rangeQuery("field").gt(1));
+
+            SourceExpression sourceExpression = new SourceExpression(builder);
+            String sql = sourceExpression.getQuerySQLExpression("table", Map.of()).translate();
+            assertEquals("SELECT `_id` FROM `table` WHERE `field` > 1 LIMIT 10 ", sql);
+        }
+
+        {
+            SearchSourceBuilder builder = new SearchSourceBuilder();
+            builder.query(QueryBuilders.rangeQuery("field").gte(1));
+
+            SourceExpression sourceExpression = new SourceExpression(builder);
+            String sql = sourceExpression.getQuerySQLExpression("table", Map.of()).translate();
+            assertEquals("SELECT `_id` FROM `table` WHERE `field` >= 1 LIMIT 10 ", sql);
+        }
+
+        {
+            SearchSourceBuilder builder = new SearchSourceBuilder();
+            builder.query(QueryBuilders.rangeQuery("field").lt(2));
+
+            SourceExpression sourceExpression = new SourceExpression(builder);
+            String sql = sourceExpression.getQuerySQLExpression("table", Map.of()).translate();
+            assertEquals("SELECT `_id` FROM `table` WHERE `field` < 2 LIMIT 10 ", sql);
+        }
+
+        {
+            SearchSourceBuilder builder = new SearchSourceBuilder();
+            builder.query(QueryBuilders.rangeQuery("field").lte(2));
+
+            SourceExpression sourceExpression = new SourceExpression(builder);
+            String sql = sourceExpression.getQuerySQLExpression("table", Map.of()).translate();
+            assertEquals("SELECT `_id` FROM `table` WHERE `field` <= 2 LIMIT 10 ", sql);
+        }
+
+        {
+            SearchSourceBuilder builder = new SearchSourceBuilder();
+            builder.query(QueryBuilders.rangeQuery("field").gt(1).lte(2));
+
+            SourceExpression sourceExpression = new SourceExpression(builder);
+            String sql = sourceExpression.getQuerySQLExpression("table", Map.of()).translate();
+            assertEquals("SELECT `_id` FROM `table` WHERE `field` > 1 AND `field` <= 2 LIMIT 10 ", sql);
+        }
     }
 
     public void testSortQuery() {
