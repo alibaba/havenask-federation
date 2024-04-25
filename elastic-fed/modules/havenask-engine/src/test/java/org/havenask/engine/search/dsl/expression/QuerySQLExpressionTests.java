@@ -184,4 +184,14 @@ public class QuerySQLExpressionTests extends HavenaskTestCase {
         String sql = sourceExpression.getQuerySQLExpression("table", Map.of()).translate();
         assertEquals("SELECT `_id` FROM `table` WHERE contain(`field`, 'value1|value2') LIMIT 10 ", sql);
     }
+
+    // test exist
+    public void testExistQuery() {
+        SearchSourceBuilder builder = new SearchSourceBuilder();
+        builder.query(QueryBuilders.existsQuery("field"));
+
+        SourceExpression sourceExpression = new SourceExpression(builder);
+        String sql = sourceExpression.getQuerySQLExpression("table", Map.of()).translate();
+        assertEquals("SELECT `_id` FROM `table` WHERE `field` IS NOT NULL LIMIT 10 ", sql);
+    }
 }

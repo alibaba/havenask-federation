@@ -29,6 +29,7 @@ import org.havenask.engine.search.dsl.expression.aggregation.MetricExpression;
 import org.havenask.engine.search.dsl.expression.aggregation.SumExpression;
 import org.havenask.engine.search.dsl.expression.aggregation.TermsExpression;
 import org.havenask.engine.search.dsl.expression.query.BoolExpression;
+import org.havenask.engine.search.dsl.expression.query.ExistExpression;
 import org.havenask.engine.search.dsl.expression.query.MatchAllExpression;
 import org.havenask.engine.search.dsl.expression.query.MatchExpression;
 import org.havenask.engine.search.dsl.expression.query.MatchPhraseExpression;
@@ -36,6 +37,7 @@ import org.havenask.engine.search.dsl.expression.query.QueryStringExpression;
 import org.havenask.engine.search.dsl.expression.query.RangeExpression;
 import org.havenask.engine.search.dsl.expression.query.TermExpression;
 import org.havenask.index.query.BoolQueryBuilder;
+import org.havenask.index.query.ExistsQueryBuilder;
 import org.havenask.index.query.MatchAllQueryBuilder;
 import org.havenask.index.query.MatchPhraseQueryBuilder;
 import org.havenask.index.query.MatchQueryBuilder;
@@ -215,6 +217,8 @@ public class SourceExpression extends Expression {
             return new MatchPhraseExpression((MatchPhraseQueryBuilder) query);
         } else if (query instanceof TermsQueryBuilder) {
             return new org.havenask.engine.search.dsl.expression.query.TermsExpression((TermsQueryBuilder) query);
+        } else if (query instanceof ExistsQueryBuilder) {
+            return new ExistExpression((ExistsQueryBuilder) query);
         } else {
             throw new IllegalArgumentException("Unsupported query type: " + query.getClass().getName());
         }
