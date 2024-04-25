@@ -62,23 +62,28 @@ public class SourceExpression extends Expression {
     private QuerySQLExpression querySQLExpression;
     private List<AggregationSQLExpression> aggregationSQLExpressions = new ArrayList<>();
     private List<KnnExpression> knnExpressions = new ArrayList<>();
+    private SliceExpression slice;
     private final int size;
     private final int from;
     private HavenaskScroll havenaskScroll;
 
     public SourceExpression(SearchSourceBuilder searchSourceBuilder) {
-        this.searchSourceBuilder = searchSourceBuilder;
-        this.where = new WhereExpression(visitQuery(searchSourceBuilder.query()));
-        this.orderBy = new OrderByExpression(searchSourceBuilder.sorts());
-        this.size = searchSourceBuilder.size() >= 0 ? searchSourceBuilder.size() : DEFAULT_SEARCH_SIZE;
-        this.from = searchSourceBuilder.from() >= 0 ? searchSourceBuilder.from() : 0;
-        this.havenaskScroll = null;
+        this(searchSourceBuilder, null, -1);
     }
 
     public SourceExpression(SearchSourceBuilder searchSourceBuilder, HavenaskScroll havenaskScroll) {
+        this(searchSourceBuilder, havenaskScroll, -1);
+    }
+
+    public SourceExpression(SearchSourceBuilder searchSourceBuilder, int shardNum) {
+        this(searchSourceBuilder, null, shardNum);
+    }
+
+    public SourceExpression(SearchSourceBuilder searchSourceBuilder, HavenaskScroll havenaskScroll, int shardNum) {
         this.searchSourceBuilder = searchSourceBuilder;
         this.where = new WhereExpression(visitQuery(searchSourceBuilder.query()));
         this.orderBy = new OrderByExpression(searchSourceBuilder.sorts());
+        this.slice = new SliceExpression(searchSourceBuilder.slice(), shardNum);
         this.size = searchSourceBuilder.size() >= 0 ? searchSourceBuilder.size() : DEFAULT_SEARCH_SIZE;
         this.from = searchSourceBuilder.from() >= 0 ? searchSourceBuilder.from() : 0;
         this.havenaskScroll = havenaskScroll;
@@ -114,6 +119,7 @@ public class SourceExpression extends Expression {
                 where,
                 getKnnExpressions(indexMappings),
                 orderBy,
+                slice,
                 size,
                 from,
                 havenaskScroll

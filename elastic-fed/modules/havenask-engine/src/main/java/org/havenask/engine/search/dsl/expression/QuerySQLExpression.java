@@ -25,6 +25,7 @@ public class QuerySQLExpression extends Expression {
     public final String from;
     public final WhereExpression where;
     public final OrderByExpression orderBy;
+    public final SliceExpression slice;
     public final List<KnnExpression> knnExpressions;
     public final int limit;
     public final int offset;
@@ -35,6 +36,7 @@ public class QuerySQLExpression extends Expression {
         WhereExpression where,
         List<KnnExpression> knnExpressions,
         OrderByExpression orderBy,
+        SliceExpression slice,
         int limit,
         int offset,
         HavenaskScroll havenaskScroll
@@ -43,6 +45,7 @@ public class QuerySQLExpression extends Expression {
         this.where = where;
         this.knnExpressions = knnExpressions;
         this.orderBy = orderBy;
+        this.slice = slice;
         this.limit = limit;
         this.offset = offset;
         this.havenaskScroll = havenaskScroll;
@@ -53,17 +56,27 @@ public class QuerySQLExpression extends Expression {
         StringBuilder sb = new StringBuilder();
         sb.append("SELECT ");
 
-        if (false == knnExpressions.isEmpty()) {
-            StringBuilder knnSelect = new StringBuilder("");
-            for (KnnExpression knnExpression : knnExpressions) {
-                knnExpression.getFilterFields().forEach(field -> { knnSelect.append(field).append(", "); });
+        // translate hints
+        String knnSelect = generateKnnSelect(knnExpressions);
+        if (Objects.nonNull(slice.getSlice()) || Objects.nonNull(knnSelect)) {
+            sb.append("/*+ SCAN_ATTR(");
+
+            // slice hint
+            if (Objects.nonNull(slice.getSlice())) {
+                sb.append(slice.translate());
+                sb.append(", ");
             }
-            if (knnSelect.length() > 0) {
-                knnSelect.delete(knnSelect.length() - 2, knnSelect.length());
-                sb.append("/*+ SCAN_ATTR(forbidIndex='");
+
+            // knn filter hint
+            if (Objects.nonNull(knnSelect)) {
+                sb.append("forbidIndex='");
                 sb.append(knnSelect);
-                sb.append("')*/ ");
+                sb.append("'");
+                sb.append(", ");
             }
+
+            sb.delete(sb.length() - 2, sb.length());
+            sb.append(")*/ ");
         }
 
         List<String> fields = new ArrayList<>();
@@ -155,4 +168,19 @@ public class QuerySQLExpression extends Expression {
         return sb.toString();
     }
 
+    public String generateKnnSelect(List<KnnExpression> knnExpressions) {
+        if (knnExpressions.isEmpty()) {
+            return null;
+        }
+        StringBuilder knnSelect = new StringBuilder("");
+        for (KnnExpression knnExpression : knnExpressions) {
+            knnExpression.getFilterFields().forEach(field -> { knnSelect.append(field).append(", "); });
+        }
+        if (knnSelect.length() > 0) {
+            knnSelect.delete(knnSelect.length() - 2, knnSelect.length());
+            return knnSelect.toString();
+        } else {
+            return null;
+        }
+    }
 }

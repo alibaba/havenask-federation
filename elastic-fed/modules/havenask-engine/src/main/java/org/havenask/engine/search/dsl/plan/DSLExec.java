@@ -35,9 +35,9 @@ public class DSLExec implements Executable<SearchResponse> {
     private final SearchSourceBuilder dsl;
     private final SourceExpression sourceExpression;
 
-    public DSLExec(SearchSourceBuilder dsl, HavenaskScroll havenaskScroll) {
+    public DSLExec(SearchSourceBuilder dsl, HavenaskScroll havenaskScroll, int shardNum) {
         this.dsl = dsl;
-        this.sourceExpression = new SourceExpression(dsl, havenaskScroll);
+        this.sourceExpression = new SourceExpression(dsl, havenaskScroll, shardNum);
     }
 
     @Override
