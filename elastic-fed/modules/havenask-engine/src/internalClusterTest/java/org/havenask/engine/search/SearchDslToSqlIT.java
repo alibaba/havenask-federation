@@ -35,7 +35,7 @@ public class SearchDslToSqlIT extends HavenaskInternalClusterTestCase {
 
     private static final String INDEX_NAME = "test_dsl2sql";
 
-    @Before
+    @Override
     public void setupSuiteScopeCluster() {
         logger.info("Creating index [{}]", INDEX_NAME);
         prepareCreate(INDEX_NAME).setSettings(
