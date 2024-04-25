@@ -24,7 +24,6 @@ import org.havenask.engine.index.engine.EngineSettings;
 import org.havenask.index.query.QueryBuilders;
 import org.havenask.search.builder.SearchSourceBuilder;
 import org.havenask.test.HavenaskIntegTestCase;
-import org.junit.Before;
 
 import java.util.concurrent.TimeUnit;
 
