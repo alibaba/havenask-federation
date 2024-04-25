@@ -128,7 +128,7 @@ public class StoreFileMetadata implements Writeable {
      * @return {@code true} iff {@link #hash()} will return the actual file contents
      */
     public boolean hashEqualsContents() {
-        if (hash.length == length) {
+        if (hash.length == length && length > 0) {
             try {
                 final boolean checksumsMatch = Store.digestToString(CodecUtil.retrieveChecksum(
                     new ByteArrayIndexInput("store_file", hash.bytes, hash.offset, hash.length))).equals(checksum);
