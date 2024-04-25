@@ -33,9 +33,7 @@ public class TermsExpression extends QueryExpression {
     public String translate() {
         // contain(`nid`, '1|2|3')
         StringBuilder sb = new StringBuilder();
-        sb.append("contain(`")
-            .append(Schema.encodeFieldWithDot(termsQueryBuilder.fieldName()))
-            .append("`, '");
+        sb.append("contain(`").append(Schema.encodeFieldWithDot(termsQueryBuilder.fieldName())).append("`, '");
         for (Object value : termsQueryBuilder.values()) {
             sb.append(value).append("|");
         }

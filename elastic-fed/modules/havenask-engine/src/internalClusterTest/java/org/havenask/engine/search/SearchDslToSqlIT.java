@@ -15,8 +15,8 @@
 package org.havenask.engine.search;
 
 import com.carrotsearch.randomizedtesting.annotations.ThreadLeakFilters;
-import org.havenask.ArpcThreadLeakFilter;
-import org.havenask.HttpThreadLeakFilter;
+import org.havenask.ArpcThreadLeakFilterIT;
+import org.havenask.HttpThreadLeakFilterIT;
 import org.havenask.action.search.SearchResponse;
 import org.havenask.common.settings.Settings;
 import org.havenask.engine.HavenaskInternalClusterTestCase;
@@ -29,9 +29,10 @@ import java.util.concurrent.TimeUnit;
 
 import static org.havenask.test.HavenaskIntegTestCase.Scope.SUITE;
 
-@ThreadLeakFilters(filters = {HttpThreadLeakFilter.class, ArpcThreadLeakFilter.class})
+@ThreadLeakFilters(filters = { HttpThreadLeakFilterIT.class, ArpcThreadLeakFilterIT.class })
 @HavenaskIntegTestCase.ClusterScope(supportsDedicatedMasters = false, numDataNodes = 1, numClientNodes = 0, scope = SUITE)
-public class SearchDslToSqlIT extends HavenaskIntegTestCase {
+@HavenaskIntegTestCase.SuiteScopeTestCase
+public class SearchDslToSqlIT extends HavenaskInternalClusterTestCase {
 
     private static final String INDEX_NAME = "test_dsl2sql";
 
@@ -39,32 +40,53 @@ public class SearchDslToSqlIT extends HavenaskIntegTestCase {
     @Override
     protected void setupSuiteScopeCluster() {
         prepareCreate(INDEX_NAME).setSettings(
-                        Settings.builder()
-                                .put("index.number_of_shards", 1)
-                                .put("index.number_of_replicas", 0)
-                                // .put(EngineSettings.ENGINE_TYPE_SETTING.getKey(), EngineSettings.ENGINE_HAVENASK)
-                                .build()
-                )
-                .addMapping("doc", "field1", "type=text")
-                .addMapping("doc", "field2", "type=integer")
-                .addMapping("doc", "field3", "type=keyword")
-                .addMapping("doc", "field4", "type=long")
-                .addMapping("doc", "field5", "type=double")
-                .addMapping("doc", "field6", "type=date")
-                .addMapping("doc", "field7", "type=boolean")
-                .execute().actionGet();
+            Settings.builder()
+                .put("index.number_of_shards", 1)
+                .put("index.number_of_replicas", 0)
+                .put(EngineSettings.ENGINE_TYPE_SETTING.getKey(), EngineSettings.ENGINE_HAVENASK)
+                .build()
+        )
+            .addMapping(
+                "_doc",
+                "field1",
+                "type=text",
+                "field2",
+                "type=integer",
+                "field3",
+                "type=keyword",
+                "field4",
+                "type=long",
+                "field5",
+                "type=double",
+                "field6",
+                "type=date",
+                "field7",
+                "type=boolean"
+            )
+            .execute()
+            .actionGet();
         ensureGreen();
         for (int i = 0; i < 100; i++) {
             // index data with i
             client().prepareIndex(INDEX_NAME, "_doc", String.valueOf(i))
-                    .setSource("field1", "hello world" + i,
-                            "field2", i,
-                            "field3", "value" + i,
-                            "field4", i,
-                            "field5", i,
-                            "field6", i,
-                            "field7", i % 2 == 0)
-                    .execute().actionGet();
+                .setSource(
+                    "field1",
+                    "hello world" + i,
+                    "field2",
+                    i,
+                    "field3",
+                    "value" + i,
+                    "field4",
+                    i,
+                    "field5",
+                    i,
+                    "field6",
+                    i,
+                    "field7",
+                    i % 2 == 0
+                )
+                .execute()
+                .actionGet();
         }
     }
 
@@ -102,9 +124,7 @@ public class SearchDslToSqlIT extends HavenaskIntegTestCase {
     public void testBoolQuery() throws Exception {
         SearchSourceBuilder builder = new SearchSourceBuilder();
         builder.query(
-            QueryBuilders.boolQuery()
-                .filter(QueryBuilders.termQuery("field2", 1))
-                .filter(QueryBuilders.termQuery("field3", "value1"))
+            QueryBuilders.boolQuery().filter(QueryBuilders.termQuery("field2", 1)).filter(QueryBuilders.termQuery("field3", "value1"))
         );
 
         assertBusy(() -> {
@@ -121,9 +141,7 @@ public class SearchDslToSqlIT extends HavenaskIntegTestCase {
     public void testBoolQueryWithShould() throws Exception {
         SearchSourceBuilder builder = new SearchSourceBuilder();
         builder.query(
-            QueryBuilders.boolQuery()
-                .filter(QueryBuilders.termQuery("field2", 1))
-                .should(QueryBuilders.termQuery("field3", "value1"))
+            QueryBuilders.boolQuery().filter(QueryBuilders.termQuery("field2", 1)).should(QueryBuilders.termQuery("field3", "value1"))
         );
 
         assertBusy(() -> {
@@ -140,9 +158,7 @@ public class SearchDslToSqlIT extends HavenaskIntegTestCase {
     public void testBoolQueryWithMust() throws Exception {
         SearchSourceBuilder builder = new SearchSourceBuilder();
         builder.query(
-            QueryBuilders.boolQuery()
-                .filter(QueryBuilders.termQuery("field2", 1))
-                .must(QueryBuilders.termQuery("field3", "value1"))
+            QueryBuilders.boolQuery().filter(QueryBuilders.termQuery("field2", 1)).must(QueryBuilders.termQuery("field3", "value1"))
         );
 
         assertBusy(() -> {
@@ -159,9 +175,7 @@ public class SearchDslToSqlIT extends HavenaskIntegTestCase {
     public void testBoolQueryWithMustNot() throws Exception {
         SearchSourceBuilder builder = new SearchSourceBuilder();
         builder.query(
-            QueryBuilders.boolQuery()
-                .filter(QueryBuilders.termQuery("field2", 1))
-                .mustNot(QueryBuilders.termQuery("field3", "value1"))
+            QueryBuilders.boolQuery().filter(QueryBuilders.termQuery("field2", 1)).mustNot(QueryBuilders.termQuery("field3", "value1"))
         );
 
         assertBusy(() -> {
@@ -174,9 +188,7 @@ public class SearchDslToSqlIT extends HavenaskIntegTestCase {
     public void testBoolQueryWithFilter() throws Exception {
         SearchSourceBuilder builder = new SearchSourceBuilder();
         builder.query(
-            QueryBuilders.boolQuery()
-                .filter(QueryBuilders.termQuery("field2", 1))
-                .filter(QueryBuilders.termQuery("field3", "value1"))
+            QueryBuilders.boolQuery().filter(QueryBuilders.termQuery("field2", 1)).filter(QueryBuilders.termQuery("field3", "value1"))
         );
 
         assertBusy(() -> {
@@ -222,7 +234,7 @@ public class SearchDslToSqlIT extends HavenaskIntegTestCase {
     // test query string query
     public void testQueryStringQuery() throws Exception {
         SearchSourceBuilder builder = new SearchSourceBuilder();
-        builder.query(QueryBuilders.queryStringQuery("hello world1"));
+        builder.query(QueryBuilders.queryStringQuery("field1:world1"));
 
         assertBusy(() -> {
             SearchResponse searchResponse = client().prepareSearch(INDEX_NAME).setSource(builder).get();
@@ -236,7 +248,7 @@ public class SearchDslToSqlIT extends HavenaskIntegTestCase {
     // test match
     public void testMatchQuery() throws Exception {
         SearchSourceBuilder builder = new SearchSourceBuilder();
-        builder.query(QueryBuilders.matchQuery("field1", "hello world1"));
+        builder.query(QueryBuilders.matchQuery("field1", "world1"));
 
         assertBusy(() -> {
             SearchResponse searchResponse = client().prepareSearch(INDEX_NAME).setSource(builder).get();
