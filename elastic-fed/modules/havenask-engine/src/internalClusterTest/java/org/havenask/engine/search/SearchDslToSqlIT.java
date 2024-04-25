@@ -139,16 +139,17 @@ public class SearchDslToSqlIT extends HavenaskInternalClusterTestCase {
     public void testBoolQueryWithShould() throws Exception {
         SearchSourceBuilder builder = new SearchSourceBuilder();
         builder.query(
-            QueryBuilders.boolQuery().filter(QueryBuilders.termQuery("field2", 1)).should(QueryBuilders.termQuery("field3", "value1"))
+                QueryBuilders.boolQuery().should(QueryBuilders.termQuery("field3", "value1")).should(QueryBuilders.termQuery("field3", "value2")
         );
 
         assertBusy(() -> {
             SearchResponse searchResponse = client().prepareSearch(INDEX_NAME).setSource(builder).get();
-            assertEquals(1, searchResponse.getHits().getTotalHits().value);
+            assertEquals(2, searchResponse.getHits().getTotalHits().value);
             // check value
-            assertEquals(1, searchResponse.getHits().getHits()[0].getSourceAsMap().get("field2"));
-            assertEquals("value1", searchResponse.getHits().getHits()[0].getSourceAsMap().get("field3"));
-            assertEquals("1", searchResponse.getHits().getHits()[0].getId());
+            for (int i = 1; i < 3; i++) {
+                assertEquals("value" + i, searchResponse.getHits().getHits()[i - 1].getSourceAsMap().get("field3"));
+                assertEquals(String.valueOf(i), searchResponse.getHits().getHits()[i - 1].getId());
+            }
         }, 5, TimeUnit.SECONDS);
     }
 
@@ -260,10 +261,10 @@ public class SearchDslToSqlIT extends HavenaskInternalClusterTestCase {
     // test match all
     public void testMatchAllQuery() throws Exception {
         SearchSourceBuilder builder = new SearchSourceBuilder();
-        builder.query(QueryBuilders.matchAllQuery());
+        builder.query(QueryBuilders.matchAllQuery()).size(100);
 
         assertBusy(() -> {
-            SearchResponse searchResponse = client().prepareSearch(INDEX_NAME).setSize(100).setSource(builder).get();
+            SearchResponse searchResponse = client().prepareSearch(INDEX_NAME).setSource(builder).get();
             assertEquals(100, searchResponse.getHits().getTotalHits().value);
         }, 5, TimeUnit.SECONDS);
     }
@@ -271,7 +272,7 @@ public class SearchDslToSqlIT extends HavenaskInternalClusterTestCase {
     // test exists
     public void testExistsQuery() throws Exception {
         SearchSourceBuilder builder = new SearchSourceBuilder();
-        builder.query(QueryBuilders.existsQuery("field1"));
+        builder.query(QueryBuilders.existsQuery("field1")).size(100);
 
         assertBusy(() -> {
             SearchResponse searchResponse = client().prepareSearch(INDEX_NAME).setSource(builder).get();
