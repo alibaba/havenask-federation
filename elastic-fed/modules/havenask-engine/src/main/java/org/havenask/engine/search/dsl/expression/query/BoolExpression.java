@@ -85,7 +85,9 @@ public class BoolExpression extends Expression {
         }
 
         if (should.size() > 0 && minimumShouldMatch != null) {
-            throw new IllegalArgumentException("minimumShouldMatch not supported with should clauses");
+            if (false == minimumShouldMatch.equals("0") && false == minimumShouldMatch.equals("1")) {
+                throw new IllegalArgumentException("minimumShouldMatch not supported with should clauses");
+            }
         }
 
         StringBuilder shouldStr = new StringBuilder();
