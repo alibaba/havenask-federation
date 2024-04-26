@@ -25,25 +25,34 @@ import java.util.stream.Collectors;
 import org.havenask.engine.search.dsl.expression.aggregation.AvgExpression;
 import org.havenask.engine.search.dsl.expression.aggregation.BucketExpression;
 import org.havenask.engine.search.dsl.expression.aggregation.CountExpression;
+import org.havenask.engine.search.dsl.expression.aggregation.DateHistogramExpression;
 import org.havenask.engine.search.dsl.expression.aggregation.GroupByExpression;
 import org.havenask.engine.search.dsl.expression.aggregation.MetricExpression;
 import org.havenask.engine.search.dsl.expression.aggregation.SumExpression;
 import org.havenask.engine.search.dsl.expression.aggregation.TermsExpression;
 import org.havenask.engine.search.dsl.expression.query.BoolExpression;
+import org.havenask.engine.search.dsl.expression.query.ExistExpression;
 import org.havenask.engine.search.dsl.expression.query.MatchAllExpression;
 import org.havenask.engine.search.dsl.expression.query.MatchExpression;
+import org.havenask.engine.search.dsl.expression.query.MatchPhraseExpression;
+import org.havenask.engine.search.dsl.expression.query.QueryStringExpression;
 import org.havenask.engine.search.dsl.expression.query.RangeExpression;
 import org.havenask.engine.search.dsl.expression.query.TermExpression;
 import org.havenask.engine.search.internal.HavenaskScroll;
 import org.havenask.index.query.BoolQueryBuilder;
+import org.havenask.index.query.ExistsQueryBuilder;
 import org.havenask.index.query.MatchAllQueryBuilder;
+import org.havenask.index.query.MatchPhraseQueryBuilder;
 import org.havenask.index.query.MatchQueryBuilder;
 import org.havenask.index.query.QueryBuilder;
 import org.havenask.index.query.QueryBuilders;
+import org.havenask.index.query.QueryStringQueryBuilder;
 import org.havenask.index.query.RangeQueryBuilder;
 import org.havenask.index.query.TermQueryBuilder;
+import org.havenask.index.query.TermsQueryBuilder;
 import org.havenask.search.aggregations.AggregationBuilder;
 import org.havenask.search.aggregations.AggregatorFactories;
+import org.havenask.search.aggregations.bucket.histogram.DateHistogramAggregationBuilder;
 import org.havenask.search.aggregations.bucket.terms.TermsAggregationBuilder;
 import org.havenask.search.aggregations.metrics.AvgAggregationBuilder;
 import org.havenask.search.aggregations.metrics.SumAggregationBuilder;
@@ -156,6 +165,8 @@ public class SourceExpression extends Expression {
                         if (agg instanceof TermsAggregationBuilder) {
                             groupBy.add(new TermsExpression(((TermsAggregationBuilder) agg)));
                             limit.updateAndGet(v -> v * ((TermsAggregationBuilder) agg).size());
+                        } else if (agg instanceof DateHistogramAggregationBuilder) {
+                            groupBy.add(new DateHistogramExpression(((DateHistogramAggregationBuilder) agg)));
                         } else {
                             throw new IllegalArgumentException("Unsupported aggregation type: " + agg.getClass().getName());
                         }
@@ -185,16 +196,6 @@ public class SourceExpression extends Expression {
         return aggregationSQLExpressions;
     }
 
-    private MetricExpression visitMetricExpression(AggregationBuilder aggregationBuilder) {
-        if (aggregationBuilder instanceof SumAggregationBuilder) {
-            return new SumExpression((SumAggregationBuilder) aggregationBuilder);
-        } else if (aggregationBuilder instanceof AvgAggregationBuilder) {
-            return new AvgExpression((AvgAggregationBuilder) aggregationBuilder);
-        } else {
-            throw new IllegalArgumentException("Unsupported aggregation type: " + aggregationBuilder.getClass().getName());
-        }
-    }
-
     public static List<GroupByExpression> visitAggregation(AggregationBuilder aggregationBuilder) {
         if (aggregationBuilder instanceof ValuesSourceAggregationBuilder.LeafOnly) {
             return List.of();
@@ -216,6 +217,16 @@ public class SourceExpression extends Expression {
         }
     }
 
+    private MetricExpression visitMetricExpression(AggregationBuilder aggregationBuilder) {
+        if (aggregationBuilder instanceof SumAggregationBuilder) {
+            return new SumExpression((SumAggregationBuilder) aggregationBuilder);
+        } else if (aggregationBuilder instanceof AvgAggregationBuilder) {
+            return new AvgExpression((AvgAggregationBuilder) aggregationBuilder);
+        } else {
+            throw new IllegalArgumentException("Unsupported aggregation type: " + aggregationBuilder.getClass().getName());
+        }
+    }
+
     public static Expression visitQuery(QueryBuilder query) {
         if (query == null) {
             return new MatchAllExpression();
@@ -231,6 +242,14 @@ public class SourceExpression extends Expression {
             return new RangeExpression((RangeQueryBuilder) query);
         } else if (query instanceof MatchQueryBuilder) {
             return new MatchExpression(((MatchQueryBuilder) query));
+        } else if (query instanceof QueryStringQueryBuilder) {
+            return new QueryStringExpression((QueryStringQueryBuilder) query);
+        } else if (query instanceof MatchPhraseQueryBuilder) {
+            return new MatchPhraseExpression((MatchPhraseQueryBuilder) query);
+        } else if (query instanceof TermsQueryBuilder) {
+            return new org.havenask.engine.search.dsl.expression.query.TermsExpression((TermsQueryBuilder) query);
+        } else if (query instanceof ExistsQueryBuilder) {
+            return new ExistExpression((ExistsQueryBuilder) query);
         } else {
             throw new IllegalArgumentException("Unsupported query type: " + query.getClass().getName());
         }

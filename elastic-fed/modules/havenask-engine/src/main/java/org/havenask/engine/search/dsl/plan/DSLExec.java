@@ -19,7 +19,6 @@ import java.util.Map;
 import java.util.Objects;
 
 import org.havenask.action.search.SearchResponse;
-import org.havenask.action.search.SearchResponseSections;
 import org.havenask.action.search.ShardSearchFailure;
 import org.havenask.cluster.metadata.IndexMetadata;
 import org.havenask.engine.search.action.TransportHavenaskSearchHelper;
@@ -27,9 +26,9 @@ import org.havenask.engine.search.dsl.DSLSession;
 import org.havenask.engine.search.dsl.expression.SourceExpression;
 import org.havenask.engine.search.internal.HavenaskScroll;
 import org.havenask.search.SearchHits;
-import org.havenask.search.aggregations.Aggregations;
 import org.havenask.search.aggregations.InternalAggregations;
 import org.havenask.search.builder.SearchSourceBuilder;
+import org.havenask.search.internal.InternalSearchResponse;
 
 public class DSLExec implements Executable<SearchResponse> {
     private final SearchSourceBuilder dsl;
@@ -58,7 +57,7 @@ public class DSLExec implements Executable<SearchResponse> {
         }
 
         // exec aggregation
-        Aggregations aggregations = InternalAggregations.EMPTY;
+        InternalAggregations aggregations = InternalAggregations.EMPTY;
         if (sourceExpression.getAggregationSQLExpressions(session.getIndex()).size() > 0) {
             AggExec aggExec = new AggExec(sourceExpression.getAggregationSQLExpressions(session.getIndex()));
             aggregations = aggExec.execute(session);
@@ -74,9 +73,9 @@ public class DSLExec implements Executable<SearchResponse> {
         }
 
         // build response
-        SearchResponseSections searchResponseSections = new SearchResponseSections(searchHits, aggregations, null, false, false, null, 1);
+        InternalSearchResponse internalSearchResponse = new InternalSearchResponse(searchHits, aggregations, null, null, false, false, 1);
         return new SearchResponse(
-            searchResponseSections,
+            internalSearchResponse,
             scrollId,
             indexMetadata.getNumberOfShards(),
             indexMetadata.getNumberOfShards(),

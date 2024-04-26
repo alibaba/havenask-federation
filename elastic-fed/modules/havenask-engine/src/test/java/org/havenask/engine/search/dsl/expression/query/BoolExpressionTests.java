@@ -77,4 +77,47 @@ public class BoolExpressionTests extends HavenaskTestCase {
         String actualTranslate = whereExpression.translate();
         assertEquals("WHERE (`field1` = 'value1' OR `field2` = 'value2' OR `field2` = 'value3')", actualTranslate);
     }
+
+    // test bool query has inner bool query
+    public void testTranslateInnerBool() {
+        SearchSourceBuilder builder = new SearchSourceBuilder().query(
+            QueryBuilders.boolQuery()
+                .must(QueryBuilders.termQuery("field1", "value1"))
+                .must(
+                    QueryBuilders.boolQuery()
+                        .must(QueryBuilders.termQuery("field2", "value2"))
+                        .must(QueryBuilders.termQuery("field2", "value3"))
+                )
+        );
+
+        Expression expression = SourceExpression.visitQuery(builder.query());
+        WhereExpression whereExpression = new WhereExpression(expression);
+        String actualTranslate = whereExpression.translate();
+        assertEquals("WHERE (`field1` = 'value1' AND (`field2` = 'value2' AND `field2` = 'value3'))", actualTranslate);
+    }
+
+    // test bool query has many inner bool query
+    public void testTranslateManyInnerBool() {
+        SearchSourceBuilder builder = new SearchSourceBuilder().query(
+            QueryBuilders.boolQuery()
+                .filter(QueryBuilders.termQuery("field1", "value1"))
+                .must(
+                    QueryBuilders.boolQuery()
+                        .mustNot(QueryBuilders.termQuery("field2", "value2"))
+                        .must(
+                            QueryBuilders.boolQuery()
+                                .must(QueryBuilders.termQuery("field3", "value3"))
+                                .filter(QueryBuilders.termQuery("field4", "value4"))
+                        )
+                )
+        );
+
+        Expression expression = SourceExpression.visitQuery(builder.query());
+        WhereExpression whereExpression = new WhereExpression(expression);
+        String actualTranslate = whereExpression.translate();
+        assertEquals(
+            "WHERE (((`field3` = 'value3') AND (`field4` = 'value4')) AND NOT (`field2` = 'value2')) AND (`field1` = 'value1')",
+            actualTranslate
+        );
+    }
 }
