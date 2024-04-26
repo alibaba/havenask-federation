@@ -79,7 +79,11 @@ public class TransportClearScrollAction extends HandledTransportAction<ClearScro
             List<String> havenaskScrollIds = new ArrayList<>();
             seperateElasticScrollIdAndHavenaskScrollId(request.getScrollIds(), elasticScrollIds, havenaskScrollIds);
             if (!havenaskScrollIds.isEmpty()) {
+                ClearScrollRequest havenaskClearScrollRequest = new ClearScrollRequest();
+                havenaskClearScrollRequest.setScrollIds(havenaskScrollIds);
                 if (!elasticScrollIds.isEmpty()) {
+                    ClearScrollRequest esClearScrollRequest = new ClearScrollRequest();
+                    esClearScrollRequest.setScrollIds(elasticScrollIds);
                     ActionListener<ClearScrollResponse> havenaskListener= new ActionListener<ClearScrollResponse>() {
                         @Override
                         public void onResponse(ClearScrollResponse clearScrollResponse) {
@@ -95,18 +99,18 @@ public class TransportClearScrollAction extends HandledTransportAction<ClearScro
                     transportService.sendRequest(
                             clusterService.state().nodes().getLocalNode(),
                             CLEAR_HAVENASK_SCROLL_ACTION,
-                            request,
+                            havenaskClearScrollRequest,
                             new ActionListenerResponseHandler<>(havenaskListener, ClearScrollAction.INSTANCE.getResponseReader())
                     );
 
                     Runnable runnable = new ClearScrollController(
-                            request, listener, clusterService.state().nodes(), logger, searchTransportService);
+                            esClearScrollRequest, listener, clusterService.state().nodes(), logger, searchTransportService);
                     runnable.run();
                 } else {
                     transportService.sendRequest(
                             clusterService.state().nodes().getLocalNode(),
                             CLEAR_HAVENASK_SCROLL_ACTION,
-                            request,
+                            havenaskClearScrollRequest,
                             new ActionListenerResponseHandler<>(listener, ClearScrollAction.INSTANCE.getResponseReader())
                     );
                 }
