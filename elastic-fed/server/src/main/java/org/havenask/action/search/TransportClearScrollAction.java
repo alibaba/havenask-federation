@@ -122,7 +122,10 @@ public class TransportClearScrollAction extends HandledTransportAction<ClearScro
 
     private static final String CLEAR_HAVENASK_SCROLL_ACTION = "indices:data/read/havenask/scroll/clear";
 
-    private void seperateElasticScrollIdAndHavenaskScrollId(List<String> scrollIds, List<String> elasticScrollIds, List<String> havenaskScrollIds) throws IOException {
+    private void seperateElasticScrollIdAndHavenaskScrollId(
+            List<String> scrollIds,
+            List<String> elasticScrollIds,
+            List<String> havenaskScrollIds) throws IOException {
         if (scrollIds.size() == 1 && "_all".equals(scrollIds.get(0))) {
             elasticScrollIds.add(scrollIds.get(0));
             havenaskScrollIds.add(scrollIds.get(0));

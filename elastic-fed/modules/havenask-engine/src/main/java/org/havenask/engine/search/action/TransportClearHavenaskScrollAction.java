@@ -24,11 +24,13 @@ import org.havenask.action.support.HandledTransportAction;
 import org.havenask.cluster.service.ClusterService;
 import org.havenask.common.inject.Inject;
 import org.havenask.engine.HavenaskScrollService;
+import org.havenask.engine.search.internal.HavenaskScrollContext;
 import org.havenask.tasks.Task;
 import org.havenask.threadpool.ThreadPool;
 import org.havenask.transport.TransportService;
 
 import java.util.List;
+import java.util.Objects;
 
 public class TransportClearHavenaskScrollAction extends HandledTransportAction<ClearScrollRequest, ClearScrollResponse> {
     private static final Logger logger = LogManager.getLogger(TransportClearHavenaskScrollAction.class);
@@ -58,12 +60,15 @@ public class TransportClearHavenaskScrollAction extends HandledTransportAction<C
                 total = havenaskScrollService.getActiveContextSize();
                 havenaskScrollService.removeAllHavenaskScrollContext();
                 listener.onResponse(new ClearScrollResponse(true, total));
+                return;
             }
 
             for (String scrollId : request.getScrollIds()) {
                 ParsedHavenaskScrollId parsedScrollId = TransportHavenaskSearchHelper.parseHavenaskScrollId(scrollId);
-                havenaskScrollService.removeScrollContext(parsedScrollId.getScrollSessionId());
-                total++;
+                HavenaskScrollContext removed = havenaskScrollService.removeScrollContext(parsedScrollId.getScrollSessionId());
+                if (Objects.nonNull(removed)) {
+                    total++;
+                }
             }
             listener.onResponse(new ClearScrollResponse(true, total));
         } catch (Exception e) {
