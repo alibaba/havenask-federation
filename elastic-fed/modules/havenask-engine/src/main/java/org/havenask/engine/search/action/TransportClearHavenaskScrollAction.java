@@ -24,55 +24,45 @@ import org.havenask.action.support.HandledTransportAction;
 import org.havenask.cluster.service.ClusterService;
 import org.havenask.common.inject.Inject;
 import org.havenask.engine.HavenaskScrollService;
-import org.havenask.engine.search.internal.HavenaskScrollContext;
 import org.havenask.tasks.Task;
 import org.havenask.threadpool.ThreadPool;
 import org.havenask.transport.TransportService;
 
-import java.util.List;
-import java.util.Objects;
-
 public class TransportClearHavenaskScrollAction extends HandledTransportAction<ClearScrollRequest, ClearScrollResponse> {
     private static final Logger logger = LogManager.getLogger(TransportClearHavenaskScrollAction.class);
     private ClusterService clusterService;
-    private TransportService transportService;
+    private HavenaskSearchTransportService havenaskSearchTransportService;
     private HavenaskScrollService havenaskScrollService;
 
     @Inject
     public TransportClearHavenaskScrollAction(
         ClusterService clusterService,
         TransportService transportService,
+        HavenaskSearchTransportService havenaskSearchTransportService,
         HavenaskScrollService havenaskScrollService,
         ActionFilters actionFilters
     ) {
         super(ClearHavenaskScrollAction.NAME, transportService, actionFilters, ClearScrollRequest::new, ThreadPool.Names.SEARCH);
         this.clusterService = clusterService;
-        this.transportService = transportService;
+        this.havenaskSearchTransportService = havenaskSearchTransportService;
+        HavenaskSearchTransportService.registerRequestHandler(transportService, havenaskScrollService);
         this.havenaskScrollService = havenaskScrollService;
     }
 
     @Override
     protected void doExecute(Task task, ClearScrollRequest request, final ActionListener<ClearScrollResponse> listener) {
         try {
-            int total = 0;
-            List<String> scrollIds = request.getScrollIds();
-            if (scrollIds.size() == 1 && "_all".equals(scrollIds.get(0))) {
-                total = havenaskScrollService.getActiveContextSize();
-                havenaskScrollService.removeAllHavenaskScrollContext();
-                listener.onResponse(new ClearScrollResponse(true, total));
-                return;
-            }
-
-            for (String scrollId : request.getScrollIds()) {
-                ParsedHavenaskScrollId parsedScrollId = TransportHavenaskSearchHelper.parseHavenaskScrollId(scrollId);
-                HavenaskScrollContext removed = havenaskScrollService.removeScrollContext(parsedScrollId.getScrollSessionId());
-                if (Objects.nonNull(removed)) {
-                    total++;
-                }
-            }
-            listener.onResponse(new ClearScrollResponse(true, total));
+            Runnable runnable = new ClearHavenaskScrollController(
+                request,
+                listener,
+                clusterService.state().nodes(),
+                logger,
+                havenaskSearchTransportService
+            );
+            runnable.run();
         } catch (Exception e) {
             listener.onFailure(e);
         }
     }
+
 }

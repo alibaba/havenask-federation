@@ -68,6 +68,9 @@ public class TransportHavenaskSearchScrollAction extends HandledTransportAction<
             // 如果不是本节点的处理内容，则转发到对应节点进行处理
             if (!clusterService.localNode().getId().equals(havenaskScrollId.getNodeId())) {
                 DiscoveryNode targetNode = clusterService.state().nodes().get(havenaskScrollId.getNodeId());
+                if (Objects.isNull(targetNode)) {
+                    throw new HavenaskException("no havenask node was found, nodeId: " + havenaskScrollId.getNodeId());
+                }
                 TransportResponseHandler<SearchResponse> responseHandler = new ActionListenerResponseHandler<>(
                     listener,
                     HavenaskSearchScrollAction.INSTANCE.getResponseReader()

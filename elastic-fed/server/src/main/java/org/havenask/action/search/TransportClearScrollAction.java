@@ -77,7 +77,7 @@ public class TransportClearScrollAction extends HandledTransportAction<ClearScro
         try {
             List<String> elasticScrollIds = new ArrayList<>();
             List<String> havenaskScrollIds = new ArrayList<>();
-            seperateElasticScrollIdAndHavenaskScrollId(request.getScrollIds(), elasticScrollIds, havenaskScrollIds);
+            separateElasticScrollIdAndHavenaskScrollId(request.getScrollIds(), elasticScrollIds, havenaskScrollIds);
             if (!havenaskScrollIds.isEmpty()) {
                 ClearScrollRequest havenaskClearScrollRequest = new ClearScrollRequest();
                 havenaskClearScrollRequest.setScrollIds(havenaskScrollIds);
@@ -126,7 +126,7 @@ public class TransportClearScrollAction extends HandledTransportAction<ClearScro
 
     private static final String CLEAR_HAVENASK_SCROLL_ACTION = "indices:data/read/havenask/scroll/clear";
 
-    private void seperateElasticScrollIdAndHavenaskScrollId(
+    private void separateElasticScrollIdAndHavenaskScrollId(
             List<String> scrollIds,
             List<String> elasticScrollIds,
             List<String> havenaskScrollIds) throws IOException {
