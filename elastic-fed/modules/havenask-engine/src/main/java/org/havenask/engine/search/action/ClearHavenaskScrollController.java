@@ -147,7 +147,7 @@ public class ClearHavenaskScrollController implements Runnable {
     }
 
     private void onFailedFreedHavenaskScrollContext(Throwable e, DiscoveryNode node) {
-        logger.warn(() -> new ParameterizedMessage("Clear SC failed on node[{}]", node), e);
+        logger.warn(() -> new ParameterizedMessage("Clear havenask SC failed on node[{}]", node), e);
         hasFailed.set(true);
         if (expectedOps.countDown()) {
             listener.onResponse(new ClearScrollResponse(false, freedHavenaskScrollContext.get()));

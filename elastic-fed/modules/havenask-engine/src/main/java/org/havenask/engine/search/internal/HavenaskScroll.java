@@ -16,6 +16,8 @@ package org.havenask.engine.search.internal;
 
 import org.havenask.search.Scroll;
 
+import java.util.Objects;
+
 public class HavenaskScroll {
     public static final String SCROLL_ORDER_BY = "ORDER BY `_id` ASC";
     private String nodeId;
@@ -41,5 +43,9 @@ public class HavenaskScroll {
 
     public Scroll getScroll() {
         return scroll;
+    }
+
+    public static boolean hasLastEmittedDoc(HavenaskScroll havenaskScroll) {
+        return Objects.nonNull(havenaskScroll) && Objects.nonNull(havenaskScroll.getLastEmittedDocId());
     }
 }

@@ -125,7 +125,7 @@ public class QuerySQLExpression extends Expression {
                 } else {
                     sb.append("AND ").append(knnWhere).append(" ");
                 }
-                if (Objects.nonNull(havenaskScroll) && Objects.nonNull(havenaskScroll.getLastEmittedDocId())) {
+                if (HavenaskScroll.hasLastEmittedDoc(havenaskScroll)) {
                     sb.append("AND `_id` > '").append(havenaskScroll.getLastEmittedDocId()).append("' ");
                 }
             } else {
@@ -133,7 +133,7 @@ public class QuerySQLExpression extends Expression {
             }
         }
 
-        if (Objects.nonNull(havenaskScroll) && Objects.nonNull(havenaskScroll.getLastEmittedDocId())) {
+        if (HavenaskScroll.hasLastEmittedDoc(havenaskScroll)) {
             if ((Objects.nonNull(where) && !where.translate().isEmpty()) || !knnExpressions.isEmpty()) {
                 sb.append("AND `_id` > '").append(havenaskScroll.getLastEmittedDocId()).append("' ");
             } else {
@@ -144,7 +144,7 @@ public class QuerySQLExpression extends Expression {
         // translate order by
         if (Objects.nonNull(havenaskScroll)) {
             if (false == knnExpressions.isEmpty()) {
-                throw new IllegalArgumentException("havenask scroll is not supported when sort is specified");
+                throw new IllegalArgumentException("havenask scroll is not supported when contains knn query");
             } else if (false == orderByStr.isEmpty()) {
                 if (!orderByStr.contains(HavenaskScroll.SCROLL_ORDER_BY)) {
                     throw new IllegalArgumentException("havenask scroll is not supported when sort is specified");

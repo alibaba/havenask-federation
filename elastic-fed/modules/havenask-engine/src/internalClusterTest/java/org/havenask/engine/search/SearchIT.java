@@ -43,6 +43,7 @@ import org.havenask.index.reindex.ReindexAction;
 import org.havenask.index.reindex.ReindexRequestBuilder;
 import org.havenask.search.builder.KnnSearchBuilder;
 import org.havenask.search.builder.SearchSourceBuilder;
+import org.havenask.search.slice.SliceBuilder;
 import org.havenask.test.HavenaskIntegTestCase;
 
 import java.io.IOException;
@@ -51,7 +52,7 @@ import java.util.concurrent.TimeUnit;
 import static org.havenask.test.HavenaskIntegTestCase.Scope.SUITE;
 
 @ThreadLeakFilters(filters = { HttpThreadLeakFilterIT.class, ArpcThreadLeakFilterIT.class })
-@HavenaskIntegTestCase.ClusterScope(supportsDedicatedMasters = false, numDataNodes = 1, numClientNodes = 0, scope = SUITE)
+@HavenaskIntegTestCase.ClusterScope(supportsDedicatedMasters = false, numDataNodes = 2, numClientNodes = 0, scope = SUITE)
 public class SearchIT extends HavenaskInternalClusterTestCase {
     private static final Logger logger = LogManager.getLogger(SearchIT.class);
 
@@ -386,10 +387,97 @@ public class SearchIT extends HavenaskInternalClusterTestCase {
         assertFalse("Index should have been deleted but still exists", exists);
     }
 
+    public void testScrollHavenaskIndexWithSlice() throws Exception {
+        String index = "scroll_havenask_index_test";
+        // prepare index
+        prepareReindexAndScrollIndex(index);
+
+        // put docs
+        int docNum = randomIntBetween(100, 200);
+        for (int i = 0; i < docNum; i++) {
+            client().index(
+                new IndexRequest(index).id(String.valueOf(i)).source(Map.of("name", randomAlphaOfLength(6), "seq", i), XContentType.JSON)
+            );
+        }
+
+        // check doc
+        SearchSourceBuilder checkSearchSourceBuilder = new SearchSourceBuilder();
+        checkSearchSourceBuilder.size(docNum);
+
+        assertBusy(() -> {
+            SearchResponse searchResponse = client().prepareSearch(index).setSource(checkSearchSourceBuilder).get();
+            assertEquals(docNum, searchResponse.getHits().getTotalHits().value);
+        }, 5, TimeUnit.SECONDS);
+
+        // scroll search
+        int resCount = 0;
+
+        SearchSourceBuilder firstSliceSearchSourceBuilder = new SearchSourceBuilder();
+        firstSliceSearchSourceBuilder.size(10);
+        firstSliceSearchSourceBuilder.slice(new SliceBuilder(0, 2));
+        SearchResponse firstSliceSearchResponse = client().prepareSearch(index)
+            .setSource(firstSliceSearchSourceBuilder)
+            .setScroll(TimeValue.timeValueMinutes(1))
+            .setSize(10)
+            .get();
+        assertEquals(10, firstSliceSearchResponse.getHits().getTotalHits().value);
+        resCount += firstSliceSearchResponse.getHits().getTotalHits().value;
+
+        while (true) {
+            firstSliceSearchResponse = client().prepareSearchScroll(firstSliceSearchResponse.getScrollId())
+                .setScroll(TimeValue.timeValueMinutes(1))
+                .get();
+            resCount += firstSliceSearchResponse.getHits().getTotalHits().value;
+            if (firstSliceSearchResponse.getHits().getTotalHits().value == 0) {
+                break;
+            }
+        }
+
+        SearchSourceBuilder secondSliceSearchSourceBuilder = new SearchSourceBuilder();
+        secondSliceSearchSourceBuilder.size(10);
+        secondSliceSearchSourceBuilder.slice(new SliceBuilder(1, 2));
+        SearchResponse secondSliceSearchResponse = client().prepareSearch(index)
+            .setSource(secondSliceSearchSourceBuilder)
+            .setScroll(TimeValue.timeValueMinutes(1))
+            .setSize(10)
+            .get();
+        assertEquals(10, secondSliceSearchResponse.getHits().getTotalHits().value);
+        resCount += secondSliceSearchResponse.getHits().getTotalHits().value;
+
+        while (true) {
+            secondSliceSearchResponse = client().prepareSearchScroll(secondSliceSearchResponse.getScrollId())
+                .setScroll(TimeValue.timeValueMinutes(1))
+                .get();
+            resCount += secondSliceSearchResponse.getHits().getTotalHits().value;
+            if (secondSliceSearchResponse.getHits().getTotalHits().value == 0) {
+                break;
+            }
+        }
+
+        assertEquals(docNum, resCount);
+
+        // clean scoll id
+        ClearScrollRequest clearScrollRequest = new ClearScrollRequest();
+        clearScrollRequest.addScrollId(firstSliceSearchResponse.getScrollId());
+        clearScrollRequest.addScrollId(secondSliceSearchResponse.getScrollId());
+        ClearScrollResponse clearScrollResponse = client().clearScroll(clearScrollRequest).actionGet();
+        assertTrue(clearScrollResponse.isSucceeded());
+        assertEquals(2, clearScrollResponse.getNumFreed());
+
+        try {
+            AcknowledgedResponse deleteIndexResponse = client().admin().indices().prepareDelete(index).get();
+            assertTrue(deleteIndexResponse.isAcknowledged());
+        } catch (IndexNotFoundException e) {
+            fail("Index was not found to delete: " + index);
+        }
+        boolean exists = client().admin().indices().prepareExists(index).get().isExists();
+        assertFalse("Index should have been deleted but still exists", exists);
+    }
+
     public void prepareReindexAndScrollIndex(String index) throws IOException {
         XContentBuilder mappingBuilder = XContentFactory.jsonBuilder();
         Settings settings = Settings.builder()
-            .put("index.number_of_shards", 1)
+            .put("index.number_of_shards", 2)
             .put("index.number_of_replicas", 0)
             .put(EngineSettings.ENGINE_TYPE_SETTING.getKey(), EngineSettings.ENGINE_HAVENASK)
             .build();

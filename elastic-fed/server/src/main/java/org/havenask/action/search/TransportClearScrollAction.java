@@ -50,6 +50,7 @@ import org.havenask.common.io.stream.NamedWriteableRegistry;
 import org.havenask.tasks.Task;
 import org.havenask.transport.TransportService;
 
+import javax.swing.*;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Base64;
@@ -81,39 +82,20 @@ public class TransportClearScrollAction extends HandledTransportAction<ClearScro
             if (!havenaskScrollIds.isEmpty()) {
                 ClearScrollRequest havenaskClearScrollRequest = new ClearScrollRequest();
                 havenaskClearScrollRequest.setScrollIds(havenaskScrollIds);
-                if (!elasticScrollIds.isEmpty()) {
-                    ClearScrollRequest esClearScrollRequest = new ClearScrollRequest();
-                    esClearScrollRequest.setScrollIds(elasticScrollIds);
-                    ActionListener<ClearScrollResponse> havenaskListener= new ActionListener<ClearScrollResponse>() {
-                        @Override
-                        public void onResponse(ClearScrollResponse clearScrollResponse) {
-
-                        }
-
-                        @Override
-                        public void onFailure(Exception e) {
-                            throw new RuntimeException("clear havenask scrollId failed", e);
-                        }
-                    };
-
-                    transportService.sendRequest(
-                            clusterService.state().nodes().getLocalNode(),
-                            CLEAR_HAVENASK_SCROLL_ACTION,
-                            havenaskClearScrollRequest,
-                            new ActionListenerResponseHandler<>(havenaskListener, ClearScrollAction.INSTANCE.getResponseReader())
-                    );
-
-                    Runnable runnable = new ClearScrollController(
-                            esClearScrollRequest, listener, clusterService.state().nodes(), logger, searchTransportService);
-                    runnable.run();
-                } else {
-                    transportService.sendRequest(
-                            clusterService.state().nodes().getLocalNode(),
-                            CLEAR_HAVENASK_SCROLL_ACTION,
-                            havenaskClearScrollRequest,
-                            new ActionListenerResponseHandler<>(listener, ClearScrollAction.INSTANCE.getResponseReader())
-                    );
-                }
+                ClearScrollRequest esClearScrollRequest = new ClearScrollRequest();
+                esClearScrollRequest.setScrollIds(elasticScrollIds);
+                ActionListener<ClearScrollResponse> elasticSearchListener = ActionListener.wrap(
+                  response ->  transportService.sendRequest(
+                                clusterService.state().nodes().getLocalNode(),
+                                CLEAR_HAVENASK_SCROLL_ACTION,
+                                havenaskClearScrollRequest,
+                                new ActionListenerResponseHandler<>(listener, ClearScrollAction.INSTANCE.getResponseReader())
+                        ),
+                    e -> {listener.onFailure(e);}
+                );
+                Runnable runnable = new ClearScrollController(
+                        esClearScrollRequest, elasticSearchListener, clusterService.state().nodes(), logger, searchTransportService);
+                runnable.run();
             } else {
                 Runnable runnable = new ClearScrollController(
                         request, listener, clusterService.state().nodes(), logger, searchTransportService);
