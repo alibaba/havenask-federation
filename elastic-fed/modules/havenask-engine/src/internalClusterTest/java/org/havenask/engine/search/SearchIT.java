@@ -18,6 +18,7 @@ import com.carrotsearch.randomizedtesting.annotations.ThreadLeakFilters;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.havenask.ArpcThreadLeakFilterIT;
+import org.havenask.HavenaskException;
 import org.havenask.HttpThreadLeakFilterIT;
 import org.havenask.action.admin.cluster.health.ClusterHealthRequest;
 import org.havenask.action.admin.cluster.health.ClusterHealthResponse;
@@ -47,6 +48,7 @@ import org.havenask.search.slice.SliceBuilder;
 import org.havenask.test.HavenaskIntegTestCase;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.concurrent.TimeUnit;
 
 import static org.havenask.test.HavenaskIntegTestCase.Scope.SUITE;
@@ -72,7 +74,7 @@ public class SearchIT extends HavenaskInternalClusterTestCase {
 
         assertBusy(() -> {
             SearchResponse searchResponse = client().prepareSearch(index).setSource(searchSourceBuilder).get();
-            assertEquals(docNum, searchResponse.getHits().getTotalHits().value);
+            assertEquals(docNum, searchResponse.getHits().getHits().length);
         }, 5, TimeUnit.SECONDS);
 
         logger.info("testSearch success");
@@ -108,7 +110,7 @@ public class SearchIT extends HavenaskInternalClusterTestCase {
 
         assertBusy(() -> {
             SearchResponse searchResponse = client().prepareSearch(index).setSource(searchSourceBuilder).get();
-            assertEquals(docNum, searchResponse.getHits().getTotalHits().value);
+            assertEquals(docNum, searchResponse.getHits().getHits().length);
         }, 5, TimeUnit.SECONDS);
 
         logger.info("testKnnSearch success");
@@ -299,7 +301,7 @@ public class SearchIT extends HavenaskInternalClusterTestCase {
         searchSourceBuilder.size(docNum);
         assertBusy(() -> {
             SearchResponse searchResponse = client().prepareSearch(sourceIndex).setSource(searchSourceBuilder).get();
-            assertEquals(docNum, searchResponse.getHits().getTotalHits().value);
+            assertEquals(docNum, searchResponse.getHits().getHits().length);
         }, 5, TimeUnit.SECONDS);
 
         // execute reindex
@@ -312,7 +314,7 @@ public class SearchIT extends HavenaskInternalClusterTestCase {
         // check dest index
         assertBusy(() -> {
             SearchResponse searchResponse = client().prepareSearch(destIndex).setSource(searchSourceBuilder).get();
-            assertEquals(docNum, searchResponse.getHits().getTotalHits().value);
+            assertEquals(docNum, searchResponse.getHits().getHits().length);
         }, 5, TimeUnit.SECONDS);
 
         try {
@@ -325,16 +327,23 @@ public class SearchIT extends HavenaskInternalClusterTestCase {
         assertFalse("Index should have been deleted but still exists", exists);
     }
 
-    public void testScrollHavenaskIndex() throws Exception {
-        String index = "scroll_havenask_index_test";
+    public void testScrollHavenaskIndexAndESIndex() throws Exception {
+        String havenaskIndex = "scroll_havenask_index_test";
+        String esIndex = "scroll_es_index_test";
         // prepare index
-        prepareReindexAndScrollIndex(index);
+        prepareReindexAndScrollIndex(havenaskIndex);
+        prepareReindexAndScrollIndex(esIndex, EngineSettings.ENGINE_LUCENE);
 
         // put docs
         int docNum = randomIntBetween(100, 200);
         for (int i = 0; i < docNum; i++) {
             client().index(
-                new IndexRequest(index).id(String.valueOf(i)).source(Map.of("name", randomAlphaOfLength(6), "seq", i), XContentType.JSON)
+                new IndexRequest(havenaskIndex).id(String.valueOf(i))
+                    .source(Map.of("name", "havenask" + randomAlphaOfLength(6), "seq", i), XContentType.JSON)
+            );
+            client().index(
+                new IndexRequest(esIndex).id(String.valueOf(i))
+                    .source(Map.of("name", "es" + randomAlphaOfLength(6), "seq", i), XContentType.JSON)
             );
         }
 
@@ -343,48 +352,69 @@ public class SearchIT extends HavenaskInternalClusterTestCase {
         checkSearchSourceBuilder.size(docNum);
 
         assertBusy(() -> {
-            SearchResponse searchResponse = client().prepareSearch(index).setSource(checkSearchSourceBuilder).get();
-            assertEquals(docNum, searchResponse.getHits().getTotalHits().value);
+            SearchResponse havenaskSearchResponse = client().prepareSearch(havenaskIndex).setSource(checkSearchSourceBuilder).get();
+            assertEquals(docNum, havenaskSearchResponse.getHits().getHits().length);
+            SearchResponse esSearchResponse = client().prepareSearch(havenaskIndex).setSource(checkSearchSourceBuilder).get();
+            assertEquals(docNum, esSearchResponse.getHits().getHits().length);
         }, 5, TimeUnit.SECONDS);
 
-        // scroll search
-        int resCount = 0;
+        // check scroll search
+        java.util.List<String> indices = List.of(havenaskIndex, esIndex);
+        java.util.List<SearchResponse> searchResponses = new ArrayList<>(2);
+        for (int i = 0; i < indices.size(); i++) {
+            int resCount = 0;
 
-        SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-        searchSourceBuilder.size(10);
-        SearchResponse searchResponse = client().prepareSearch(index)
-            .setSource(searchSourceBuilder)
-            .setScroll(TimeValue.timeValueMinutes(1))
-            .setSize(10)
-            .get();
-        assertEquals(10, searchResponse.getHits().getTotalHits().value);
-        resCount += searchResponse.getHits().getTotalHits().value;
-
-        while (true) {
-            SearchResponse scrollResponse = client().prepareSearchScroll(searchResponse.getScrollId())
+            SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+            searchSourceBuilder.size(10);
+            SearchResponse searchResponse = client().prepareSearch(indices.get(i))
+                .setSource(searchSourceBuilder)
                 .setScroll(TimeValue.timeValueMinutes(1))
+                .setSize(10)
                 .get();
-            resCount += scrollResponse.getHits().getTotalHits().value;
-            if (scrollResponse.getHits().getTotalHits().value == 0) {
-                break;
+            assertEquals(10, searchResponse.getHits().getHits().length);
+            resCount += searchResponse.getHits().getHits().length;
+
+            while (true) {
+                searchResponse = client().prepareSearchScroll(searchResponse.getScrollId()).setScroll(TimeValue.timeValueMinutes(1)).get();
+                resCount += searchResponse.getHits().getHits().length;
+                if (searchResponse.getHits().getHits().length == 0) {
+                    break;
+                }
             }
+            assertEquals(docNum, resCount);
+            searchResponses.add(searchResponse);
         }
-        assertEquals(docNum, resCount);
 
         // clean scoll id
-        ClearScrollRequest clearScrollRequest = new ClearScrollRequest();
-        clearScrollRequest.addScrollId(searchResponse.getScrollId());
-        ClearScrollResponse clearScrollResponse = client().clearScroll(clearScrollRequest).actionGet();
-        assertTrue(clearScrollResponse.isSucceeded());
-
-        try {
-            AcknowledgedResponse deleteIndexResponse = client().admin().indices().prepareDelete(index).get();
-            assertTrue(deleteIndexResponse.isAcknowledged());
-        } catch (IndexNotFoundException e) {
-            fail("Index was not found to delete: " + index);
+        for (int i = 0; i < indices.size(); i++) {
+            ClearScrollRequest clearScrollRequest = new ClearScrollRequest();
+            clearScrollRequest.addScrollId(searchResponses.get(i).getScrollId());
+            ClearScrollResponse clearScrollResponse = client().clearScroll(clearScrollRequest).actionGet();
+            assertTrue(clearScrollResponse.isSucceeded());
         }
-        boolean exists = client().admin().indices().prepareExists(index).get().isExists();
-        assertFalse("Index should have been deleted but still exists", exists);
+
+        // assert already clean scroll id
+        java.util.List<String> exceptionMessages = List.of("no havenask scroll context found, sessionId:", "all shards failed");
+        for (int i = 0; i < indices.size(); i++) {
+            String clearedScrollId = searchResponses.get(i).getScrollId();
+            Exception Exception = expectThrows(
+                HavenaskException.class,
+                () -> { client().prepareSearchScroll(clearedScrollId).setScroll(TimeValue.timeValueMinutes(1)).get(); }
+            );
+            assertTrue(Exception.getMessage().contains(exceptionMessages.get(i)));
+        }
+
+        // delete index
+        for (int i = 0; i < indices.size(); i++) {
+            try {
+                AcknowledgedResponse deleteIndexResponse = client().admin().indices().prepareDelete(indices.get(i)).get();
+                assertTrue(deleteIndexResponse.isAcknowledged());
+            } catch (IndexNotFoundException e) {
+                fail("Index was not found to delete: " + havenaskIndex);
+            }
+            boolean exists = client().admin().indices().prepareExists(havenaskIndex).get().isExists();
+            assertFalse("Index should have been deleted but still exists", exists);
+        }
     }
 
     public void testScrollHavenaskIndexWithSlice() throws Exception {
@@ -406,7 +436,7 @@ public class SearchIT extends HavenaskInternalClusterTestCase {
 
         assertBusy(() -> {
             SearchResponse searchResponse = client().prepareSearch(index).setSource(checkSearchSourceBuilder).get();
-            assertEquals(docNum, searchResponse.getHits().getTotalHits().value);
+            assertEquals(docNum, searchResponse.getHits().getHits().length);
         }, 5, TimeUnit.SECONDS);
 
         // scroll search
@@ -420,15 +450,15 @@ public class SearchIT extends HavenaskInternalClusterTestCase {
             .setScroll(TimeValue.timeValueMinutes(1))
             .setSize(10)
             .get();
-        assertEquals(10, firstSliceSearchResponse.getHits().getTotalHits().value);
-        resCount += firstSliceSearchResponse.getHits().getTotalHits().value;
+        assertEquals(10, firstSliceSearchResponse.getHits().getHits().length);
+        resCount += firstSliceSearchResponse.getHits().getHits().length;
 
         while (true) {
             firstSliceSearchResponse = client().prepareSearchScroll(firstSliceSearchResponse.getScrollId())
                 .setScroll(TimeValue.timeValueMinutes(1))
                 .get();
-            resCount += firstSliceSearchResponse.getHits().getTotalHits().value;
-            if (firstSliceSearchResponse.getHits().getTotalHits().value == 0) {
+            resCount += firstSliceSearchResponse.getHits().getHits().length;
+            if (firstSliceSearchResponse.getHits().getHits().length == 0) {
                 break;
             }
         }
@@ -441,15 +471,15 @@ public class SearchIT extends HavenaskInternalClusterTestCase {
             .setScroll(TimeValue.timeValueMinutes(1))
             .setSize(10)
             .get();
-        assertEquals(10, secondSliceSearchResponse.getHits().getTotalHits().value);
-        resCount += secondSliceSearchResponse.getHits().getTotalHits().value;
+        assertEquals(10, secondSliceSearchResponse.getHits().getHits().length);
+        resCount += secondSliceSearchResponse.getHits().getHits().length;
 
         while (true) {
             secondSliceSearchResponse = client().prepareSearchScroll(secondSliceSearchResponse.getScrollId())
                 .setScroll(TimeValue.timeValueMinutes(1))
                 .get();
-            resCount += secondSliceSearchResponse.getHits().getTotalHits().value;
-            if (secondSliceSearchResponse.getHits().getTotalHits().value == 0) {
+            resCount += secondSliceSearchResponse.getHits().getHits().length;
+            if (secondSliceSearchResponse.getHits().getHits().length == 0) {
                 break;
             }
         }
@@ -462,7 +492,18 @@ public class SearchIT extends HavenaskInternalClusterTestCase {
         clearScrollRequest.addScrollId(secondSliceSearchResponse.getScrollId());
         ClearScrollResponse clearScrollResponse = client().clearScroll(clearScrollRequest).actionGet();
         assertTrue(clearScrollResponse.isSucceeded());
-        assertEquals(2, clearScrollResponse.getNumFreed());
+
+        // assert already clean scroll id
+        java.util.List<String> clearedScrollIds = List.of(firstSliceSearchResponse.getScrollId(), secondSliceSearchResponse.getScrollId());
+        for (int i = 0; i < 2; i++) {
+            // assert already clean scroll id
+            String clearedScrollId = clearedScrollIds.get(i);
+            HavenaskException havenaskException = expectThrows(
+                HavenaskException.class,
+                () -> { client().prepareSearchScroll(clearedScrollId).setScroll(TimeValue.timeValueMinutes(1)).get(); }
+            );
+            assertTrue(havenaskException.getMessage().contains("no havenask scroll context found, sessionId:"));
+        }
 
         try {
             AcknowledgedResponse deleteIndexResponse = client().admin().indices().prepareDelete(index).get();
@@ -474,12 +515,12 @@ public class SearchIT extends HavenaskInternalClusterTestCase {
         assertFalse("Index should have been deleted but still exists", exists);
     }
 
-    public void prepareReindexAndScrollIndex(String index) throws IOException {
+    public void prepareReindexAndScrollIndex(String index, String engine) throws IOException {
         XContentBuilder mappingBuilder = XContentFactory.jsonBuilder();
         Settings settings = Settings.builder()
             .put("index.number_of_shards", 2)
             .put("index.number_of_replicas", 0)
-            .put(EngineSettings.ENGINE_TYPE_SETTING.getKey(), EngineSettings.ENGINE_HAVENASK)
+            .put(EngineSettings.ENGINE_TYPE_SETTING.getKey(), engine)
             .build();
         mappingBuilder.startObject();
         {
@@ -511,5 +552,9 @@ public class SearchIT extends HavenaskInternalClusterTestCase {
         );
 
         ensureGreen(index);
+    }
+
+    public void prepareReindexAndScrollIndex(String index) throws IOException {
+        prepareReindexAndScrollIndex(index, EngineSettings.ENGINE_HAVENASK);
     }
 }

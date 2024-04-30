@@ -50,7 +50,6 @@ import org.havenask.common.io.stream.NamedWriteableRegistry;
 import org.havenask.tasks.Task;
 import org.havenask.transport.TransportService;
 
-import javax.swing.*;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Base64;
