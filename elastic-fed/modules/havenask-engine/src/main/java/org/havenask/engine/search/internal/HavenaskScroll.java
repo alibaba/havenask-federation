@@ -48,4 +48,12 @@ public class HavenaskScroll {
     public static boolean hasLastEmittedDoc(HavenaskScroll havenaskScroll) {
         return Objects.nonNull(havenaskScroll) && Objects.nonNull(havenaskScroll.getLastEmittedDocId());
     }
+
+    public String translateLastEmittedDoc() {
+        StringBuilder sb = new StringBuilder();
+        if (Objects.nonNull(lastEmittedDocId)) {
+            sb.append("`_id` > '").append(lastEmittedDocId).append("'");
+        }
+        return sb.toString();
+    }
 }

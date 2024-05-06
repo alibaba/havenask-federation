@@ -126,7 +126,7 @@ public class QuerySQLExpression extends Expression {
                     sb.append("AND ").append(knnWhere).append(" ");
                 }
                 if (HavenaskScroll.hasLastEmittedDoc(havenaskScroll)) {
-                    sb.append("AND `_id` > '").append(havenaskScroll.getLastEmittedDocId()).append("' ");
+                    sb.append("AND ").append(havenaskScroll.translateLastEmittedDoc()).append(" ");
                 }
             } else {
                 sb.append("WHERE ").append(knnWhere).append(" ");
@@ -135,9 +135,9 @@ public class QuerySQLExpression extends Expression {
 
         if (HavenaskScroll.hasLastEmittedDoc(havenaskScroll)) {
             if ((Objects.nonNull(where) && !where.translate().isEmpty()) || !knnExpressions.isEmpty()) {
-                sb.append("AND `_id` > '").append(havenaskScroll.getLastEmittedDocId()).append("' ");
+                sb.append("AND ").append(havenaskScroll.translateLastEmittedDoc()).append(" ");
             } else {
-                sb.append("WHERE `_id` > '").append(havenaskScroll.getLastEmittedDocId()).append("' ");
+                sb.append("WHERE ").append(havenaskScroll.translateLastEmittedDoc()).append(" ");
             }
         }
 
