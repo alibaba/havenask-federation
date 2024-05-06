@@ -18,6 +18,7 @@ import org.havenask.common.collect.List;
 import org.havenask.index.query.QueryBuilders;
 import org.havenask.search.builder.KnnSearchBuilder;
 import org.havenask.search.builder.SearchSourceBuilder;
+import org.havenask.search.slice.SliceBuilder;
 import org.havenask.test.HavenaskTestCase;
 import org.junit.Before;
 
@@ -89,6 +90,30 @@ public class KnnQueryTests extends HavenaskTestCase {
         assertEquals(
             "SELECT /*+ SCAN_ATTR(forbidIndex='field2')*/ `_id`, ((1/(1+vector_score('field1')))) AS _knn_score FROM `table1`"
                 + " WHERE 1=1 AND (MATCHINDEX('field1', '1.0,2.0&n=20') AND (`field2` = 'value2')) ORDER BY _knn_score DESC LIMIT 10 ",
+            actualTranslate
+        );
+    }
+
+    public void testKnnFilterAndSlice() {
+        SearchSourceBuilder builder = new SearchSourceBuilder();
+        int id = 0;
+        int max = 3;
+        int shardNum = 7;
+        builder.slice(new SliceBuilder(id, max));
+        builder.knnSearch(
+            List.of(
+                new KnnSearchBuilder("field1", new float[] { 1.0f, 2.0f }, 20, 20, null).addFilterQuery(
+                    QueryBuilders.termQuery("field2", "value2")
+                )
+            )
+        );
+
+        SourceExpression sourceExpression = new SourceExpression(builder, shardNum);
+        String actualTranslate = sourceExpression.getQuerySQLExpression("table1", indexMapping).translate();
+        assertEquals(
+            "SELECT /*+ SCAN_ATTR(partitionIds='0,1,2', forbidIndex='field2')*/ `_id`, ((1/(1+vector_score('field1'))))"
+                + " AS _knn_score FROM `table1` WHERE 1=1 AND (MATCHINDEX('field1', '1.0,2.0&n=20') AND (`field2` = 'value2')) "
+                + "ORDER BY _knn_score DESC LIMIT 10 ",
             actualTranslate
         );
     }

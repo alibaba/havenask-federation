@@ -18,7 +18,7 @@ import org.havenask.common.settings.Settings;
 import org.havenask.node.NodeRoleSettings;
 import org.havenask.plugins.Plugin;
 import org.havenask.test.HavenaskIntegTestCase;
-
+import org.havenask.index.reindex.ReindexPlugin;
 import java.util.Arrays;
 import java.util.Collection;
 
@@ -39,7 +39,7 @@ public abstract class HavenaskInternalClusterTestCase extends HavenaskIntegTestC
 
     @Override
     protected Collection<Class<? extends Plugin>> nodePlugins() {
-        return Arrays.asList(HavenaskEnginePlugin.class);
+        return Arrays.asList(HavenaskEnginePlugin.class, ReindexPlugin.class);
     }
 
     @Override

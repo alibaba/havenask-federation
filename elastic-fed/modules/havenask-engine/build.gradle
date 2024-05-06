@@ -44,6 +44,7 @@ dependencies {
   api project(':client:rest-high-level')
   javaRestTestImplementation project(':modules:havenask-engine')
   testImplementation project(path: ':server', configuration: 'testArtifacts')
+  testImplementation project(path: ':modules:reindex')
 }
 
 bundlePlugin {

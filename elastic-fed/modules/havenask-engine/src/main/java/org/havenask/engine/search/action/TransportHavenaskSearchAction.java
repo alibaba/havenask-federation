@@ -27,32 +27,40 @@ import org.havenask.cluster.metadata.IndexAbstraction;
 import org.havenask.cluster.metadata.IndexMetadata;
 import org.havenask.cluster.service.ClusterService;
 import org.havenask.common.inject.Inject;
+import org.havenask.engine.HavenaskScrollService;
 import org.havenask.engine.NativeProcessControlService;
 import org.havenask.engine.rpc.QrsClient;
 import org.havenask.engine.rpc.http.QrsHttpClient;
 import org.havenask.engine.search.dsl.DSLSession;
+import org.havenask.engine.search.internal.HavenaskScroll;
+import org.havenask.engine.search.internal.HavenaskScrollContext;
 import org.havenask.tasks.Task;
 import org.havenask.threadpool.ThreadPool;
 import org.havenask.transport.TransportService;
+
+import java.util.Objects;
 
 public class TransportHavenaskSearchAction extends HandledTransportAction<SearchRequest, SearchResponse> {
     private static final Logger logger = LogManager.getLogger(TransportHavenaskSearchAction.class);
     private ClusterService clusterService;
     private final IngestActionForwarder ingestForwarder;
     private QrsClient qrsClient;
+    private HavenaskScrollService havenaskScrollService;
 
     @Inject
     public TransportHavenaskSearchAction(
         ClusterService clusterService,
         TransportService transportService,
         NativeProcessControlService nativeProcessControlService,
-        ActionFilters actionFilters
+        ActionFilters actionFilters,
+        HavenaskScrollService havenaskScrollService
     ) {
         super(HavenaskSearchAction.NAME, transportService, actionFilters, SearchRequest::new, ThreadPool.Names.SEARCH);
         this.clusterService = clusterService;
         this.ingestForwarder = new IngestActionForwarder(transportService);
         clusterService.addStateApplier(this.ingestForwarder);
         this.qrsClient = new QrsHttpClient(nativeProcessControlService.getQrsHttpPort());
+        this.havenaskScrollService = havenaskScrollService;
     }
 
     @Override
@@ -68,7 +76,6 @@ public class TransportHavenaskSearchAction extends HandledTransportAction<Search
                 throw new IllegalArgumentException("illegal index count! only support search single havenask index.");
             }
             String tableName = request.indices()[0];
-
             ClusterState clusterState = clusterService.state();
             IndexAbstraction indexAbstraction = clusterState.metadata().getIndicesLookup().get(tableName);
             if (indexAbstraction == null) {
@@ -77,8 +84,23 @@ public class TransportHavenaskSearchAction extends HandledTransportAction<Search
 
             IndexMetadata indexMetadata = indexAbstraction.getWriteIndex();
 
-            DSLSession session = new DSLSession(qrsClient, indexMetadata);
-            SearchResponse searchResponse = session.execute(request.source());
+            HavenaskScroll havenaskScroll = null;
+            if (Objects.nonNull(request.scroll())) {
+                havenaskScroll = new HavenaskScroll(clusterService.localNode().getId(), request.scroll());
+            }
+
+            DSLSession session = new DSLSession(qrsClient, indexMetadata, request.source(), havenaskScroll);
+            SearchResponse searchResponse = session.execute();
+
+            if (Objects.nonNull(request.scroll())) {
+                HavenaskScrollContext havenaskScrollContext = new HavenaskScrollContext(
+                    havenaskScrollService.getThreadPool(),
+                    session,
+                    request.scroll().keepAlive().getMillis()
+                );
+                havenaskScrollService.putScrollContext(havenaskScrollContext);
+            }
+
             listener.onResponse(searchResponse);
         } catch (Exception e) {
             logger.info("Failed to execute havenask search, ", e);
