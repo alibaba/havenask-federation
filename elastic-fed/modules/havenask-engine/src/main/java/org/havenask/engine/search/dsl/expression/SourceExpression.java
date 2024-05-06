@@ -18,6 +18,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
@@ -37,6 +38,7 @@ import org.havenask.engine.search.dsl.expression.query.MatchPhraseExpression;
 import org.havenask.engine.search.dsl.expression.query.QueryStringExpression;
 import org.havenask.engine.search.dsl.expression.query.RangeExpression;
 import org.havenask.engine.search.dsl.expression.query.TermExpression;
+import org.havenask.engine.search.internal.HavenaskScroll;
 import org.havenask.index.query.BoolQueryBuilder;
 import org.havenask.index.query.ExistsQueryBuilder;
 import org.havenask.index.query.MatchAllQueryBuilder;
@@ -69,15 +71,31 @@ public class SourceExpression extends Expression {
     private QuerySQLExpression querySQLExpression;
     private List<AggregationSQLExpression> aggregationSQLExpressions = new ArrayList<>();
     private List<KnnExpression> knnExpressions = new ArrayList<>();
+    private SliceExpression slice;
     private final int size;
     private final int from;
+    private HavenaskScroll havenaskScroll;
 
     public SourceExpression(SearchSourceBuilder searchSourceBuilder) {
+        this(searchSourceBuilder, null, -1);
+    }
+
+    public SourceExpression(SearchSourceBuilder searchSourceBuilder, HavenaskScroll havenaskScroll) {
+        this(searchSourceBuilder, havenaskScroll, -1);
+    }
+
+    public SourceExpression(SearchSourceBuilder searchSourceBuilder, int shardNum) {
+        this(searchSourceBuilder, null, shardNum);
+    }
+
+    public SourceExpression(SearchSourceBuilder searchSourceBuilder, HavenaskScroll havenaskScroll, int shardNum) {
         this.searchSourceBuilder = searchSourceBuilder;
         this.where = new WhereExpression(visitQuery(searchSourceBuilder.query()));
         this.orderBy = new OrderByExpression(searchSourceBuilder.sorts());
+        this.slice = new SliceExpression(searchSourceBuilder.slice(), shardNum);
         this.size = searchSourceBuilder.size() >= 0 ? searchSourceBuilder.size() : DEFAULT_SEARCH_SIZE;
         this.from = searchSourceBuilder.from() >= 0 ? searchSourceBuilder.from() : 0;
+        this.havenaskScroll = havenaskScroll;
     }
 
     public int size() {
@@ -104,8 +122,17 @@ public class SourceExpression extends Expression {
     }
 
     public synchronized QuerySQLExpression getQuerySQLExpression(String index, Map<String, Object> indexMappings) {
-        if (querySQLExpression == null) {
-            querySQLExpression = new QuerySQLExpression(index, where, getKnnExpressions(indexMappings), orderBy, size, from);
+        if (querySQLExpression == null || Objects.nonNull(havenaskScroll)) {
+            querySQLExpression = new QuerySQLExpression(
+                index,
+                where,
+                getKnnExpressions(indexMappings),
+                orderBy,
+                slice,
+                size,
+                from,
+                havenaskScroll
+            );
         }
 
         return querySQLExpression;
@@ -234,6 +261,14 @@ public class SourceExpression extends Expression {
         List<Expression> should = query.should().stream().map(SourceExpression::visitQuery).collect(Collectors.toList());
         List<Expression> filter = query.filter().stream().map(SourceExpression::visitQuery).collect(Collectors.toList());
         return new BoolExpression(must, should, mustNot, filter, query.minimumShouldMatch());
+    }
+
+    public HavenaskScroll getHavenaskScroll() {
+        return havenaskScroll;
+    }
+
+    public void setLastEmittedDocId(String lastEmittedDocId) {
+        this.havenaskScroll.setLastEmittedDocId(lastEmittedDocId);
     }
 
     @Override
