@@ -16,6 +16,7 @@ package org.havenask.engine.search.dsl;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.message.ParameterizedMessage;
 import org.havenask.action.search.SearchResponse;
 import org.havenask.cluster.metadata.IndexMetadata;
 import org.havenask.common.UUIDs;
@@ -93,9 +94,16 @@ public class DSLSession {
     }
 
     public SearchResponse execute() throws IOException {
-        DSLExec exec = new DSLExec(query, havenaskScroll, indexMetadata.getNumberOfShards());
-        SearchResponse searchResponse = exec.execute(this);
-        logger.debug("DSLSession [{}] executed in [{}] ms", sessionId, System.currentTimeMillis() - startTime);
-        return searchResponse;
+        try {
+            DSLExec exec = new DSLExec(query, havenaskScroll, indexMetadata.getNumberOfShards());
+            SearchResponse searchResponse = exec.execute(this);
+            logger.debug("DSLSession [{}] executed in [{}] ms", sessionId, System.currentTimeMillis() - startTime);
+            return searchResponse;
+        } catch (Exception e) {
+            if (logger.isDebugEnabled()) {
+                logger.debug(() -> new ParameterizedMessage("DSLSession [{}] executed fail, dsl:{}", sessionId, query.toString()), e);
+            }
+            throw e;
+        }
     }
 }
