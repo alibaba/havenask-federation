@@ -502,6 +502,10 @@ public class HavenaskEngine extends InternalEngine {
             }
         }
 
+        if (LOGGER.isTraceEnabled()) {
+            LOGGER.trace("parsedDocument: {}, haDoc: {}", parsedDocument, haDoc);
+        }
+
         return haDoc;
     }
 
@@ -572,7 +576,12 @@ public class HavenaskEngine extends InternalEngine {
         addSource2DocMessage(source, message);
         addMetaInfo2DocMessage(parsedDocument, message);
         message.append("\u001E\n");
-        return message.toString();
+        String doc = message.toString();
+        if (LOGGER.isTraceEnabled()) {
+            LOGGER.trace("source :{}, ha3 doc: {}", source.utf8ToString(), doc);
+        }
+
+        return doc;
     }
 
     static void addSource2DocMessage(BytesReference source, StringBuilder message) throws IOException {
