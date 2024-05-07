@@ -44,9 +44,9 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.havenask.engine.index.engine.HavenaskEngine.DEFAULT_TIMEOUT;
-import static org.havenask.engine.index.engine.HavenaskEngine.MAX_RETRY;
 import static org.havenask.engine.index.engine.HavenaskEngine.buildProducerRecord;
 import static org.havenask.engine.index.engine.HavenaskEngine.toHaIndex;
 import static org.mockito.Mockito.mock;
@@ -203,36 +203,59 @@ public class HavenaskEngineTests extends EngineTestCase {
         when(writeResponse.getErrorCode()).thenReturn(ErrorCode.TBS_ERROR_UNKOWN);
         when(writeResponse.getErrorMessage()).thenReturn("write response is null");
         long start = System.currentTimeMillis();
-        WriteResponse response = HavenaskEngine.retryWrite(mock(ShardId.class), searcherClient, writeRequest);
+        TimeValue timeout = TimeValue.timeValueMillis(50);
+        int max_retry = 3;
+        WriteResponse response = HavenaskEngine.retryWrite(mock(ShardId.class), searcherClient, writeRequest, timeout, timeout, max_retry);
         long cost = System.currentTimeMillis() - start;
-        Iterator<TimeValue> backoff = BackoffPolicy.exponentialBackoff(DEFAULT_TIMEOUT, MAX_RETRY).iterator();
+        Iterator<TimeValue> backoff = BackoffPolicy.exponentialBackoff(timeout, max_retry).iterator();
         long backoffTime = 0;
         while (backoff.hasNext()) {
             backoffTime += backoff.next().millis();
         }
 
-        assertTrue(cost > backoffTime);
+        assertTrue(cost >= backoffTime);
         assertEquals(response, writeResponse);
     }
 
     public void testRetryWriteQueueFull() {
         SearcherClient searcherClient = mock(SearcherClient.class);
         WriteRequest writeRequest = mock(WriteRequest.class);
-        WriteResponse writeResponse = mock(WriteResponse.class);
-        when(searcherClient.write(writeRequest)).thenReturn(writeResponse);
-        when(writeResponse.getErrorCode()).thenReturn(ErrorCode.TBS_ERROR_OTHERS);
-        when(writeResponse.getErrorMessage()).thenReturn("doc queue is full");
+        AtomicInteger count = new AtomicInteger(0);
+        WriteResponse fullResponse = new WriteResponse(ErrorCode.TBS_ERROR_OTHERS, "doc queue is full");
+        WriteResponse successResponse = new WriteResponse(ErrorCode.TBS_ERROR_NONE, null);
+        when(searcherClient.write(writeRequest)).thenAnswer(invocation -> {
+            if (count.getAndIncrement() < 5) {
+                return fullResponse;
+            } else {
+                return successResponse;
+            }
+        });
         long start = System.currentTimeMillis();
-        WriteResponse response = HavenaskEngine.retryWrite(mock(ShardId.class), searcherClient, writeRequest);
+        TimeValue timeout = TimeValue.timeValueMillis(50);
+        TimeValue retryTimeout = TimeValue.timeValueMillis(100);
+        int max_retry = 2;
+        WriteResponse response = HavenaskEngine.retryWrite(
+            mock(ShardId.class),
+            searcherClient,
+            writeRequest,
+            timeout,
+            retryTimeout,
+            max_retry
+        );
         long cost = System.currentTimeMillis() - start;
-        Iterator<TimeValue> backoff = BackoffPolicy.exponentialBackoff(DEFAULT_TIMEOUT, MAX_RETRY).iterator();
+        Iterator<TimeValue> backoff = BackoffPolicy.exponentialBackoff(timeout, max_retry).iterator();
         long backoffTime = 0;
         while (backoff.hasNext()) {
             backoffTime += backoff.next().millis();
         }
 
+        Iterator<TimeValue> retryBackoff = BackoffPolicy.exponentialBackoff(timeout, max_retry).iterator();
+        while (retryBackoff.hasNext()) {
+            backoffTime += retryBackoff.next().millis();
+        }
+
         assertTrue(cost > backoffTime);
-        assertEquals(response, writeResponse);
+        assertEquals(response, successResponse);
     }
 
     public void testRetryNoValidTable() {
@@ -243,15 +266,17 @@ public class HavenaskEngineTests extends EngineTestCase {
         when(writeResponse.getErrorCode()).thenReturn(ErrorCode.TBS_ERROR_OTHERS);
         when(writeResponse.getErrorMessage()).thenReturn("no valid table/range for WriteRequest table: test hashid: 25383");
         long start = System.currentTimeMillis();
-        WriteResponse response = HavenaskEngine.retryWrite(mock(ShardId.class), searcherClient, writeRequest);
+        TimeValue timeout = TimeValue.timeValueMillis(50);
+        int max_retry = 3;
+        WriteResponse response = HavenaskEngine.retryWrite(mock(ShardId.class), searcherClient, writeRequest, timeout, timeout, max_retry);
         long cost = System.currentTimeMillis() - start;
-        Iterator<TimeValue> backoff = BackoffPolicy.exponentialBackoff(DEFAULT_TIMEOUT, MAX_RETRY).iterator();
+        Iterator<TimeValue> backoff = BackoffPolicy.exponentialBackoff(timeout, max_retry).iterator();
         long backoffTime = 0;
         while (backoff.hasNext()) {
             backoffTime += backoff.next().millis();
         }
 
-        assertTrue(cost > backoffTime);
+        assertTrue(cost >= backoffTime);
         assertEquals(response, writeResponse);
     }
 

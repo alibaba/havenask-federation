@@ -886,19 +886,40 @@ public class HavenaskEngine extends InternalEngine {
     }
 
     static final TimeValue DEFAULT_TIMEOUT = TimeValue.timeValueMillis(50);
+    static final TimeValue DEFAULT_RETRY_INIT_TIMEOUT = TimeValue.timeValueMillis(1000);
     static final int MAX_RETRY = 10;
     private static final Logger LOGGER = LogManager.getLogger(HavenaskEngine.class);
 
     static WriteResponse retryWrite(ShardId shardId, SearcherClient searcherClient, WriteRequest writeRequest) {
-        return retryRpc(shardId, () -> searcherClient.write(writeRequest));
+        return retryWrite(shardId, searcherClient, writeRequest, DEFAULT_TIMEOUT, DEFAULT_RETRY_INIT_TIMEOUT, MAX_RETRY);
     }
 
-    static <Response extends ArpcResponse> Response retryRpc(ShardId shardId, Supplier<Response> supplier) {
+    static WriteResponse retryWrite(
+        ShardId shardId,
+        SearcherClient searcherClient,
+        WriteRequest writeRequest,
+        TimeValue initialDelay,
+        TimeValue retryDelay,
+        int maxNumberOfRetries
+    ) {
+        WriteResponse writeResponse = retryRpc(shardId, () -> searcherClient.write(writeRequest), initialDelay, maxNumberOfRetries);
+        while (isDocQueueFull(writeResponse)) {
+            writeResponse = retryRpc(shardId, () -> searcherClient.write(writeRequest), retryDelay, maxNumberOfRetries);
+        }
+        return writeResponse;
+    }
+
+    static <Response extends ArpcResponse> Response retryRpc(
+        ShardId shardId,
+        Supplier<Response> supplier,
+        TimeValue initialDelay,
+        int maxNumberOfRetries
+    ) {
         Response response = supplier.get();
         if (isWriteRetry(response)) {
             long start = System.currentTimeMillis();
             // retry if write queue is full or write response is null
-            Iterator<TimeValue> backoff = BackoffPolicy.exponentialBackoff(DEFAULT_TIMEOUT, MAX_RETRY).iterator();
+            Iterator<TimeValue> backoff = BackoffPolicy.exponentialBackoff(initialDelay, maxNumberOfRetries).iterator();
             int retryCount = 0;
             while (backoff.hasNext()) {
                 TimeValue timeValue = backoff.next();
@@ -947,11 +968,25 @@ public class HavenaskEngine extends InternalEngine {
         }
     }
 
+    private static boolean isDocQueueFull(ArpcResponse arpcResponse) {
+        if (arpcResponse.getErrorMessage() != null && arpcResponse.getErrorMessage().contains("doc queue is full")) {
+            LOGGER.debug("havenask write doc queue full, retry again");
+            return true;
+        } else {
+            return false;
+        }
+    }
+
     @Override
     public GetResult get(Get get, BiFunction<String, SearcherScope, Searcher> searcherFactory) throws EngineException {
         try {
             QueryTableRequest queryTableRequest = new QueryTableRequest(tableName, partitionRange, get.id());
-            QueryTableResponse queryTableResponse = retryRpc(shardId, () -> searcherClient.queryTable(queryTableRequest));
+            QueryTableResponse queryTableResponse = retryRpc(
+                shardId,
+                () -> searcherClient.queryTable(queryTableRequest),
+                DEFAULT_TIMEOUT,
+                MAX_RETRY
+            );
 
             if (queryTableResponse.getErrorCode() != null) {
                 if (queryTableResponse.getErrorCode().equals(ErrorCode.TBS_ERROR_NO_RECORD)) {
@@ -1184,8 +1219,9 @@ public class HavenaskEngine extends InternalEngine {
 
     /**
      * 刷新commit信息
-     * @param commitTimestamp  commit timestamp
-     * @param commitVersion  commit version
+     *
+     * @param commitTimestamp commit timestamp
+     * @param commitVersion   commit version
      */
     private void refreshCommitInfo(long commitTimestamp, long commitVersion, long localCheckpoint) {
         lastCommitInfo = new HavenaskCommitInfo(commitTimestamp, commitVersion, localCheckpoint);
@@ -1219,6 +1255,7 @@ public class HavenaskEngine extends InternalEngine {
 
     /**
      * 返回已和havenask引擎同步的checkpoint,这个checkpoint是在内存中的,并不是已经持久化到磁盘的checkpoint,相比磁盘中的checkpoint可能已经变化
+     *
      * @return the local checkpoint that has been synchronized with havenask engine
      */
     public long getCommitLocalCheckpoint() {
@@ -1227,6 +1264,7 @@ public class HavenaskEngine extends InternalEngine {
 
     /**
      * add custom commit data to the commit data map
+     *
      * @param commitData the commit data
      */
     @Override
