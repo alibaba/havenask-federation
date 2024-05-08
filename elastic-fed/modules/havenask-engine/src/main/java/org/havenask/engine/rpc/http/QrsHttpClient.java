@@ -15,6 +15,9 @@
 package org.havenask.engine.rpc.http;
 
 import java.io.IOException;
+
+import org.apache.http.entity.ContentType;
+import org.apache.http.nio.entity.NStringEntity;
 import org.apache.http.util.EntityUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -43,12 +46,12 @@ public class QrsHttpClient extends HavenaskHttpClient implements QrsClient {
     @Override
     public QrsSqlResponse executeSql(QrsSqlRequest qrsSqlRequest) throws IOException {
         long start = System.nanoTime();
-        Request request = new Request("GET", SQL_URL);
+        Request request = new Request("POST", SQL_URL);
         String query = qrsSqlRequest.getSql();
         if (qrsSqlRequest.getKvpair() != null) {
             query += "&&kvpair=" + qrsSqlRequest.getKvpair();
         }
-        request.addParameter("query", query);
+        request.setEntity(new NStringEntity(query, ContentType.TEXT_PLAIN));
         Response response = getClient().performRequest(request);
         long end = System.nanoTime();
         logger.debug("execute sql: {} cost: {} us", qrsSqlRequest.getSql(), (end - start) / 1000);

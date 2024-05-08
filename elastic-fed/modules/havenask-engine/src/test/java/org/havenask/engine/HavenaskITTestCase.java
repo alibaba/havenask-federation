@@ -38,7 +38,8 @@ public abstract class HavenaskITTestCase extends HavenaskIntegTestCase {
             qrsServer.createContext("/sql", exchange -> {
                 exchange.sendResponseHeaders(200, 0);
                 URI uri = exchange.getRequestURI();
-                String query = uri.getQuery();
+                String query = new String(exchange.getRequestBody().readAllBytes());
+
                 String strResponse;
                 if (query.contains("select count(*) from ")) {
                     strResponse = "{\"total_time\":2.757,\"has_soft_failure\":false,\"covered_percent\":1.0,"
