@@ -22,6 +22,8 @@ import org.havenask.common.inject.Inject;
 import org.havenask.common.settings.Settings;
 import org.havenask.common.unit.TimeValue;
 import org.havenask.engine.search.internal.HavenaskScrollContext;
+import org.havenask.search.Scroll;
+import org.havenask.search.SearchService;
 import org.havenask.threadpool.Scheduler.Cancellable;
 import org.havenask.threadpool.ThreadPool;
 
@@ -33,6 +35,8 @@ public class HavenaskScrollService extends AbstractLifecycleComponent {
     private static final Logger logger = LogManager.getLogger(HavenaskScrollService.class);
     private ThreadPool threadPool;
     private Settings settings;
+    private volatile long defaultKeepAlive;
+    private volatile long maxKeepAlive;
     private final Cancellable keepAliveReaper;
     private final ConcurrentHashMap<String, HavenaskScrollContext> activeScrollContexts = new ConcurrentHashMap<>();
 
@@ -42,6 +46,7 @@ public class HavenaskScrollService extends AbstractLifecycleComponent {
         this.threadPool = threadPool;
         TimeValue keepAliveInterval = KEEPALIVE_INTERVAL_SETTING.get(settings);
         this.keepAliveReaper = threadPool.scheduleWithFixedDelay(new Reaper(), keepAliveInterval, ThreadPool.Names.SAME);
+        setKeepAlives(SearchService.DEFAULT_KEEPALIVE_SETTING.get(settings), SearchService.MAX_KEEPALIVE_SETTING.get(settings));
     }
 
     @Override
@@ -74,6 +79,54 @@ public class HavenaskScrollService extends AbstractLifecycleComponent {
     public void removeAllHavenaskScrollContext() {
         for (HavenaskScrollContext havenaskScrollContext : activeScrollContexts.values()) {
             removeScrollContext(havenaskScrollContext.getScrollSessionId());
+        }
+    }
+
+    private void validateKeepAlives(TimeValue defaultKeepAlive, TimeValue maxKeepAlive) {
+        if (defaultKeepAlive.millis() > maxKeepAlive.millis()) {
+            throw new IllegalArgumentException(
+                "Default keep alive setting for request ["
+                    + SearchService.DEFAULT_KEEPALIVE_SETTING.getKey()
+                    + "]"
+                    + " should be smaller than max keep alive ["
+                    + SearchService.MAX_KEEPALIVE_SETTING.getKey()
+                    + "], "
+                    + "was ("
+                    + defaultKeepAlive
+                    + " > "
+                    + maxKeepAlive
+                    + ")"
+            );
+        }
+    }
+
+    private void setKeepAlives(TimeValue defaultKeepAlive, TimeValue maxKeepAlive) {
+        validateKeepAlives(defaultKeepAlive, maxKeepAlive);
+        this.defaultKeepAlive = defaultKeepAlive.millis();
+        this.maxKeepAlive = maxKeepAlive.millis();
+    }
+
+    public long getScrollKeepAlive(Scroll scroll) {
+        if (scroll != null && scroll.keepAlive() != null) {
+            checkKeepAliveLimit(scroll.keepAlive().millis());
+            return scroll.keepAlive().getMillis();
+        }
+        return defaultKeepAlive;
+    }
+
+    private void checkKeepAliveLimit(long keepAlive) {
+        if (keepAlive > maxKeepAlive) {
+            throw new IllegalArgumentException(
+                "Keep alive for request ("
+                    + TimeValue.timeValueMillis(keepAlive)
+                    + ") is too large. "
+                    + "It must be less than ("
+                    + TimeValue.timeValueMillis(maxKeepAlive)
+                    + "). "
+                    + "This limit can be set by changing the ["
+                    + SearchService.MAX_KEEPALIVE_SETTING.getKey()
+                    + "] cluster level setting."
+            );
         }
     }
 

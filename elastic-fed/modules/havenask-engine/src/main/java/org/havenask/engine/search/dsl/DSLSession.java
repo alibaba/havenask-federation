@@ -33,7 +33,7 @@ public class DSLSession {
 
     private final QrsClient client;
     private final IndexMetadata indexMetadata;
-    private final long startTime;
+    private long startTime;
     private final String sessionId;
     private SearchSourceBuilder query;
     private HavenaskScroll havenaskScroll;
@@ -95,6 +95,7 @@ public class DSLSession {
 
     public SearchResponse execute() throws IOException {
         try {
+            startTime = System.currentTimeMillis();
             DSLExec exec = new DSLExec(query, havenaskScroll, indexMetadata.getNumberOfShards());
             SearchResponse searchResponse = exec.execute(this);
             logger.debug("DSLSession [{}] executed in [{}] ms", sessionId, System.currentTimeMillis() - startTime);
