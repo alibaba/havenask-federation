@@ -165,7 +165,7 @@ public class HavenaskSearchFetchProcessor {
         }
         sqlQuery.append(")");
         sqlQuery.append(" limit ").append(idList.size());
-        String kvpair = "format:full_json;timeout:10000;databaseName:" + SQL_DATABASE;
+        String kvpair = "format:full_json;timeout:30000;databaseName:" + SQL_DATABASE;
         return new QrsSqlRequest(sqlQuery.toString(), kvpair);
     }
 
