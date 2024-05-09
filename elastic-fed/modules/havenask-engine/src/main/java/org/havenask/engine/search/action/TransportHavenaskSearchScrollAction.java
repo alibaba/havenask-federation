@@ -26,6 +26,7 @@ import org.havenask.action.support.HandledTransportAction;
 import org.havenask.cluster.node.DiscoveryNode;
 import org.havenask.cluster.service.ClusterService;
 import org.havenask.common.inject.Inject;
+import org.havenask.common.lease.Releasable;
 import org.havenask.engine.HavenaskScrollService;
 import org.havenask.engine.NativeProcessControlService;
 import org.havenask.engine.rpc.QrsClient;
@@ -63,30 +64,27 @@ public class TransportHavenaskSearchScrollAction extends HandledTransportAction<
 
     @Override
     protected void doExecute(Task task, SearchScrollRequest request, ActionListener<SearchResponse> listener) {
-        try {
-            ParsedHavenaskScrollId havenaskScrollId = TransportHavenaskSearchHelper.parseHavenaskScrollId(request.scrollId());
-            // 如果不是本节点的处理内容，则转发到对应节点进行处理
-            if (!clusterService.localNode().getId().equals(havenaskScrollId.getNodeId())) {
-                DiscoveryNode targetNode = clusterService.state().nodes().get(havenaskScrollId.getNodeId());
-                if (Objects.isNull(targetNode)) {
-                    throw new HavenaskException("no havenask node was found, nodeId: " + havenaskScrollId.getNodeId());
-                }
-                TransportResponseHandler<SearchResponse> responseHandler = new ActionListenerResponseHandler<>(
-                    listener,
-                    HavenaskSearchScrollAction.INSTANCE.getResponseReader()
-                );
-                transportService.sendRequest(targetNode, HavenaskSearchScrollAction.INSTANCE.name(), request, responseHandler);
-                return;
+        ParsedHavenaskScrollId havenaskScrollId = TransportHavenaskSearchHelper.parseHavenaskScrollId(request.scrollId());
+        // 如果不是本节点的处理内容，则转发到对应节点进行处理
+        if (!clusterService.localNode().getId().equals(havenaskScrollId.getNodeId())) {
+            DiscoveryNode targetNode = clusterService.state().nodes().get(havenaskScrollId.getNodeId());
+            if (Objects.isNull(targetNode)) {
+                throw new HavenaskException("no havenask node was found, nodeId: " + havenaskScrollId.getNodeId());
             }
+            TransportResponseHandler<SearchResponse> responseHandler = new ActionListenerResponseHandler<>(
+                listener,
+                HavenaskSearchScrollAction.INSTANCE.getResponseReader()
+            );
+            transportService.sendRequest(targetNode, HavenaskSearchScrollAction.INSTANCE.name(), request, responseHandler);
+            return;
+        }
 
-            HavenaskScrollContext havenaskScrollContext = havenaskScrollService.getScrollContext(havenaskScrollId.getScrollSessionId());
-            if (Objects.isNull(havenaskScrollContext)) {
-                throw new HavenaskException("no havenask scroll context found, sessionId: " + havenaskScrollId.getScrollSessionId());
-            }
-            DSLSession session = havenaskScrollContext.getDSLSession();
-
-            havenaskScrollContext.markAsUsed(request.scroll().keepAlive().getMillis());
-
+        HavenaskScrollContext havenaskScrollContext = havenaskScrollService.getScrollContext(havenaskScrollId.getScrollSessionId());
+        if (Objects.isNull(havenaskScrollContext)) {
+            throw new HavenaskException("no havenask scroll context found, sessionId: " + havenaskScrollId.getScrollSessionId());
+        }
+        DSLSession session = havenaskScrollContext.getDSLSession();
+        try (Releasable ignored = havenaskScrollContext.markAsUsed(havenaskScrollService.getScrollKeepAlive(request.scroll()))) {
             SearchResponse searchResponse = session.execute();
             listener.onResponse(searchResponse);
         } catch (Exception e) {
