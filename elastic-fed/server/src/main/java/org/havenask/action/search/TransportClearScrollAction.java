@@ -50,7 +50,6 @@ import org.havenask.common.io.stream.NamedWriteableRegistry;
 import org.havenask.tasks.Task;
 import org.havenask.transport.TransportService;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
@@ -100,7 +99,7 @@ public class TransportClearScrollAction extends HandledTransportAction<ClearScro
                         request, listener, clusterService.state().nodes(), logger, searchTransportService);
                 runnable.run();
             }
-        } catch (IOException e) {
+        } catch (Exception e) {
             listener.onFailure(e);
         }
     }
@@ -110,22 +109,25 @@ public class TransportClearScrollAction extends HandledTransportAction<ClearScro
     private void separateElasticScrollIdAndHavenaskScrollId(
             List<String> scrollIds,
             List<String> elasticScrollIds,
-            List<String> havenaskScrollIds) throws IOException {
-        if (scrollIds.size() == 1 && "_all".equals(scrollIds.get(0))) {
-            elasticScrollIds.add(scrollIds.get(0));
-            havenaskScrollIds.add(scrollIds.get(0));
-            return;
-        }
-
-        for (String scrollId : scrollIds) {
-            byte[] bytes = Base64.getUrlDecoder().decode(scrollId);
-            ByteArrayDataInput in = new ByteArrayDataInput(bytes);
-            final String firstChunk = in.readString();
-            if ("havenask_scroll_id".equals(firstChunk)) {
-                havenaskScrollIds.add(scrollId);
-            } else {
-                elasticScrollIds.add(scrollId);
+            List<String> havenaskScrollIds) {
+        try {
+            if (scrollIds.size() == 1 && "_all".equals(scrollIds.get(0))) {
+                elasticScrollIds.add(scrollIds.get(0));
+                return;
             }
+
+            for (String scrollId : scrollIds) {
+                byte[] bytes = Base64.getUrlDecoder().decode(scrollId);
+                ByteArrayDataInput in = new ByteArrayDataInput(bytes);
+                final String firstChunk = in.readString();
+                if ("havenask_scroll_id".equals(firstChunk)) {
+                    havenaskScrollIds.add(scrollId);
+                } else {
+                    elasticScrollIds.add(scrollId);
+                }
+            }
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Cannot parse scroll id", e);
         }
     }
 
