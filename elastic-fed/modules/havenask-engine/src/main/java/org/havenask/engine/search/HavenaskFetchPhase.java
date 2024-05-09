@@ -116,18 +116,18 @@ public class HavenaskFetchPhase extends FetchPhase {
         StringBuilder sqlQuery = new StringBuilder();
         String tableName = Utils.getHavenaskTableName(context.indexShard().shardId());
         sqlQuery.append("select _source,_id from " + tableName + "_summary_");
-        sqlQuery.append(" where _id in(");
+        sqlQuery.append(" where contain('_id','");
         for (int index = 0; index < context.docIdsToLoadSize(); index++) {
             if (context.isCancelled()) {
                 throw new TaskCancelledException("cancelled");
             }
             int docId = docs[index].docId;
-            sqlQuery.append("'" + idList.get(docId) + "'");
+            sqlQuery.append(idList.get(docId));
             if (index < context.docIdsToLoadSize() - 1) {
-                sqlQuery.append(",");
+                sqlQuery.append("|");
             }
         }
-        sqlQuery.append(")");
+        sqlQuery.append("')");
         sqlQuery.append(" limit " + context.docIdsToLoadSize());
         String kvpair = "format:full_json;timeout:10000;databaseName:" + SQL_DATABASE;
         QrsSqlRequest request = new QrsSqlRequest(sqlQuery.toString(), kvpair);
