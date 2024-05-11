@@ -43,7 +43,7 @@ public class HavenaskSearchFetchProcessorTests extends HavenaskTestCase {
         List<String> idList = List.of("1", "2", "3");
         String tableName = "table";
         QrsSqlRequest sqlRequest = HavenaskSearchFetchProcessor.getQrsFetchPhaseSqlRequest(idList, tableName);
-        assertEquals(sqlRequest.getSql(), "select _id, _source from `table_summary_` where contain('_id','1|2|3') limit 3");
+        assertEquals(sqlRequest.getSql(), "select _id, _source, _routing from `table_summary_` where contain('_id','1|2|3') limit 3");
     }
 
     public void testBuildQuerySearchResult() throws IOException {
@@ -153,6 +153,7 @@ public class HavenaskSearchFetchProcessorTests extends HavenaskTestCase {
                 + "  \"_type\" : \"_doc\",\n"
                 + "  \"_id\" : \"4\",\n"
                 + "  \"_score\" : 4.0,\n"
+                + "  \"_routing\" : \"r4\",\n"
                 + "  \"_source\" : {\n"
                 + "    \"image\" : [\n"
                 + "      4.1,\n"
@@ -196,9 +197,9 @@ public class HavenaskSearchFetchProcessorTests extends HavenaskTestCase {
 
         // mock SqlResponse
         Object[][] data = {
-            { "1", "{\n" + "  \"image\":[1.1, 1.1]\n" + "}\n" },
-            { "2", "{\n" + "  \"image\":[2.1, 2.1]\n" + "}" },
-            { "4", "{\n" + "  \"image\":[4.1, 4.1]\n" + "}\n" } };
+            { "1", "{\n" + "  \"image\":[1.1, 1.1]\n" + "}\n", null },
+            { "2", "{\n" + "  \"image\":[2.1, 2.1]\n" + "}", "2" },
+            { "4", "{\n" + "  \"image\":[4.1, 4.1]\n" + "}\n", "r4" } };
         SqlResponse sqlResponse = mock(SqlResponse.class);
         when(sqlResponse.getRowCount()).thenReturn(data.length);
         SqlResponse.SqlResult sqlResult = mock(SqlResponse.SqlResult.class);

@@ -1045,7 +1045,11 @@ public class HavenaskEngine extends InternalEngine {
                         break;
                     case "_routing":
                         routing = summaryValue.getValue();
-                        routing = routing == null || routing.isEmpty() ? null : routing;
+                        if (get.id().equals(routing)) {
+                            routing = null;
+                        } else {
+                            routing = routing == null || routing.isEmpty() ? null : routing;
+                        }
                         break;
                 }
             }
