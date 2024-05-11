@@ -107,6 +107,7 @@ import org.havenask.index.engine.TranslogLeafReader;
 import org.havenask.index.mapper.IdFieldMapper;
 import org.havenask.index.mapper.ParseContext;
 import org.havenask.index.mapper.ParsedDocument;
+import org.havenask.index.mapper.RoutingFieldMapper;
 import org.havenask.index.mapper.SourceFieldMapper;
 import org.havenask.index.mapper.Uid;
 import org.havenask.index.seqno.SequenceNumbers;
@@ -444,9 +445,11 @@ public class HavenaskEngine extends InternalEngine {
      */
     static Map<String, String> toHaIndex(ParsedDocument parsedDocument) throws IOException {
         Map<String, String> haDoc = new HashMap<>();
-        haDoc.put("_id", parsedDocument.id());
+        haDoc.put(IdFieldMapper.NAME, parsedDocument.id());
         if (parsedDocument.routing() != null) {
-            haDoc.put("_routing", parsedDocument.routing());
+            haDoc.put(RoutingFieldMapper.NAME, parsedDocument.routing());
+        } else {
+            haDoc.put(RoutingFieldMapper.NAME, parsedDocument.id());
         }
         if (parsedDocument.rootDoc() == null) {
             return haDoc;

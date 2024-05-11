@@ -147,7 +147,7 @@ public class HavenaskEngineTests extends EngineTestCase {
         assertEquals(haDoc.get("_primary_term"), "0");
         assertEquals(haDoc.get("_version"), "0");
         assertEquals(haDoc.get("_id").trim(), "id");
-        assertEquals(haDoc.get("_routing"), null);
+        assertEquals(haDoc.get("_routing"), "id");
         assertEquals(haDoc.get("_source"), "{ \"value\" : \"test\" }");
         assertEquals(haDoc.get("value"), "test");
     }
