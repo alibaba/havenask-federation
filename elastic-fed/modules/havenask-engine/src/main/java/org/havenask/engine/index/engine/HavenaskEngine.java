@@ -690,6 +690,8 @@ public class HavenaskEngine extends InternalEngine {
         message.append("_id").append("=").append(parsedDocument.id()).append("\u001F\n");
         if (parsedDocument.routing() != null) {
             message.append("_routing").append("=").append(parsedDocument.routing()).append("\u001F\n");
+        } else {
+            message.append("_routing").append("=").append(parsedDocument.id()).append("\u001F\n");
         }
         if (parsedDocument.rootDoc() == null) {
             return;
