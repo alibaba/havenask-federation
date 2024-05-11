@@ -147,7 +147,7 @@ public class HavenaskEngineTests extends EngineTestCase {
         assertEquals(haDoc.get("_primary_term"), "0");
         assertEquals(haDoc.get("_version"), "0");
         assertEquals(haDoc.get("_id").trim(), "id");
-        assertEquals(haDoc.get("_routing"), null);
+        assertEquals(haDoc.get("_routing"), "id");
         assertEquals(haDoc.get("_source"), "{ \"value\" : \"test\" }");
         assertEquals(haDoc.get("value"), "test");
     }
@@ -312,7 +312,7 @@ public class HavenaskEngineTests extends EngineTestCase {
             + "  \"my_null\":null\n"
             + "}";
         BytesReference basicSource = new BytesArray(basicSourceDoc);
-        ParsedDocument parsedDocument = testParsedDocument("id", "routing", new ParseContext.Document(), basicSource, null);
+        ParsedDocument parsedDocument = testParsedDocument("id", null, new ParseContext.Document(), basicSource, null);
         String basicRes = HavenaskEngine.buildHaDocMessage(basicSource, parsedDocument, Operation.TYPE.INDEX);
 
         String expectedBasicRes = "CMD=add\u001F\n"
@@ -328,7 +328,7 @@ public class HavenaskEngineTests extends EngineTestCase {
             + "my_object_first=first\u001F\n"
             + "my_object_last=last\u001F\n"
             + "_id=id\u001F\n"
-            + "_routing=routing\u001F\n"
+            + "_routing=id\u001F\n"
             + "_version=0\u001F\n"
             + "_seq_no=-2\u001F\n"
             + "_primary_term=0\u001F\n"

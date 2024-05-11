@@ -26,6 +26,7 @@ import org.havenask.common.unit.TimeValue;
 import org.havenask.engine.index.engine.EngineSettings;
 import org.havenask.index.IndexModule;
 import org.havenask.index.IndexSettings;
+import org.havenask.index.mapper.RoutingFieldMapper;
 import org.havenask.test.HavenaskTestCase;
 
 public class HavenaskIndexSettingProviderTests extends HavenaskTestCase {
@@ -39,6 +40,7 @@ public class HavenaskIndexSettingProviderTests extends HavenaskTestCase {
         assertEquals(TimeValue.timeValueSeconds(5), refresh);
         String indexStoreType = settings.get(IndexModule.INDEX_STORE_TYPE_SETTING.getKey(), EngineSettings.ENGINE_HAVENASK);
         assertEquals(indexStoreType, EngineSettings.ENGINE_HAVENASK);
+        assertEquals(RoutingFieldMapper.NAME, settings.get(EngineSettings.HAVENASK_HASH_MODE_HASH_FIELD.getKey()));
     }
 
     // test for havenask engine not support soft delete
@@ -193,7 +195,7 @@ public class HavenaskIndexSettingProviderTests extends HavenaskTestCase {
             );
             fail("havenask engine not support custom routing.path");
         } catch (IllegalArgumentException e) {
-            assertEquals("havenask engine not support custom routing.path", e.getMessage());
+            assertEquals("havenask engine not support custom routing.path without hash_field", e.getMessage());
         }
     }
 
@@ -240,7 +242,39 @@ public class HavenaskIndexSettingProviderTests extends HavenaskTestCase {
             );
             fail("havenask engine not support custom routing.path");
         } catch (IllegalArgumentException e) {
-            assertEquals("havenask engine not support custom routing.path", e.getMessage());
+            assertEquals("havenask engine not support custom routing.path with different hash_field", e.getMessage());
+        }
+    }
+
+    // hash_field equals RoutingFieldMapper.NAME
+    public void testGetAdditionalIndexSettingsWithHashFieldRouting() {
+        HavenaskIndexSettingProvider provider = new HavenaskIndexSettingProvider(Settings.EMPTY);
+        Settings settings = provider.getAdditionalIndexSettings(
+            "test",
+            false,
+            Settings.builder().put("index.engine", "havenask").put("index.havenask.hash_mode.hash_field", RoutingFieldMapper.NAME).build()
+        );
+        assertEquals(RoutingFieldMapper.NAME, settings.get(EngineSettings.HAVENASK_HASH_MODE_HASH_FIELD.getKey()));
+        List<String> routings = settings.getAsList(IndexMetadata.INDEX_ROUTING_PATH.getKey());
+        assertEquals(0, routings.size());
+    }
+
+    // hash_field equals RoutingFieldMapper.NAME but routing_path exists
+    public void testGetAdditionalIndexSettingsWithHashFieldAndInvaildRoutingPath() {
+        try {
+            HavenaskIndexSettingProvider provider = new HavenaskIndexSettingProvider(Settings.EMPTY);
+            provider.getAdditionalIndexSettings(
+                "test",
+                false,
+                Settings.builder()
+                    .put("index.engine", "havenask")
+                    .put("index.havenask.hash_mode.hash_field", RoutingFieldMapper.NAME)
+                    .put("index.routing_path", RoutingFieldMapper.NAME)
+                    .build()
+            );
+            fail("havenask engine not support custom routing.path");
+        } catch (IllegalArgumentException e) {
+            assertEquals("havenask engine not support custom routing.path without hash_field", e.getMessage());
         }
     }
 }

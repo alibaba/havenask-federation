@@ -20,6 +20,7 @@ import org.havenask.common.unit.TimeValue;
 import org.havenask.engine.index.engine.EngineSettings;
 import org.havenask.index.IndexModule;
 import org.havenask.index.IndexSettings;
+import org.havenask.index.mapper.RoutingFieldMapper;
 import org.havenask.index.shard.IndexSettingProvider;
 
 import java.util.List;
@@ -60,17 +61,20 @@ public class HavenaskIndexSettingProvider implements IndexSettingProvider {
                 IndexMetadata.INDEX_ROUTING_PATH.getKey(),
                 org.havenask.common.collect.List.of()
             );
-            if (false == hashField.isEmpty()) {
-                if (routingPaths.size() > 1 || (routingPaths.size() == 1 && false == hashField.equals(routingPaths.get(0)))) {
-                    throw new IllegalArgumentException("havenask engine not support custom routing.path");
-                }
-            } else {
-                if (routingPaths.size() > 0) {
-                    throw new IllegalArgumentException("havenask engine not support custom routing.path");
-                }
-            }
 
-            builder.put(IndexMetadata.INDEX_ROUTING_PATH.getKey(), hashField);
+            if (hashField.isEmpty() || hashField.equals(RoutingFieldMapper.NAME)) {
+                if (routingPaths.size() > 0) {
+                    throw new IllegalArgumentException("havenask engine not support custom routing.path without hash_field");
+                }
+
+                builder.put(EngineSettings.HAVENASK_HASH_MODE_HASH_FIELD.getKey(), RoutingFieldMapper.NAME);
+            } else if (false == hashField.equals(RoutingFieldMapper.NAME)) {
+                if (routingPaths.size() > 1 || (routingPaths.size() == 1 && false == hashField.equals(routingPaths.get(0)))) {
+                    throw new IllegalArgumentException("havenask engine not support custom routing.path with different hash_field");
+                }
+
+                builder.put(IndexMetadata.INDEX_ROUTING_PATH.getKey(), hashField);
+            }
 
             // havenask索引的index.store.type设置为store
             String indexStoreType = templateAndRequestSettings.get(
