@@ -38,6 +38,7 @@ import org.apache.lucene.store.NIOFSDirectory;
 import org.apache.lucene.util.SetOnce;
 import org.havenask.action.ActionRequest;
 import org.havenask.action.ActionResponse;
+import org.havenask.action.search.TransportClearScrollAction;
 import org.havenask.client.Client;
 import org.havenask.cluster.metadata.IndexNameExpressionResolver;
 import org.havenask.cluster.node.DiscoveryNodes;
@@ -180,6 +181,7 @@ public class HavenaskEnginePlugin extends Plugin
     public HavenaskEnginePlugin(Settings settings) {
         this.settings = settings;
         OperationRouting.customShardIdGenerator = RangeUtil::calculateScaledShardId;
+        TransportClearScrollAction.transportClearScrollExecutor = TransportClearHavenaskScrollAction::executeHavenaskClearScroll;
     }
 
     @Override

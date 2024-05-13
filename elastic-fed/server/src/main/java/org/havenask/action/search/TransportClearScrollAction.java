@@ -39,9 +39,7 @@
 
 package org.havenask.action.search;
 
-import org.apache.lucene.store.ByteArrayDataInput;
 import org.havenask.action.ActionListener;
-import org.havenask.action.ActionListenerResponseHandler;
 import org.havenask.action.support.ActionFilters;
 import org.havenask.action.support.HandledTransportAction;
 import org.havenask.cluster.service.ClusterService;
@@ -50,16 +48,16 @@ import org.havenask.common.io.stream.NamedWriteableRegistry;
 import org.havenask.tasks.Task;
 import org.havenask.transport.TransportService;
 
-import java.util.ArrayList;
-import java.util.Base64;
-import java.util.List;
-
 public class TransportClearScrollAction extends HandledTransportAction<ClearScrollRequest, ClearScrollResponse> {
 
     private final ClusterService clusterService;
     private final TransportService transportService;
     private final SearchTransportService searchTransportService;
     private final NamedWriteableRegistry namedWriteableRegistry;
+    public static TransportClearScrollExecutor transportClearScrollExecutor;
+    public interface TransportClearScrollExecutor {
+        void apply(Task task, ClearScrollRequest request, final ActionListener<ClearScrollResponse> listener);
+    }
 
     @Inject
     public TransportClearScrollAction(TransportService transportService, ClusterService clusterService, ActionFilters actionFilters,
@@ -73,62 +71,12 @@ public class TransportClearScrollAction extends HandledTransportAction<ClearScro
 
     @Override
     protected void doExecute(Task task, ClearScrollRequest request, final ActionListener<ClearScrollResponse> listener) {
-        try {
-            List<String> elasticScrollIds = new ArrayList<>();
-            List<String> havenaskScrollIds = new ArrayList<>();
-            separateElasticScrollIdAndHavenaskScrollId(request.getScrollIds(), elasticScrollIds, havenaskScrollIds);
-            if (!havenaskScrollIds.isEmpty()) {
-                ClearScrollRequest havenaskClearScrollRequest = new ClearScrollRequest();
-                havenaskClearScrollRequest.setScrollIds(havenaskScrollIds);
-                ClearScrollRequest esClearScrollRequest = new ClearScrollRequest();
-                esClearScrollRequest.setScrollIds(elasticScrollIds);
-                ActionListener<ClearScrollResponse> elasticSearchListener = ActionListener.wrap(
-                  response ->  transportService.sendRequest(
-                                clusterService.state().nodes().getLocalNode(),
-                                CLEAR_HAVENASK_SCROLL_ACTION,
-                                havenaskClearScrollRequest,
-                                new ActionListenerResponseHandler<>(listener, ClearScrollAction.INSTANCE.getResponseReader())
-                        ),
-                    e -> {listener.onFailure(e);}
-                );
-                Runnable runnable = new ClearScrollController(
-                        esClearScrollRequest, elasticSearchListener, clusterService.state().nodes(), logger, searchTransportService);
-                runnable.run();
-            } else {
-                Runnable runnable = new ClearScrollController(
-                        request, listener, clusterService.state().nodes(), logger, searchTransportService);
-                runnable.run();
-            }
-        } catch (Exception e) {
-            listener.onFailure(e);
+        if (transportClearScrollExecutor != null) {
+            transportClearScrollExecutor.apply(task, request, listener);
+        } else {
+            Runnable runnable = new ClearScrollController(
+                    request, listener, clusterService.state().nodes(), logger, searchTransportService);
+            runnable.run();
         }
     }
-
-    private static final String CLEAR_HAVENASK_SCROLL_ACTION = "indices:data/read/havenask/scroll/clear";
-
-    private void separateElasticScrollIdAndHavenaskScrollId(
-            List<String> scrollIds,
-            List<String> elasticScrollIds,
-            List<String> havenaskScrollIds) {
-        try {
-            if (scrollIds.size() == 1 && "_all".equals(scrollIds.get(0))) {
-                elasticScrollIds.add(scrollIds.get(0));
-                return;
-            }
-
-            for (String scrollId : scrollIds) {
-                byte[] bytes = Base64.getUrlDecoder().decode(scrollId);
-                ByteArrayDataInput in = new ByteArrayDataInput(bytes);
-                final String firstChunk = in.readString();
-                if ("havenask_scroll_id".equals(firstChunk)) {
-                    havenaskScrollIds.add(scrollId);
-                } else {
-                    elasticScrollIds.add(scrollId);
-                }
-            }
-        } catch (Exception e) {
-            throw new IllegalArgumentException("Cannot parse scroll id", e);
-        }
-    }
-
 }
