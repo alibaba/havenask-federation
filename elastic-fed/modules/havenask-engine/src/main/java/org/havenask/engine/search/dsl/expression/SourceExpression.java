@@ -20,7 +20,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.stream.Collectors;
 
 import org.havenask.engine.search.dsl.expression.aggregation.AvgExpression;
 import org.havenask.engine.search.dsl.expression.aggregation.BucketExpression;
@@ -30,26 +29,10 @@ import org.havenask.engine.search.dsl.expression.aggregation.GroupByExpression;
 import org.havenask.engine.search.dsl.expression.aggregation.MetricExpression;
 import org.havenask.engine.search.dsl.expression.aggregation.SumExpression;
 import org.havenask.engine.search.dsl.expression.aggregation.TermsExpression;
-import org.havenask.engine.search.dsl.expression.query.BoolExpression;
-import org.havenask.engine.search.dsl.expression.query.ExistExpression;
-import org.havenask.engine.search.dsl.expression.query.MatchAllExpression;
-import org.havenask.engine.search.dsl.expression.query.MatchExpression;
-import org.havenask.engine.search.dsl.expression.query.MatchPhraseExpression;
-import org.havenask.engine.search.dsl.expression.query.QueryStringExpression;
-import org.havenask.engine.search.dsl.expression.query.RangeExpression;
-import org.havenask.engine.search.dsl.expression.query.TermExpression;
+import org.havenask.engine.search.dsl.expression.query.QueryExpression;
 import org.havenask.engine.search.internal.HavenaskScroll;
 import org.havenask.index.query.BoolQueryBuilder;
-import org.havenask.index.query.ExistsQueryBuilder;
-import org.havenask.index.query.MatchAllQueryBuilder;
-import org.havenask.index.query.MatchPhraseQueryBuilder;
-import org.havenask.index.query.MatchQueryBuilder;
-import org.havenask.index.query.QueryBuilder;
 import org.havenask.index.query.QueryBuilders;
-import org.havenask.index.query.QueryStringQueryBuilder;
-import org.havenask.index.query.RangeQueryBuilder;
-import org.havenask.index.query.TermQueryBuilder;
-import org.havenask.index.query.TermsQueryBuilder;
 import org.havenask.search.aggregations.AggregationBuilder;
 import org.havenask.search.aggregations.AggregatorFactories;
 import org.havenask.search.aggregations.bucket.histogram.DateHistogramAggregationBuilder;
@@ -75,27 +58,21 @@ public class SourceExpression extends Expression {
     private final int size;
     private final int from;
     private HavenaskScroll havenaskScroll;
+    private ExpressionContext context;
 
     public SourceExpression(SearchSourceBuilder searchSourceBuilder) {
-        this(searchSourceBuilder, null, -1);
+        this(searchSourceBuilder, new ExpressionContext(null, null, -1));
     }
 
-    public SourceExpression(SearchSourceBuilder searchSourceBuilder, HavenaskScroll havenaskScroll) {
-        this(searchSourceBuilder, havenaskScroll, -1);
-    }
-
-    public SourceExpression(SearchSourceBuilder searchSourceBuilder, int shardNum) {
-        this(searchSourceBuilder, null, shardNum);
-    }
-
-    public SourceExpression(SearchSourceBuilder searchSourceBuilder, HavenaskScroll havenaskScroll, int shardNum) {
+    public SourceExpression(SearchSourceBuilder searchSourceBuilder, ExpressionContext context) {
         this.searchSourceBuilder = searchSourceBuilder;
-        this.where = new WhereExpression(visitQuery(searchSourceBuilder.query()));
+        this.where = new WhereExpression(QueryExpression.visitQuery(searchSourceBuilder.query(), context));
         this.orderBy = new OrderByExpression(searchSourceBuilder.sorts());
-        this.slice = new SliceExpression(searchSourceBuilder.slice(), shardNum);
+        this.slice = new SliceExpression(searchSourceBuilder.slice(), context.getShardNum());
         this.size = searchSourceBuilder.size() >= 0 ? searchSourceBuilder.size() : DEFAULT_SEARCH_SIZE;
         this.from = searchSourceBuilder.from() >= 0 ? searchSourceBuilder.from() : 0;
-        this.havenaskScroll = havenaskScroll;
+        this.havenaskScroll = context.getHavenaskScroll();
+        this.context = context;
     }
 
     public int size() {
@@ -115,7 +92,9 @@ public class SourceExpression extends Expression {
         for (KnnSearchBuilder knnSearchBuilder : searchSourceBuilder.knnSearch()) {
             BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery();
             knnSearchBuilder.getFilterQueries().forEach(boolQueryBuilder::filter);
-            knnExpressions.add(new KnnExpression(knnSearchBuilder, visitBoolQuery(boolQueryBuilder), flattenFields));
+            knnExpressions.add(
+                new KnnExpression(knnSearchBuilder, QueryExpression.visitBoolQuery(boolQueryBuilder, context), flattenFields)
+            );
         }
 
         return knnExpressions;
@@ -225,42 +204,6 @@ public class SourceExpression extends Expression {
         } else {
             throw new IllegalArgumentException("Unsupported aggregation type: " + aggregationBuilder.getClass().getName());
         }
-    }
-
-    public static Expression visitQuery(QueryBuilder query) {
-        if (query == null) {
-            return new MatchAllExpression();
-        }
-
-        if (query instanceof BoolQueryBuilder) {
-            return visitBoolQuery((BoolQueryBuilder) query);
-        } else if (query instanceof TermQueryBuilder) {
-            return new TermExpression((TermQueryBuilder) query);
-        } else if (query instanceof MatchAllQueryBuilder) {
-            return new MatchAllExpression();
-        } else if (query instanceof RangeQueryBuilder) {
-            return new RangeExpression((RangeQueryBuilder) query);
-        } else if (query instanceof MatchQueryBuilder) {
-            return new MatchExpression(((MatchQueryBuilder) query));
-        } else if (query instanceof QueryStringQueryBuilder) {
-            return new QueryStringExpression((QueryStringQueryBuilder) query);
-        } else if (query instanceof MatchPhraseQueryBuilder) {
-            return new MatchPhraseExpression((MatchPhraseQueryBuilder) query);
-        } else if (query instanceof TermsQueryBuilder) {
-            return new org.havenask.engine.search.dsl.expression.query.TermsExpression((TermsQueryBuilder) query);
-        } else if (query instanceof ExistsQueryBuilder) {
-            return new ExistExpression((ExistsQueryBuilder) query);
-        } else {
-            throw new IllegalArgumentException("Unsupported query type: " + query.getClass().getName());
-        }
-    }
-
-    private static BoolExpression visitBoolQuery(BoolQueryBuilder query) {
-        List<Expression> must = query.must().stream().map(SourceExpression::visitQuery).collect(Collectors.toList());
-        List<Expression> mustNot = query.mustNot().stream().map(SourceExpression::visitQuery).collect(Collectors.toList());
-        List<Expression> should = query.should().stream().map(SourceExpression::visitQuery).collect(Collectors.toList());
-        List<Expression> filter = query.filter().stream().map(SourceExpression::visitQuery).collect(Collectors.toList());
-        return new BoolExpression(must, should, mustNot, filter, query.minimumShouldMatch());
     }
 
     public HavenaskScroll getHavenaskScroll() {

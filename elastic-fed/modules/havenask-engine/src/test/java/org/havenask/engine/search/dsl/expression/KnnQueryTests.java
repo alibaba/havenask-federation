@@ -108,7 +108,8 @@ public class KnnQueryTests extends HavenaskTestCase {
             )
         );
 
-        SourceExpression sourceExpression = new SourceExpression(builder, shardNum);
+        ExpressionContext context = new ExpressionContext(null, null, shardNum);
+        SourceExpression sourceExpression = new SourceExpression(builder, context);
         String actualTranslate = sourceExpression.getQuerySQLExpression("table1", indexMapping).translate();
         assertEquals(
             "SELECT /*+ SCAN_ATTR(partitionIds='0,1,2', forbidIndex='field2')*/ `_id`, ((1/(1+vector_score('field1'))))"

@@ -17,35 +17,49 @@ package org.havenask.engine.search.dsl;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.message.ParameterizedMessage;
+import org.havenask.action.search.SearchRequest;
 import org.havenask.action.search.SearchResponse;
 import org.havenask.cluster.metadata.IndexMetadata;
 import org.havenask.common.UUIDs;
+import org.havenask.common.xcontent.NamedXContentRegistry;
 import org.havenask.engine.rpc.QrsClient;
+import org.havenask.engine.search.dsl.expression.ExpressionContext;
 import org.havenask.engine.search.dsl.plan.DSLExec;
 import org.havenask.engine.search.internal.HavenaskScroll;
 import org.havenask.search.builder.SearchSourceBuilder;
 
 import java.io.IOException;
 import java.util.Map;
+import java.util.Objects;
 
 public class DSLSession {
     protected Logger logger = LogManager.getLogger(DSLSession.class);
 
     private final QrsClient client;
     private final IndexMetadata indexMetadata;
+    private final NamedXContentRegistry namedXContentRegistry;
     private long startTime;
     private final String sessionId;
     private SearchSourceBuilder query;
     private HavenaskScroll havenaskScroll;
     private final boolean sourceEnabled;
 
-    public DSLSession(QrsClient client, IndexMetadata indexMetadata, SearchSourceBuilder query, HavenaskScroll havenaskScroll) {
+    public DSLSession(
+        QrsClient client,
+        IndexMetadata indexMetadata,
+        SearchRequest searchRequest,
+        String nodeId,
+        NamedXContentRegistry namedXContentRegistry
+    ) {
         this.client = client;
         this.indexMetadata = indexMetadata;
         this.startTime = System.currentTimeMillis();
         this.sessionId = UUIDs.randomBase64UUID();
-        this.query = query;
-        this.havenaskScroll = havenaskScroll;
+        this.query = searchRequest.source();
+        if (Objects.nonNull(searchRequest.scroll())) {
+            this.havenaskScroll = new HavenaskScroll(nodeId, searchRequest.scroll());
+        }
+        this.namedXContentRegistry = namedXContentRegistry;
         this.sourceEnabled = setSourceEnabled();
     }
 
@@ -85,6 +99,10 @@ public class DSLSession {
         return query;
     }
 
+    public NamedXContentRegistry getNamedXContentRegistry() {
+        return namedXContentRegistry;
+    }
+
     public long getTook() {
         return System.currentTimeMillis() - startTime;
     }
@@ -96,7 +114,8 @@ public class DSLSession {
     public SearchResponse execute() throws IOException {
         try {
             startTime = System.currentTimeMillis();
-            DSLExec exec = new DSLExec(query, havenaskScroll, indexMetadata.getNumberOfShards());
+            ExpressionContext context = new ExpressionContext(namedXContentRegistry, havenaskScroll, indexMetadata.getNumberOfShards());
+            DSLExec exec = new DSLExec(query, context);
             SearchResponse searchResponse = exec.execute(this);
             logger.debug("DSLSession [{}] executed in [{}] ms", sessionId, System.currentTimeMillis() - startTime);
             return searchResponse;

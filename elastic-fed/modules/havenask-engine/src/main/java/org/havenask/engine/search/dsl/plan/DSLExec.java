@@ -23,6 +23,7 @@ import org.havenask.action.search.ShardSearchFailure;
 import org.havenask.cluster.metadata.IndexMetadata;
 import org.havenask.engine.search.action.TransportHavenaskSearchHelper;
 import org.havenask.engine.search.dsl.DSLSession;
+import org.havenask.engine.search.dsl.expression.ExpressionContext;
 import org.havenask.engine.search.dsl.expression.SourceExpression;
 import org.havenask.engine.search.internal.HavenaskScroll;
 import org.havenask.search.SearchHits;
@@ -34,9 +35,9 @@ public class DSLExec implements Executable<SearchResponse> {
     private final SearchSourceBuilder dsl;
     private final SourceExpression sourceExpression;
 
-    public DSLExec(SearchSourceBuilder dsl, HavenaskScroll havenaskScroll, int shardNum) {
+    public DSLExec(SearchSourceBuilder dsl, ExpressionContext context) {
         this.dsl = dsl;
-        this.sourceExpression = new SourceExpression(dsl, havenaskScroll, shardNum);
+        this.sourceExpression = new SourceExpression(dsl, context);
     }
 
     @Override
