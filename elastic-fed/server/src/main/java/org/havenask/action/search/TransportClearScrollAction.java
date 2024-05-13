@@ -48,6 +48,8 @@ import org.havenask.common.io.stream.NamedWriteableRegistry;
 import org.havenask.tasks.Task;
 import org.havenask.transport.TransportService;
 
+import java.util.Objects;
+
 public class TransportClearScrollAction extends HandledTransportAction<ClearScrollRequest, ClearScrollResponse> {
 
     private final ClusterService clusterService;
@@ -56,7 +58,9 @@ public class TransportClearScrollAction extends HandledTransportAction<ClearScro
     private final NamedWriteableRegistry namedWriteableRegistry;
     public static TransportClearScrollExecutor transportClearScrollExecutor;
     public interface TransportClearScrollExecutor {
-        void apply(Task task, ClearScrollRequest request, final ActionListener<ClearScrollResponse> listener);
+        void apply(Task task,
+                   ClearScrollRequest request,
+                   final ActionListener<ClearScrollResponse> listener);
     }
 
     @Inject
@@ -71,7 +75,7 @@ public class TransportClearScrollAction extends HandledTransportAction<ClearScro
 
     @Override
     protected void doExecute(Task task, ClearScrollRequest request, final ActionListener<ClearScrollResponse> listener) {
-        if (transportClearScrollExecutor != null) {
+        if (Objects.nonNull(transportClearScrollExecutor)) {
             transportClearScrollExecutor.apply(task, request, listener);
         } else {
             Runnable runnable = new ClearScrollController(

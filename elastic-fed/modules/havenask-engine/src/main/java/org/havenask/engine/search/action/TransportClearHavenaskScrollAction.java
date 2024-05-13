@@ -22,6 +22,7 @@ import org.havenask.action.ActionListenerResponseHandler;
 import org.havenask.action.search.ClearScrollAction;
 import org.havenask.action.search.ClearScrollRequest;
 import org.havenask.action.search.ClearScrollResponse;
+import org.havenask.action.search.TransportClearScrollAction;
 import org.havenask.action.support.ActionFilters;
 import org.havenask.action.support.HandledTransportAction;
 import org.havenask.cluster.service.ClusterService;
@@ -37,10 +38,8 @@ import java.util.List;
 
 public class TransportClearHavenaskScrollAction extends HandledTransportAction<ClearScrollRequest, ClearScrollResponse> {
     private static final Logger logger = LogManager.getLogger(TransportClearHavenaskScrollAction.class);
-    private static ClusterService clusterService;
-    private static TransportService transportService;
-    private static HavenaskSearchTransportService havenaskSearchTransportService;
-    private HavenaskScrollService havenaskScrollService;
+    private final ClusterService clusterService;
+    private final HavenaskSearchTransportService havenaskSearchTransportService;
 
     @Inject
     public TransportClearHavenaskScrollAction(
@@ -51,10 +50,11 @@ public class TransportClearHavenaskScrollAction extends HandledTransportAction<C
         ActionFilters actionFilters
     ) {
         super(ClearHavenaskScrollAction.NAME, transportService, actionFilters, ClearScrollRequest::new, ThreadPool.Names.SEARCH);
-        TransportClearHavenaskScrollAction.clusterService = clusterService;
-        TransportClearHavenaskScrollAction.havenaskSearchTransportService = havenaskSearchTransportService;
+        this.clusterService = clusterService;
+        this.havenaskSearchTransportService = havenaskSearchTransportService;
         HavenaskSearchTransportService.registerRequestHandler(transportService, havenaskScrollService);
-        this.havenaskScrollService = havenaskScrollService;
+        TransportClearScrollAction.transportClearScrollExecutor = (task, request, listener) -> TransportClearHavenaskScrollAction
+            .executeHavenaskClearScroll(task, request, listener, clusterService, transportService, havenaskSearchTransportService);
     }
 
     @Override
@@ -76,7 +76,10 @@ public class TransportClearHavenaskScrollAction extends HandledTransportAction<C
     public static void executeHavenaskClearScroll(
         Task task,
         ClearScrollRequest request,
-        final ActionListener<ClearScrollResponse> listener
+        final ActionListener<ClearScrollResponse> listener,
+        ClusterService clusterService,
+        TransportService transportService,
+        HavenaskSearchTransportService havenaskSearchTransportService
     ) {
         try {
             List<String> elasticScrollIds = new ArrayList<>();
@@ -128,6 +131,7 @@ public class TransportClearHavenaskScrollAction extends HandledTransportAction<C
         try {
             if (scrollIds.size() == 1 && "_all".equals(scrollIds.get(0))) {
                 elasticScrollIds.add(scrollIds.get(0));
+                havenaskScrollIds.add(scrollIds.get(0));
                 return;
             }
 

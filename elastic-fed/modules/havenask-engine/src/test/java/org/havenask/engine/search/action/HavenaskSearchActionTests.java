@@ -14,7 +14,7 @@
 
 package org.havenask.engine.search.action;
 
-import static org.havenask.action.search.TransportSearchAction.isSearchHavenask;
+import static org.havenask.engine.search.action.TransportHavenaskSearchAction.isSearchHavenask;
 
 import org.havenask.Version;
 import org.havenask.action.search.SearchRequest;
