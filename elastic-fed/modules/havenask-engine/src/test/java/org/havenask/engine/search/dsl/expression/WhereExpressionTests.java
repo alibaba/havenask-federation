@@ -14,6 +14,7 @@
 
 package org.havenask.engine.search.dsl.expression;
 
+import org.havenask.engine.search.dsl.expression.query.QueryExpression;
 import org.havenask.index.query.QueryBuilders;
 import org.havenask.search.builder.SearchSourceBuilder;
 import org.havenask.test.HavenaskTestCase;
@@ -25,7 +26,7 @@ public class WhereExpressionTests extends HavenaskTestCase {
             QueryBuilders.boolQuery().must(QueryBuilders.termQuery("field1", "value1")).must(QueryBuilders.termQuery("field2", "value2"))
         );
 
-        Expression expression = SourceExpression.visitQuery(builder.query());
+        Expression expression = QueryExpression.visitQuery(builder.query(), null);
         WhereExpression whereExpression = new WhereExpression(expression);
         String actualTranslate = whereExpression.translate();
         assertEquals("WHERE (`field1` = 'value1' AND `field2` = 'value2')", actualTranslate);

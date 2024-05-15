@@ -293,7 +293,8 @@ public class QuerySQLExpressionTests extends HavenaskTestCase {
             SearchSourceBuilder builder = new SearchSourceBuilder();
             builder.query(QueryBuilders.matchAllQuery());
 
-            SourceExpression sourceExpression = new SourceExpression(builder, havenaskScroll, -1);
+            ExpressionContext context = new ExpressionContext(null, havenaskScroll, -1);
+            SourceExpression sourceExpression = new SourceExpression(builder, context);
             String resSql = sourceExpression.getQuerySQLExpression("table", Map.of()).translate();
             String expectedSql = String.format(Locale.ROOT, "SELECT `_id` FROM `table` WHERE 1=1 ORDER BY `_id` ASC LIMIT 10 ");
             assertEquals(expectedSql, resSql);
@@ -319,7 +320,8 @@ public class QuerySQLExpressionTests extends HavenaskTestCase {
             builder.seqNoAndPrimaryTerm(false);
             builder.sort(SortBuilders.fieldSort(OrderByExpression.LUCENE_DOC_FIELD_NAME).order(SortOrder.ASC));
 
-            SourceExpression sourceExpression = new SourceExpression(builder, havenaskScroll, -1);
+            ExpressionContext context = new ExpressionContext(null, havenaskScroll, -1);
+            SourceExpression sourceExpression = new SourceExpression(builder, context);
             String resSql = sourceExpression.getQuerySQLExpression("table", Map.of()).translate();
             String expectedSql = String.format(Locale.ROOT, "SELECT `_id` FROM `table` WHERE 1=1 ORDER BY `_id` ASC LIMIT 1000 ");
             assertEquals(expectedSql, resSql);
@@ -344,7 +346,8 @@ public class QuerySQLExpressionTests extends HavenaskTestCase {
             int shardNum = 7;
             SearchSourceBuilder builder = new SearchSourceBuilder();
             builder.slice(new SliceBuilder(id, max));
-            SourceExpression sourceExpression = new SourceExpression(builder, shardNum);
+            ExpressionContext context = new ExpressionContext(null, null, shardNum);
+            SourceExpression sourceExpression = new SourceExpression(builder, context);
             String resSql = sourceExpression.getQuerySQLExpression("table", Map.of()).translate();
             assertEquals("SELECT /*+ SCAN_ATTR(partitionIds='0,1,2')*/ `_id` FROM `table` WHERE 1=1 LIMIT 10 ", resSql);
         }

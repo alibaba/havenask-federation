@@ -21,6 +21,7 @@ import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TotalHits;
 import org.havenask.client.ha.SqlResponse;
 import org.havenask.common.bytes.BytesArray;
+import org.havenask.common.document.DocumentField;
 import org.havenask.common.lucene.search.TopDocsAndMaxScore;
 import org.havenask.common.text.Text;
 import org.havenask.engine.rpc.QrsClient;
@@ -30,6 +31,7 @@ import org.havenask.engine.search.fetch.HavenaskFetchSourcePhase;
 import org.havenask.engine.search.fetch.HavenaskFetchSubPhase;
 import org.havenask.engine.search.fetch.HavenaskFetchSubPhaseProcessor;
 import org.havenask.index.mapper.MapperService;
+import org.havenask.index.mapper.RoutingFieldMapper;
 import org.havenask.search.SearchHit;
 import org.havenask.search.SearchHits;
 import org.havenask.search.aggregations.InternalAggregations;
@@ -52,6 +54,7 @@ public class HavenaskSearchFetchProcessor {
     private static final int ID_POS = 0;
     private static final int SCORE_POS = 1;
     private static final int SOURCE_POS = 1;
+    private static final int ROUTING_POS = 2;
     private static final Object SOURCE_NOT_FOUND = "{\n" + "\"warn\":\"source not found\"\n" + "}";
     QrsClient qrsClient;
     private final List<HavenaskFetchSubPhase> havenaskFetchSubPhases;
@@ -156,7 +159,7 @@ public class HavenaskSearchFetchProcessor {
 
     public static QrsSqlRequest getQrsFetchPhaseSqlRequest(List<String> idList, String tableName) {
         StringBuilder sqlQuery = new StringBuilder();
-        sqlQuery.append("select _id, _source from ").append('`').append(tableName).append("_summary_` where contain('_id','");
+        sqlQuery.append("select _id, _source, _routing from ").append('`').append(tableName).append("_summary_` where contain('_id','");
         for (int i = 0; i < idList.size(); i++) {
             sqlQuery.append(idList.get(i));
             if (i < idList.size() - 1) {
@@ -211,24 +214,32 @@ public class HavenaskSearchFetchProcessor {
         }
 
         for (int i = 0; i < loadSize; i++) {
-            // TODO: add _routing
+            // 根据idList的顺序从fetch结果获取相对应的_source, 如果数据丢失则返回_source not found
+            Integer fetchResIndex = fetchResIdListMap.get(idList.get(i));
+            Object source = null;
+            if (true == sourceEnabled && (fetchSourceContext == null || true == fetchSourceContext.fetchSource())) {
+                source = fetchResIndex != null
+                    ? fetchPhaseSqlResponse.getSqlResult().getData()[fetchResIndex][SOURCE_POS]
+                    : SOURCE_NOT_FOUND;
+            }
+
+            Map<String, DocumentField> metaFields = new HashMap<>();
+            // set routing when routing is not equal to id
+            if (fetchPhaseSqlResponse != null && fetchResIndex != null) {
+                Object routing = fetchPhaseSqlResponse.getSqlResult().getData()[fetchResIndex][ROUTING_POS];
+                if (routing != null && idList.get(i).equals(routing) == false) {
+                    metaFields.put(RoutingFieldMapper.NAME, new DocumentField(RoutingFieldMapper.NAME, Collections.singletonList(routing)));
+                }
+            }
+
             SearchHit searchHit = new SearchHit(
                 i,
                 idList.get(i),
                 new Text(MapperService.SINGLE_MAPPING_NAME),
                 Collections.emptyMap(),
-                Collections.emptyMap()
+                metaFields
             );
             searchHit.setIndex(tableName);
-
-            // 根据idList的顺序从fetch结果获取相对应的_source, 如果数据丢失则返回_source not found
-            Object source = null;
-            if (true == sourceEnabled && (fetchSourceContext == null || true == fetchSourceContext.fetchSource())) {
-                Integer fetchResIndex = fetchResIdListMap.get(idList.get(i));
-                source = fetchResIndex != null
-                    ? fetchPhaseSqlResponse.getSqlResult().getData()[fetchResIndex][SOURCE_POS]
-                    : SOURCE_NOT_FOUND;
-            }
             HavenaskFetchSubPhase.HitContent hit = new HavenaskFetchSubPhase.HitContent(searchHit, source);
             hit.getHit().score(topDocsAndMaxScore.topDocs.scoreDocs[i].score);
             if (false == sourceEnabled || (fetchSourceContext != null && false == fetchSourceContext.fetchSource())) {

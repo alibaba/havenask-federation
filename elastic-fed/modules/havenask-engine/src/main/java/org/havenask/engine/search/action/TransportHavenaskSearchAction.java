@@ -31,12 +31,12 @@ import org.havenask.cluster.metadata.IndexMetadata;
 import org.havenask.cluster.metadata.Metadata;
 import org.havenask.cluster.service.ClusterService;
 import org.havenask.common.inject.Inject;
+import org.havenask.common.xcontent.NamedXContentRegistry;
 import org.havenask.engine.HavenaskScrollService;
 import org.havenask.engine.NativeProcessControlService;
 import org.havenask.engine.rpc.QrsClient;
 import org.havenask.engine.rpc.http.QrsHttpClient;
 import org.havenask.engine.search.dsl.DSLSession;
-import org.havenask.engine.search.internal.HavenaskScroll;
 import org.havenask.engine.search.internal.HavenaskScrollContext;
 import org.havenask.index.shard.IndexShard;
 import org.havenask.tasks.Task;
@@ -52,17 +52,20 @@ public class TransportHavenaskSearchAction extends HandledTransportAction<Search
     private final IngestActionForwarder ingestForwarder;
     private final QrsClient qrsClient;
     private final HavenaskScrollService havenaskScrollService;
+    private final NamedXContentRegistry namedXContentRegistry;
 
     @Inject
     public TransportHavenaskSearchAction(
         ClusterService clusterService,
         TransportService transportService,
+        NamedXContentRegistry namedXContentRegistry,
         NativeProcessControlService nativeProcessControlService,
         ActionFilters actionFilters,
         HavenaskScrollService havenaskScrollService
     ) {
         super(HavenaskSearchAction.NAME, transportService, actionFilters, SearchRequest::new, ThreadPool.Names.SEARCH);
         this.clusterService = clusterService;
+        this.namedXContentRegistry = namedXContentRegistry;
         this.ingestForwarder = new IngestActionForwarder(transportService);
         clusterService.addStateApplier(this.ingestForwarder);
         this.qrsClient = new QrsHttpClient(nativeProcessControlService.getQrsHttpPort());
@@ -88,13 +91,13 @@ public class TransportHavenaskSearchAction extends HandledTransportAction<Search
             }
 
             IndexMetadata indexMetadata = indexAbstraction.getWriteIndex();
-
-            HavenaskScroll havenaskScroll = null;
-            if (Objects.nonNull(request.scroll())) {
-                havenaskScroll = new HavenaskScroll(clusterService.localNode().getId(), request.scroll());
-            }
-
-            DSLSession session = new DSLSession(qrsClient, indexMetadata, request.source(), havenaskScroll);
+            DSLSession session = new DSLSession(
+                qrsClient,
+                indexMetadata,
+                request,
+                clusterService.localNode().getId(),
+                namedXContentRegistry
+            );
             SearchResponse searchResponse = session.execute();
 
             if (Objects.nonNull(request.scroll())) {
