@@ -60,7 +60,7 @@ public class TransportClearScrollAction extends HandledTransportAction<ClearScro
     public interface TransportClearScrollExecutor {
         void apply(Task task,
                    ClearScrollRequest request,
-                   final ActionListener<ClearScrollResponse> listener,
+                   ActionListener<ClearScrollResponse> listener,
                    SearchTransportService searchTransportService);
     }
 
