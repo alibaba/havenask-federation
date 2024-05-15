@@ -18,10 +18,10 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.lucene.store.ByteArrayDataInput;
 import org.havenask.action.ActionListener;
-import org.havenask.action.ActionListenerResponseHandler;
-import org.havenask.action.search.ClearScrollAction;
+import org.havenask.action.search.ClearScrollController;
 import org.havenask.action.search.ClearScrollRequest;
 import org.havenask.action.search.ClearScrollResponse;
+import org.havenask.action.search.SearchTransportService;
 import org.havenask.action.search.TransportClearScrollAction;
 import org.havenask.action.support.ActionFilters;
 import org.havenask.action.support.HandledTransportAction;
@@ -53,8 +53,19 @@ public class TransportClearHavenaskScrollAction extends HandledTransportAction<C
         this.clusterService = clusterService;
         this.havenaskSearchTransportService = havenaskSearchTransportService;
         HavenaskSearchTransportService.registerRequestHandler(transportService, havenaskScrollService);
-        TransportClearScrollAction.transportClearScrollExecutor = (task, request, listener) -> TransportClearHavenaskScrollAction
-            .executeHavenaskClearScroll(task, request, listener, clusterService, transportService, havenaskSearchTransportService);
+        TransportClearScrollAction.transportClearScrollExecutor = (
+            task,
+            request,
+            listener,
+            searchTransportService) -> TransportClearHavenaskScrollAction.executeHavenaskClearScroll(
+                task,
+                request,
+                listener,
+                searchTransportService,
+                clusterService,
+                transportService,
+                havenaskSearchTransportService
+            );
     }
 
     @Override
@@ -77,6 +88,7 @@ public class TransportClearHavenaskScrollAction extends HandledTransportAction<C
         Task task,
         ClearScrollRequest request,
         final ActionListener<ClearScrollResponse> listener,
+        SearchTransportService searchTransportService,
         ClusterService clusterService,
         TransportService transportService,
         HavenaskSearchTransportService havenaskSearchTransportService
@@ -91,15 +103,16 @@ public class TransportClearHavenaskScrollAction extends HandledTransportAction<C
                 ClearScrollRequest esClearScrollRequest = new ClearScrollRequest();
                 esClearScrollRequest.setScrollIds(elasticScrollIds);
 
-                ActionListener<ClearScrollResponse> havenaskSearchListener = ActionListener.wrap(
-                    response -> transportService.sendRequest(
-                        clusterService.state().nodes().getLocalNode(),
-                        ClearScrollAction.NAME,
-                        esClearScrollRequest,
-                        new ActionListenerResponseHandler<>(listener, ClearScrollAction.INSTANCE.getResponseReader())
-                    ),
-                    e -> { listener.onFailure(e); }
-                );
+                ActionListener<ClearScrollResponse> havenaskSearchListener = ActionListener.wrap(response -> {
+                    Runnable esRunnable = new ClearScrollController(
+                        request,
+                        listener,
+                        clusterService.state().nodes(),
+                        logger,
+                        searchTransportService
+                    );
+                    esRunnable.run();
+                }, e -> { listener.onFailure(e); });
                 Runnable runnable = new ClearHavenaskScrollController(
                     havenaskClearScrollRequest,
                     havenaskSearchListener,

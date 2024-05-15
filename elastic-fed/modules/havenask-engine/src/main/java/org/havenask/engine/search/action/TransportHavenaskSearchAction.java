@@ -113,7 +113,7 @@ public class TransportHavenaskSearchAction extends HandledTransportAction<Search
         }
     }
 
-    public static void executeHavenaskSearch(
+    public static boolean executeHavenaskSearch(
         SearchRequest searchRequest,
         ActionListener<SearchResponse> listener,
         ClusterService clusterService,
@@ -126,13 +126,9 @@ public class TransportHavenaskSearchAction extends HandledTransportAction<Search
                 searchRequest,
                 new ActionListenerResponseHandler<>(listener, SearchAction.INSTANCE.getResponseReader())
             );
+            return true;
         } else {
-            transportService.sendRequest(
-                clusterService.state().nodes().getLocalNode(),
-                SearchAction.NAME,
-                searchRequest,
-                new ActionListenerResponseHandler<>(listener, SearchAction.INSTANCE.getResponseReader())
-            );
+            return false;
         }
     }
 

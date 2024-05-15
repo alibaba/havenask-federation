@@ -60,7 +60,8 @@ public class TransportClearScrollAction extends HandledTransportAction<ClearScro
     public interface TransportClearScrollExecutor {
         void apply(Task task,
                    ClearScrollRequest request,
-                   final ActionListener<ClearScrollResponse> listener);
+                   final ActionListener<ClearScrollResponse> listener,
+                   SearchTransportService searchTransportService);
     }
 
     @Inject
@@ -76,7 +77,7 @@ public class TransportClearScrollAction extends HandledTransportAction<ClearScro
     @Override
     protected void doExecute(Task task, ClearScrollRequest request, final ActionListener<ClearScrollResponse> listener) {
         if (Objects.nonNull(transportClearScrollExecutor)) {
-            transportClearScrollExecutor.apply(task, request, listener);
+            transportClearScrollExecutor.apply(task, request, listener, searchTransportService);
         } else {
             Runnable runnable = new ClearScrollController(
                     request, listener, clusterService.state().nodes(), logger, searchTransportService);

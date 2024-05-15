@@ -143,7 +143,7 @@ public class TransportSearchAction extends HandledTransportAction<SearchRequest,
     public static TransportSearchExecutor transportSearchExecutor;
 
     public interface TransportSearchExecutor {
-        void apply(Task task, SearchRequest searchRequest, ActionListener<SearchResponse> listener);
+        boolean apply(Task task, SearchRequest searchRequest, ActionListener<SearchResponse> listener);
     }
 
     @Inject
@@ -255,7 +255,10 @@ public class TransportSearchAction extends HandledTransportAction<SearchRequest,
     @Override
     protected void doExecute(Task task, SearchRequest searchRequest, ActionListener<SearchResponse> listener) {
         if (Objects.nonNull(transportSearchExecutor)) {
-            transportSearchExecutor.apply(task, searchRequest, listener);
+            boolean isSearchHavenask = transportSearchExecutor.apply(task, searchRequest, listener);
+            if (!isSearchHavenask) {
+                executeRequest(task, searchRequest, this::searchAsyncAction, listener);
+            }
         } else {
             executeRequest(task, searchRequest, this::searchAsyncAction, listener);
         }
