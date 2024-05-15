@@ -80,10 +80,6 @@ public class TransportHavenaskSearchAction extends HandledTransportAction<Search
         }
 
         try {
-            // TODO: 目前的逻辑只有单havenask索引的查询会走到这里，后续如果有多索引的查询，这里需要做相应的修改
-            if (request.indices().length != 1) {
-                throw new IllegalArgumentException("illegal index count! only support search single havenask index.");
-            }
             String tableName = request.indices()[0];
             ClusterState clusterState = clusterService.state();
             IndexAbstraction indexAbstraction = clusterState.metadata().getIndicesLookup().get(tableName);
