@@ -57,6 +57,7 @@ public class RestHavenaskSqlAction extends BaseRestHandler {
                 if (status == null) {
                     status = RestStatus.INTERNAL_SERVER_ERROR;
                 }
+                builder.close();
                 return new BytesRestResponse(status, XContentType.JSON.mediaType(), response.getResult());
             }
         });
@@ -64,16 +65,15 @@ public class RestHavenaskSqlAction extends BaseRestHandler {
 
     static HavenaskSqlRequest createHavenaskSqlRequest(RestRequest request) throws IOException {
         String query = null;
-        XContentParser requestBody = null;
 
         // Attempt to parse the 'query' from the request body.
         // If the body is empty or not present, fall back to parsing the 'query' from the request parameters.
-        if (request.hasContent()) {
-            requestBody = request.contentParser();
+        try (XContentParser requestBody = request.hasContent() ? request.contentParser() : null) {
+            if (requestBody != null) {
+                query = parseQueryFromXContent(requestBody);
+            }
         }
-        if (Objects.nonNull(requestBody)) {
-            query = parseQueryFromXContent(requestBody);
-        }
+
         if (Objects.isNull(query)) {
             query = request.param(QUERY);
             if (Objects.isNull(query)) {
