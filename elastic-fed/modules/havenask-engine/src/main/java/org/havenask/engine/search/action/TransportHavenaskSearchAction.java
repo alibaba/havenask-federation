@@ -20,11 +20,13 @@ import org.havenask.action.ActionListener;
 import org.havenask.action.ingest.IngestActionForwarder;
 import org.havenask.action.search.SearchRequest;
 import org.havenask.action.search.SearchResponse;
+import org.havenask.action.search.TransportSearchAction;
 import org.havenask.action.support.ActionFilters;
 import org.havenask.action.support.HandledTransportAction;
 import org.havenask.cluster.ClusterState;
 import org.havenask.cluster.metadata.IndexAbstraction;
 import org.havenask.cluster.metadata.IndexMetadata;
+import org.havenask.cluster.metadata.Metadata;
 import org.havenask.cluster.service.ClusterService;
 import org.havenask.common.inject.Inject;
 import org.havenask.common.xcontent.NamedXContentRegistry;
@@ -34,10 +36,12 @@ import org.havenask.engine.rpc.QrsClient;
 import org.havenask.engine.rpc.http.QrsHttpClient;
 import org.havenask.engine.search.dsl.DSLSession;
 import org.havenask.engine.search.internal.HavenaskScrollContext;
+import org.havenask.index.shard.IndexShard;
 import org.havenask.tasks.Task;
 import org.havenask.threadpool.ThreadPool;
 import org.havenask.transport.TransportService;
 
+import java.util.List;
 import java.util.Objects;
 
 public class TransportHavenaskSearchAction extends HandledTransportAction<SearchRequest, SearchResponse> {
@@ -45,7 +49,7 @@ public class TransportHavenaskSearchAction extends HandledTransportAction<Search
     private final ClusterService clusterService;
     private final IngestActionForwarder ingestForwarder;
     private final QrsClient qrsClient;
-    private HavenaskScrollService havenaskScrollService;
+    private final HavenaskScrollService havenaskScrollService;
     private final NamedXContentRegistry namedXContentRegistry;
 
     @Inject
@@ -64,20 +68,84 @@ public class TransportHavenaskSearchAction extends HandledTransportAction<Search
         clusterService.addStateApplier(this.ingestForwarder);
         this.qrsClient = new QrsHttpClient(nativeProcessControlService.getQrsHttpPort());
         this.havenaskScrollService = havenaskScrollService;
+
+        TransportSearchAction.transportSearchExecutor = (
+            action,
+            searchAsyncAction,
+            task,
+            searchRequest,
+            listener) -> TransportHavenaskSearchAction.executeSearch(
+                action,
+                searchAsyncAction,
+                task,
+                searchRequest,
+                listener,
+                clusterService,
+                namedXContentRegistry,
+                ingestForwarder,
+                qrsClient,
+                havenaskScrollService
+            );
     }
 
     @Override
     protected void doExecute(Task task, SearchRequest request, ActionListener<SearchResponse> listener) {
+        executeHavenaskSearch(
+            task,
+            request,
+            listener,
+            clusterService,
+            namedXContentRegistry,
+            ingestForwarder,
+            qrsClient,
+            havenaskScrollService
+        );
+    }
+
+    public static void executeSearch(
+        TransportSearchAction action,
+        TransportSearchAction.SearchAsyncActionProvider searchAsyncActionProvider,
+        Task task,
+        SearchRequest searchRequest,
+        ActionListener<SearchResponse> listener,
+        ClusterService clusterService,
+        NamedXContentRegistry namedXContentRegistry,
+        IngestActionForwarder ingestForwarder,
+        QrsClient qrsClient,
+        HavenaskScrollService havenaskScrollService
+    ) {
+        if (isSearchHavenask(clusterService.state().metadata(), searchRequest)) {
+            executeHavenaskSearch(
+                task,
+                searchRequest,
+                listener,
+                clusterService,
+                namedXContentRegistry,
+                ingestForwarder,
+                qrsClient,
+                havenaskScrollService
+            );
+        } else {
+            action.executeRequest(task, searchRequest, searchAsyncActionProvider, listener);
+        }
+    }
+
+    private static void executeHavenaskSearch(
+        Task task,
+        SearchRequest request,
+        ActionListener<SearchResponse> listener,
+        ClusterService clusterService,
+        NamedXContentRegistry namedXContentRegistry,
+        IngestActionForwarder ingestForwarder,
+        QrsClient qrsClient,
+        HavenaskScrollService havenaskScrollService
+    ) {
         if (false == clusterService.localNode().isIngestNode()) {
             ingestForwarder.forwardIngestRequest(HavenaskSearchAction.INSTANCE, request, listener);
             return;
         }
 
         try {
-            // TODO: 目前的逻辑只有单havenask索引的查询会走到这里，后续如果有多索引的查询，这里需要做相应的修改
-            if (request.indices().length != 1) {
-                throw new IllegalArgumentException("illegal index count! only support search single havenask index.");
-            }
             String tableName = request.indices()[0];
             ClusterState clusterState = clusterService.state();
             IndexAbstraction indexAbstraction = clusterState.metadata().getIndicesLookup().get(tableName);
@@ -108,6 +176,54 @@ public class TransportHavenaskSearchAction extends HandledTransportAction<Search
         } catch (Exception e) {
             logger.info("Failed to execute havenask search, ", e);
             listener.onFailure(e);
+        }
+    }
+
+    public static boolean isSearchHavenask(Metadata metadata, SearchRequest searchRequest) {
+        // TODO: 目前的逻辑只有单havenask索引的查询会走到这里，后续如果有多索引的查询，这里需要做相应的修改
+        if (searchRequest.indices().length != 1) {
+            // 大于一个索引
+            return false;
+        }
+
+        String index = searchRequest.indices()[0];
+        if (index.contains("*")) {
+            // 包含通配符
+            return false;
+        }
+
+        IndexAbstraction indexAbstraction = metadata.getIndicesLookup().get(index);
+        if (indexAbstraction == null) {
+            // 未找到索引
+            return false;
+        }
+
+        if (indexAbstraction instanceof IndexAbstraction.Index) {
+            IndexMetadata indexMetadata = indexAbstraction.getWriteIndex();
+            if (IndexShard.isHavenaskIndex(indexMetadata.getSettings())) {
+                // havenask索引
+                return true;
+            } else {
+                // 非havenask索引
+                return false;
+            }
+        } else if (indexAbstraction instanceof IndexAbstraction.Alias) {
+            List<IndexMetadata> indices = indexAbstraction.getIndices();
+            if (indices.size() > 1) {
+                // 别名关联的索引大于1
+                return false;
+            }
+
+            IndexMetadata indexMetadata = indexAbstraction.getWriteIndex();
+            if (IndexShard.isHavenaskIndex(indexMetadata.getSettings())) {
+                // havenask索引
+                return true;
+            } else {
+                // 非havenask索引
+                return false;
+            }
+        } else {
+            return false;
         }
     }
 }

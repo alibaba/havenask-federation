@@ -16,9 +16,13 @@ package org.havenask.engine.search.action;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.apache.lucene.store.ByteArrayDataInput;
 import org.havenask.action.ActionListener;
+import org.havenask.action.search.ClearScrollController;
 import org.havenask.action.search.ClearScrollRequest;
 import org.havenask.action.search.ClearScrollResponse;
+import org.havenask.action.search.SearchTransportService;
+import org.havenask.action.search.TransportClearScrollAction;
 import org.havenask.action.support.ActionFilters;
 import org.havenask.action.support.HandledTransportAction;
 import org.havenask.cluster.service.ClusterService;
@@ -28,11 +32,14 @@ import org.havenask.tasks.Task;
 import org.havenask.threadpool.ThreadPool;
 import org.havenask.transport.TransportService;
 
+import java.util.ArrayList;
+import java.util.Base64;
+import java.util.List;
+
 public class TransportClearHavenaskScrollAction extends HandledTransportAction<ClearScrollRequest, ClearScrollResponse> {
     private static final Logger logger = LogManager.getLogger(TransportClearHavenaskScrollAction.class);
-    private ClusterService clusterService;
-    private HavenaskSearchTransportService havenaskSearchTransportService;
-    private HavenaskScrollService havenaskScrollService;
+    private final ClusterService clusterService;
+    private final HavenaskSearchTransportService havenaskSearchTransportService;
 
     @Inject
     public TransportClearHavenaskScrollAction(
@@ -46,7 +53,19 @@ public class TransportClearHavenaskScrollAction extends HandledTransportAction<C
         this.clusterService = clusterService;
         this.havenaskSearchTransportService = havenaskSearchTransportService;
         HavenaskSearchTransportService.registerRequestHandler(transportService, havenaskScrollService);
-        this.havenaskScrollService = havenaskScrollService;
+        TransportClearScrollAction.transportClearScrollExecutor = (
+            task,
+            request,
+            listener,
+            searchTransportService) -> TransportClearHavenaskScrollAction.executeHavenaskClearScroll(
+                task,
+                request,
+                listener,
+                searchTransportService,
+                clusterService,
+                transportService,
+                havenaskSearchTransportService
+            );
     }
 
     @Override
@@ -62,6 +81,85 @@ public class TransportClearHavenaskScrollAction extends HandledTransportAction<C
             runnable.run();
         } catch (Exception e) {
             listener.onFailure(e);
+        }
+    }
+
+    public static void executeHavenaskClearScroll(
+        Task task,
+        ClearScrollRequest request,
+        final ActionListener<ClearScrollResponse> listener,
+        SearchTransportService searchTransportService,
+        ClusterService clusterService,
+        TransportService transportService,
+        HavenaskSearchTransportService havenaskSearchTransportService
+    ) {
+        try {
+            List<String> elasticScrollIds = new ArrayList<>();
+            List<String> havenaskScrollIds = new ArrayList<>();
+            separateElasticScrollIdAndHavenaskScrollId(request.getScrollIds(), elasticScrollIds, havenaskScrollIds);
+            if (!elasticScrollIds.isEmpty()) {
+                ClearScrollRequest havenaskClearScrollRequest = new ClearScrollRequest();
+                havenaskClearScrollRequest.setScrollIds(havenaskScrollIds);
+                ClearScrollRequest esClearScrollRequest = new ClearScrollRequest();
+                esClearScrollRequest.setScrollIds(elasticScrollIds);
+
+                ActionListener<ClearScrollResponse> havenaskSearchListener = ActionListener.wrap(response -> {
+                    Runnable esRunnable = new ClearScrollController(
+                        request,
+                        listener,
+                        clusterService.state().nodes(),
+                        logger,
+                        searchTransportService
+                    );
+                    esRunnable.run();
+                }, e -> { listener.onFailure(e); });
+                Runnable runnable = new ClearHavenaskScrollController(
+                    havenaskClearScrollRequest,
+                    havenaskSearchListener,
+                    clusterService.state().nodes(),
+                    logger,
+                    havenaskSearchTransportService
+                );
+                runnable.run();
+            } else {
+                Runnable runnable = new ClearHavenaskScrollController(
+                    request,
+                    listener,
+                    clusterService.state().nodes(),
+                    logger,
+                    havenaskSearchTransportService
+                );
+                runnable.run();
+            }
+        } catch (Exception e) {
+            listener.onFailure(e);
+        }
+    }
+
+    public static void separateElasticScrollIdAndHavenaskScrollId(
+        List<String> scrollIds,
+        List<String> elasticScrollIds,
+        List<String> havenaskScrollIds
+    ) {
+        try {
+            if (scrollIds.size() == 1 && "_all".equals(scrollIds.get(0))) {
+                elasticScrollIds.add(scrollIds.get(0));
+                havenaskScrollIds.add(scrollIds.get(0));
+                return;
+            }
+
+            for (String scrollId : scrollIds) {
+                byte[] bytes = Base64.getUrlDecoder().decode(scrollId);
+                ByteArrayDataInput in = new ByteArrayDataInput(bytes);
+                final String firstChunk = in.readString();
+                if ("havenask_scroll_id".equals(firstChunk)) {
+                    havenaskScrollIds.add(scrollId);
+                } else {
+                    elasticScrollIds.add(scrollId);
+                }
+            }
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Cannot parse scroll id", e);
         }
     }
 
