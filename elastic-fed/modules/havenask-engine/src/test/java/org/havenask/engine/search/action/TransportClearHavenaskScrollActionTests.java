@@ -41,10 +41,14 @@ public class TransportClearHavenaskScrollActionTests extends HavenaskTestCase {
         // test separate elastic scrollId and havenask scrollId
         {
             List<String> scrollIds = new ArrayList<>();
+
+            // es scroll id
             scrollIds.add(
                 "FGluY2x1ZGVfY29udGV4dF91dWlkDXF1ZXJ5QW5kRmV0Y2gBFmh0YnM5eTJyU2h"
                     + "PbUgxQm05YWg1T1EAAAAAAAAAFhZpR204NkpQclE0eWFaWXE1MU16cVNn"
             );
+
+            // havenask scroll ids
             scrollIds.add("EmhhdmVuYXNrX3Njcm9sbF9pZBZpR204NkpQclE0eWFaWXE1MU16cVNnFms3a3VETW5IU05PN3lQSlh1SDUxYXc=");
             scrollIds.add("EmhhdmVuYXNrX3Njcm9sbF9pZBZpWGMzN0pQclQ4eWFQRWM0N1FlYVNnFnU4cXNQV25RUFNPN3lQSkhhaFc3YXc=");
 
