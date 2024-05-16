@@ -248,28 +248,59 @@ public class HavenaskEngineEnvironment implements CustomEnvironment {
      */
     public void asyncRemoveIndexDir(final ThreadPool threadPool, String tableName, Path indexDir) {
         threadPool.executor(HavenaskEnginePlugin.HAVENASK_THREAD_POOL_NAME).execute(() -> {
-            LOGGER.debug("get lock while deleting index, table name :[{}]", tableName);
-            try {
-                if (metaDataSyncer != null) {
-                    metaDataSyncer.setSearcherPendingSync();
-                    try {
-                        checkIndexIsDeletedInSearcher(metaDataSyncer, tableName);
-                    } catch (IOException e) {
-                        LOGGER.error(
-                            "checkIndexIsDeletedInSearcher failed while deleting index, table name: [{}], error: [{}]",
-                            tableName,
-                            e
-                        );
+            boolean success = false;
+            boolean shouldReleaseLock = false;
+            int retryCount = 0;
+            final int maxRetries = 30;
+            final long sleepInterval = 1000;
+
+            while (!success && retryCount < maxRetries) {
+                try {
+                    if (metaDataSyncer != null) {
+                        metaDataSyncer.setSearcherPendingSync();
+                        try {
+                            checkIndexIsDeletedInSearcher(metaDataSyncer, tableName);
+                        } catch (IOException e) {
+                            LOGGER.error(
+                                "checkIndexIsDeletedInSearcher failed while deleting index runtime dir, table name: [{}], error: [{}]",
+                                tableName,
+                                e
+                            );
+                        }
+                    }
+                    IOUtils.rm(indexDir);
+                    LOGGER.info("remove index runtime dir successful, table name :[{}]", tableName);
+                    success = true;
+                    shouldReleaseLock = true;
+                } catch (Exception e) {
+                    LOGGER.warn(
+                        "remove index runtime dir failed, try to retry, table name: [{}], retry count: [{}]",
+                        tableName,
+                        retryCount
+                    );
+                    retryCount++;
+                    if (retryCount < maxRetries) {
+                        try {
+                            Thread.sleep(sleepInterval);
+                        } catch (InterruptedException ie) {
+                            Thread.currentThread().interrupt();
+                            shouldReleaseLock = true;
+                            LOGGER.warn("remove index runtime dir interrupted, table name: [{}]", tableName);
+                            break;
+                        }
+                    } else {
+                        shouldReleaseLock = true;
+                    }
+                } finally {
+                    if (shouldReleaseLock) {
+                        metaDataSyncer.deleteIndexLock(tableName);
+                        LOGGER.debug("release lock after deleting index, table name :[{}]", tableName);
                     }
                 }
-                IOUtils.rm(indexDir);
+            }
 
-                LOGGER.info("remove index dir successful, table name :[{}]", tableName);
-            } catch (Exception e) {
-                LOGGER.warn("remove index dir failed, table name: [{}], error: [{}]", tableName, e);
-            } finally {
-                metaDataSyncer.deleteIndexLock(tableName);
-                LOGGER.debug("release lock after deleting index, table name :[{}]", tableName);
+            if (!success) {
+                LOGGER.error("Failed to remove index runtime dir after [{}] attempts, table name: [{}]", maxRetries, tableName);
             }
         });
     }
@@ -280,28 +311,67 @@ public class HavenaskEngineEnvironment implements CustomEnvironment {
     public void asyncRemoveShardRuntimeDir(final ThreadPool threadPool, ShardId shardId, String partitionId, Path shardDir) {
         threadPool.executor(HavenaskEnginePlugin.HAVENASK_THREAD_POOL_NAME).execute(() -> {
             String tableName = shardId.getIndexName();
-            try {
-                if (metaDataSyncer != null) {
-                    metaDataSyncer.setSearcherPendingSync();
-                    try {
-                        checkShardIsDeletedInSearcher(metaDataSyncer, tableName, partitionId);
-                    } catch (IOException e) {
-                        LOGGER.error(
-                            "checkShardIsDeletedInSearcher failed while deleting shard, " + "index: [{}], partitionId:[{}], error: [{}]",
-                            tableName,
-                            partitionId,
-                            e
-                        );
+            boolean success = false;
+            boolean shouldReleaseLock = false;
+            int retryCount = 0;
+            final int maxRetries = 30;
+            final long sleepInterval = 1000;
+
+            while (!success && retryCount < maxRetries) {
+                try {
+                    if (metaDataSyncer != null) {
+                        metaDataSyncer.setSearcherPendingSync();
+                        try {
+                            checkShardIsDeletedInSearcher(metaDataSyncer, tableName, partitionId);
+                        } catch (IOException e) {
+                            LOGGER.error(
+                                "checkShardIsDeletedInSearcher failed while deleting shard runtime dir, "
+                                    + "index: [{}], partitionId:[{}], error: [{}]",
+                                tableName,
+                                partitionId,
+                                e
+                            );
+                        }
+                    }
+                    IOUtils.rm(shardDir);
+                    LOGGER.info("remove shard runtime dir successful, table name :[{}], partitionId:[{}]", tableName, partitionId);
+                    success = true;
+                    shouldReleaseLock = true;
+                } catch (Exception e) {
+                    LOGGER.warn(
+                        "remove shard runtime dir failed, try to retry, table name: [{}], partitionId:[{}], retry count [{}]",
+                        tableName,
+                        partitionId,
+                        retryCount
+                    );
+                    retryCount++;
+                    if (retryCount < maxRetries) {
+                        try {
+                            Thread.sleep(sleepInterval);
+                        } catch (InterruptedException ie) {
+                            Thread.currentThread().interrupt();
+                            shouldReleaseLock = true;
+                            LOGGER.warn("remove shard runtime dir interrupted, table name: [{}], partitionId:[{}]", tableName, partitionId);
+                            break;
+                        }
+                    } else {
+                        shouldReleaseLock = true;
+                    }
+                } finally {
+                    if (shouldReleaseLock) {
+                        metaDataSyncer.deleteShardLock(shardId);
+                        LOGGER.debug("release lock after deleting shard, table name :[{}], partitionId[{}]", tableName, partitionId);
                     }
                 }
-                IOUtils.rm(shardDir);
+            }
 
-                LOGGER.info("remove shard dir successful, table name :[{}], partitionId:[{}]", tableName, partitionId);
-            } catch (Exception e) {
-                LOGGER.warn("remove shard dir failed, table name: [{}], partitionId:[{}], error: [{}]", tableName, partitionId, e);
-            } finally {
-                metaDataSyncer.deleteShardLock(shardId);
-                LOGGER.debug("release lock after deleting shard, table name :[{}], partitionId[{}]", tableName, partitionId);
+            if (!success) {
+                LOGGER.error(
+                    "Failed to remove shard runtime dir after [{}] attempts, table name: [{}], partitionId: [{}]",
+                    maxRetries,
+                    tableName,
+                    partitionId
+                );
             }
         });
     }
