@@ -136,7 +136,7 @@ public class TransportClearHavenaskScrollAction extends HandledTransportAction<C
         }
     }
 
-    private static void separateElasticScrollIdAndHavenaskScrollId(
+    public static void separateElasticScrollIdAndHavenaskScrollId(
         List<String> scrollIds,
         List<String> elasticScrollIds,
         List<String> havenaskScrollIds

@@ -17,9 +17,7 @@ package org.havenask.engine.search.action;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.havenask.action.ActionListener;
-import org.havenask.action.ActionListenerResponseHandler;
 import org.havenask.action.ingest.IngestActionForwarder;
-import org.havenask.action.search.SearchAction;
 import org.havenask.action.search.SearchRequest;
 import org.havenask.action.search.SearchResponse;
 import org.havenask.action.search.TransportSearchAction;
@@ -71,12 +69,77 @@ public class TransportHavenaskSearchAction extends HandledTransportAction<Search
         this.qrsClient = new QrsHttpClient(nativeProcessControlService.getQrsHttpPort());
         this.havenaskScrollService = havenaskScrollService;
 
-        TransportSearchAction.transportSearchExecutor = (task, searchRequest, listener) -> TransportHavenaskSearchAction
-            .executeHavenaskSearch(searchRequest, listener, clusterService, transportService);
+        TransportSearchAction.transportSearchExecutor = (
+            action,
+            searchAsyncAction,
+            task,
+            searchRequest,
+            listener) -> TransportHavenaskSearchAction.executeSearch(
+                action,
+                searchAsyncAction,
+                task,
+                searchRequest,
+                listener,
+                clusterService,
+                namedXContentRegistry,
+                ingestForwarder,
+                qrsClient,
+                havenaskScrollService
+            );
     }
 
     @Override
     protected void doExecute(Task task, SearchRequest request, ActionListener<SearchResponse> listener) {
+        executeHavenaskSearch(
+            task,
+            request,
+            listener,
+            clusterService,
+            namedXContentRegistry,
+            ingestForwarder,
+            qrsClient,
+            havenaskScrollService
+        );
+    }
+
+    public static void executeSearch(
+        TransportSearchAction action,
+        TransportSearchAction.SearchAsyncActionProvider searchAsyncActionProvider,
+        Task task,
+        SearchRequest searchRequest,
+        ActionListener<SearchResponse> listener,
+        ClusterService clusterService,
+        NamedXContentRegistry namedXContentRegistry,
+        IngestActionForwarder ingestForwarder,
+        QrsClient qrsClient,
+        HavenaskScrollService havenaskScrollService
+    ) {
+        if (isSearchHavenask(clusterService.state().metadata(), searchRequest)) {
+            executeHavenaskSearch(
+                task,
+                searchRequest,
+                listener,
+                clusterService,
+                namedXContentRegistry,
+                ingestForwarder,
+                qrsClient,
+                havenaskScrollService
+            );
+        } else {
+            action.executeRequest(task, searchRequest, searchAsyncActionProvider, listener);
+        }
+    }
+
+    private static void executeHavenaskSearch(
+        Task task,
+        SearchRequest request,
+        ActionListener<SearchResponse> listener,
+        ClusterService clusterService,
+        NamedXContentRegistry namedXContentRegistry,
+        IngestActionForwarder ingestForwarder,
+        QrsClient qrsClient,
+        HavenaskScrollService havenaskScrollService
+    ) {
         if (false == clusterService.localNode().isIngestNode()) {
             ingestForwarder.forwardIngestRequest(HavenaskSearchAction.INSTANCE, request, listener);
             return;
@@ -113,25 +176,6 @@ public class TransportHavenaskSearchAction extends HandledTransportAction<Search
         } catch (Exception e) {
             logger.info("Failed to execute havenask search, ", e);
             listener.onFailure(e);
-        }
-    }
-
-    public static boolean executeHavenaskSearch(
-        SearchRequest searchRequest,
-        ActionListener<SearchResponse> listener,
-        ClusterService clusterService,
-        TransportService transportService
-    ) {
-        if (isSearchHavenask(clusterService.state().metadata(), searchRequest)) {
-            transportService.sendRequest(
-                clusterService.state().nodes().getLocalNode(),
-                HavenaskSearchAction.NAME,
-                searchRequest,
-                new ActionListenerResponseHandler<>(listener, SearchAction.INSTANCE.getResponseReader())
-            );
-            return true;
-        } else {
-            return false;
         }
     }
 

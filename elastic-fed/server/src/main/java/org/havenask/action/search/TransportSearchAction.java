@@ -143,7 +143,8 @@ public class TransportSearchAction extends HandledTransportAction<SearchRequest,
     public static TransportSearchExecutor transportSearchExecutor;
 
     public interface TransportSearchExecutor {
-        boolean apply(Task task, SearchRequest searchRequest, ActionListener<SearchResponse> listener);
+        void apply(TransportSearchAction action, SearchAsyncActionProvider searchAsyncActionProvider, Task task,
+                   SearchRequest searchRequest, ActionListener<SearchResponse> listener);
     }
 
     @Inject
@@ -255,10 +256,7 @@ public class TransportSearchAction extends HandledTransportAction<SearchRequest,
     @Override
     protected void doExecute(Task task, SearchRequest searchRequest, ActionListener<SearchResponse> listener) {
         if (Objects.nonNull(transportSearchExecutor)) {
-            boolean isSearchHavenask = transportSearchExecutor.apply(task, searchRequest, listener);
-            if (!isSearchHavenask) {
-                executeRequest(task, searchRequest, this::searchAsyncAction, listener);
-            }
+            transportSearchExecutor.apply(this, this::searchAsyncAction, task, searchRequest, listener);
         } else {
             executeRequest(task, searchRequest, this::searchAsyncAction, listener);
         }
@@ -311,7 +309,7 @@ public class TransportSearchAction extends HandledTransportAction<SearchRequest,
         }, listener);
     }
 
-    private void executeRequest(Task task, SearchRequest searchRequest,
+    public void executeRequest(Task task, SearchRequest searchRequest,
                                 SearchAsyncActionProvider searchAsyncActionProvider, ActionListener<SearchResponse> listener) {
         final long relativeStartNanos = System.nanoTime();
         final SearchTimeProvider timeProvider =
@@ -785,7 +783,7 @@ public class TransportSearchAction extends HandledTransportAction<SearchRequest,
         return GroupShardsIterator.sortAndCreate(shards);
     }
 
-    interface SearchAsyncActionProvider {
+    public interface SearchAsyncActionProvider {
         AbstractSearchAsyncAction<? extends SearchPhaseResult> asyncSearchAction(
             SearchTask task, SearchRequest searchRequest, Executor executor, GroupShardsIterator<SearchShardIterator> shardIterators,
             SearchTimeProvider timeProvider, BiFunction<String, String, Transport.Connection> connectionLookup,
