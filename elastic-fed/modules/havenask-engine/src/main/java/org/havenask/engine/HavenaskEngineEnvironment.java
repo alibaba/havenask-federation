@@ -42,6 +42,8 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
+import java.util.function.Consumer;
 import java.util.function.Function;
 
 import org.apache.logging.log4j.LogManager;
@@ -214,6 +216,8 @@ public class HavenaskEngineEnvironment implements CustomEnvironment {
         BizConfigGenerator.removeBiz(tableName, configPath);
         TableConfigGenerator.removeTable(tableName, configPath);
         Path indexDir = runtimedataPath.resolve(tableName);
+        long maxRetries = 30;
+        long sleepInterval = 1000;
 
         if (metaDataSyncer == null) {
             throw new RuntimeException("metaDataSyncer is null while deleting index");
@@ -222,7 +226,7 @@ public class HavenaskEngineEnvironment implements CustomEnvironment {
         LOGGER.debug("get lock while deleting index, table name :[{}]", tableName);
         // TODO: ThreadPool的获取是否可以优化
         final ThreadPool threadPool = metaDataSyncer.getThreadPool();
-        asyncRemoveIndexDir(threadPool, tableName, indexDir);
+        asyncRemoveIndexRuntimeDir(threadPool, tableName, indexDir, maxRetries, sleepInterval);
     }
 
     @Override
@@ -232,6 +236,8 @@ public class HavenaskEngineEnvironment implements CustomEnvironment {
         }
         String partitionName = RangeUtil.getRangePartition(indexSettings.getNumberOfShards(), lock.getShardId().id());
         Path shardDir = runtimedataPath.resolve(indexSettings.getIndex().getName()).resolve("generation_0").resolve(partitionName);
+        long maxRetries = 30;
+        long sleepInterval = 1000;
 
         if (metaDataSyncer == null) {
             throw new RuntimeException("metaDataSyncer is null while deleting shard");
@@ -240,138 +246,165 @@ public class HavenaskEngineEnvironment implements CustomEnvironment {
         LOGGER.debug("get lock while deleting shard, table name :[{}]", lock.getShardId().getIndexName());
         String partitionId = RangeUtil.getRangeName(indexSettings.getNumberOfShards(), lock.getShardId().id());
         final ThreadPool threadPool = metaDataSyncer.getThreadPool();
-        asyncRemoveShardRuntimeDir(threadPool, lock.getShardId(), partitionId, shardDir);
+        asyncRemoveShardRuntimeDir(threadPool, lock.getShardId(), partitionId, shardDir, maxRetries, sleepInterval);
     }
 
     /**
-     * 异步移除删除索引后runtimedata的数据信息
+     * 异步移除索引删除后runtimedata内的数据信息
      */
-    public void asyncRemoveIndexDir(final ThreadPool threadPool, String tableName, Path indexDir) {
-        threadPool.executor(HavenaskEnginePlugin.HAVENASK_THREAD_POOL_NAME).execute(() -> {
-            boolean success = false;
-            boolean shouldReleaseLock = false;
-            int retryCount = 0;
-            final int maxRetries = 30;
-            final long sleepInterval = 1000;
+    public void asyncRemoveIndexRuntimeDir(
+        final ThreadPool threadPool,
+        String tableName,
+        Path indexDir,
+        long maxRetries,
+        long sleepInterval
+    ) {
+        String logMessage = String.format(Locale.ROOT, "index :[{}]", tableName);
 
-            while (!success && retryCount < maxRetries) {
-                try {
-                    if (metaDataSyncer != null) {
-                        metaDataSyncer.setSearcherPendingSync();
-                        try {
-                            checkIndexIsDeletedInSearcher(metaDataSyncer, tableName);
-                        } catch (IOException e) {
-                            LOGGER.error(
-                                "checkIndexIsDeletedInSearcher failed while deleting index runtime dir, table name: [{}], error: [{}]",
-                                tableName,
-                                e
-                            );
-                        }
-                    }
-                    IOUtils.rm(indexDir);
-                    LOGGER.info("remove index runtime dir successful, table name :[{}]", tableName);
-                    success = true;
-                    shouldReleaseLock = true;
-                } catch (Exception e) {
-                    LOGGER.warn(
-                        "remove index runtime dir failed, try to retry, table name: [{}], retry count: [{}]",
-                        tableName,
-                        retryCount
-                    );
-                    retryCount++;
-                    if (retryCount < maxRetries) {
-                        try {
-                            Thread.sleep(sleepInterval);
-                        } catch (InterruptedException ie) {
-                            Thread.currentThread().interrupt();
-                            shouldReleaseLock = true;
-                            LOGGER.warn("remove index runtime dir interrupted, table name: [{}]", tableName);
-                            break;
-                        }
-                    } else {
-                        shouldReleaseLock = true;
-                    }
-                } finally {
-                    if (shouldReleaseLock) {
-                        metaDataSyncer.deleteIndexLock(tableName);
-                        LOGGER.debug("release lock after deleting index, table name :[{}]", tableName);
-                    }
-                }
-            }
-
-            if (!success) {
-                LOGGER.error("Failed to remove index runtime dir after [{}] attempts, table name: [{}]", maxRetries, tableName);
-            }
-        });
-    }
-
-    /**
-     * 异步删除减少shard时runtimedata内的数据信息
-     */
-    public void asyncRemoveShardRuntimeDir(final ThreadPool threadPool, ShardId shardId, String partitionId, Path shardDir) {
-        threadPool.executor(HavenaskEnginePlugin.HAVENASK_THREAD_POOL_NAME).execute(() -> {
-            String tableName = shardId.getIndexName();
-            boolean success = false;
-            boolean shouldReleaseLock = false;
-            int retryCount = 0;
-            final int maxRetries = 30;
-            final long sleepInterval = 1000;
-
-            while (!success && retryCount < maxRetries) {
-                try {
-                    if (metaDataSyncer != null) {
-                        metaDataSyncer.setSearcherPendingSync();
-                        try {
-                            checkShardIsDeletedInSearcher(metaDataSyncer, tableName, partitionId);
-                        } catch (IOException e) {
-                            LOGGER.error(
-                                "checkShardIsDeletedInSearcher failed while deleting shard runtime dir, "
-                                    + "index: [{}], partitionId:[{}], error: [{}]",
-                                tableName,
-                                partitionId,
-                                e
-                            );
-                        }
-                    }
-                    IOUtils.rm(shardDir);
-                    LOGGER.info("remove shard runtime dir successful, table name :[{}], partitionId:[{}]", tableName, partitionId);
-                    success = true;
-                    shouldReleaseLock = true;
-                } catch (Exception e) {
-                    LOGGER.warn(
-                        "remove shard runtime dir failed, try to retry, table name: [{}], partitionId:[{}], retry count [{}]",
-                        tableName,
-                        partitionId,
-                        retryCount
-                    );
-                    retryCount++;
-                    if (retryCount < maxRetries) {
-                        try {
-                            Thread.sleep(sleepInterval);
-                        } catch (InterruptedException ie) {
-                            Thread.currentThread().interrupt();
-                            shouldReleaseLock = true;
-                            LOGGER.warn("remove shard runtime dir interrupted, table name: [{}], partitionId:[{}]", tableName, partitionId);
-                            break;
-                        }
-                    } else {
-                        shouldReleaseLock = true;
-                    }
-                } finally {
-                    if (shouldReleaseLock) {
-                        metaDataSyncer.deleteShardLock(shardId);
-                        LOGGER.debug("release lock after deleting shard, table name :[{}], partitionId[{}]", tableName, partitionId);
-                    }
-                }
-            }
-
-            if (!success) {
+        Runnable checkIndexIsDeletedAction = () -> {
+            try {
+                checkIndexIsDeletedInSearcher(metaDataSyncer, tableName);
+            } catch (IOException e) {
                 LOGGER.error(
-                    "Failed to remove shard runtime dir after [{}] attempts, table name: [{}], partitionId: [{}]",
-                    maxRetries,
+                    "checkIndexIsDeletedInSearcher failed while deleting index runtime dir, index : [{}], error: [{}]",
                     tableName,
-                    partitionId
+                    e
                 );
+            }
+        };
+
+        Consumer<Path> deleteRuntimeDirAction = (path) -> {
+            try {
+                IOUtils.rm(path);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        };
+
+        Runnable deleteLockAction = () -> { metaDataSyncer.deleteIndexLock(tableName); };
+
+        asyncRemoveRuntimeDir(
+            threadPool,
+            checkIndexIsDeletedAction,
+            deleteRuntimeDirAction,
+            deleteLockAction,
+            indexDir,
+            maxRetries,
+            sleepInterval,
+            logMessage
+        );
+    }
+
+    /**
+     * 异步删除shard减少时runtimedata内的数据信息
+     */
+    public void asyncRemoveShardRuntimeDir(
+        final ThreadPool threadPool,
+        ShardId shardId,
+        String partitionId,
+        Path shardDir,
+        long maxRetries,
+        long sleepInterval
+    ) {
+        String logMessage = String.format(Locale.ROOT, "index :[{}], partitionId:[{}]", shardId.getIndexName(), partitionId);
+
+        Runnable checkShardIsDeletedAction = () -> {
+            try {
+                checkShardIsDeletedInSearcher(metaDataSyncer, shardId.getIndexName(), partitionId);
+            } catch (IOException e) {
+                LOGGER.error(
+                    "checkShardIsDeletedInSearcher failed while deleting shard runtime dir, "
+                        + "index: [{}], partitionId:[{}], error: [{}]",
+                    shardId.getIndexName(),
+                    partitionId,
+                    e
+                );
+            }
+        };
+
+        Consumer<Path> deleteRuntimeDirAction = (path) -> {
+            try {
+                IOUtils.rm(path);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        };
+
+        Runnable deleteLockAction = () -> { metaDataSyncer.deleteShardLock(shardId); };
+
+        asyncRemoveRuntimeDir(
+            threadPool,
+            checkShardIsDeletedAction,
+            deleteRuntimeDirAction,
+            deleteLockAction,
+            shardDir,
+            maxRetries,
+            sleepInterval,
+            logMessage
+        );
+    }
+
+    public void asyncRemoveRuntimeDir(
+        final ThreadPool threadPool,
+        final Runnable checkIsDeletedAction,
+        final Consumer<Path> deleteRuntimeDirAction,
+        final Runnable deleteLockAction,
+        final Path dir,
+        long maxRetries,
+        long sleepInterval,
+        final String logs
+    ) {
+        threadPool.executor(HavenaskEnginePlugin.HAVENASK_THREAD_POOL_NAME).execute(() -> {
+            if (maxRetries <= 0) {
+                LOGGER.error("maxRetries must be greater than 0, maxRetries: [{}]", maxRetries);
+                deleteLockAction.run();
+                return;
+            }
+            if (sleepInterval <= 0) {
+                LOGGER.error("sleepInterval must be greater than 0, sleepInterval: [{}]", sleepInterval);
+                deleteLockAction.run();
+                return;
+            }
+
+            boolean success = false;
+            boolean shouldReleaseLock = false;
+            int retryCount = 0;
+
+            while (!success && retryCount < maxRetries) {
+                try {
+                    if (Objects.nonNull(metaDataSyncer)) {
+                        metaDataSyncer.setSearcherPendingSync();
+                        checkIsDeletedAction.run();
+                    }
+                    deleteRuntimeDirAction.accept(dir);
+                    LOGGER.info("remove runtime dir successful, {}", logs);
+                    success = true;
+                    shouldReleaseLock = true;
+                } catch (Exception e) {
+                    LOGGER.warn("remove runtime dir failed, try to retry, {}, retry count: {}", logs, retryCount);
+                    retryCount++;
+                    if (retryCount < maxRetries) {
+                        try {
+                            Thread.sleep(sleepInterval);
+                        } catch (InterruptedException ie) {
+                            Thread.currentThread().interrupt();
+                            shouldReleaseLock = true;
+                            LOGGER.warn("remove runtime dir interrupted, {}", logs);
+                            break;
+                        }
+                    } else {
+                        shouldReleaseLock = true;
+                    }
+                } finally {
+                    if (shouldReleaseLock) {
+                        deleteLockAction.run();
+                        LOGGER.debug("release lock after remove runtime dir, {}", logs);
+                    }
+                }
+            }
+
+            if (!success) {
+                LOGGER.error("Failed to remove runtime dir after [{}] retries, {}", maxRetries, logs);
             }
         });
     }
