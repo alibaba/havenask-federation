@@ -259,7 +259,7 @@ public class HavenaskEngineEnvironment implements CustomEnvironment {
         long maxRetries,
         long sleepInterval
     ) {
-        String logMessage = String.format(Locale.ROOT, "index :[{}]", tableName);
+        String logMessage = String.format(Locale.ROOT, "index :[%s]", tableName);
 
         Runnable checkIndexIsDeletedAction = () -> {
             try {
@@ -306,7 +306,7 @@ public class HavenaskEngineEnvironment implements CustomEnvironment {
         long maxRetries,
         long sleepInterval
     ) {
-        String logMessage = String.format(Locale.ROOT, "index :[{}], partitionId:[{}]", shardId.getIndexName(), partitionId);
+        String logMessage = String.format(Locale.ROOT, "index :[%s], partitionId:[%s]", shardId.getIndexName(), partitionId);
 
         Runnable checkShardIsDeletedAction = () -> {
             try {
