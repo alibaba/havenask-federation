@@ -22,6 +22,7 @@ import java.nio.file.StandardOpenOption;
 import java.util.HashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.Consumer;
 
 import junit.framework.TestCase;
 import org.havenask.Version;
@@ -49,7 +50,11 @@ import static org.havenask.engine.index.config.generator.BizConfigGenerator.DEFA
 import static org.havenask.engine.index.config.generator.BizConfigGenerator.DEFAULT_DIR;
 import static org.havenask.engine.index.config.generator.TableConfigGenerator.TABLE_DIR;
 import static org.mockito.Matchers.anyString;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 public class HavenaskEngineEnvironmentTests extends HavenaskTestCase {
@@ -167,5 +172,93 @@ public class HavenaskEngineEnvironmentTests extends HavenaskTestCase {
         havenaskEngineEnvironment.deleteShardDirectoryUnderLock(shardLock, indexSettings);
 
         TestCase.assertFalse(Files.exists(shardFile));
+    }
+
+    public void testAsyncRemoveRuntimeDirFailed() throws IOException {
+        ThreadPool threadPool = mock(ThreadPool.class);
+        ExecutorService executorService = HavenaskExecutors.newDirectExecutorService();
+        when(threadPool.executor(anyString())).thenReturn(executorService);
+
+        Path indexFile = workDir.resolve("data")
+            .resolve(HavenaskEngineEnvironment.DEFAULT_DATA_PATH)
+            .resolve(HavenaskEngineEnvironment.HAVENASK_RUNTIMEDATA_PATH)
+            .resolve(tableName);
+
+        Runnable checkIsDeletedAction = () -> {
+            // do nothing
+        };
+
+        @SuppressWarnings("unchecked")
+        Consumer<Path> deleteRuntimeDirAction = mock(Consumer.class);
+        doThrow(new RuntimeException("test failed")).doNothing().when(deleteRuntimeDirAction).accept(indexFile);
+
+        Runnable deleteLockAction = mock(Runnable.class);
+        doAnswer(invocation -> {
+            logger.info("release lock after remove runtime dir;");
+            return null;
+        }).when(deleteLockAction).run();
+
+        long maxRetries = 5;
+        int realRetryTimes = 2;
+        long sleepInterval = 1;
+        String logs = "test failed";
+
+        havenaskEngineEnvironment.asyncRemoveRuntimeDir(
+            threadPool,
+            checkIsDeletedAction,
+            deleteRuntimeDirAction,
+            deleteLockAction,
+            indexFile,
+            maxRetries,
+            sleepInterval,
+            logs
+        );
+
+        verify(deleteRuntimeDirAction, times(realRetryTimes)).accept(indexFile);
+        verify(deleteLockAction, times(1)).run();
+    }
+
+    public void testAsyncRemoveRuntimeDirError() throws IOException {
+        ThreadPool threadPool = mock(ThreadPool.class);
+        ExecutorService executorService = HavenaskExecutors.newDirectExecutorService();
+        when(threadPool.executor(anyString())).thenReturn(executorService);
+
+        Path indexFile = workDir.resolve("data")
+            .resolve(HavenaskEngineEnvironment.DEFAULT_DATA_PATH)
+            .resolve(HavenaskEngineEnvironment.HAVENASK_RUNTIMEDATA_PATH)
+            .resolve(tableName);
+
+        Runnable checkIsDeletedAction = () -> {
+            // do nothing
+        };
+
+        @SuppressWarnings("unchecked")
+        Consumer<Path> deleteRuntimeDirAction = mock(Consumer.class);
+        doThrow(new RuntimeException("test error")).when(deleteRuntimeDirAction).accept(indexFile);
+
+        Runnable deleteLockAction = mock(Runnable.class);
+        doAnswer(invocation -> {
+            logger.info("release lock after remove runtime dir;");
+            return null;
+        }).when(deleteLockAction).run();
+
+        long maxRetries = 5;
+        int realRetryTimes = 5;
+        long sleepInterval = 1;
+        String logs = "test error";
+
+        havenaskEngineEnvironment.asyncRemoveRuntimeDir(
+            threadPool,
+            checkIsDeletedAction,
+            deleteRuntimeDirAction,
+            deleteLockAction,
+            indexFile,
+            maxRetries,
+            sleepInterval,
+            logs
+        );
+
+        verify(deleteRuntimeDirAction, times(realRetryTimes)).accept(indexFile);
+        verify(deleteLockAction, times(1)).run();
     }
 }
