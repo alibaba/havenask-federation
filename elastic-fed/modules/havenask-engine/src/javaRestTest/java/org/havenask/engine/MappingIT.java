@@ -19,6 +19,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
@@ -43,7 +44,7 @@ import org.havenask.common.xcontent.XContentFactory;
 import org.havenask.common.xcontent.XContentType;
 import org.havenask.engine.index.engine.EngineSettings;
 import org.havenask.engine.index.mapper.DenseVectorFieldMapper;
-import org.havenask.engine.index.query.KnnQueryBuilder;
+import org.havenask.search.builder.KnnSearchBuilder;
 import org.havenask.search.builder.SearchSourceBuilder;
 import org.junit.AfterClass;
 
@@ -347,17 +348,16 @@ public class MappingIT extends AbstractHavenaskRestTestCase {
             // get data with _search
             SearchRequest searchRequest = new SearchRequest(index);
             SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-            KnnQueryBuilder knnQueryBuilder = new KnnQueryBuilder(fieldName, new float[] { 1.5f, 2.5f }, 10);
-            searchSourceBuilder.query(knnQueryBuilder);
+            searchSourceBuilder.knnSearch(List.of(new KnnSearchBuilder(fieldName, new float[] { 1.5f, 2.5f }, 10, 100, null)));
             searchRequest.source(searchSourceBuilder);
 
             // 执行查询请求并获取相应结果
             assertBusy(() -> {
                 SearchResponse searchResponse = highLevelClient().search(searchRequest, RequestOptions.DEFAULT);
-                assertEquals(dataNum, searchResponse.getHits().getTotalHits().value);
+                assertEquals(dataNum, searchResponse.getHits().getHits().length);
             }, 10, TimeUnit.SECONDS);
             SearchResponse searchResponse = highLevelClient().search(searchRequest, RequestOptions.DEFAULT);
-            assertEquals(dataNum, searchResponse.getHits().getTotalHits().value);
+            assertEquals(dataNum, searchResponse.getHits().getHits().length);
             assertEquals(expectedMaxScore, searchResponse.getHits().getMaxScore(), delta);
             for (int i = 0; i < dataNum; i++) {
                 assertEquals(resSourceAsString[i], searchResponse.getHits().getHits()[i].getSourceAsString());
@@ -506,17 +506,16 @@ public class MappingIT extends AbstractHavenaskRestTestCase {
         // get data with _search
         SearchRequest searchRequest = new SearchRequest(index);
         SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-        KnnQueryBuilder knnQueryBuilder = new KnnQueryBuilder(fieldName, new float[] { 1.5f, 2.5f }, 10);
-        searchSourceBuilder.query(knnQueryBuilder);
+        searchSourceBuilder.knnSearch(List.of(new KnnSearchBuilder(fieldName, new float[] { 1.5f, 2.5f }, 10, 100, null)));
         searchRequest.source(searchSourceBuilder);
 
         // 执行查询请求并获取相应结果
         assertBusy(() -> {
             SearchResponse searchResponse = highLevelClient().search(searchRequest, RequestOptions.DEFAULT);
-            assertEquals(dataNum, searchResponse.getHits().getTotalHits().value);
+            assertEquals(dataNum, searchResponse.getHits().getHits().length);
         }, 10, TimeUnit.SECONDS);
         SearchResponse searchResponse = highLevelClient().search(searchRequest, RequestOptions.DEFAULT);
-        assertEquals(dataNum, searchResponse.getHits().getTotalHits().value);
+        assertEquals(dataNum, searchResponse.getHits().getHits().length);
         assertEquals(expectedMaxScore, searchResponse.getHits().getMaxScore(), delta);
         for (int i = 0; i < dataNum; i++) {
             assertEquals(resSourceAsString[i], searchResponse.getHits().getHits()[i].getSourceAsString());
@@ -609,8 +608,7 @@ public class MappingIT extends AbstractHavenaskRestTestCase {
         try {
             SearchRequest wrongSearchRequest = new SearchRequest(index);
             SearchSourceBuilder wrongSearchSourceBuilder = new SearchSourceBuilder();
-            KnnQueryBuilder wrongKnnQueryBuilder = new KnnQueryBuilder(fieldName, new float[] { 1f, 2f }, 10);
-            wrongSearchSourceBuilder.query(wrongKnnQueryBuilder);
+            wrongSearchSourceBuilder.knnSearch(List.of(new KnnSearchBuilder(fieldName, new float[] { 1f, 2f }, 10, 100, null)));
             wrongSearchRequest.source(wrongSearchSourceBuilder);
         } catch (Exception e) {
             assertTrue(e.getCause().toString().contains("The [dot_product] similarity can only be used with unit-length vectors."));
@@ -618,17 +616,16 @@ public class MappingIT extends AbstractHavenaskRestTestCase {
 
         SearchRequest searchRequest = new SearchRequest(index);
         SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-        KnnQueryBuilder knnQueryBuilder = new KnnQueryBuilder(fieldName, new float[] { 0.6f, 0.8f }, 10);
-        searchSourceBuilder.query(knnQueryBuilder);
+        searchSourceBuilder.knnSearch(List.of(new KnnSearchBuilder(fieldName, new float[] { 0.6f, 0.8f }, 10, 100, null)));
         searchRequest.source(searchSourceBuilder);
 
         // 执行查询请求并获取相应结果
         assertBusy(() -> {
             SearchResponse searchResponse = highLevelClient().search(searchRequest, RequestOptions.DEFAULT);
-            assertEquals(dataNum, searchResponse.getHits().getTotalHits().value);
+            assertEquals(dataNum, searchResponse.getHits().getHits().length);
         }, 10, TimeUnit.SECONDS);
         SearchResponse searchResponse = highLevelClient().search(searchRequest, RequestOptions.DEFAULT);
-        assertEquals(dataNum, searchResponse.getHits().getTotalHits().value);
+        assertEquals(dataNum, searchResponse.getHits().getHits().length);
         assertEquals(expectedMaxScore, searchResponse.getHits().getMaxScore(), delta);
         for (int i = 0; i < searchResponse.getHits().getHits().length; i++) {
             assertEquals(resSourceAsString[i], searchResponse.getHits().getHits()[i].getSourceAsString());
