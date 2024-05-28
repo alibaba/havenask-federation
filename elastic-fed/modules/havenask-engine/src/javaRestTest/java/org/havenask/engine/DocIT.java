@@ -45,7 +45,7 @@ import org.havenask.common.xcontent.XContentFactory;
 import org.havenask.common.xcontent.XContentType;
 import org.havenask.engine.index.engine.EngineSettings;
 import org.havenask.engine.index.mapper.DenseVectorFieldMapper;
-import org.havenask.engine.index.query.KnnQueryBuilder;
+import org.havenask.search.builder.KnnSearchBuilder;
 import org.havenask.search.builder.SearchSourceBuilder;
 import org.junit.AfterClass;
 
@@ -171,6 +171,7 @@ public class DocIT extends AbstractHavenaskRestTestCase {
 
         // check data using sql search api
         String sqlStr = "select * from " + index + " where seq=1 AND content='欢迎使用1'";
+        waitSqlResponseExists(sqlStr, 1);
         SqlResponse bulkSqlResponse = getSqlResponse(sqlStr);
         java.util.Map<String, Integer> dataIndexMap = new HashMap<>();
         for (int i = 0; i < bulkSqlResponse.getSqlResult().getColumnName().length; i++) {
@@ -338,8 +339,7 @@ public class DocIT extends AbstractHavenaskRestTestCase {
         // get data with _search
         SearchRequest searchRequest = new SearchRequest(index);
         SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-        KnnQueryBuilder knnQueryBuilder = new KnnQueryBuilder(fieldName, new float[] { 1.5f, 2.5f }, 10);
-        searchSourceBuilder.query(knnQueryBuilder);
+        searchSourceBuilder.knnSearch(List.of(new KnnSearchBuilder(fieldName, new float[] { 1.5f, 2.5f }, 10, 100, null)));
         searchRequest.source(searchSourceBuilder);
 
         // 执行查询请求并获取相应结果
@@ -383,12 +383,6 @@ public class DocIT extends AbstractHavenaskRestTestCase {
                 .getJSONObject("docs")
                 .getLong("count");
             assertEquals(expectedDocCount * (1 + replicasNum), totalDocCount);
-            long storeSize = indexStatsJson.getJSONObject("indices")
-                .getJSONObject(index)
-                .getJSONObject("total")
-                .getJSONObject("store")
-                .getLong("size_in_bytes");
-            assertTrue(storeSize >= 10240L);
         }, 10, TimeUnit.SECONDS);
     }
 

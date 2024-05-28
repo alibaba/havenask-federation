@@ -84,6 +84,7 @@ public class PeerRecoveryIT extends AbstractHavenaskRestTestCase {
         waitIndexGreen(index);
 
         int docValue = 0;
+        int docNum = 0;
         for (int i = 0; i < loopCount; i++) {
             // 减少replica，写入doc
             assertTrue(setReplicaNum(index, 0));
@@ -92,6 +93,8 @@ public class PeerRecoveryIT extends AbstractHavenaskRestTestCase {
                 putDoc(index, Map.of("foo", "value" + docValue));
                 docValue++;
             }
+            docNum += 50;
+            int currentDocNum = docNum;
 
             // 增加replica，触发peer recovery
             assertTrue(setReplicaNum(index, 1));
@@ -101,9 +104,10 @@ public class PeerRecoveryIT extends AbstractHavenaskRestTestCase {
                 SearchResponse primarySearchResponse = getSearchResponseWithPreference(index, querySize, primaryPreference);
                 SearchResponse replicaSearchResponse = getSearchResponseWithPreference(index, querySize, replicaPreference);
 
-                logger.info("primarySearchResponse: " + primarySearchResponse.getHits().getTotalHits());
-                logger.info("replicaSearchResponse: " + replicaSearchResponse.getHits().getTotalHits());
-                assertEquals(primarySearchResponse.getHits().getTotalHits(), replicaSearchResponse.getHits().getTotalHits());
+                logger.info("primarySearchResponse: " + primarySearchResponse.getHits().getHits().length);
+                logger.info("replicaSearchResponse: " + replicaSearchResponse.getHits().getHits().length);
+                assertEquals(currentDocNum, primarySearchResponse.getHits().getHits().length);
+                assertEquals(currentDocNum, replicaSearchResponse.getHits().getHits().length);
             }, 10, TimeUnit.SECONDS);
 
             compareResponsesHits(
@@ -156,6 +160,7 @@ public class PeerRecoveryIT extends AbstractHavenaskRestTestCase {
 
         waitIndexGreen(index);
 
+        int docNum = 0;
         for (int i = 0; i < loopCount; i++) {
             // wait cluster health turns to be yellow
             assertBusy(() -> {
@@ -175,6 +180,8 @@ public class PeerRecoveryIT extends AbstractHavenaskRestTestCase {
             for (int j = 0; j < 50; j++) {
                 putDoc(index, Map.of("foo", "value" + i));
             }
+            docNum += 50;
+            int curDocNum = docNum;
 
             // wait cluster health turns to be green
             waitIndexGreen(index);
@@ -183,9 +190,10 @@ public class PeerRecoveryIT extends AbstractHavenaskRestTestCase {
                 SearchResponse primarySearchResponse = getSearchResponseWithPreference(index, querySize, primaryPreference);
                 SearchResponse replicaSearchResponse = getSearchResponseWithPreference(index, querySize, replicaPreference);
 
-                logger.info("primarySearchResponse: " + primarySearchResponse.getHits().getTotalHits());
-                logger.info("replicaSearchResponse: " + replicaSearchResponse.getHits().getTotalHits());
-                assertEquals(primarySearchResponse.getHits().getTotalHits(), replicaSearchResponse.getHits().getTotalHits());
+                logger.info("primarySearchResponse: " + primarySearchResponse.getHits().getHits().length);
+                logger.info("replicaSearchResponse: " + replicaSearchResponse.getHits().getHits().length);
+                assertEquals(curDocNum, primarySearchResponse.getHits().getHits().length);
+                assertEquals(curDocNum, replicaSearchResponse.getHits().getHits().length);
                 compareResponsesHits(primarySearchResponse, replicaSearchResponse);
             });
         }
