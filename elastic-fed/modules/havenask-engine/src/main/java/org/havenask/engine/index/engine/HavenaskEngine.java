@@ -146,7 +146,8 @@ public class HavenaskEngine extends InternalEngine {
     private KafkaProducer<String, String> producer = null;
     private volatile HavenaskCommitInfo lastCommitInfo = null;
     private CheckpointCalc checkpointCalc = null;
-    private long lastLocalCheckpoint = -1;
+    private long lastFedCheckpoint = -1;
+    private long lastFedCheckpointTimestamp = -1;
     private final String partitionName;
     private final RangeUtil.PartitionRange partitionRange;
     private final SingleObjectCache<DocsStats> docsStatsCache;
@@ -1133,18 +1134,18 @@ public class HavenaskEngine extends InternalEngine {
     @Override
     public boolean maybeRefresh(String source) throws EngineException {
         long time = System.currentTimeMillis();
-        long checkpoint = getPersistedLocalCheckpoint();
-        checkpointCalc.addCheckpoint(time, checkpoint);
+        long fedCheckpoint = getPersistedLocalCheckpoint();
+        checkpointCalc.addCheckpoint(time, fedCheckpoint);
 
         Path shardPath = env.getRuntimedataPath().resolve(tableName).resolve("generation_0").resolve(partitionName);
         Tuple<Long, Long> tuple = Utils.getVersionAndIndexCheckpoint(shardPath);
         if (tuple == null) {
             logger.debug(
-                "havenask engine maybeRefresh failed, checkpoint not found, source: {}, time: {}, checkpoint: {}, "
-                    + "havenask time point: {}, current checkpoint: {}",
+                "havenask engine maybeRefresh failed, fedCheckpoint not found, source: {}, time: {}, fedCheckpoint: {}, "
+                    + "havenask time point: {}, current fedCheckpoint: {}",
                 source,
                 time,
-                checkpoint,
+                fedCheckpoint,
                 -1,
                 -1
             );
@@ -1161,41 +1162,57 @@ public class HavenaskEngine extends InternalEngine {
             havenaskTimePoint = -1;
         }
 
-        long currentCheckpoint = checkpointCalc.getCheckpoint(havenaskTimePoint);
+        long currentHavenaskCheckpoint = checkpointCalc.getCheckpoint(havenaskTimePoint);
 
         logger.debug(
-            "havenask engine maybeRefresh, source: {}, time: {}, checkpoint: {}, havenask time point: {},"
-                + " current checkpoint: {}, last local checkpoint: {}, segment version: {}",
+            "havenask engine maybeRefresh, source: {}, time: {}, fedCheckpoint: {}, lastFedCheckpoint: {}, havenask time point: {},"
+                + " currentHavenaskCheckpoint: {},  segment version: {}",
             source,
             time,
-            checkpoint,
+            fedCheckpoint,
+            lastFedCheckpoint,
             havenaskTimePoint,
-            currentCheckpoint,
-            lastLocalCheckpoint,
+            currentHavenaskCheckpoint,
             segmentVersion
         );
 
         // 如果checkpoint没变化,则说明数据在这期间没发生变化
         // 但是检测到version文件更新, 说明数据都落盘了, 所以havenask的checkpoint可以调整为当前的checkpoint
-        if (checkpoint == lastLocalCheckpoint && segmentVersion > lastCommitInfo.getCommitVersion()) {
-            currentCheckpoint = checkpoint;
-        }
-
-        lastLocalCheckpoint = checkpoint;
-
-        // havenask会定期刷新version文件，因此在checkpoint没有变化但检测到version文件更新时也同步更新lucene segment metadata中的commit信息
-        if (currentCheckpoint > lastCommitInfo.getCommitCheckpoint()
-            || (currentCheckpoint == lastCommitInfo.getCommitCheckpoint() && segmentVersion > lastCommitInfo.getCommitVersion())) {
+        if (fedCheckpoint == lastFedCheckpoint
+            && havenaskTimePoint > lastFedCheckpointTimestamp
+            && segmentVersion > lastCommitInfo.getCommitVersion()) {
             logger.info(
-                "havenask engine refresh checkpoint, checkpoint time: {}, current checkpoint: {}, last commit checkpoint: {}"
+                "havenask engine version changed, havenask time point: {}, lastFedCheckpointTimestamp: {}"
+                    + ", currentHavenaskCheckpoint: {}, last commit fedCheckpoint: {}"
                     + ", havenask version: {}, last commit version: {}",
-                havenaskTime,
-                currentCheckpoint,
+                havenaskTimePoint,
+                lastFedCheckpointTimestamp,
+                currentHavenaskCheckpoint,
                 lastCommitInfo.getCommitCheckpoint(),
                 segmentVersion,
                 lastCommitInfo.getCommitVersion()
             );
-            refreshCommitInfo(havenaskTimePoint, segmentVersion, currentCheckpoint);
+            currentHavenaskCheckpoint = fedCheckpoint;
+        }
+
+        if (lastFedCheckpoint != fedCheckpoint) {
+            lastFedCheckpointTimestamp = time;
+            lastFedCheckpoint = fedCheckpoint;
+        }
+
+        // havenask会定期刷新version文件，因此在checkpoint没有变化但检测到version文件更新时也同步更新lucene segment metadata中的commit信息
+        if (currentHavenaskCheckpoint > lastCommitInfo.getCommitCheckpoint()
+            || (currentHavenaskCheckpoint == lastCommitInfo.getCommitCheckpoint() && segmentVersion > lastCommitInfo.getCommitVersion())) {
+            logger.info(
+                "havenask engine refresh fedCheckpoint, fedCheckpoint time: {}, current fedCheckpoint: {}, last commit fedCheckpoint: {}"
+                    + ", havenask version: {}, last commit version: {}",
+                havenaskTime,
+                currentHavenaskCheckpoint,
+                lastCommitInfo.getCommitCheckpoint(),
+                segmentVersion,
+                lastCommitInfo.getCommitVersion()
+            );
+            refreshCommitInfo(havenaskTimePoint, segmentVersion, currentHavenaskCheckpoint);
 
             // 清理version.public文件
             Utils.cleanVersionPublishFiles(shardPath);
