@@ -172,7 +172,8 @@ class ChunkContext {
                         chunk_id = parser.text();
                         break;
                     default:
-                        throw new IllegalArgumentException("Unknown field: [" + fieldName + "]");
+                        // do nothing
+                        // throw new IllegalArgumentException("Unknown field: [" + fieldName + "]");
                 }
             }
         }
