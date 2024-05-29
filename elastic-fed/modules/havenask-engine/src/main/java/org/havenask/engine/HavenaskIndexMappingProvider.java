@@ -47,12 +47,12 @@ public class HavenaskIndexMappingProvider implements IndexMappingProvider {
             mapperService.documentMapper().mappers().forEach(mapper -> {
                 String fieldName = mapper.name();
                 if (fieldName.contains("-")) {
-                    throw new UnsupportedOperationException(
+                    throw new IllegalArgumentException(
                         String.format(Locale.ROOT, "Unsupported field name [%s], havenask field name cannot contain hyphen '-'", fieldName)
                     );
                 }
                 if (fieldName.equals(ILLEGAL_HAVENASK_FIELD_NAME)) {
-                    throw new UnsupportedOperationException(
+                    throw new IllegalArgumentException(
                         String.format(
                             Locale.ROOT,
                             "Unsupported field name [%s], havenask field name cannot be '%s'",

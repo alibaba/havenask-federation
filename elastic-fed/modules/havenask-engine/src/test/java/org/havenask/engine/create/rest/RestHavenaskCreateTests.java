@@ -240,7 +240,10 @@ public class RestHavenaskCreateTests extends MapperServiceTestCase {
             () -> restHandler.schemaJsonValidate(indexName, wrongIndexIdSchemaJsonStr)
         );
 
-        assertEquals("[schema.indexs._id] is an internal parameter of fed, please do not configure it.", indexIdError.getMessage());
+        assertEquals(
+            "['schema.indexs.index_name':'_id'] is an internal parameter of fed, " + "please do not configure it.",
+            indexIdError.getMessage()
+        );
 
         String wrongFieldSourceSchemaJsonStr = "{\n"
             + "\t\"fields\":[\n"
@@ -257,7 +260,10 @@ public class RestHavenaskCreateTests extends MapperServiceTestCase {
             () -> restHandler.schemaJsonValidate(indexName, wrongFieldSourceSchemaJsonStr)
         );
 
-        assertEquals("[schema.fields._source] is an internal parameter of fed, please do not configure it.", fieldSourceError.getMessage());
+        assertEquals(
+            "['schema.fields.field_name':'_source'] is an internal parameter of fed, " + "please do not configure it.",
+            fieldSourceError.getMessage()
+        );
 
         String wrongIndexRoutingSchemaJsonStr = "{\n"
             + "\t\"indexs\":[\n"
@@ -282,8 +288,28 @@ public class RestHavenaskCreateTests extends MapperServiceTestCase {
         );
 
         assertEquals(
-            "[schema.indexs._routing] is an internal parameter of fed, please do not configure it.",
+            "['schema.indexs.index_name':'_routing'] is an internal parameter of fed, please do not configure it.",
             indexRoutingError.getMessage()
+        );
+
+        String illegalIndexNameSchemaJsonStr = "{\n"
+            + "\t\"indexs\":[\n"
+            + "{\n"
+            + "\t\t\"index_fields\":\"summary\",\n"
+            + "\t\t\"index_name\":\"summary\",\n"
+            + "\t\t\"index_type\":\"STRING\"\n"
+            + "\t}"
+            + "\t]\n"
+            + "}";
+
+        IllegalArgumentException illegalIndexNameError = expectThrows(
+            IllegalArgumentException.class,
+            () -> restHandler.schemaJsonValidate(indexName, illegalIndexNameSchemaJsonStr)
+        );
+
+        assertEquals(
+            "['schema.indexs.index_name':'summary'] is an unsupported index_name of fed, " + "havenask index_name cannot be 'summary'",
+            illegalIndexNameError.getMessage()
         );
     }
 
