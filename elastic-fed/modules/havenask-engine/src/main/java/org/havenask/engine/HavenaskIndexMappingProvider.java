@@ -26,6 +26,7 @@ import org.havenask.index.mapper.MapperService;
 import org.havenask.index.shard.IndexMappingProvider;
 
 public class HavenaskIndexMappingProvider implements IndexMappingProvider {
+    public static final String ILLEGAL_HAVENASK_FIELD_NAME = "summary";
 
     @Override
     public Map<String, Object> getAdditionalIndexMapping(Settings settings) {
@@ -46,8 +47,18 @@ public class HavenaskIndexMappingProvider implements IndexMappingProvider {
             mapperService.documentMapper().mappers().forEach(mapper -> {
                 String fieldName = mapper.name();
                 if (fieldName.contains("-")) {
-                    throw new UnsupportedOperationException(
-                        String.format(Locale.ROOT, "Unsupported field name [%s], field name cannot contain hyphen '-'", fieldName)
+                    throw new IllegalArgumentException(
+                        String.format(Locale.ROOT, "Unsupported field name [%s], havenask field name cannot contain hyphen '-'", fieldName)
+                    );
+                }
+                if (fieldName.equals(ILLEGAL_HAVENASK_FIELD_NAME)) {
+                    throw new IllegalArgumentException(
+                        String.format(
+                            Locale.ROOT,
+                            "Unsupported field name [%s], havenask field name cannot be '%s'",
+                            fieldName,
+                            ILLEGAL_HAVENASK_FIELD_NAME
+                        )
                     );
                 }
             });

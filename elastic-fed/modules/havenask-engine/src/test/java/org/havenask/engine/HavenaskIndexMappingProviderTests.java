@@ -40,8 +40,17 @@ public class HavenaskIndexMappingProviderTests extends MapperServiceTestCase {
 
         try {
             havenaskIndexMappingProvider.validateIndexMapping(tableName, settings, illegalMapperService);
-        } catch (UnsupportedOperationException e) {
-            assertTrue(e.getMessage().contains("Unsupported field name [user-illegal], field name cannot contain hyphen '-'"));
+        } catch (IllegalArgumentException e) {
+            assertTrue(e.getMessage().contains("Unsupported field name [user-illegal], havenask field name cannot contain hyphen '-'"));
+        }
+
+        MapperService illegalMapperServiceContainsSummary = createTestMapperService(
+            Map.of("properties", Map.of("summary", Map.of("type", "text")))
+        );
+        try {
+            havenaskIndexMappingProvider.validateIndexMapping(tableName, settings, illegalMapperServiceContainsSummary);
+        } catch (IllegalArgumentException e) {
+            assertTrue(e.getMessage().contains("Unsupported field name [summary], havenask field name cannot be 'summary'"));
         }
     }
 

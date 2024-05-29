@@ -22,6 +22,7 @@ import org.havenask.client.node.NodeClient;
 import org.havenask.common.settings.Settings;
 import org.havenask.common.xcontent.LoggingDeprecationHandler;
 import org.havenask.common.xcontent.XContentParser;
+import org.havenask.engine.HavenaskIndexMappingProvider;
 import org.havenask.engine.index.engine.EngineSettings;
 import org.havenask.engine.util.JsonPrettyFormatter;
 import org.havenask.rest.BaseRestHandler;
@@ -49,7 +50,7 @@ public class RestHavenaskCreate extends BaseRestHandler {
     protected RestChannelConsumer prepareRequest(RestRequest request, NodeClient client) throws IOException {
         String index = request.param("index");
         XContentParser parser = request.contentParser();
-        Map<String, Object> source = parser.map();
+        Map<String, Object> source = parser.mapOrdered();
 
         Map<String, Object> settingsMap = source.containsKey("settings")
             ? (Map<String, Object>) source.remove("settings")
@@ -262,7 +263,7 @@ public class RestHavenaskCreate extends BaseRestHandler {
                 || field.containsKey(FIELD_TYPE) && !field.getString(FIELD_TYPE).equals(field_type)) {
                 String errorMessage = String.format(
                     Locale.ROOT,
-                    "[schema.fields.%s] is an internal parameter of fed, " + "please do not configure it.",
+                    "['schema.fields.field_name':'%s'] is an internal parameter of fed, please do not configure it.",
                     field_name
                 );
                 throw new IllegalArgumentException(errorMessage);
@@ -287,6 +288,7 @@ public class RestHavenaskCreate extends BaseRestHandler {
             compareDefaultSchemaPrimaryIndexValue(field, ID_FIELD);
             compareDefaultSchemaNormalIndexValue(field, ROUTING_FIELD, ROUTING_TYPE);
             compareDefaultSchemaNormalIndexValue(field, SEQNO_FIELD, SEQNO_TYPE);
+            validateSchemaIndex(field);
         }
     }
 
@@ -303,7 +305,7 @@ public class RestHavenaskCreate extends BaseRestHandler {
                     && !field.getString(INDEX_TYPE).equals(field_type)) {
                 String errorMessage = String.format(
                     Locale.ROOT,
-                    "[schema.indexs.%s] is an internal parameter of fed, " + "please do not configure it.",
+                    "['schema.indexs.index_name':'%s'] is an internal parameter of fed, please do not configure it.",
                     field_name
                 );
                 throw new IllegalArgumentException(errorMessage);
@@ -333,11 +335,26 @@ public class RestHavenaskCreate extends BaseRestHandler {
                     && field.getBoolean(HAS_PRIMARY_KEY_ATTRIBUTE) != true) {
                 String errorMessage = String.format(
                     Locale.ROOT,
-                    "[schema.indexs.%s] is an internal parameter of fed, " + "please do not configure it.",
+                    "['schema.indexs.index_name':'%s'] is an internal parameter of fed, please do not configure it.",
                     field_name
                 );
                 throw new IllegalArgumentException(errorMessage);
             }
+        }
+    }
+
+    private void validateSchemaIndex(JSONObject field) {
+        final String INDEX_NAME = "index_name";
+        if (field.containsKey(INDEX_NAME)
+            && field.get(INDEX_NAME) instanceof String
+            && field.getString(INDEX_NAME).equals(HavenaskIndexMappingProvider.ILLEGAL_HAVENASK_FIELD_NAME)) {
+            String errorMessage = String.format(
+                Locale.ROOT,
+                "['schema.indexs.index_name':'%s'] is an unsupported index_name of fed, havenask index_name cannot be '%s'",
+                HavenaskIndexMappingProvider.ILLEGAL_HAVENASK_FIELD_NAME,
+                HavenaskIndexMappingProvider.ILLEGAL_HAVENASK_FIELD_NAME
+            );
+            throw new IllegalArgumentException(errorMessage);
         }
     }
 }
