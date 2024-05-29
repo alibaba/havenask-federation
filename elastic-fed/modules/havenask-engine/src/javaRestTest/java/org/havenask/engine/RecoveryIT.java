@@ -124,10 +124,10 @@ public class RecoveryIT extends AbstractHavenaskRestTestCase {
                 .sql(new SqlRequest("select * from " + index), RequestOptions.DEFAULT);
             logger.info(
                 "waiting for sql error or doc clear, now code is {}, doc count is {}",
-                afterStopResponse.getErrorInfo().GetErrorCode(),
+                afterStopResponse.getErrorInfo().getErrorCode(),
                 afterStopResponse.getRowCount()
             );
-            assert 8020 == afterStopResponse.getErrorInfo().GetErrorCode() || 0 == afterStopResponse.getRowCount();
+            assert 8020 == afterStopResponse.getErrorInfo().getErrorCode() || 0 == afterStopResponse.getRowCount();
         }, 2, TimeUnit.MINUTES);
 
         // wait for cluster health turning to be red

@@ -45,6 +45,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 import static org.havenask.engine.search.rest.RestHavenaskSqlAction.SQL_DATABASE;
@@ -101,6 +102,17 @@ public class HavenaskSearchFetchProcessor {
         if (searchSourceBuilder == null) {
             throw new IllegalArgumentException("request source can not be null!");
         }
+        if (queryPhaseSqlResponse.getErrorInfo().getErrorCode() != 0) {
+            throw new RuntimeException(
+                String.format(
+                    Locale.ROOT,
+                    "execute query phase Sql failed: " + "errorCode: %s, error: %s, message: %s ",
+                    queryPhaseSqlResponse.getErrorInfo().getErrorCode(),
+                    queryPhaseSqlResponse.getErrorInfo().getError(),
+                    queryPhaseSqlResponse.getErrorInfo().getMessage()
+                )
+            );
+        }
         List<String> idList = new ArrayList<>(queryPhaseSqlResponse.getRowCount());
         TopDocsAndMaxScore topDocsAndMaxScore = buildQuerySearchResult(queryPhaseSqlResponse, idList, searchSourceBuilder.from());
         SqlResponse fetchPhaseSqlResponse = (true == sourceEnabled
@@ -151,6 +163,17 @@ public class HavenaskSearchFetchProcessor {
         QrsSqlRequest qrsFetchPhaseSqlRequest = getQrsFetchPhaseSqlRequest(idList, tableName);
         QrsSqlResponse qrsFetchPhaseSqlResponse = qrsClient.executeSql(qrsFetchPhaseSqlRequest);
         SqlResponse fetchPhaseSqlResponse = SqlResponse.parse(qrsFetchPhaseSqlResponse.getResult());
+        if (fetchPhaseSqlResponse.getErrorInfo().getErrorCode() != 0) {
+            throw new RuntimeException(
+                String.format(
+                    Locale.ROOT,
+                    "execute fetch phase Sql failed: " + "errorCode: %s, error: %s, message: %s",
+                    fetchPhaseSqlResponse.getErrorInfo().getErrorCode(),
+                    fetchPhaseSqlResponse.getErrorInfo().getError(),
+                    fetchPhaseSqlResponse.getErrorInfo().getMessage()
+                )
+            );
+        }
         if (logger.isDebugEnabled()) {
             logger.debug("fetch idList length: {}, havenask sqlResponse took: {} ms", idList.size(), fetchPhaseSqlResponse.getTotalTime());
         }
