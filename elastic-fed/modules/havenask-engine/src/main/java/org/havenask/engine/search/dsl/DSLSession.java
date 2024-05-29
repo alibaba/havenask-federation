@@ -28,7 +28,6 @@ import org.havenask.engine.search.dsl.plan.DSLExec;
 import org.havenask.engine.search.internal.HavenaskScroll;
 import org.havenask.search.builder.SearchSourceBuilder;
 
-import java.io.IOException;
 import java.util.Map;
 import java.util.Objects;
 
@@ -111,7 +110,7 @@ public class DSLSession {
         return sessionId;
     }
 
-    public SearchResponse execute() throws IOException {
+    public SearchResponse execute() throws Exception {
         try {
             startTime = System.currentTimeMillis();
             ExpressionContext context = new ExpressionContext(namedXContentRegistry, havenaskScroll, indexMetadata.getNumberOfShards());

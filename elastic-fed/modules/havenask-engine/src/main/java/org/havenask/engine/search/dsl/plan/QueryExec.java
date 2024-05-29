@@ -24,7 +24,8 @@ import org.havenask.engine.search.dsl.DSLSession;
 import org.havenask.engine.search.dsl.expression.QuerySQLExpression;
 import org.havenask.search.SearchHits;
 
-import java.io.IOException;
+import java.sql.SQLException;
+import java.util.Locale;
 
 import static org.havenask.engine.search.rest.RestHavenaskSqlAction.SQL_DATABASE;
 
@@ -38,7 +39,7 @@ public class QueryExec implements Executable<SearchHits> {
     }
 
     @Override
-    public SearchHits execute(DSLSession session) throws IOException {
+    public SearchHits execute(DSLSession session) throws Exception {
         // exec query
         String sql = querySQLExpression.translate();
         logger.debug("query exec, session: {}, exec sql: {}", session.getSessionId(), sql);
@@ -46,6 +47,20 @@ public class QueryExec implements Executable<SearchHits> {
 
         QrsSqlResponse qrsSqlResponse = session.getClient().executeSql(new QrsSqlRequest(sql, kvpair));
         SqlResponse queryPhaseSqlResponse = SqlResponse.parse(qrsSqlResponse.getResult());
+        if (queryPhaseSqlResponse.getErrorInfo().getErrorCode() != 0) {
+            throw new SQLException(
+                String.format(
+                    Locale.ROOT,
+                    "execute query phase sql failed after transfer dsl to sql. "
+                        + "query phase sql: '%s', "
+                        + "errorCode: %s, error: %s, message: %s ",
+                    sql,
+                    queryPhaseSqlResponse.getErrorInfo().getErrorCode(),
+                    queryPhaseSqlResponse.getErrorInfo().getError(),
+                    queryPhaseSqlResponse.getErrorInfo().getMessage()
+                )
+            );
+        }
 
         HavenaskSearchFetchProcessor fetchProcessor = new HavenaskSearchFetchProcessor(session.getClient());
         return fetchProcessor.executeFetchHits(queryPhaseSqlResponse, session.getIndex(), session.getQuery(), session.isSourceEnabled());

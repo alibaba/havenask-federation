@@ -119,7 +119,7 @@ public class HavenaskSearchFetchProcessorTests extends HavenaskTestCase {
         }
     }
 
-    public void testExecuteFetch() throws IOException {
+    public void testExecuteFetch() throws Exception {
         String indexName = "table";
         int docsNum = 3;
         String[] resStr = new String[] {
