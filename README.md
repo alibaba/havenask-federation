@@ -49,7 +49,7 @@ Havenask-federation承担三种角色：master、data、coordinate，其中data�
     ./create_container.sh <CONTAINER_NAME> <IMAGE_NAME>
 
     #示例命令：
-    ./create_container.sh test registry.cn-hangzhou.aliyuncs.com/havenask/fed:1.1.0
+    ./create_container.sh test registry.cn-hangzhou.aliyuncs.com/havenask/fed:latest
 
 ### 方式二
 直接拷贝启动脚本[elastic-fed/script/create_container.sh](https://github.com/alibaba/havenask-federation/blob/main/elastic-fed/script/create_container.sh)到本地，执行启动命令：
@@ -57,7 +57,7 @@ Havenask-federation承担三种角色：master、data、coordinate，其中data�
     sh create_container.sh <CONTAINER_NAME> <IMAGE_NAME>
 
     #示例命令：
-    sh create_container.sh test registry.cn-hangzhou.aliyuncs.com/havenask/fed:1.1.0
+    sh create_container.sh test registry.cn-hangzhou.aliyuncs.com/havenask/fed:latest
 
 ## 进入容器
 
