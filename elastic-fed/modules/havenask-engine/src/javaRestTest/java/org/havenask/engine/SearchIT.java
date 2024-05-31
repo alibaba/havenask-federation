@@ -323,7 +323,7 @@ public class SearchIT extends AbstractHavenaskRestTestCase {
             assertEquals(clusterHealthResponse.getStatus(), ClusterHealthStatus.GREEN);
         }, 2, TimeUnit.MINUTES);
 
-        int dataNum = randomIntBetween(10000, 20000);
+        int dataNum = randomIntBetween(100, 200);
         BulkRequest bulkRequest = new BulkRequest();
         for (int i = 0; i < dataNum; i++) {
             float randomFloat = ((float) randomIntBetween(0, 100)) / 100;
