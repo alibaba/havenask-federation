@@ -116,7 +116,7 @@ public class HavenaskFetchPhase extends FetchPhase {
         StringBuilder sqlQuery = new StringBuilder();
         String tableName = Utils.getHavenaskTableName(context.indexShard().shardId());
         sqlQuery.append("select _source,_id from " + tableName + "_summary_");
-        sqlQuery.append(" where contain('_id','");
+        sqlQuery.append(" where contain(_id,'");
         for (int index = 0; index < context.docIdsToLoadSize(); index++) {
             if (context.isCancelled()) {
                 throw new TaskCancelledException("cancelled");
