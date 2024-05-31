@@ -66,8 +66,14 @@ public class SqlResponse {
             this.message = message;
         }
 
-        public int GetErrorCode() {
+        public int getErrorCode() {
             return errorCode;
+        }
+        public String getError() {
+            return error;
+        }
+        public String getMessage() {
+            return message;
         }
     }
 

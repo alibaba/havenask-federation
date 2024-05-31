@@ -14,7 +14,6 @@
 
 package org.havenask.engine.search.dsl.plan;
 
-import java.io.IOException;
 import java.util.Map;
 import java.util.Objects;
 
@@ -41,7 +40,7 @@ public class DSLExec implements Executable<SearchResponse> {
     }
 
     @Override
-    public SearchResponse execute(DSLSession session) throws IOException {
+    public SearchResponse execute(DSLSession session) throws Exception {
         // exec query
         SearchHits searchHits = SearchHits.empty();
         if (sourceExpression.size() > 0) {

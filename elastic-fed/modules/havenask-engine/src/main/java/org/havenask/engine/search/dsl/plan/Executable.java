@@ -16,8 +16,6 @@ package org.havenask.engine.search.dsl.plan;
 
 import org.havenask.engine.search.dsl.DSLSession;
 
-import java.io.IOException;
-
 public interface Executable<T> {
-    T execute(DSLSession session) throws IOException;
+    T execute(DSLSession session) throws Exception;
 }
