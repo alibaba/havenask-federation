@@ -290,9 +290,6 @@ public class SearchIT extends AbstractHavenaskRestTestCase {
     }
 
     public void testMultiKnnQuery() throws Exception {
-        // todo: 目前havenask写入两个向量时会导致内存异常打高，容易hang住，暂时屏蔽这个测试
-        assumeTrue("暂时屏蔽该测试", false);
-
         String index = "multi_vector_test";
         searchITIndices.add(index);
 
@@ -326,7 +323,7 @@ public class SearchIT extends AbstractHavenaskRestTestCase {
             assertEquals(clusterHealthResponse.getStatus(), ClusterHealthStatus.GREEN);
         }, 2, TimeUnit.MINUTES);
 
-        int dataNum = randomIntBetween(100, 200);
+        int dataNum = randomIntBetween(10000, 20000);
         BulkRequest bulkRequest = new BulkRequest();
         for (int i = 0; i < dataNum; i++) {
             float randomFloat = ((float) randomIntBetween(0, 100)) / 100;
