@@ -28,6 +28,8 @@ import org.havenask.engine.util.JsonPrettyFormatter;
 
 import java.util.List;
 
+import static org.havenask.engine.create.rest.RestHavenaskCreate.PROCESSOR_CHAIN_CONFIG;
+
 public class HavenaskEngineConfigGenerator {
     public static String generateClusterJsonStr(String indexName, Settings indexSettings, String inputClusterJsonStr) {
         ClusterJsonMinMustParams clusterJsonMinMustParams = new ClusterJsonMinMustParams();
@@ -75,7 +77,7 @@ public class HavenaskEngineConfigGenerator {
 
         // If the user does not configure processor_chain_config, then configure a default value
         JSONObject dataTableJson = JSONObject.parseObject(inputDataTableJsonStr, Feature.OrderedField);
-        Object value = JSONPath.eval(dataTableJson, "$." + "processor_chain_config");
+        Object value = JSONPath.eval(dataTableJson, "$." + PROCESSOR_CHAIN_CONFIG);
         if (value == null) {
             Processor.ProcessorChainConfig processorChainConfig = new Processor.ProcessorChainConfig();
             processorChainConfig.clusters = List.of(indexName);

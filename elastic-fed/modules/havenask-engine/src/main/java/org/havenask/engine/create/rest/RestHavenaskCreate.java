@@ -20,6 +20,7 @@ import com.alibaba.fastjson.JSONPath;
 import com.alibaba.fastjson.parser.Feature;
 import org.havenask.action.admin.indices.create.CreateIndexRequest;
 import org.havenask.client.node.NodeClient;
+import org.havenask.cluster.metadata.IndexMetadata;
 import org.havenask.common.settings.Settings;
 import org.havenask.common.xcontent.LoggingDeprecationHandler;
 import org.havenask.common.xcontent.XContentParser;
@@ -37,7 +38,32 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 
+import static org.havenask.engine.index.engine.EngineSettings.HAVENASK_BUILD_CONFIG_MAX_DOC_COUNT;
+import static org.havenask.engine.index.engine.EngineSettings.HAVENASK_CLUSTER_JSON;
+import static org.havenask.engine.index.engine.EngineSettings.HAVENASK_DATA_TABLE_JSON;
+import static org.havenask.engine.index.engine.EngineSettings.HAVENASK_HASH_MODE_HASH_FIELD;
+import static org.havenask.engine.index.engine.EngineSettings.HAVENASK_SCHEMA_JSON;
+import static org.havenask.engine.index.engine.EngineSettings.HAVENASK_WAL_CONFIG_SINK_QUEUE_SIZE;
+
 public class RestHavenaskCreate extends BaseRestHandler {
+    public static final String SETTINGS = "settings";
+    public static final String MAPPINGS = "mappings";
+    public static final String CLUSTER = "cluster";
+    public static final String DATA_TABLE = "data_table";
+    public static final String SCHEMA = "schema";
+    public static final String NUMBER_OF_SHARDS = "number_of_shards";
+    public static final String BUILDER_RULE_CONFIG_PARTITION_COUNT = "cluster_config.builder_rule_config.partition_count";
+    public static final String CLUSTER_CONFIG_CLUSTER_NAME = "cluster_config.cluster_name";
+    public static final String CLUSTER_CONFIG_TABLE_NAME = "cluster_config.table_name";
+    public static final String WAL_CONFIG_SINK_QUEUE_NAME = "wal_config.sink.queue_name";
+    public static final String WAL_CONFIG_STRATEGY = "wal_config.strategy";
+    public static final String DIRECT_WRITE = "direct_write";
+    public static final String CLUSTER_CONFIG_HASH_MODE_HASH_FIELD = "cluster_config.hash_mode.hash_field";
+    public static final String CLUSTER_CONFIG_HASH_MODE_HASH_FUNCTION = "cluster_config.hash_mode.hash_function";
+    public static final String ONLINE_INDEX_CONFIG_BUILD_CONFIG_MAX_DOC_COUNT = "online_index_config.build_config.max_doc_count";
+    public static final String WAL_CONFIG_SINK_QUEUE_SIZE = "wal_config.sink.queue_size";
+    public static final String TABLE_NAME = "table_name";
+    public static final String PROCESSOR_CHAIN_CONFIG = "processor_chain_config";
     private static final int DEFAULT_PARTITION_COUNT = 1;
 
     @Override
@@ -56,30 +82,28 @@ public class RestHavenaskCreate extends BaseRestHandler {
         XContentParser parser = request.contentParser();
         Map<String, Object> source = parser.mapOrdered();
 
-        Map<String, Object> settingsMap = source.containsKey("settings")
-            ? (Map<String, Object>) source.remove("settings")
-            : new HashMap<>();
+        Map<String, Object> settingsMap = source.containsKey(SETTINGS) ? (Map<String, Object>) source.remove(SETTINGS) : new HashMap<>();
         Settings settings = Settings.builder().loadFromMap(settingsMap).build();
 
-        Map<String, Object> clusters = (Map<String, Object>) source.remove("cluster");
+        Map<String, Object> clusters = (Map<String, Object>) source.remove(CLUSTER);
         if (clusters != null) {
             String clustersJsonStr = JsonPrettyFormatter.toJsonString(clusters);
             clusterJsonValidate(index, clustersJsonStr, settings);
-            settingsMap.put("index.havenask.cluster_json", JsonPrettyFormatter.toJsonString(clusters));
+            settingsMap.put(HAVENASK_CLUSTER_JSON.getKey(), JsonPrettyFormatter.toJsonString(clusters));
         }
 
-        Map<String, Object> dataTables = (Map<String, Object>) source.remove("data_table");
+        Map<String, Object> dataTables = (Map<String, Object>) source.remove(DATA_TABLE);
         if (dataTables != null) {
             String dataTablesJsonStr = JsonPrettyFormatter.toJsonString(dataTables);
             dataTableJsonValidate(index, dataTablesJsonStr);
-            settingsMap.put("index.havenask.data_table_json", JsonPrettyFormatter.toJsonString(dataTables));
+            settingsMap.put(HAVENASK_DATA_TABLE_JSON.getKey(), JsonPrettyFormatter.toJsonString(dataTables));
         }
 
-        Map<String, Object> schemas = (Map<String, Object>) source.remove("schema");
+        Map<String, Object> schemas = (Map<String, Object>) source.remove(SCHEMA);
         if (schemas != null) {
             String schemasJsonStr = JsonPrettyFormatter.toJsonString(schemas);
             schemaJsonValidate(index, schemasJsonStr);
-            settingsMap.put("index.havenask.schema_json", JsonPrettyFormatter.toJsonString(schemas));
+            settingsMap.put(HAVENASK_SCHEMA_JSON.getKey(), JsonPrettyFormatter.toJsonString(schemas));
         }
 
         if (!settingsMap.containsKey(EngineSettings.ENGINE_TYPE_SETTING.getKey())) {
@@ -88,8 +112,8 @@ public class RestHavenaskCreate extends BaseRestHandler {
 
         CreateIndexRequest createIndexRequest = new CreateIndexRequest(index);
         createIndexRequest.settings(settingsMap);
-        if (source.containsKey("mappings")) {
-            Map<String, Object> mappings = (Map<String, Object>) source.remove("mappings");
+        if (source.containsKey(MAPPINGS)) {
+            Map<String, Object> mappings = (Map<String, Object>) source.remove(MAPPINGS);
             if (mappings.containsKey("properties") && schemas != null) {
                 throw new IllegalArgumentException(
                     "Configuring both 'mappings' and 'schema' simultaneously is not supported. "
@@ -120,46 +144,46 @@ public class RestHavenaskCreate extends BaseRestHandler {
         }
 
         int partitionCount = DEFAULT_PARTITION_COUNT;
-        if (Objects.nonNull(settings.get("index.number_of_shards"))) {
-            partitionCount = settings.getAsInt("index.number_of_shards", 1);
-        } else if (Objects.nonNull(settings.get("number_of_shards"))) {
-            partitionCount = settings.getAsInt("number_of_shards", 1);
+        if (Objects.nonNull(settings.get(IndexMetadata.SETTING_NUMBER_OF_SHARDS))) {
+            partitionCount = settings.getAsInt(IndexMetadata.SETTING_NUMBER_OF_SHARDS, 1);
+        } else if (Objects.nonNull(settings.get(NUMBER_OF_SHARDS))) {
+            partitionCount = settings.getAsInt(NUMBER_OF_SHARDS, 1);
         }
         validateValueAtPathWithSettingsValue(
             clusterJsonObject,
-            "cluster_config.builder_rule_config.partition_count",
+            BUILDER_RULE_CONFIG_PARTITION_COUNT,
             String.valueOf(partitionCount),
             "cluster"
         );
-        validateValueAtPath(clusterJsonObject, "cluster_config.cluster_name", index, "cluster");
-        validateValueAtPath(clusterJsonObject, "cluster_config.table_name", index, "cluster");
-        validateValueAtPath(clusterJsonObject, "wal_config.sink.queue_name", index, "cluster");
-        validateValueAtPath(clusterJsonObject, "wal_config.strategy", "queue", "cluster");
-        validateValueAtPath(clusterJsonObject, "direct_write", "true", "cluster");
-        if (settings.hasValue("index.havenask.hash_mode.hash_field")) {
+        validateValueAtPath(clusterJsonObject, CLUSTER_CONFIG_CLUSTER_NAME, index, CLUSTER);
+        validateValueAtPath(clusterJsonObject, CLUSTER_CONFIG_TABLE_NAME, index, CLUSTER);
+        validateValueAtPath(clusterJsonObject, WAL_CONFIG_SINK_QUEUE_NAME, index, CLUSTER);
+        validateValueAtPath(clusterJsonObject, WAL_CONFIG_STRATEGY, "queue", CLUSTER);
+        validateValueAtPath(clusterJsonObject, DIRECT_WRITE, "true", CLUSTER);
+        if (settings.hasValue(HAVENASK_HASH_MODE_HASH_FIELD.getKey())) {
             validateValueAtPathWithSettingsValue(
                 clusterJsonObject,
-                "cluster_config.hash_mode.hash_field",
-                settings.get("index.havenask.hash_mode.hash_field"),
-                "cluster"
+                CLUSTER_CONFIG_HASH_MODE_HASH_FIELD,
+                settings.get((HAVENASK_HASH_MODE_HASH_FIELD.getKey())),
+                CLUSTER
             );
         }
-        validateValueAtPath(clusterJsonObject, "cluster_config.hash_mode.hash_function", "HASH", "cluster");
+        validateValueAtPath(clusterJsonObject, CLUSTER_CONFIG_HASH_MODE_HASH_FUNCTION, "HASH", CLUSTER);
 
-        if (settings.hasValue("index.havenask.build_config.max_doc_count")) {
+        if (settings.hasValue(HAVENASK_BUILD_CONFIG_MAX_DOC_COUNT.getKey())) {
             validateValueAtPathWithSettingsValue(
                 clusterJsonObject,
-                "online_index_config.build_config.max_doc_count",
-                String.valueOf(settings.getAsInt("index.havenask.build_config.max_doc_count", 10000)),
-                "cluster"
+                ONLINE_INDEX_CONFIG_BUILD_CONFIG_MAX_DOC_COUNT,
+                String.valueOf(settings.getAsInt(HAVENASK_BUILD_CONFIG_MAX_DOC_COUNT.getKey(), 10000)),
+                CLUSTER
             );
         }
-        if (settings.hasValue("index.havenask.wal_config.sink.queue_size")) {
+        if (settings.hasValue(HAVENASK_WAL_CONFIG_SINK_QUEUE_SIZE.getKey())) {
             validateValueAtPathWithSettingsValue(
                 clusterJsonObject,
-                "wal_config.sink.queue_size",
-                String.valueOf(settings.getAsInt("index.havenask.wal_config.sink.queue_size", 5000)),
-                "cluster"
+                WAL_CONFIG_SINK_QUEUE_SIZE,
+                String.valueOf(settings.getAsInt(HAVENASK_WAL_CONFIG_SINK_QUEUE_SIZE.getKey(), 5000)),
+                CLUSTER
             );
         }
     }
@@ -167,7 +191,7 @@ public class RestHavenaskCreate extends BaseRestHandler {
     protected void schemaJsonValidate(String index, String schemaJsonInput) {
         JSONObject schemaJsonObject = JSONObject.parseObject(schemaJsonInput, Feature.OrderedField);
 
-        validateValueAtPath(schemaJsonObject, "table_name", index, "schema");
+        validateValueAtPath(schemaJsonObject, TABLE_NAME, index, SCHEMA);
         validateDefaultSchemaFieldsValue(schemaJsonObject);
         validateDefaultSchemaIndexField(schemaJsonObject);
     }
@@ -175,13 +199,13 @@ public class RestHavenaskCreate extends BaseRestHandler {
     protected void dataTableJsonValidate(String index, String dataTableJsonInput) {
         JSONObject dataTableJsonObject = JSONObject.parseObject(dataTableJsonInput, Feature.OrderedField);
 
-        if (dataTableJsonObject.containsKey("processor_chain_config")) {
-            JSONArray processorChainConfig = dataTableJsonObject.getJSONArray("processor_chain_config");
+        if (dataTableJsonObject.containsKey(PROCESSOR_CHAIN_CONFIG)) {
+            JSONArray processorChainConfig = dataTableJsonObject.getJSONArray(PROCESSOR_CHAIN_CONFIG);
             for (int i = 0; i < processorChainConfig.size(); i++) {
                 JSONObject processor = processorChainConfig.getJSONObject(i);
 
-                if (processor.containsKey("clusters")) {
-                    JSONArray clusters = processor.getJSONArray("clusters");
+                if (processor.containsKey(CLUSTER)) {
+                    JSONArray clusters = processor.getJSONArray(CLUSTER);
                     if (!clusters.contains(index)) {
                         throw new IllegalArgumentException(
                             "'"
