@@ -17,6 +17,7 @@ package org.havenask.engine.create.rest;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import com.alibaba.fastjson.JSONPath;
+import com.alibaba.fastjson.parser.Feature;
 import org.havenask.action.admin.indices.create.CreateIndexRequest;
 import org.havenask.client.node.NodeClient;
 import org.havenask.common.settings.Settings;
@@ -34,8 +35,11 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 
 public class RestHavenaskCreate extends BaseRestHandler {
+    private static final int DEFAULT_PARTITION_COUNT = 1;
+
     @Override
     public String getName() {
         return "havenask_create_action";
@@ -100,7 +104,7 @@ public class RestHavenaskCreate extends BaseRestHandler {
     }
 
     protected void clusterJsonValidate(String index, String clusterJsonInput, Settings settings) {
-        JSONObject clusterJsonObject = JSONObject.parseObject(clusterJsonInput);
+        JSONObject clusterJsonObject = JSONObject.parseObject(clusterJsonInput, Feature.OrderedField);
 
         if (settings.hasValue(EngineSettings.ENGINE_TYPE_SETTING.getKey())) {
             String engineType = settings.get(EngineSettings.ENGINE_TYPE_SETTING.getKey());
@@ -115,10 +119,16 @@ public class RestHavenaskCreate extends BaseRestHandler {
             }
         }
 
+        int partitionCount = DEFAULT_PARTITION_COUNT;
+        if (Objects.nonNull(settings.get("index.number_of_shards"))) {
+            partitionCount = settings.getAsInt("index.number_of_shards", 1);
+        } else if (Objects.nonNull(settings.get("number_of_shards"))) {
+            partitionCount = settings.getAsInt("number_of_shards", 1);
+        }
         validateValueAtPathWithSettingsValue(
             clusterJsonObject,
             "cluster_config.builder_rule_config.partition_count",
-            String.valueOf(settings.getAsInt("index.number_of_shards", 1)),
+            String.valueOf(partitionCount),
             "cluster"
         );
         validateValueAtPath(clusterJsonObject, "cluster_config.cluster_name", index, "cluster");
@@ -155,7 +165,7 @@ public class RestHavenaskCreate extends BaseRestHandler {
     }
 
     protected void schemaJsonValidate(String index, String schemaJsonInput) {
-        JSONObject schemaJsonObject = JSONObject.parseObject(schemaJsonInput);
+        JSONObject schemaJsonObject = JSONObject.parseObject(schemaJsonInput, Feature.OrderedField);
 
         validateValueAtPath(schemaJsonObject, "table_name", index, "schema");
         validateDefaultSchemaFieldsValue(schemaJsonObject);
@@ -163,7 +173,7 @@ public class RestHavenaskCreate extends BaseRestHandler {
     }
 
     protected void dataTableJsonValidate(String index, String dataTableJsonInput) {
-        JSONObject dataTableJsonObject = JSONObject.parseObject(dataTableJsonInput);
+        JSONObject dataTableJsonObject = JSONObject.parseObject(dataTableJsonInput, Feature.OrderedField);
 
         if (dataTableJsonObject.containsKey("processor_chain_config")) {
             JSONArray processorChainConfig = dataTableJsonObject.getJSONArray("processor_chain_config");

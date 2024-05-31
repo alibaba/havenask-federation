@@ -33,6 +33,7 @@ import java.util.Locale;
 
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
+import com.alibaba.fastjson.parser.Feature;
 import org.havenask.cluster.metadata.IndexMetadata;
 import org.havenask.common.settings.Settings;
 import org.havenask.engine.HavenaskEnginePlugin;
@@ -676,7 +677,10 @@ public class BizConfigGeneratorTests extends MapperServiceTestCase {
             assertTrue(Files.exists(clusterConfigPath));
             String content = Files.readString(clusterConfigPath);
 
-            assertTrue(JSONObject.parseObject(expectedClusterJsonStr).equals(JSONObject.parseObject(content)));
+            assertTrue(
+                JSONObject.parseObject(expectedClusterJsonStr, Feature.OrderedField)
+                    .equals(JSONObject.parseObject(content, Feature.OrderedField))
+            );
         }
 
         {
@@ -757,7 +761,12 @@ public class BizConfigGeneratorTests extends MapperServiceTestCase {
             assertTrue(Files.exists(schemaConfigPath));
             String content = Files.readString(schemaConfigPath);
 
-            assertTrue(compareJsonObjects(JSONObject.parseObject(expectedSchemaJsonStr), JSONObject.parseObject(content)));
+            assertTrue(
+                compareJsonObjects(
+                    JSONObject.parseObject(expectedSchemaJsonStr, Feature.OrderedField),
+                    JSONObject.parseObject(content, Feature.OrderedField)
+                )
+            );
         }
 
         {
@@ -809,7 +818,12 @@ public class BizConfigGeneratorTests extends MapperServiceTestCase {
             assertTrue(Files.exists(dataTablesPath));
             String content = Files.readString(dataTablesPath);
 
-            assertTrue(compareJsonObjects(JSONObject.parseObject(expectedDataTableJson), JSONObject.parseObject(content)));
+            assertTrue(
+                compareJsonObjects(
+                    JSONObject.parseObject(expectedDataTableJson, Feature.OrderedField),
+                    JSONObject.parseObject(content, Feature.OrderedField)
+                )
+            );
         }
 
         bizConfigGenerator.remove();
