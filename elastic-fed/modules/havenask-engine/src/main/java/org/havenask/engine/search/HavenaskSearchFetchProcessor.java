@@ -172,7 +172,7 @@ public class HavenaskSearchFetchProcessor {
 
     public static QrsSqlRequest getQrsFetchPhaseSqlRequest(List<String> idList, String tableName) {
         StringBuilder sqlQuery = new StringBuilder();
-        sqlQuery.append("select _id, _source, _routing from ").append('`').append(tableName).append("_summary_` where contain('_id','");
+        sqlQuery.append("select _id, _source, _routing from ").append('`').append(tableName).append("_summary_` where contain(_id,'");
         for (int i = 0; i < idList.size(); i++) {
             sqlQuery.append(idList.get(i));
             if (i < idList.size() - 1) {
