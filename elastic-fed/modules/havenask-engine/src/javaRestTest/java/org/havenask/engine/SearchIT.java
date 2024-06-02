@@ -290,9 +290,6 @@ public class SearchIT extends AbstractHavenaskRestTestCase {
     }
 
     public void testMultiKnnQuery() throws Exception {
-        // todo: 目前havenask写入两个向量时会导致内存异常打高，容易hang住，暂时屏蔽这个测试
-        assumeTrue("暂时屏蔽该测试", false);
-
         String index = "multi_vector_test";
         searchITIndices.add(index);
 
