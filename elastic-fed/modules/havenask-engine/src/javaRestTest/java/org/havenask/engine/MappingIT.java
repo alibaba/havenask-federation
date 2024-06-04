@@ -353,8 +353,13 @@ public class MappingIT extends AbstractHavenaskRestTestCase {
 
             // 执行查询请求并获取相应结果
             assertBusy(() -> {
-                SearchResponse searchResponse = highLevelClient().search(searchRequest, RequestOptions.DEFAULT);
-                assertEquals(dataNum, searchResponse.getHits().getHits().length);
+                try {
+                    SearchResponse searchResponse = highLevelClient().search(searchRequest, RequestOptions.DEFAULT);
+                    assertEquals(dataNum, searchResponse.getHits().getHits().length);
+                } catch (Exception e) {
+                    logger.info("ignore execption, try to retry");
+                    assertTrue(false);
+                }
             }, 10, TimeUnit.SECONDS);
             SearchResponse searchResponse = highLevelClient().search(searchRequest, RequestOptions.DEFAULT);
             assertEquals(dataNum, searchResponse.getHits().getHits().length);
@@ -511,8 +516,13 @@ public class MappingIT extends AbstractHavenaskRestTestCase {
 
         // 执行查询请求并获取相应结果
         assertBusy(() -> {
-            SearchResponse searchResponse = highLevelClient().search(searchRequest, RequestOptions.DEFAULT);
-            assertEquals(dataNum, searchResponse.getHits().getHits().length);
+            try {
+                SearchResponse searchResponse = highLevelClient().search(searchRequest, RequestOptions.DEFAULT);
+                assertEquals(dataNum, searchResponse.getHits().getHits().length);
+            } catch (Exception e) {
+                logger.info("ignore execption, try to retry");
+                assertTrue(false);
+            }
         }, 10, TimeUnit.SECONDS);
         SearchResponse searchResponse = highLevelClient().search(searchRequest, RequestOptions.DEFAULT);
         assertEquals(dataNum, searchResponse.getHits().getHits().length);
@@ -621,8 +631,14 @@ public class MappingIT extends AbstractHavenaskRestTestCase {
 
         // 执行查询请求并获取相应结果
         assertBusy(() -> {
-            SearchResponse searchResponse = highLevelClient().search(searchRequest, RequestOptions.DEFAULT);
-            assertEquals(dataNum, searchResponse.getHits().getHits().length);
+            try {
+                SearchResponse searchResponse = highLevelClient().search(searchRequest, RequestOptions.DEFAULT);
+                assertEquals(dataNum, searchResponse.getHits().getHits().length);
+            } catch (Exception e) {
+                logger.info("ignore execption, try to retry");
+                assertTrue(false);
+            }
+
         }, 10, TimeUnit.SECONDS);
         SearchResponse searchResponse = highLevelClient().search(searchRequest, RequestOptions.DEFAULT);
         assertEquals(dataNum, searchResponse.getHits().getHits().length);
