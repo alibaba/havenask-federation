@@ -28,6 +28,8 @@ import org.havenask.engine.util.JsonPrettyFormatter;
 
 import java.util.List;
 
+import static org.havenask.engine.create.rest.RestHavenaskCreate.PROCESSOR_CHAIN_CONFIG;
+
 public class HavenaskEngineConfigGenerator {
     public static String generateClusterJsonStr(String indexName, Settings indexSettings, String inputClusterJsonStr) {
         ClusterJsonMinMustParams clusterJsonMinMustParams = new ClusterJsonMinMustParams();
@@ -49,7 +51,10 @@ public class HavenaskEngineConfigGenerator {
         }
         String defaultClusterJson = clusterJsonMinMustParams.toString();
         String mergedClusterJsonStr = JsonPrettyFormatter.toJsonString(
-            mergeClusterJson(JSONObject.parseObject(inputClusterJsonStr), JSONObject.parseObject(defaultClusterJson))
+            mergeClusterJson(
+                JSONObject.parseObject(inputClusterJsonStr, Feature.OrderedField),
+                JSONObject.parseObject(defaultClusterJson, Feature.OrderedField)
+            )
         );
 
         return mergedClusterJsonStr;
@@ -71,8 +76,8 @@ public class HavenaskEngineConfigGenerator {
         DataTable defaultDataTable = new DataTable();
 
         // If the user does not configure processor_chain_config, then configure a default value
-        JSONObject dataTableJson = JSONObject.parseObject(inputDataTableJsonStr);
-        Object value = JSONPath.eval(dataTableJson, "$." + "processor_chain_config");
+        JSONObject dataTableJson = JSONObject.parseObject(inputDataTableJsonStr, Feature.OrderedField);
+        Object value = JSONPath.eval(dataTableJson, "$." + PROCESSOR_CHAIN_CONFIG);
         if (value == null) {
             Processor.ProcessorChainConfig processorChainConfig = new Processor.ProcessorChainConfig();
             processorChainConfig.clusters = List.of(indexName);
@@ -81,7 +86,7 @@ public class HavenaskEngineConfigGenerator {
 
         String defaultDataTableJsonStr = defaultDataTable.toString();
         String mergedDataTableJsonStr = JsonPrettyFormatter.toJsonString(
-            mergeDataTableJson(dataTableJson, JSONObject.parseObject(defaultDataTableJsonStr))
+            mergeDataTableJson(dataTableJson, JSONObject.parseObject(defaultDataTableJsonStr, Feature.OrderedField))
         );
         return mergedDataTableJsonStr;
     }
