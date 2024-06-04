@@ -201,8 +201,13 @@ public class SearchIT extends AbstractHavenaskRestTestCase {
 
         // 执行查询请求并获取相应结果
         assertBusy(() -> {
-            SearchResponse searchResponse = highLevelClient().search(searchRequest, RequestOptions.DEFAULT);
-            assertEquals(dataNum, searchResponse.getHits().getHits().length);
+            try {
+                SearchResponse searchResponse = highLevelClient().search(searchRequest, RequestOptions.DEFAULT);
+                assertEquals(dataNum, searchResponse.getHits().getHits().length);
+            } catch (Exception e) {
+                logger.info("ignore execption, try to retry");
+                assertTrue(false);
+            }
         }, 10, TimeUnit.SECONDS);
         SearchResponse searchResponse = highLevelClient().search(searchRequest, RequestOptions.DEFAULT);
         assertEquals(dataNum, searchResponse.getHits().getHits().length);
@@ -271,8 +276,13 @@ public class SearchIT extends AbstractHavenaskRestTestCase {
 
         // 执行查询请求并获取相应结果
         assertBusy(() -> {
-            SearchResponse searchResponse = highLevelClient().search(searchRequest, RequestOptions.DEFAULT);
-            assertEquals(dataNum, searchResponse.getHits().getHits().length);
+            try {
+                SearchResponse searchResponse = highLevelClient().search(searchRequest, RequestOptions.DEFAULT);
+                assertEquals(dataNum, searchResponse.getHits().getHits().length);
+            } catch (Exception e) {
+                logger.info("ignore execption, try to retry");
+                assertTrue(false);
+            }
         }, 10, TimeUnit.SECONDS);
         SearchResponse searchResponse = highLevelClient().search(searchRequest, RequestOptions.DEFAULT);
         assertEquals(dataNum, searchResponse.getHits().getHits().length);
@@ -358,8 +368,13 @@ public class SearchIT extends AbstractHavenaskRestTestCase {
 
         // 执行查询请求并获取相应结果
         assertBusy(() -> {
-            SearchResponse searchResponse = highLevelClient().search(searchRequest, RequestOptions.DEFAULT);
-            assertEquals(dataNum, searchResponse.getHits().getHits().length);
+            try {
+                SearchResponse searchResponse = highLevelClient().search(searchRequest, RequestOptions.DEFAULT);
+                assertEquals(dataNum, searchResponse.getHits().getHits().length);
+            } catch (Exception e) {
+                logger.info("ignore execption, try to retry");
+                assertTrue(false);
+            }
         }, 10, TimeUnit.SECONDS);
         SearchResponse searchResponse = highLevelClient().search(searchRequest, RequestOptions.DEFAULT);
         assertEquals(dataNum, searchResponse.getHits().getHits().length);
@@ -769,7 +784,7 @@ public class SearchIT extends AbstractHavenaskRestTestCase {
                 String.format(
                     Locale.ROOT,
                     "select _id, file_type, ((1/(1+vector_score('image_vector')))) as _score "
-                        + "from `%s` where MATCHINDEX('image_vector', 'jpg#-5.0,9.0,-12.0&n=10') "
+                        + "from `%s` where MATCHINDEX('image_vector', 'jpg#-5.0,9.0,-12.0&n=40') "
                         + "order by _score desc limit 40 offset 0",
                     index
                 )
@@ -782,7 +797,7 @@ public class SearchIT extends AbstractHavenaskRestTestCase {
                 String.format(
                     Locale.ROOT,
                     "select _id, file_type, ((1/(1+vector_score('image_vector')))) as _score "
-                        + "from `%s` where MATCHINDEX('image_vector', 'png#-5.0,9.0,-12.0&n=10') "
+                        + "from `%s` where MATCHINDEX('image_vector', 'png#-5.0,9.0,-12.0&n=40') "
                         + "order by _score desc limit 40 offset 0",
                     index
                 )
