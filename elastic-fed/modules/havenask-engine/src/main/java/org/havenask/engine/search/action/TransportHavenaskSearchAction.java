@@ -47,6 +47,7 @@ import java.util.Objects;
 public class TransportHavenaskSearchAction extends HandledTransportAction<SearchRequest, SearchResponse> {
     private static final Logger logger = LogManager.getLogger(TransportHavenaskSearchAction.class);
     private final ClusterService clusterService;
+    private final ThreadPool threadPool;
     private final IngestActionForwarder ingestForwarder;
     private final QrsClient qrsClient;
     private final HavenaskScrollService havenaskScrollService;
@@ -56,13 +57,15 @@ public class TransportHavenaskSearchAction extends HandledTransportAction<Search
     public TransportHavenaskSearchAction(
         ClusterService clusterService,
         TransportService transportService,
+        ThreadPool threadPool,
         NamedXContentRegistry namedXContentRegistry,
         NativeProcessControlService nativeProcessControlService,
         ActionFilters actionFilters,
         HavenaskScrollService havenaskScrollService
     ) {
-        super(HavenaskSearchAction.NAME, transportService, actionFilters, SearchRequest::new, ThreadPool.Names.SEARCH);
+        super(HavenaskSearchAction.NAME, transportService, actionFilters, SearchRequest::new, ThreadPool.Names.SAME);
         this.clusterService = clusterService;
+        this.threadPool = threadPool;
         this.namedXContentRegistry = namedXContentRegistry;
         this.ingestForwarder = new IngestActionForwarder(transportService);
         clusterService.addStateApplier(this.ingestForwarder);
@@ -81,6 +84,7 @@ public class TransportHavenaskSearchAction extends HandledTransportAction<Search
                 searchRequest,
                 listener,
                 clusterService,
+                threadPool,
                 namedXContentRegistry,
                 ingestForwarder,
                 qrsClient,
@@ -95,6 +99,7 @@ public class TransportHavenaskSearchAction extends HandledTransportAction<Search
             request,
             listener,
             clusterService,
+            threadPool,
             namedXContentRegistry,
             ingestForwarder,
             qrsClient,
@@ -109,6 +114,7 @@ public class TransportHavenaskSearchAction extends HandledTransportAction<Search
         SearchRequest searchRequest,
         ActionListener<SearchResponse> listener,
         ClusterService clusterService,
+        ThreadPool threadPool,
         NamedXContentRegistry namedXContentRegistry,
         IngestActionForwarder ingestForwarder,
         QrsClient qrsClient,
@@ -120,6 +126,7 @@ public class TransportHavenaskSearchAction extends HandledTransportAction<Search
                 searchRequest,
                 listener,
                 clusterService,
+                threadPool,
                 namedXContentRegistry,
                 ingestForwarder,
                 qrsClient,
@@ -135,6 +142,7 @@ public class TransportHavenaskSearchAction extends HandledTransportAction<Search
         SearchRequest request,
         ActionListener<SearchResponse> listener,
         ClusterService clusterService,
+        ThreadPool threadPool,
         NamedXContentRegistry namedXContentRegistry,
         IngestActionForwarder ingestForwarder,
         QrsClient qrsClient,
@@ -144,39 +152,40 @@ public class TransportHavenaskSearchAction extends HandledTransportAction<Search
             ingestForwarder.forwardIngestRequest(HavenaskSearchAction.INSTANCE, request, listener);
             return;
         }
+        threadPool.executor(ThreadPool.Names.SEARCH).execute(() -> {
+            try {
+                String tableName = request.indices()[0];
+                ClusterState clusterState = clusterService.state();
+                IndexAbstraction indexAbstraction = clusterState.metadata().getIndicesLookup().get(tableName);
+                if (indexAbstraction == null) {
+                    throw new IllegalArgumentException("illegal index name! index name not exist.");
+                }
 
-        try {
-            String tableName = request.indices()[0];
-            ClusterState clusterState = clusterService.state();
-            IndexAbstraction indexAbstraction = clusterState.metadata().getIndicesLookup().get(tableName);
-            if (indexAbstraction == null) {
-                throw new IllegalArgumentException("illegal index name! index name not exist.");
-            }
-
-            IndexMetadata indexMetadata = indexAbstraction.getWriteIndex();
-            DSLSession session = new DSLSession(
-                qrsClient,
-                indexMetadata,
-                request,
-                clusterService.localNode().getId(),
-                namedXContentRegistry
-            );
-            SearchResponse searchResponse = session.execute();
-
-            if (Objects.nonNull(request.scroll())) {
-                HavenaskScrollContext havenaskScrollContext = new HavenaskScrollContext(
-                    havenaskScrollService.getThreadPool(),
-                    session,
-                    request.scroll().keepAlive().getMillis()
+                IndexMetadata indexMetadata = indexAbstraction.getWriteIndex();
+                DSLSession session = new DSLSession(
+                    qrsClient,
+                    indexMetadata,
+                    request,
+                    clusterService.localNode().getId(),
+                    namedXContentRegistry
                 );
-                havenaskScrollService.putScrollContext(havenaskScrollContext);
-            }
+                SearchResponse searchResponse = session.execute();
 
-            listener.onResponse(searchResponse);
-        } catch (Exception e) {
-            logger.info("Failed to execute havenask search, ", e);
-            listener.onFailure(e);
-        }
+                if (Objects.nonNull(request.scroll())) {
+                    HavenaskScrollContext havenaskScrollContext = new HavenaskScrollContext(
+                        havenaskScrollService.getThreadPool(),
+                        session,
+                        request.scroll().keepAlive().getMillis()
+                    );
+                    havenaskScrollService.putScrollContext(havenaskScrollContext);
+                }
+
+                listener.onResponse(searchResponse);
+            } catch (Exception e) {
+                logger.info("Failed to execute havenask search, ", e);
+                listener.onFailure(e);
+            }
+        });
     }
 
     public static boolean isSearchHavenask(Metadata metadata, SearchRequest searchRequest) {
